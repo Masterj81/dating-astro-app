@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "astrodating",
-    "privacyPolicyUrl": "https://astrodatingapp.com/privacy",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "ios": {

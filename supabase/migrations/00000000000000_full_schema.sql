@@ -1,5 +1,108 @@
 -- AstroDating — Full Database Schema
--- Single consolidated migration for a fresh Supabase project
+-- Idempotent migration: drops existing objects before creating
+
+-- ============================================
+-- 0. DROP EXISTING OBJECTS (for fresh start)
+-- ============================================
+
+-- Drop triggers first
+DROP TRIGGER IF EXISTS trigger_check_match ON swipes;
+DROP TRIGGER IF EXISTS trigger_update_match_message ON messages;
+DROP TRIGGER IF EXISTS trigger_profile_updated ON profiles;
+DROP TRIGGER IF EXISTS trigger_swipe_rate_limit ON swipes;
+DROP TRIGGER IF EXISTS trigger_message_rate_limit ON messages;
+DROP TRIGGER IF EXISTS trigger_block_rate_limit ON blocked_users;
+DROP TRIGGER IF EXISTS trigger_report_rate_limit ON reports;
+DROP TRIGGER IF EXISTS trigger_notify_new_match ON matches;
+DROP TRIGGER IF EXISTS trigger_notify_new_message ON messages;
+DROP TRIGGER IF EXISTS trigger_send_welcome_email ON profiles;
+DROP TRIGGER IF EXISTS trigger_send_match_email ON matches;
+
+-- Drop functions
+DROP FUNCTION IF EXISTS check_and_create_match() CASCADE;
+DROP FUNCTION IF EXISTS update_match_last_message() CASCADE;
+DROP FUNCTION IF EXISTS update_profile_timestamp() CASCADE;
+DROP FUNCTION IF EXISTS get_discoverable_profiles(UUID, INTEGER) CASCADE;
+DROP FUNCTION IF EXISTS get_user_matches(UUID) CASCADE;
+DROP FUNCTION IF EXISTS increment_feature_usage(UUID, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS check_rate_limit(UUID, TEXT, INTEGER, INTERVAL) CASCADE;
+DROP FUNCTION IF EXISTS enforce_swipe_rate_limit() CASCADE;
+DROP FUNCTION IF EXISTS enforce_message_rate_limit() CASCADE;
+DROP FUNCTION IF EXISTS enforce_block_rate_limit() CASCADE;
+DROP FUNCTION IF EXISTS enforce_report_rate_limit() CASCADE;
+DROP FUNCTION IF EXISTS cleanup_rate_limits() CASCADE;
+DROP FUNCTION IF EXISTS notify_new_match() CASCADE;
+DROP FUNCTION IF EXISTS notify_new_message() CASCADE;
+DROP FUNCTION IF EXISTS send_welcome_email() CASCADE;
+DROP FUNCTION IF EXISTS send_match_email() CASCADE;
+
+-- Drop view
+DROP VIEW IF EXISTS discoverable_profiles CASCADE;
+
+-- Drop policies (wrapped to handle non-existent tables)
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
+  DROP POLICY IF EXISTS "Users can view active profiles" ON profiles;
+  DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
+  DROP POLICY IF EXISTS "Users can insert own profile" ON profiles;
+  DROP POLICY IF EXISTS "Users can view profiles" ON profiles;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Users can view own swipes" ON swipes;
+  DROP POLICY IF EXISTS "Users can create own swipes" ON swipes;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Users can view own matches" ON matches;
+  DROP POLICY IF EXISTS "Users can update own matches" ON matches;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Users can view messages in their matches" ON messages;
+  DROP POLICY IF EXISTS "Users can send messages" ON messages;
+  DROP POLICY IF EXISTS "Users can send messages in their matches" ON messages;
+  DROP POLICY IF EXISTS "Users can update own messages" ON messages;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Users can view own blocks" ON blocked_users;
+  DROP POLICY IF EXISTS "Users can create blocks" ON blocked_users;
+  DROP POLICY IF EXISTS "Users can remove own blocks" ON blocked_users;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Users can create reports" ON reports;
+  DROP POLICY IF EXISTS "Users can view own reports" ON reports;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Users can manage own usage" ON premium_usage;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Deny all direct access to rate_limits" ON rate_limits;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+-- Drop policies on deletion_requests (if table exists)
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Deny all direct access" ON deletion_requests;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+-- Drop storage policies
+DROP POLICY IF EXISTS "Public read access for avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload own avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update own avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete own avatars" ON storage.objects;
 
 -- ============================================
 -- 1. PROFILES TABLE
@@ -7,72 +110,56 @@
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT,
-  name TEXT NOT NULL,
+  name TEXT,
   age INTEGER,
   birth_date DATE,
   birth_time TIME,
   birth_city TEXT,
   birth_latitude DECIMAL(9,6),
   birth_longitude DECIMAL(9,6),
-
-  -- Zodiac signs
   sun_sign TEXT,
   moon_sign TEXT,
   rising_sign TEXT,
-
-  -- Full birth chart
   birth_chart JSONB,
-
-  -- Profile info
   bio TEXT,
   gender TEXT CHECK (gender IN ('male', 'female', 'non-binary', 'other', 'prefer-not-to-say')),
   looking_for TEXT[] DEFAULT ARRAY['male', 'female', 'non-binary', 'other']::TEXT[],
   interests TEXT[],
-
-  -- Profile images
   image_url TEXT,
   images TEXT[] DEFAULT ARRAY[]::TEXT[],
   photos TEXT[] DEFAULT ARRAY[]::TEXT[],
-
-  -- Location
   current_city TEXT,
   current_latitude DECIMAL(9,6),
   current_longitude DECIMAL(9,6),
-
-  -- Preferences
   min_age INTEGER DEFAULT 18,
   max_age INTEGER DEFAULT 99,
   max_distance INTEGER DEFAULT 100,
   preferred_elements TEXT[] DEFAULT ARRAY['fire', 'earth', 'air', 'water']::TEXT[],
-
-  -- Premium
   is_premium BOOLEAN DEFAULT FALSE,
   premium_until TIMESTAMPTZ,
-
-  -- Status
   is_active BOOLEAN DEFAULT TRUE,
   is_verified BOOLEAN DEFAULT FALSE,
   onboarding_completed BOOLEAN DEFAULT FALSE,
   last_active TIMESTAMPTZ DEFAULT NOW(),
-
-  -- Push notifications
   push_token TEXT,
-  notification_preferences JSONB DEFAULT '{
-    "newMatches": true,
-    "messages": true,
-    "likes": true,
-    "superLikes": true,
-    "dailyHoroscope": false,
-    "promotions": false
-  }'::jsonb,
-
-  -- Timestamps
+  notification_preferences JSONB DEFAULT '{"newMatches": true, "messages": true, "likes": true, "superLikes": true, "dailyHoroscope": false, "promotions": false}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-
-  -- Age constraint
-  CONSTRAINT profiles_age_check CHECK (age >= 18 OR age IS NULL)
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Add columns if they don't exist (for existing tables)
+DO $$ BEGIN
+  ALTER TABLE profiles ADD COLUMN IF NOT EXISTS photos TEXT[] DEFAULT ARRAY[]::TEXT[];
+  ALTER TABLE profiles ADD COLUMN IF NOT EXISTS push_token TEXT;
+  ALTER TABLE profiles ADD COLUMN IF NOT EXISTS notification_preferences JSONB DEFAULT '{"newMatches": true, "messages": true, "likes": true, "superLikes": true, "dailyHoroscope": false, "promotions": false}'::jsonb;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+
+-- Add age constraint
+DO $$ BEGIN
+  ALTER TABLE profiles ADD CONSTRAINT profiles_age_check CHECK (age >= 18 OR age IS NULL);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Profiles indexes
 CREATE INDEX IF NOT EXISTS idx_profiles_active ON profiles(is_active) WHERE is_active = TRUE;
@@ -169,9 +256,9 @@ CREATE TABLE IF NOT EXISTS reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   reporter_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   reported_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  reason TEXT NOT NULL CHECK (reason IN ('spam', 'harassment', 'fake_profile', 'inappropriate_content', 'underage', 'other')),
+  reason TEXT NOT NULL,
   description TEXT,
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed', 'action_taken', 'dismissed')),
+  status TEXT DEFAULT 'pending',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   reviewed_at TIMESTAMPTZ,
   reviewed_by UUID
@@ -291,18 +378,11 @@ ON CONFLICT (id) DO UPDATE SET
   file_size_limit = EXCLUDED.file_size_limit,
   allowed_mime_types = EXCLUDED.allowed_mime_types;
 
-DROP POLICY IF EXISTS "Public read access for avatars" ON storage.objects;
 CREATE POLICY "Public read access for avatars" ON storage.objects FOR SELECT USING (bucket_id = 'avatars');
-
-DROP POLICY IF EXISTS "Users can upload own avatars" ON storage.objects;
 CREATE POLICY "Users can upload own avatars" ON storage.objects FOR INSERT
   WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
-
-DROP POLICY IF EXISTS "Users can update own avatars" ON storage.objects;
 CREATE POLICY "Users can update own avatars" ON storage.objects FOR UPDATE
   USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
-
-DROP POLICY IF EXISTS "Users can delete own avatars" ON storage.objects;
 CREATE POLICY "Users can delete own avatars" ON storage.objects FOR DELETE
   USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
 
@@ -342,7 +422,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-DROP TRIGGER IF EXISTS trigger_check_match ON swipes;
 CREATE TRIGGER trigger_check_match AFTER INSERT ON swipes FOR EACH ROW EXECUTE FUNCTION check_and_create_match();
 
 -- Update last_message_at
@@ -354,7 +433,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-DROP TRIGGER IF EXISTS trigger_update_match_message ON messages;
 CREATE TRIGGER trigger_update_match_message AFTER INSERT ON messages FOR EACH ROW EXECUTE FUNCTION update_match_last_message();
 
 -- Update profile updated_at
@@ -366,7 +444,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trigger_profile_updated ON profiles;
 CREATE TRIGGER trigger_profile_updated BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION update_profile_timestamp();
 
 -- ============================================
@@ -477,7 +554,6 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-DROP TRIGGER IF EXISTS trigger_swipe_rate_limit ON swipes;
 CREATE TRIGGER trigger_swipe_rate_limit BEFORE INSERT ON swipes FOR EACH ROW EXECUTE FUNCTION enforce_swipe_rate_limit();
 
 -- Messages: 30/minute
@@ -489,7 +565,6 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-DROP TRIGGER IF EXISTS trigger_message_rate_limit ON messages;
 CREATE TRIGGER trigger_message_rate_limit BEFORE INSERT ON messages FOR EACH ROW EXECUTE FUNCTION enforce_message_rate_limit();
 
 -- Blocks: 20/hour
@@ -501,7 +576,6 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-DROP TRIGGER IF EXISTS trigger_block_rate_limit ON blocked_users;
 CREATE TRIGGER trigger_block_rate_limit BEFORE INSERT ON blocked_users FOR EACH ROW EXECUTE FUNCTION enforce_block_rate_limit();
 
 -- Reports: 10/day
@@ -513,7 +587,6 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-DROP TRIGGER IF EXISTS trigger_report_rate_limit ON reports;
 CREATE TRIGGER trigger_report_rate_limit BEFORE INSERT ON reports FOR EACH ROW EXECUTE FUNCTION enforce_report_rate_limit();
 
 -- Cleanup expired rate limit windows
@@ -558,7 +631,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-DROP TRIGGER IF EXISTS trigger_notify_new_match ON matches;
 CREATE TRIGGER trigger_notify_new_match AFTER INSERT ON matches FOR EACH ROW EXECUTE FUNCTION notify_new_match();
 
 -- Notify on new message
@@ -581,7 +653,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-DROP TRIGGER IF EXISTS trigger_notify_new_message ON messages;
 CREATE TRIGGER trigger_notify_new_message AFTER INSERT ON messages FOR EACH ROW EXECUTE FUNCTION notify_new_message();
 
 -- ============================================
@@ -607,7 +678,6 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS trigger_send_welcome_email ON profiles;
 CREATE TRIGGER trigger_send_welcome_email AFTER UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION send_welcome_email();
 
 -- Match email
@@ -634,7 +704,6 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS trigger_send_match_email ON matches;
 CREATE TRIGGER trigger_send_match_email AFTER INSERT ON matches FOR EACH ROW EXECUTE FUNCTION send_match_email();
 
 -- ============================================
@@ -650,15 +719,6 @@ END;
 $$;
 
 -- ============================================
--- COMMENTS
+-- DONE
 -- ============================================
-COMMENT ON TABLE profiles IS 'User profiles with birth data and preferences';
-COMMENT ON TABLE swipes IS 'Records of user swipe actions (like/pass/super_like)';
-COMMENT ON TABLE matches IS 'Mutual matches between users';
-COMMENT ON TABLE messages IS 'Chat messages between matched users';
-COMMENT ON TABLE blocked_users IS 'User block list';
-COMMENT ON TABLE reports IS 'User reports for moderation';
-COMMENT ON TABLE premium_usage IS 'Tracks daily feature usage for premium trial mode';
-COMMENT ON TABLE rate_limits IS 'Server-side rate limiting tracking';
-COMMENT ON TABLE deletion_requests IS 'Account deletion verification codes';
-COMMENT ON VIEW discoverable_profiles IS 'Profiles available for discovery in the swipe deck';
+SELECT 'AstroDating schema created successfully!' as result;
