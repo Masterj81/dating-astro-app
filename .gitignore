@@ -41,3 +41,11 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Claude Code
+.claude/
+
+# Web (Next.js)
+web/.next/
+web/node_modules/
+web/.env*.local

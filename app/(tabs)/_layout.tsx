@@ -1,35 +1,103 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { useLanguage } from '../../contexts/LanguageContext';
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+// Simple icon component using emoji (replace with proper icons later)
+function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
+  return (
+    <View style={[styles.iconContainer, focused && styles.iconFocused]}>
+      <Text style={[styles.icon, focused && styles.iconTextFocused]}>{emoji}</Text>
+    </View>
+  );
+}
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+export default function TabsLayout() {
+  const { t } = useLanguage();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        headerStyle: {
+          backgroundColor: '#1a1a2e',
+        },
+        headerTintColor: '#fff',
+        headerTitleStyle: {
+          fontWeight: '600',
+        },
+        tabBarStyle: {
+          backgroundColor: '#1a1a2e',
+          borderTopColor: 'rgba(255, 255, 255, 0.1)',
+          borderTopWidth: 1,
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 8,
+        },
+        tabBarActiveTintColor: '#e94560',
+        tabBarInactiveTintColor: '#666',
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '500',
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="discover"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: t('discover'),
+          headerTitle: `✦ ${t('discover')}`,
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🔮" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="matches"
+        options={{
+          title: t('matches'),
+          headerTitle: `💫 ${t('yourMatches')}`,
+          tabBarIcon: ({ focused }) => <TabIcon emoji="💫" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="chat"
+        options={{
+          title: t('chat'),
+          headerTitle: `💬 ${t('messages')}`,
+          tabBarIcon: ({ focused }) => <TabIcon emoji="💬" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: t('profile'),
+          headerTitle: t('myChart'),
+          tabBarIcon: ({ focused }) => <TabIcon emoji="⭐" focused={focused} />,
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  iconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconFocused: {
+    backgroundColor: 'rgba(233, 69, 96, 0.2)',
+  },
+  icon: {
+    fontSize: 18,
+    opacity: 0.6,
+  },
+  iconTextFocused: {
+    opacity: 1,
+  },
+});

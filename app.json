@@ -1,25 +1,31 @@
 {
   "expo": {
-    "name": "dating-astro-app",
-    "slug": "dating-astro-app",
+    "name": "AstroDating",
+    "slug": "astro-dating",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "datingastroapp",
-    "userInterfaceStyle": "automatic",
+    "scheme": "astrodating",
+    "privacyPolicyUrl": "https://astrodatingapp.com/privacy",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.astrodating.app",
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0f0f1a",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "package": "com.astrodating.app"
     },
     "web": {
       "output": "static",
@@ -33,16 +39,22 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
+          "backgroundColor": "#0f0f1a"
         }
-      ]
+      ],
+      "expo-localization",
+      "expo-apple-authentication",
+      ["@sentry/react-native/expo", {}]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4b9ba994-e045-4aad-b3be-edee8bc22e2b"
+      }
     }
   }
 }
