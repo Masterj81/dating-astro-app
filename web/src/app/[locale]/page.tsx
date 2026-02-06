@@ -59,8 +59,8 @@ export default function LandingPage({
       <section className="relative overflow-hidden bg-gradient-to-b from-bg via-bg-secondary to-bg-tertiary py-24 sm:py-32">
         <StarField count={100} />
         <div className="relative mx-auto max-w-4xl px-4 text-center">
-          <div className="mx-auto mb-8 flex h-32 w-32 items-center justify-center rounded-full border border-border bg-bg-secondary/50 text-5xl">
-            ♈
+          <div className="mx-auto mb-8 flex h-32 w-32 items-center justify-center rounded-full border border-accent bg-bg-secondary/50 text-6xl text-accent">
+            ✦
           </div>
           <h1 className="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
             {hero("tagline")}
