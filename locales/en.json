@@ -25,6 +25,8 @@
   "mustBe18": "You must be at least 18 years old",
   "futureBirthDate": "Birth date cannot be in the future",
   "invalidBirthDateFormat": "Invalid date format. Please use MM/DD/YYYY",
+  "accountCreated": "Account Created",
+  "checkEmailVerification": "Please check your email to verify your account.",
 
   "yourBirthChart": "Your Birth Chart",
   "birthChartSubtitle": "Enter your birth details to calculate your Sun, Moon & Rising signs",

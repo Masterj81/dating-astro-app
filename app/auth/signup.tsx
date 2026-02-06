@@ -85,8 +85,12 @@ export default function SignupScreen() {
     if (error) {
       Alert.alert(t('error'), error.message);
     } else {
-      // Navigate to root - smart redirect handles routing
-      router.replace('/');
+      // Show success message and navigate to verify email
+      Alert.alert(
+        t('accountCreated') || 'Account Created',
+        t('checkEmailVerification') || 'Please check your email to verify your account.',
+        [{ text: 'OK', onPress: () => router.replace('/auth/verify-email') }]
+      );
     }
   };
 
