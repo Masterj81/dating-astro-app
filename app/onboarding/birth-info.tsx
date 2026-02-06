@@ -23,6 +23,41 @@ import { useAuth } from '../_layout';
 export default function BirthInfoScreen() {
   const [birthDate, setBirthDate] = useState('');
   const [birthTime, setBirthTime] = useState('');
+
+  // Auto-format birth date with slashes (MM/DD/YYYY)
+  const handleBirthDateChange = (text: string) => {
+    // Remove all non-numeric characters
+    const numbers = text.replace(/\D/g, '');
+
+    // Format with slashes
+    let formatted = '';
+    if (numbers.length > 0) {
+      formatted = numbers.slice(0, 2);
+    }
+    if (numbers.length > 2) {
+      formatted += '/' + numbers.slice(2, 4);
+    }
+    if (numbers.length > 4) {
+      formatted += '/' + numbers.slice(4, 8);
+    }
+
+    setBirthDate(formatted);
+  };
+
+  // Auto-format birth time with colon (HH:MM)
+  const handleBirthTimeChange = (text: string) => {
+    const numbers = text.replace(/\D/g, '');
+
+    let formatted = '';
+    if (numbers.length > 0) {
+      formatted = numbers.slice(0, 2);
+    }
+    if (numbers.length > 2) {
+      formatted += ':' + numbers.slice(2, 4);
+    }
+
+    setBirthTime(formatted);
+  };
   const [birthCity, setBirthCity] = useState('');
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
@@ -136,8 +171,9 @@ export default function BirthInfoScreen() {
                   placeholder={t('birthDatePlaceholder')}
                   placeholderTextColor="#666"
                   value={birthDate}
-                  onChangeText={setBirthDate}
+                  onChangeText={handleBirthDateChange}
                   keyboardType="numeric"
+                  maxLength={10}
                 />
                 <Text style={styles.hint}>{t('birthDateHint')}</Text>
               </View>
@@ -149,7 +185,9 @@ export default function BirthInfoScreen() {
                   placeholder={t('birthTimePlaceholder')}
                   placeholderTextColor="#666"
                   value={birthTime}
-                  onChangeText={setBirthTime}
+                  onChangeText={handleBirthTimeChange}
+                  keyboardType="numeric"
+                  maxLength={5}
                 />
                 <Text style={styles.hint}>
                   {t('birthTimeHint')}
