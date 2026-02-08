@@ -2,6 +2,8 @@ import { Tabs } from 'expo-router';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { tabSwitch } from '../../services/haptics';
+import { a11yColors } from '../../utils/accessibility';
 
 // Simple icon component using emoji (replace with proper icons later)
 function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
@@ -19,26 +21,31 @@ export default function TabsLayout() {
   // Calculate tab bar height with safe area
   const tabBarHeight = 60 + (Platform.OS === 'android' ? insets.bottom : 0);
 
+  // Handle tab press with haptic feedback
+  const handleTabPress = () => {
+    tabSwitch();
+  };
+
   return (
     <Tabs
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#1a1a2e',
+          backgroundColor: a11yColors.background.primary,
         },
-        headerTintColor: '#fff',
+        headerTintColor: a11yColors.text.primary,
         headerTitleStyle: {
           fontWeight: '600',
         },
         tabBarStyle: {
-          backgroundColor: '#1a1a2e',
+          backgroundColor: a11yColors.background.primary,
           borderTopColor: 'rgba(255, 255, 255, 0.1)',
           borderTopWidth: 1,
           height: tabBarHeight,
           paddingBottom: Platform.OS === 'android' ? insets.bottom + 8 : 8,
           paddingTop: 8,
         },
-        tabBarActiveTintColor: '#e94560',
-        tabBarInactiveTintColor: '#666',
+        tabBarActiveTintColor: a11yColors.interactive.primary,
+        tabBarInactiveTintColor: a11yColors.text.muted,
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '500',
@@ -57,6 +64,10 @@ export default function TabsLayout() {
           title: t('discover'),
           headerTitle: `✦ ${t('discover')}`,
           tabBarIcon: ({ focused }) => <TabIcon emoji="🔮" focused={focused} />,
+          tabBarAccessibilityLabel: t('a11y.discoverTab'),
+        }}
+        listeners={{
+          tabPress: handleTabPress,
         }}
       />
       <Tabs.Screen
@@ -65,6 +76,10 @@ export default function TabsLayout() {
           title: t('matches'),
           headerTitle: `💫 ${t('yourMatches')}`,
           tabBarIcon: ({ focused }) => <TabIcon emoji="💫" focused={focused} />,
+          tabBarAccessibilityLabel: t('a11y.matchesTab'),
+        }}
+        listeners={{
+          tabPress: handleTabPress,
         }}
       />
       <Tabs.Screen
@@ -73,6 +88,10 @@ export default function TabsLayout() {
           title: t('chat'),
           headerTitle: `💬 ${t('messages')}`,
           tabBarIcon: ({ focused }) => <TabIcon emoji="💬" focused={focused} />,
+          tabBarAccessibilityLabel: t('a11y.chatTab'),
+        }}
+        listeners={{
+          tabPress: handleTabPress,
         }}
       />
       <Tabs.Screen
@@ -81,6 +100,10 @@ export default function TabsLayout() {
           title: t('profile'),
           headerTitle: t('myChart'),
           tabBarIcon: ({ focused }) => <TabIcon emoji="⭐" focused={focused} />,
+          tabBarAccessibilityLabel: t('a11y.profileTab'),
+        }}
+        listeners={{
+          tabPress: handleTabPress,
         }}
       />
     </Tabs>

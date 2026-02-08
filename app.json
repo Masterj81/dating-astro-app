@@ -13,7 +13,17 @@
       "bundleIdentifier": "com.astrodating.app",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSSiriUsageDescription": "AstroDating uses Siri to check your horoscope and view matches.",
+        "NSUserActivityTypes": [
+          "CheckHoroscopeIntent",
+          "ViewMatchesIntent",
+          "CheckCompatibilityIntent"
+        ]
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": ["group.com.astrodating.app"],
+        "com.apple.developer.siri": true
       }
     },
     "android": {
@@ -31,6 +41,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "@bacons/apple-targets",
       "expo-router",
       [
         "expo-splash-screen",
@@ -43,7 +54,16 @@
       ],
       "expo-localization",
       "expo-apple-authentication",
-      ["@sentry/react-native/expo", {}]
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "astro-dating",
+          "organization": "personnal-5l"
+        }
+      ],
+      "expo-secure-store",
+      "react-native-shared-group-preferences"
     ],
     "experiments": {
       "typedRoutes": true,

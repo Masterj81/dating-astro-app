@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -18,6 +18,13 @@ import LanguageSelector from '../../components/LanguageSelector';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { validateEmail } from '../../utils/validation';
 import { useAuth } from '../_layout';
+import {
+  useReduceMotion,
+  getButtonA11yProps,
+  getTextInputA11yProps,
+  a11yColors,
+} from '../../utils/accessibility';
+import { buttonPress, errorNotification } from '../../services/haptics';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -26,13 +33,25 @@ export default function LoginScreen() {
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
   const { signIn, signInWithGoogle, signInWithApple, signInWithFacebook } = useAuth();
   const { t } = useLanguage();
+  const reduceMotion = useReduceMotion();
 
-  // Animations
-  const fadeAnim = useState(new Animated.Value(0))[0];
-  const slideAnim = useState(new Animated.Value(30))[0];
-  const scaleAnim = useState(new Animated.Value(0.8))[0];
+  // Refs for text inputs (for accessibility focus)
+  const passwordInputRef = useRef<TextInput>(null);
+
+  // Animations - start at final values if reduce motion is enabled
+  const fadeAnim = useState(new Animated.Value(reduceMotion ? 1 : 0))[0];
+  const slideAnim = useState(new Animated.Value(reduceMotion ? 0 : 30))[0];
+  const scaleAnim = useState(new Animated.Value(reduceMotion ? 1 : 0.8))[0];
 
   useEffect(() => {
+    if (reduceMotion) {
+      // Skip animations
+      fadeAnim.setValue(1);
+      slideAnim.setValue(0);
+      scaleAnim.setValue(1);
+      return;
+    }
+
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -51,25 +70,29 @@ export default function LoginScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [reduceMotion]);
 
   const handleLogin = async () => {
     if (!email || !password) {
+      errorNotification();
       Alert.alert(t('error'), t('fillAllFields'));
       return;
     }
 
     const emailResult = validateEmail(email);
     if (!emailResult.valid) {
+      errorNotification();
       Alert.alert(t('error'), t(emailResult.error!));
       return;
     }
 
+    buttonPress();
     setLoading(true);
     const { error } = await signIn(email, password);
     setLoading(false);
 
     if (error) {
+      errorNotification();
       Alert.alert(t('error'), error.message);
     } else {
       router.replace('/');
@@ -77,6 +100,7 @@ export default function LoginScreen() {
   };
 
   const handleSocialAuth = async (provider: 'google' | 'apple' | 'facebook') => {
+    buttonPress();
     setSocialLoading(provider);
     try {
       const signInFn =
@@ -85,11 +109,13 @@ export default function LoginScreen() {
         signInWithFacebook;
       const { error } = await signInFn();
       if (error) {
+        errorNotification();
         Alert.alert(t('error'), t('socialAuthError'));
       } else {
         router.replace('/');
       }
     } catch {
+      errorNotification();
       Alert.alert(t('error'), t('socialAuthError'));
     } finally {
       setSocialLoading(null);
@@ -121,8 +147,9 @@ export default function LoginScreen() {
                   transform: [{ scale: scaleAnim }],
                 }
               ]}
+              accessibilityRole="header"
             >
-              <Text style={styles.logoText}>✦</Text>
+              <Text style={styles.logoText} accessibilityLabel="">✦</Text>
               <Text style={styles.title}>{t('appName')}</Text>
               <Text style={styles.subtitle}>{t('findYourCosmicMatch')}</Text>
             </Animated.View>
@@ -136,6 +163,7 @@ export default function LoginScreen() {
                   transform: [{ translateY: slideAnim }],
                 }
               ]}
+              accessibilityLabel="Zodiac symbols"
             >
               <Text style={styles.zodiacRing}>♈ ♉ ♊ ♋ ♌ ♍ ♎ ♏ ♐ ♑ ♒ ♓</Text>
             </Animated.View>
@@ -151,33 +179,50 @@ export default function LoginScreen() {
               ]}
             >
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>{t('email')}</Text>
+                <Text style={styles.label} nativeID="emailLabel">{t('email')}</Text>
                 <TextInput
                   style={styles.input}
                   placeholder={t('yourEmail')}
-                  placeholderTextColor="#666"
+                  placeholderTextColor={a11yColors.text.muted}
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  autoComplete="email"
+                  textContentType="emailAddress"
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordInputRef.current?.focus()}
+                  {...getTextInputA11yProps(t('a11y.emailInput'), t('a11y.requiredField'))}
+                  accessibilityLabelledBy="emailLabel"
                 />
               </View>
 
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>{t('password')}</Text>
+                <Text style={styles.label} nativeID="passwordLabel">{t('password')}</Text>
                 <TextInput
+                  ref={passwordInputRef}
                   style={styles.input}
                   placeholder="••••••••"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={a11yColors.text.muted}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry
+                  autoComplete="password"
+                  textContentType="password"
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
+                  {...getTextInputA11yProps(t('a11y.passwordInput'), t('a11y.requiredField'))}
+                  accessibilityLabelledBy="passwordLabel"
                 />
               </View>
 
               <TouchableOpacity
-                onPress={() => router.push('/auth/forgot-password')}
+                onPress={() => {
+                  buttonPress();
+                  router.push('/auth/forgot-password');
+                }}
                 style={styles.forgotPasswordContainer}
+                {...getButtonA11yProps(t('forgotPassword'))}
               >
                 <Text style={styles.forgotPasswordText}>{t('forgotPassword')}</Text>
               </TouchableOpacity>
@@ -187,6 +232,11 @@ export default function LoginScreen() {
                 onPress={handleLogin}
                 disabled={loading}
                 activeOpacity={0.8}
+                {...getButtonA11yProps(
+                  t('signIn'),
+                  t('a11y.doubleTapHint'),
+                  { busy: loading }
+                )}
               >
                 <LinearGradient
                   colors={['#e94560', '#c23a51']}
@@ -203,18 +253,23 @@ export default function LoginScreen() {
               </TouchableOpacity>
 
               {/* Social auth divider */}
-              <View style={styles.dividerContainer}>
+              <View style={styles.dividerContainer} accessibilityRole="none">
                 <View style={styles.dividerLine} />
                 <Text style={styles.dividerText}>{t('orContinueWith')}</Text>
                 <View style={styles.dividerLine} />
               </View>
 
               {/* Social auth buttons */}
-              <View style={styles.socialContainer}>
+              <View style={styles.socialContainer} accessibilityRole="toolbar">
                 <TouchableOpacity
                   style={styles.socialButton}
                   onPress={() => handleSocialAuth('google')}
                   disabled={!!socialLoading}
+                  {...getButtonA11yProps(
+                    t('a11y.loginWithGoogle'),
+                    undefined,
+                    { busy: socialLoading === 'google' }
+                  )}
                 >
                   {socialLoading === 'google' ? (
                     <ActivityIndicator color="#fff" size="small" />
@@ -228,6 +283,11 @@ export default function LoginScreen() {
                     style={styles.socialButton}
                     onPress={() => handleSocialAuth('apple')}
                     disabled={!!socialLoading}
+                    {...getButtonA11yProps(
+                      t('a11y.loginWithApple'),
+                      undefined,
+                      { busy: socialLoading === 'apple' }
+                    )}
                   >
                     {socialLoading === 'apple' ? (
                       <ActivityIndicator color="#fff" size="small" />
@@ -241,6 +301,11 @@ export default function LoginScreen() {
                   style={styles.socialButton}
                   onPress={() => handleSocialAuth('facebook')}
                   disabled={!!socialLoading}
+                  {...getButtonA11yProps(
+                    t('a11y.loginWithFacebook'),
+                    undefined,
+                    { busy: socialLoading === 'facebook' }
+                  )}
                 >
                   {socialLoading === 'facebook' ? (
                     <ActivityIndicator color="#fff" size="small" />
@@ -253,7 +318,7 @@ export default function LoginScreen() {
               <View style={styles.footer}>
                 <Text style={styles.footerText}>{t('dontHaveAccount')} </Text>
                 <Link href="/auth/signup" asChild>
-                  <TouchableOpacity>
+                  <TouchableOpacity {...getButtonA11yProps(t('signUp'))}>
                     <Text style={styles.linkText}>{t('signUp')}</Text>
                   </TouchableOpacity>
                 </Link>
@@ -303,13 +368,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#fff',
+    color: a11yColors.text.primary,
     marginBottom: 8,
     letterSpacing: 1,
   },
   subtitle: {
     fontSize: 16,
-    color: '#888',
+    color: a11yColors.text.secondary,
     fontStyle: 'italic'
   },
   zodiacContainer: {
@@ -331,7 +396,7 @@ const styles = StyleSheet.create({
     marginBottom: 20
   },
   label: {
-    color: '#888',
+    color: a11yColors.text.secondary,
     fontSize: 14,
     marginBottom: 8,
     textTransform: 'uppercase',
@@ -344,7 +409,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#fff'
+    color: a11yColors.text.primary
   },
   forgotPasswordContainer: {
     alignSelf: 'flex-end',
@@ -369,7 +434,7 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   buttonText: {
-    color: '#fff',
+    color: a11yColors.text.primary,
     fontSize: 18,
     fontWeight: '600'
   },
@@ -384,7 +449,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
   },
   dividerText: {
-    color: '#666',
+    color: a11yColors.text.muted,
     fontSize: 13,
     marginHorizontal: 16,
   },
@@ -404,7 +469,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   socialButtonText: {
-    color: '#fff',
+    color: a11yColors.text.primary,
     fontSize: 22,
     fontWeight: '600',
   },
@@ -414,7 +479,7 @@ const styles = StyleSheet.create({
     marginTop: 24
   },
   footerText: {
-    color: '#888',
+    color: a11yColors.text.secondary,
     fontSize: 14
   },
   linkText: {

@@ -5,6 +5,13 @@ import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity,
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../_layout';
+import {
+  getButtonA11yProps,
+  getImageA11yProps,
+  formatCompatibilityForA11y,
+  a11yColors,
+} from '../../utils/accessibility';
+import { buttonPress } from '../../services/haptics';
 
 // --- TYPES ---
 type Match = {
@@ -42,25 +49,40 @@ const formatDate = (dateString: string, t: TranslateFunction) => {
 // --- SUB-COMPONENTS (Moved Outside) ---
 function MatchCard({ match, t }: { match: Match; t: TranslateFunction }) {
   const handleMatchPress = () => {
+    buttonPress();
     router.push(`/match/${match.matched_profile.id}`);
   };
 
   const handleChatPress = () => {
+    buttonPress();
     router.push(`/chat/${match.id}`);
   };
 
+  const compatibilityScore = match.compatibility_score || 85;
+
   return (
-    <TouchableOpacity style={styles.matchCard} onPress={handleMatchPress}>
+    <TouchableOpacity
+      style={styles.matchCard}
+      onPress={handleMatchPress}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={`${match.matched_profile.name}, ${match.matched_profile.sun_sign} sign, ${formatCompatibilityForA11y(compatibilityScore)}, matched ${formatDate(match.created_at, t)}`}
+      accessibilityHint="Double tap to view profile"
+    >
       <Image
         source={{ uri: match.matched_profile.image_url }}
         style={styles.matchImage}
+        {...getImageA11yProps(t('a11y.profileImage', { name: match.matched_profile.name }))}
       />
 
       <View style={styles.matchInfo}>
         <View style={styles.matchHeader}>
           <Text style={styles.matchName}>{match.matched_profile.name}</Text>
-          <View style={styles.compatBadge}>
-            <Text style={styles.compatText}>{match.compatibility_score || 85}%</Text>
+          <View
+            style={styles.compatBadge}
+            accessibilityLabel={formatCompatibilityForA11y(compatibilityScore)}
+          >
+            <Text style={styles.compatText}>{compatibilityScore}%</Text>
           </View>
         </View>
 
@@ -69,7 +91,14 @@ function MatchCard({ match, t }: { match: Match; t: TranslateFunction }) {
       </View>
 
       <View style={styles.matchActions}>
-        <TouchableOpacity style={styles.chatButton} onPress={handleChatPress}>
+        <TouchableOpacity
+          style={styles.chatButton}
+          onPress={handleChatPress}
+          {...getButtonA11yProps(
+            t('a11y.chatTab') + ' ' + match.matched_profile.name,
+            'Double tap to start chatting'
+          )}
+        >
           <Text style={styles.chatButtonText}>💬</Text>
         </TouchableOpacity>
       </View>
@@ -152,7 +181,11 @@ export default function MatchesScreen() {
   if (loading) {
     return (
       <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-        <ActivityIndicator size="large" color="#e94560" />
+        <ActivityIndicator
+          size="large"
+          color="#e94560"
+          accessibilityLabel={t('loadingMatches')}
+        />
         <Text style={styles.loadingText}>{t('loadingMatches')}</Text>
       </LinearGradient>
     );
@@ -162,7 +195,7 @@ export default function MatchesScreen() {
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
       {matches.length > 0 ? (
         <>
-          <View style={styles.header}>
+          <View style={styles.header} accessibilityRole="header">
             <Text style={styles.headerTitle}>{t('yourMatches')}</Text>
             <Text style={styles.headerSubtitle}>
               {matches.length === 1
@@ -177,18 +210,23 @@ export default function MatchesScreen() {
             renderItem={({ item }) => <MatchCard match={item} t={t} />}
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
+            accessibilityLabel={`${matches.length} matches`}
           />
         </>
       ) : (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>💫</Text>
+        <View style={styles.emptyState} accessibilityRole="alert">
+          <Text style={styles.emptyEmoji} accessibilityLabel="">💫</Text>
           <Text style={styles.emptyTitle}>{t('noMatchesYet')}</Text>
           <Text style={styles.emptySubtitle}>
             {t('keepExploring')}
           </Text>
           <TouchableOpacity
             style={styles.discoverButton}
-            onPress={() => router.push('/(tabs)/discover')}
+            onPress={() => {
+              buttonPress();
+              router.push('/(tabs)/discover');
+            }}
+            {...getButtonA11yProps(t('startDiscovering'))}
           >
             <Text style={styles.discoverButtonText}>{t('startDiscovering')}</Text>
           </TouchableOpacity>
@@ -203,7 +241,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   loadingText: {
-    color: '#888',
+    color: a11yColors.text.secondary,
     marginTop: 16,
     fontSize: 14,
     textAlign: 'center',
@@ -216,12 +254,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#fff',
+    color: a11yColors.text.primary,
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#888',
+    color: a11yColors.text.secondary,
   },
   list: {
     padding: 16,
@@ -255,7 +293,7 @@ const styles = StyleSheet.create({
   matchName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: a11yColors.text.primary,
   },
   compatBadge: {
     backgroundColor: 'rgba(233, 69, 96, 0.2)',
@@ -270,12 +308,12 @@ const styles = StyleSheet.create({
   },
   matchSign: {
     fontSize: 14,
-    color: '#888',
+    color: a11yColors.text.secondary,
     marginBottom: 2,
   },
   matchActive: {
     fontSize: 12,
-    color: '#666',
+    color: a11yColors.text.muted,
   },
   matchActions: {
     paddingLeft: 12,
@@ -304,12 +342,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: a11yColors.text.primary,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 16,
-    color: '#888',
+    color: a11yColors.text.secondary,
     textAlign: 'center',
     marginBottom: 24,
   },
@@ -320,7 +358,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   discoverButtonText: {
-    color: '#fff',
+    color: a11yColors.text.primary,
     fontSize: 16,
     fontWeight: '600',
   },

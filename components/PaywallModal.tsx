@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { useEffect } from 'react';
 import {
   Modal,
   StyleSheet,
@@ -9,7 +10,13 @@ import {
 } from 'react-native';
 import { useLanguage } from '../contexts/LanguageContext';
 import { usePremium, SubscriptionTier } from '../contexts/PremiumContext';
-import { FeatureKey, FEATURE_TIERS } from '../services/premiumUsage';
+import { FeatureKey } from '../services/premiumUsage';
+import {
+  getButtonA11yProps,
+  announceForAccessibility,
+  a11yColors,
+} from '../utils/accessibility';
+import { modalFeedback, buttonPress, premiumLocked } from '../services/haptics';
 
 export default function PaywallModal() {
   const { paywallState, dismissPaywall } = usePremium();
@@ -17,7 +24,22 @@ export default function PaywallModal() {
 
   const { visible, feature, recommendedTier } = paywallState;
 
+  // Announce modal opening and trigger haptic
+  useEffect(() => {
+    if (visible) {
+      modalFeedback();
+      premiumLocked();
+      // Announce for screen readers
+      const featureName = feature ? getFeatureDisplayName(feature) : '';
+      const tierName = getTierDisplayName(recommendedTier);
+      announceForAccessibility(
+        `${t('trialExhausted') || 'Free Preview Used'}. ${featureName} requires ${tierName}. ${getTierPrice(recommendedTier)}`
+      );
+    }
+  }, [visible, feature, recommendedTier]);
+
   const handleUpgrade = () => {
+    buttonPress();
     dismissPaywall();
     // Navigate to the appropriate premium screen based on recommended tier
     if (recommendedTier === 'premium_plus') {
@@ -28,8 +50,14 @@ export default function PaywallModal() {
   };
 
   const handleViewPlans = () => {
+    buttonPress();
     dismissPaywall();
     router.push('/premium');
+  };
+
+  const handleDismiss = () => {
+    buttonPress();
+    dismissPaywall();
   };
 
   const getFeatureDisplayName = (feature: FeatureKey | null): string => {
@@ -72,10 +100,17 @@ export default function PaywallModal() {
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={dismissPaywall}
+      onRequestClose={handleDismiss}
+      accessibilityViewIsModal={true}
+      accessibilityLabel={t('a11y.closeModal')}
     >
       <View style={styles.overlay}>
-        <View style={styles.container}>
+        <View
+          style={styles.container}
+          accessible={true}
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+        >
           <LinearGradient
             colors={['#1a1a2e', '#16213e']}
             style={styles.content}
@@ -83,20 +118,21 @@ export default function PaywallModal() {
             {/* Close button */}
             <TouchableOpacity
               style={styles.closeButton}
-              onPress={dismissPaywall}
+              onPress={handleDismiss}
+              {...getButtonA11yProps(t('a11y.closeModal'))}
             >
-              <Text style={styles.closeText}>x</Text>
+              <Text style={styles.closeText}>✕</Text>
             </TouchableOpacity>
 
             {/* Icon */}
-            <View style={styles.iconContainer}>
-              <Text style={styles.icon}>
+            <View style={styles.iconContainer} accessibilityLabel="">
+              <Text style={styles.icon} accessibilityLabel="">
                 {recommendedTier === 'premium_plus' ? '✨' : '⭐'}
               </Text>
             </View>
 
             {/* Title */}
-            <Text style={styles.title}>
+            <Text style={styles.title} accessibilityRole="header">
               {t('trialExhausted') || 'Free Preview Used'}
             </Text>
 
@@ -121,7 +157,13 @@ export default function PaywallModal() {
             )}
 
             {/* Price display */}
-            <View style={styles.priceContainer}>
+            <View
+              style={styles.priceContainer}
+              accessibilityLabel={t('a11y.priceAnnouncement', {
+                price: getTierPrice(recommendedTier).replace('/mo', ''),
+                period: 'month',
+              })}
+            >
               <Text style={styles.priceLabel}>
                 {getTierDisplayName(recommendedTier)}
               </Text>
@@ -132,6 +174,7 @@ export default function PaywallModal() {
             <TouchableOpacity
               style={styles.ctaButton}
               onPress={handleUpgrade}
+              {...getButtonA11yProps(t('a11y.upgradeButton'))}
             >
               <LinearGradient
                 colors={['#e94560', '#c23a51']}
@@ -147,6 +190,7 @@ export default function PaywallModal() {
             <TouchableOpacity
               style={styles.secondaryButton}
               onPress={handleViewPlans}
+              {...getButtonA11yProps(t('a11y.viewPlansButton'))}
             >
               <Text style={styles.secondaryText}>
                 {t('viewAllPlans') || 'View All Plans'}
@@ -156,7 +200,8 @@ export default function PaywallModal() {
             {/* Dismiss */}
             <TouchableOpacity
               style={styles.dismissButton}
-              onPress={dismissPaywall}
+              onPress={handleDismiss}
+              {...getButtonA11yProps(t('a11y.dismissButton'))}
             >
               <Text style={styles.dismissText}>
                 {t('notNow') || 'Not Now'}
@@ -199,8 +244,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   closeText: {
-    color: '#888',
-    fontSize: 18,
+    color: a11yColors.text.secondary,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   iconContainer: {
@@ -219,13 +264,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: a11yColors.text.primary,
     marginBottom: 8,
     textAlign: 'center',
   },
   description: {
     fontSize: 15,
-    color: '#888',
+    color: a11yColors.text.secondary,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 20,
@@ -241,7 +286,7 @@ const styles = StyleSheet.create({
   featureLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: a11yColors.text.primary,
     marginBottom: 8,
   },
   tierBadge: {
@@ -263,7 +308,7 @@ const styles = StyleSheet.create({
   },
   priceLabel: {
     fontSize: 14,
-    color: '#888',
+    color: a11yColors.text.secondary,
     marginBottom: 4,
   },
   price: {
@@ -282,7 +327,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ctaText: {
-    color: '#fff',
+    color: a11yColors.text.primary,
     fontSize: 18,
     fontWeight: '600',
   },
@@ -299,7 +344,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   dismissText: {
-    color: '#666',
+    color: a11yColors.text.muted,
     fontSize: 14,
   },
 });
