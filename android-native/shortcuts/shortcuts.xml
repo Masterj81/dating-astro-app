@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Check Horoscope Shortcut -->
+    <shortcut
+        android:shortcutId="check_horoscope"
+        android:enabled="true"
+        android:icon="@drawable/ic_horoscope"
+        android:shortcutShortLabel="@string/shortcut_horoscope_short"
+        android:shortcutLongLabel="@string/shortcut_horoscope_long"
+        android:shortcutDisabledMessage="@string/shortcut_disabled">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.astrodating.app"
+            android:targetClass="com.astrodating.app.MainActivity"
+            android:data="astrodating://premium/daily-horoscope" />
+        <categories android:name="android.shortcut.conversation" />
+        <capability-binding android:key="actions.intent.CHECK_HOROSCOPE" />
+    </shortcut>
+
+    <!-- View Matches Shortcut -->
+    <shortcut
+        android:shortcutId="view_matches"
+        android:enabled="true"
+        android:icon="@drawable/ic_matches"
+        android:shortcutShortLabel="@string/shortcut_matches_short"
+        android:shortcutLongLabel="@string/shortcut_matches_long"
+        android:shortcutDisabledMessage="@string/shortcut_disabled">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.astrodating.app"
+            android:targetClass="com.astrodating.app.MainActivity"
+            android:data="astrodating://matches" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <!-- Discover Shortcut -->
+    <shortcut
+        android:shortcutId="discover"
+        android:enabled="true"
+        android:icon="@drawable/ic_discover"
+        android:shortcutShortLabel="@string/shortcut_discover_short"
+        android:shortcutLongLabel="@string/shortcut_discover_long"
+        android:shortcutDisabledMessage="@string/shortcut_disabled">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.astrodating.app"
+            android:targetClass="com.astrodating.app.MainActivity"
+            android:data="astrodating://discover" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+</shortcuts>

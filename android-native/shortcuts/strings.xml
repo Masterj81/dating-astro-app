@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App Shortcuts -->
+    <string name="shortcut_horoscope_short">Horoscope</string>
+    <string name="shortcut_horoscope_long">Check my horoscope</string>
+    <string name="shortcut_matches_short">Matches</string>
+    <string name="shortcut_matches_long">View my matches</string>
+    <string name="shortcut_discover_short">Discover</string>
+    <string name="shortcut_discover_long">Discover new people</string>
+    <string name="shortcut_disabled">Shortcut unavailable</string>
+
+    <!-- Widget -->
+    <string name="widget_name">AstroDating Horoscope</string>
+    <string name="widget_description">View your daily horoscope at a glance</string>
+    <string name="widget_loading">Loading horoscope...</string>
+    <string name="widget_tap_hint">Tap for full reading</string>
+    <string name="widget_lucky">Lucky</string>
+    <string name="widget_energy">Energy</string>
+</resources>

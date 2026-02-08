@@ -42,6 +42,7 @@
     },
     "plugins": [
       "@bacons/apple-targets",
+      "./plugins/withAndroidShortcutsAndWidget",
       "expo-router",
       [
         "expo-splash-screen",
@@ -62,8 +63,7 @@
           "organization": "personnal-5l"
         }
       ],
-      "expo-secure-store",
-      "react-native-shared-group-preferences"
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
