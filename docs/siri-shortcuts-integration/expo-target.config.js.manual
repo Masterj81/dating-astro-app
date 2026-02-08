@@ -1,0 +1,27 @@
+/**
+ * Expo Target Configuration for Siri Shortcuts (App Intents)
+ *
+ * Note: App Intents in iOS 16+ are embedded in the main app bundle.
+ * This configuration file documents the setup but the Swift files
+ * need to be added to the main Xcode project during the native build.
+ *
+ * To enable Siri Shortcuts:
+ * 1. Run `eas build` or `npx expo prebuild`
+ * 2. Open the generated Xcode project
+ * 3. Add AstroDatingIntents.swift to the main app target
+ * 4. Ensure the AppIntents framework is linked
+ *
+ * The intents will automatically appear in the Shortcuts app.
+ *
+ * @type {import('@bacons/apple-targets').Config}
+ */
+module.exports = {
+  type: "action",
+  name: "AstroDatingIntents",
+  bundleIdentifier: ".intents",
+  deploymentTarget: "16.0",
+  frameworks: ["AppIntents", "SwiftUI"],
+  entitlements: {
+    "com.apple.security.application-groups": ["group.com.astrodating.app"],
+  },
+};
