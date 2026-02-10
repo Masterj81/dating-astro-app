@@ -43,6 +43,11 @@ export function Footer() {
               </Link>
             </li>
             <li>
+              <Link href="/safety" className="text-text-muted transition-colors hover:text-white">
+                {t("safetyStandards")}
+              </Link>
+            </li>
+            <li>
               <Link href="/account/delete" className="text-text-muted transition-colors hover:text-white">
                 {t("deleteAccount")}
               </Link>
