@@ -292,7 +292,7 @@ export default function LoginScreen() {
                     {socialLoading === 'apple' ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
-                      <Text style={styles.socialButtonText}></Text>
+                      <Text style={[styles.socialButtonText, { fontFamily: 'System' }]}>{'\uF8FF'}</Text>
                     )}
                   </TouchableOpacity>
                 )}

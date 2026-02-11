@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
+import * as Sentry from '@sentry/react-native';
 import { supabase } from './supabase';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -14,48 +15,84 @@ const redirectUri = makeRedirectUri({
  * Sign in with an OAuth provider (Google, Facebook) via browser redirect.
  */
 export async function signInWithProvider(provider: 'google' | 'facebook') {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider,
-    options: {
-      redirectTo: redirectUri,
-      skipBrowserRedirect: true,
-    },
-  });
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: redirectUri,
+        skipBrowserRedirect: true,
+      },
+    });
 
-  if (error || !data.url) {
-    return { error: error || new Error('No auth URL returned') };
-  }
-
-  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
-
-  if (result.type === 'success' && result.url) {
-    // Extract tokens from the callback URL
-    const url = new URL(result.url);
-    // Supabase returns tokens as hash fragments
-    const hashParams = new URLSearchParams(url.hash.substring(1));
-    const accessToken = hashParams.get('access_token');
-    const refreshToken = hashParams.get('refresh_token');
-
-    if (accessToken && refreshToken) {
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
+    if (error || !data.url) {
+      const authError = error || new Error('No auth URL returned');
+      Sentry.captureException(authError, {
+        extra: { provider, context: 'signInWithProvider.getAuthUrl' }
       });
-      return { error: sessionError };
+      return { error: authError };
     }
 
-    // Try query params as fallback (some flows use code exchange)
-    const code = url.searchParams.get('code');
-    if (code) {
-      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-      return { error: exchangeError };
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
+
+    if (result.type === 'success' && result.url) {
+      // Extract tokens from the callback URL
+      const url = new URL(result.url);
+      // Supabase returns tokens as hash fragments
+      const hashParams = new URLSearchParams(url.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+
+      // Check for error in callback
+      const errorParam = hashParams.get('error') || url.searchParams.get('error');
+      const errorDesc = hashParams.get('error_description') || url.searchParams.get('error_description');
+      if (errorParam) {
+        const callbackError = new Error(errorDesc || errorParam);
+        Sentry.captureException(callbackError, {
+          extra: { provider, errorParam, errorDesc, context: 'signInWithProvider.callback' }
+        });
+        return { error: callbackError };
+      }
+
+      if (accessToken && refreshToken) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (sessionError) {
+          Sentry.captureException(sessionError, {
+            extra: { provider, context: 'signInWithProvider.setSession' }
+          });
+        }
+        return { error: sessionError };
+      }
+
+      // Try query params as fallback (some flows use code exchange)
+      const code = url.searchParams.get('code');
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError) {
+          Sentry.captureException(exchangeError, {
+            extra: { provider, context: 'signInWithProvider.exchangeCode' }
+          });
+        }
+        return { error: exchangeError };
+      }
+
+      const noTokenError = new Error('No tokens found in callback');
+      Sentry.captureException(noTokenError, {
+        extra: { provider, callbackUrl: result.url, context: 'signInWithProvider.noTokens' }
+      });
+      return { error: noTokenError };
     }
 
-    return { error: new Error('No tokens found in callback') };
+    // User cancelled or dismissed
+    return { error: null };
+  } catch (err) {
+    Sentry.captureException(err, {
+      extra: { provider, context: 'signInWithProvider.unexpected' }
+    });
+    return { error: err as Error };
   }
-
-  // User cancelled or dismissed
-  return { error: null };
 }
 
 /**
@@ -81,7 +118,11 @@ async function signInWithAppleNative() {
     });
 
     if (!credential.identityToken) {
-      return { error: new Error('No identity token from Apple') };
+      const noTokenError = new Error('No identity token from Apple');
+      Sentry.captureException(noTokenError, {
+        extra: { context: 'signInWithAppleNative.noIdentityToken' }
+      });
+      return { error: noTokenError };
     }
 
     const { error } = await supabase.auth.signInWithIdToken({
@@ -89,8 +130,15 @@ async function signInWithAppleNative() {
       token: credential.identityToken,
     });
 
+    if (error) {
+      Sentry.captureException(error, {
+        extra: { context: 'signInWithAppleNative.signInWithIdToken' }
+      });
+      return { error };
+    }
+
     // Apple only provides name on first sign-in, store it if available
-    if (!error && credential.fullName) {
+    if (credential.fullName) {
       const name = [credential.fullName.givenName, credential.fullName.familyName]
         .filter(Boolean)
         .join(' ');
@@ -104,12 +152,15 @@ async function signInWithAppleNative() {
       }
     }
 
-    return { error };
+    return { error: null };
   } catch (err: any) {
     // User cancelled Apple sign-in
-    if (err.code === 'ERR_REQUEST_CANCELED') {
+    if (err.code === 'ERR_REQUEST_CANCELED' || err.code === 'ERR_CANCELED') {
       return { error: null };
     }
+    Sentry.captureException(err, {
+      extra: { errorCode: err.code, context: 'signInWithAppleNative.unexpected' }
+    });
     return { error: err };
   }
 }

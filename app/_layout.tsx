@@ -1,5 +1,4 @@
-import '../services/sentry';
-import { Sentry } from '../services/sentry';
+import * as Sentry from '@sentry/react-native';
 import { Session, User } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
@@ -12,6 +11,25 @@ import PaywallModal from '../components/PaywallModal';
 import { registerAndSavePushToken, clearPushToken, startPushTokenRefresh } from '../services/notifications';
 import { initializePurchases } from '../services/purchases';
 import { supabase } from '../services/supabase';
+import { syncWidgetWithProfile } from '../services/widgetService';
+
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || 'https://8efb9346d012b2477c4c849bcaae2238@o4510839384178688.ingest.us.sentry.io/4510839416225792',
+
+  // Disable PII collection for privacy (no IP addresses, cookies, etc.)
+  sendDefaultPii: false,
+
+  // Enable Logs
+  enableLogs: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+
+  // Only enable in production
+  enabled: !__DEV__,
+});
 
 // Auth Context
 type AuthContextType = {
@@ -49,10 +67,15 @@ function RootLayout() {
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
-      .select('onboarding_completed')
+      .select('onboarding_completed, sun_sign')
       .eq('id', userId)
       .single();
     setOnboardingCompleted(data?.onboarding_completed ?? false);
+
+    // Sync sun sign with iOS widget
+    if (data?.sun_sign) {
+      syncWidgetWithProfile(data.sun_sign);
+    }
   };
 
   const refreshProfile = async () => {
@@ -67,16 +90,35 @@ function RootLayout() {
   };
 
   const ensureProfileExists = async (userId: string, name?: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', userId)
-      .single();
-    if (!data) {
-      await supabase.from('profiles').insert({
-        id: userId,
-        name: name || 'User',
-      });
+    try {
+      const { data, error: selectError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .single();
+
+      if (selectError && selectError.code !== 'PGRST116') {
+        // PGRST116 = row not found, which is expected for new users
+        console.error('Error checking profile:', selectError);
+      }
+
+      if (!data) {
+        const { error: insertError } = await supabase.from('profiles').insert({
+          id: userId,
+          name: name || 'User',
+        });
+
+        if (insertError) {
+          console.error('Error creating profile:', insertError);
+          // Report to Sentry for debugging
+          Sentry.captureException(insertError, {
+            extra: { userId, name, context: 'ensureProfileExists' }
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Unexpected error in ensureProfileExists:', err);
+      Sentry.captureException(err);
     }
   };
 
