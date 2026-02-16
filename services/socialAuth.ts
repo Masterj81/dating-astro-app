@@ -97,13 +97,73 @@ export async function signInWithProvider(provider: 'google' | 'facebook') {
 
 /**
  * Sign in with Apple.
- * Uses native Apple Auth on iOS, falls back to web OAuth on Android.
+ * Uses web OAuth flow for consistency across platforms.
+ * Native Apple Auth was causing issues with Supabase token validation.
  */
 export async function signInWithApple() {
-  if (Platform.OS === 'ios') {
-    return signInWithAppleNative();
+  return signInWithAppleWeb();
+}
+
+async function signInWithAppleWeb() {
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'apple',
+      options: {
+        redirectTo: redirectUri,
+        skipBrowserRedirect: true,
+      },
+    });
+
+    if (error || !data.url) {
+      const authError = error || new Error('No auth URL returned');
+      Sentry.captureException(authError, {
+        extra: { provider: 'apple', context: 'signInWithAppleWeb.getAuthUrl' }
+      });
+      return { error: authError };
+    }
+
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
+
+    if (result.type === 'success' && result.url) {
+      const url = new URL(result.url);
+      const hashParams = new URLSearchParams(url.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+
+      const errorParam = hashParams.get('error') || url.searchParams.get('error');
+      const errorDesc = hashParams.get('error_description') || url.searchParams.get('error_description');
+      if (errorParam) {
+        const callbackError = new Error(errorDesc || errorParam);
+        Sentry.captureException(callbackError, {
+          extra: { provider: 'apple', errorParam, errorDesc, context: 'signInWithAppleWeb.callback' }
+        });
+        return { error: callbackError };
+      }
+
+      if (accessToken && refreshToken) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        return { error: sessionError };
+      }
+
+      const code = url.searchParams.get('code');
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        return { error: exchangeError };
+      }
+
+      return { error: new Error('No tokens found in callback') };
+    }
+
+    return { error: null };
+  } catch (err) {
+    Sentry.captureException(err, {
+      extra: { provider: 'apple', context: 'signInWithAppleWeb.unexpected' }
+    });
+    return { error: err as Error };
   }
-  return signInWithProvider('google'); // Android: no native Apple, fallback to Google
 }
 
 async function signInWithAppleNative() {
