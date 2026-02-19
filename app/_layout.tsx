@@ -65,16 +65,39 @@ function RootLayout() {
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('onboarding_completed, sun_sign')
-      .eq('id', userId)
-      .single();
-    setOnboardingCompleted(data?.onboarding_completed ?? false);
+    try {
+      // Add timeout to prevent hanging on slow networks
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    // Sync sun sign with iOS widget
-    if (data?.sun_sign) {
-      syncWidgetWithProfile(data.sun_sign);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('onboarding_completed, sun_sign')
+        .eq('id', userId)
+        .single()
+        .abortSignal(controller.signal);
+
+      clearTimeout(timeoutId);
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return;
+      }
+
+      setOnboardingCompleted(data?.onboarding_completed ?? false);
+
+      // Sync sun sign with iOS widget
+      if (data?.sun_sign) {
+        syncWidgetWithProfile(data.sun_sign);
+      }
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        console.warn('Profile fetch timed out');
+        Sentry.captureMessage('Profile fetch timed out', 'warning');
+      } else {
+        console.error('Error in fetchProfile:', err);
+        Sentry.captureException(err);
+      }
     }
   };
 
@@ -123,16 +146,37 @@ function RootLayout() {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      if (currentUser) {
-        setIsEmailVerified(!!currentUser.email_confirmed_at);
-        fetchProfile(currentUser.id);
-      }
-      setLoading(false);
-    });
+    // Timeout to prevent infinite loading on slow networks
+    const AUTH_TIMEOUT_MS = 10000;
+    let didTimeout = false;
+
+    const timeoutId = setTimeout(() => {
+      didTimeout = true;
+      console.warn('Auth session check timed out');
+      Sentry.captureMessage('Auth session check timed out', 'warning');
+      setLoading(false); // Proceed without auth - user will see login screen
+    }, AUTH_TIMEOUT_MS);
+
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (didTimeout) return; // Ignore if we already timed out
+        clearTimeout(timeoutId);
+        setSession(session);
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        if (currentUser) {
+          setIsEmailVerified(!!currentUser.email_confirmed_at);
+          fetchProfile(currentUser.id);
+        }
+        setLoading(false);
+      })
+      .catch((error) => {
+        if (didTimeout) return;
+        clearTimeout(timeoutId);
+        console.error('Error getting session:', error);
+        Sentry.captureException(error, { extra: { context: 'getSession' } });
+        setLoading(false); // Proceed to login screen on error
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
@@ -161,7 +205,10 @@ function RootLayout() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Handle deep links for password reset
