@@ -1,16 +1,69 @@
 import Purchases, { CustomerInfo, PurchasesPackage } from 'react-native-purchases';
+import { Platform } from 'react-native';
 
-const REVENUECAT_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY || '';
+const REVENUECAT_API_KEY_IOS = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS || '';
+const REVENUECAT_API_KEY_ANDROID = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID || '';
+
+// Track initialization state
+let isConfigured = false;
+let configurePromise: Promise<void> | null = null;
+
+// Check if RevenueCat is initialized
+export function isPurchasesConfigured(): boolean {
+  return isConfigured;
+}
+
+// Wait for RevenueCat to be configured (if initialization is in progress)
+export async function waitForConfiguration(): Promise<boolean> {
+  if (isConfigured) return true;
+  if (configurePromise) {
+    await configurePromise;
+    return isConfigured;
+  }
+  return false;
+}
 
 // Initialize RevenueCat
 export async function initializePurchases(userId?: string) {
-  try {
-    Purchases.configure({
-      apiKey: REVENUECAT_API_KEY,
-      appUserID: userId,
-    });
-  } catch (error) {
+  // Prevent duplicate initialization
+  if (isConfigured) {
+    // If already configured with different user, log in as new user
+    if (userId) {
+      try {
+        await Purchases.logIn(userId);
+      } catch (error) {
+        console.warn('Failed to log in user to RevenueCat:', error);
+      }
+    }
+    return;
   }
+
+  // If already initializing, wait for it
+  if (configurePromise) {
+    await configurePromise;
+    return;
+  }
+
+  configurePromise = (async () => {
+    try {
+      const apiKey = Platform.OS === 'ios' ? REVENUECAT_API_KEY_IOS : REVENUECAT_API_KEY_ANDROID;
+
+      if (!apiKey) {
+        console.warn('RevenueCat API key not configured for', Platform.OS);
+        return;
+      }
+
+      Purchases.configure({
+        apiKey,
+        appUserID: userId,
+      });
+      isConfigured = true;
+    } catch (error) {
+      console.error('Failed to initialize RevenueCat:', error);
+    }
+  })();
+
+  await configurePromise;
 }
 
 // Get available packages/subscriptions

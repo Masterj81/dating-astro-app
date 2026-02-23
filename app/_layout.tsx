@@ -114,22 +114,31 @@ function RootLayout() {
 
   const ensureProfileExists = async (userId: string, name?: string) => {
     try {
+      // Add timeout to prevent hanging on slow networks
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
       const { data, error: selectError } = await supabase
         .from('profiles')
         .select('id')
         .eq('id', userId)
-        .single();
+        .single()
+        .abortSignal(controller.signal);
 
       if (selectError && selectError.code !== 'PGRST116') {
         // PGRST116 = row not found, which is expected for new users
+        clearTimeout(timeoutId);
         console.error('Error checking profile:', selectError);
+        return;
       }
 
       if (!data) {
         const { error: insertError } = await supabase.from('profiles').insert({
           id: userId,
           name: name || 'User',
-        });
+        }).abortSignal(controller.signal);
+
+        clearTimeout(timeoutId);
 
         if (insertError) {
           console.error('Error creating profile:', insertError);
@@ -138,10 +147,17 @@ function RootLayout() {
             extra: { userId, name, context: 'ensureProfileExists' }
           });
         }
+      } else {
+        clearTimeout(timeoutId);
       }
-    } catch (err) {
-      console.error('Unexpected error in ensureProfileExists:', err);
-      Sentry.captureException(err);
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        console.warn('ensureProfileExists timed out');
+        Sentry.captureMessage('ensureProfileExists timed out', 'warning');
+      } else {
+        console.error('Unexpected error in ensureProfileExists:', err);
+        Sentry.captureException(err);
+      }
     }
   };
 
@@ -178,25 +194,54 @@ function RootLayout() {
         setLoading(false); // Proceed to login screen on error
       });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Update state synchronously first to ensure UI updates
       setSession(session);
       const currentUser = session?.user ?? null;
       setUser(currentUser);
 
       if (currentUser) {
         setIsEmailVerified(!!currentUser.email_confirmed_at);
-        await fetchProfile(currentUser.id);
 
-        // Auto-create profile for social auth users on first sign-in
-        if (event === 'SIGNED_IN' && currentUser.app_metadata?.provider !== 'email') {
-          const displayName =
-            currentUser.user_metadata?.full_name ||
-            currentUser.user_metadata?.name ||
-            currentUser.email?.split('@')[0] ||
-            'User';
-          await ensureProfileExists(currentUser.id, displayName);
-          await fetchProfile(currentUser.id);
-        }
+        // Run async operations with timeout protection (don't await - fire and forget)
+        // This prevents blocking the auth state callback on slow networks
+        const runAsyncOperations = async () => {
+          const CALLBACK_TIMEOUT_MS = 15000;
+          const timeoutPromise = new Promise<void>((_, reject) =>
+            setTimeout(() => reject(new Error('Auth callback timeout')), CALLBACK_TIMEOUT_MS)
+          );
+
+          try {
+            await Promise.race([
+              (async () => {
+                await fetchProfile(currentUser.id);
+
+                // Auto-create profile for social auth users on first sign-in
+                if (event === 'SIGNED_IN' && currentUser.app_metadata?.provider !== 'email') {
+                  const displayName =
+                    currentUser.user_metadata?.full_name ||
+                    currentUser.user_metadata?.name ||
+                    currentUser.email?.split('@')[0] ||
+                    'User';
+                  await ensureProfileExists(currentUser.id, displayName);
+                  await fetchProfile(currentUser.id);
+                }
+              })(),
+              timeoutPromise,
+            ]);
+          } catch (err: any) {
+            if (err.message === 'Auth callback timeout') {
+              console.warn('Auth state change async operations timed out');
+              Sentry.captureMessage('Auth callback async operations timed out', 'warning');
+            } else {
+              console.error('Error in auth state change:', err);
+              Sentry.captureException(err);
+            }
+          }
+        };
+
+        // Fire and forget - don't block the callback
+        runAsyncOperations();
       }
 
       // Handle password recovery deep link

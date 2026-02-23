@@ -8,6 +8,7 @@ import {
   incrementFeatureUsage,
   getFeatureUsageToday,
 } from '../services/premiumUsage';
+import { initializePurchases, isPurchasesConfigured } from '../services/purchases';
 
 export type SubscriptionTier = 'free' | 'premium' | 'premium_plus';
 
@@ -43,9 +44,12 @@ type PremiumProviderProps = {
   children: ReactNode;
 };
 
+// Use environment variable for testing premium features (never commit as true)
+const FORCE_PREMIUM_FOR_TESTING = process.env.EXPO_PUBLIC_FORCE_PREMIUM === 'true';
+
 export function PremiumProvider({ children }: PremiumProviderProps) {
   const { user } = useAuth();
-  const [tier, setTier] = useState<SubscriptionTier>('free');
+  const [tier, setTier] = useState<SubscriptionTier>(FORCE_PREMIUM_FOR_TESTING ? 'premium_plus' : 'free');
   const [loading, setLoading] = useState(true);
   const [paywallState, setPaywallState] = useState<PaywallState>({
     visible: false,
@@ -54,8 +58,23 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
   });
 
   // Check subscription status from RevenueCat
-  const checkSubscriptionTier = useCallback(async (): Promise<SubscriptionTier> => {
+  const checkSubscriptionTier = useCallback(async (userId?: string): Promise<SubscriptionTier> => {
+    // Override for testing/screenshots
+    if (FORCE_PREMIUM_FOR_TESTING) {
+      return 'premium_plus';
+    }
+
     try {
+      // Ensure RevenueCat is initialized before checking
+      if (!isPurchasesConfigured()) {
+        if (userId) {
+          await initializePurchases(userId);
+        } else {
+          // Can't check without initialization
+          return 'free';
+        }
+      }
+
       const customerInfo = await Purchases.getCustomerInfo();
 
       // Check for premium_plus first (higher tier)
@@ -78,10 +97,10 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
   // Refresh subscription status
   const refreshSubscription = useCallback(async () => {
     setLoading(true);
-    const currentTier = await checkSubscriptionTier();
+    const currentTier = await checkSubscriptionTier(user?.id);
     setTier(currentTier);
     setLoading(false);
-  }, [checkSubscriptionTier]);
+  }, [checkSubscriptionTier, user?.id]);
 
   // Check subscription on mount and when user changes
   useEffect(() => {
@@ -93,8 +112,12 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
     }
   }, [user, refreshSubscription]);
 
-  // Listen for subscription changes
+  // Listen for subscription changes (only when user is logged in and Purchases is configured)
   useEffect(() => {
+    if (!user || !isPurchasesConfigured()) {
+      return;
+    }
+
     const listener = Purchases.addCustomerInfoUpdateListener((info) => {
       if (info.entitlements.active['premium_plus'] !== undefined) {
         setTier('premium_plus');
@@ -108,7 +131,7 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
     return () => {
       listener.remove();
     };
-  }, []);
+  }, [user]);
 
   // Check if user can access a feature based on their tier
   const canAccessFeature = useCallback(

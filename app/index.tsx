@@ -6,6 +6,7 @@ import { useAuth } from './_layout';
 
 const ZODIAC_SIGNS = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
 const MIN_SPLASH_MS = 1500;
+const MAX_SPLASH_MS = 12000; // Failsafe: never show splash longer than 12 seconds
 
 export default function Index() {
   const { user, loading, isEmailVerified, onboardingCompleted } = useAuth();
@@ -23,6 +24,17 @@ export default function Index() {
     const timer = setTimeout(() => setMinTimeElapsed(true), MIN_SPLASH_MS);
     return () => clearTimeout(timer);
   }, []);
+
+  // Failsafe: force splash to complete after MAX_SPLASH_MS to prevent infinite loading
+  useEffect(() => {
+    const failsafe = setTimeout(() => {
+      if (!splashReady) {
+        console.warn('Splash failsafe triggered - forcing navigation');
+        setSplashReady(true);
+      }
+    }, MAX_SPLASH_MS);
+    return () => clearTimeout(failsafe);
+  }, [splashReady]);
 
   // Mark splash as ready once auth check completes AND min time has passed
   useEffect(() => {
