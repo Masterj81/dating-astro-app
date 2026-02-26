@@ -118,18 +118,24 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
       return;
     }
 
-    const listener = Purchases.addCustomerInfoUpdateListener((info) => {
-      if (info.entitlements.active['premium_plus'] !== undefined) {
-        setTier('premium_plus');
-      } else if (info.entitlements.active['premium'] !== undefined) {
-        setTier('premium');
-      } else {
-        setTier('free');
-      }
-    });
+    let listener: { remove: () => void } | undefined;
+
+    try {
+      listener = Purchases.addCustomerInfoUpdateListener((info) => {
+        if (info.entitlements.active['premium_plus'] !== undefined) {
+          setTier('premium_plus');
+        } else if (info.entitlements.active['premium'] !== undefined) {
+          setTier('premium');
+        } else {
+          setTier('free');
+        }
+      });
+    } catch (error) {
+      console.warn('Failed to add customer info listener:', error);
+    }
 
     return () => {
-      listener.remove();
+      listener?.remove();
     };
   }, [user]);
 

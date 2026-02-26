@@ -14,6 +14,8 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "AstroDating needs access to your photo library so you can select photos for your dating profile. For example, you can choose your best photos to show potential matches.",
+        "NSCameraUsageDescription": "AstroDating needs camera access so you can take new photos for your dating profile.",
         "NSSiriUsageDescription": "AstroDating uses Siri to check your horoscope and view matches.",
         "NSUserActivityTypes": [
           "CheckHoroscopeIntent",
@@ -34,7 +36,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.astrodating.app"
+      "package": "com.astrodatingapp.mobile",
+      "versionCode": 4
     },
     "web": {
       "output": "static",
