@@ -8,7 +8,7 @@ const safeCaptureException = (error: any, context?: any) => {
   try {
     if (Platform.OS !== 'web') {
       const Sentry = require('@sentry/react-native');
-      safeCaptureException(error, context);
+      Sentry.captureException(error, context);
     }
   } catch {
     console.error('Error logging to Sentry:', error);
@@ -17,16 +17,37 @@ const safeCaptureException = (error: any, context?: any) => {
 
 WebBrowser.maybeCompleteAuthSession();
 
-const redirectUri = makeRedirectUri({
-  scheme: 'astrodating',
-  path: 'auth/callback',
-});
+// Use different redirect URIs for web vs native
+const getRedirectUri = () => {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    return `${window.location.origin}/auth/callback`;
+  }
+  return makeRedirectUri({
+    scheme: 'astrodating',
+    path: 'auth/callback',
+  });
+};
+
+const redirectUri = getRedirectUri();
 
 /**
  * Sign in with an OAuth provider (Google, Facebook) via browser redirect.
  */
 export async function signInWithProvider(provider: 'google' | 'facebook') {
   try {
+    // On web, use full page redirect instead of popup
+    if (Platform.OS === 'web') {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: redirectUri,
+        },
+      });
+      // This will redirect the page, so we won't reach here unless there's an error
+      return { error };
+    }
+
+    // On native, use popup/browser session
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
@@ -117,6 +138,18 @@ export async function signInWithApple() {
 
 async function signInWithAppleWeb() {
   try {
+    // On web, use full page redirect instead of popup
+    if (Platform.OS === 'web') {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: {
+          redirectTo: redirectUri,
+        },
+      });
+      return { error };
+    }
+
+    // On native, use popup/browser session
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
       options: {

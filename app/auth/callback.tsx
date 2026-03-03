@@ -29,7 +29,13 @@ export default function AuthCallbackScreen() {
 
         if (error) {
           console.error('OAuth error:', error, errorDescription);
-          router.replace('/auth/login');
+          // If in popup, close it and redirect opener
+          if (window.opener) {
+            window.opener.location.href = '/auth/login';
+            window.close();
+          } else {
+            router.replace('/auth/login');
+          }
           return;
         }
 
@@ -42,12 +48,22 @@ export default function AuthCallbackScreen() {
 
           if (sessionError) {
             console.error('Session error:', sessionError);
-            router.replace('/auth/login');
+            if (window.opener) {
+              window.opener.location.href = '/auth/login';
+              window.close();
+            } else {
+              router.replace('/auth/login');
+            }
             return;
           }
 
-          // Successfully authenticated
-          router.replace('/');
+          // Successfully authenticated - redirect main window and close popup
+          if (window.opener) {
+            window.opener.location.href = '/';
+            window.close();
+          } else {
+            router.replace('/');
+          }
           return;
         }
 
@@ -57,19 +73,39 @@ export default function AuthCallbackScreen() {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           if (exchangeError) {
             console.error('Code exchange error:', exchangeError);
-            router.replace('/auth/login');
+            if (window.opener) {
+              window.opener.location.href = '/auth/login';
+              window.close();
+            } else {
+              router.replace('/auth/login');
+            }
             return;
           }
-          router.replace('/');
+          if (window.opener) {
+            window.opener.location.href = '/';
+            window.close();
+          } else {
+            router.replace('/');
+          }
           return;
         }
 
         // No tokens or code found
         console.error('No authentication data in callback');
-        router.replace('/auth/login');
+        if (window.opener) {
+          window.opener.location.href = '/auth/login';
+          window.close();
+        } else {
+          router.replace('/auth/login');
+        }
       } catch (err) {
         console.error('Callback error:', err);
-        router.replace('/auth/login');
+        if (window.opener) {
+          window.opener.location.href = '/auth/login';
+          window.close();
+        } else {
+          router.replace('/auth/login');
+        }
       }
     };
 
