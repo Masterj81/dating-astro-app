@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
-  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -14,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { showAlert } from '../../utils/alert';
 import LanguageSelector from '../../components/LanguageSelector';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -293,10 +293,7 @@ export default function LoginScreen() {
                     {socialLoading === 'apple' ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
-                      <Image
-                        source={require('../../assets/icons/apple-logo.png')}
-                        style={{ width: 22, height: 22, tintColor: '#fff' }}
-                      />
+                      <Ionicons name="logo-apple" size={24} color="#fff" />
                     )}
                   </TouchableOpacity>
                 )}

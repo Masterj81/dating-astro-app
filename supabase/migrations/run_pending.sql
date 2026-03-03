@@ -208,16 +208,18 @@ CREATE POLICY "Service role can manage subscriptions"
   ON subscriptions FOR ALL USING (auth.role() = 'service_role');
 
 CREATE OR REPLACE FUNCTION get_user_tier(p_user_id UUID)
-RETURNS TEXT LANGUAGE plpgsql SECURITY DEFINER AS $$
+RETURNS TEXT LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE v_tier TEXT;
 BEGIN
-  SELECT tier INTO v_tier FROM subscriptions
+  SELECT tier INTO v_tier FROM public.subscriptions
   WHERE user_id = p_user_id
     AND (expires_at IS NULL OR expires_at > NOW())
     AND status IN ('active', 'trialing');
   RETURN COALESCE(v_tier, 'free');
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION get_user_tier(UUID) TO authenticated;
 
 -- ========================================
 -- 5. Discoverable profiles RPC function
