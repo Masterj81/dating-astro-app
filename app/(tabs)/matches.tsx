@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useNavigation } from 'expo-router';
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../_layout';
@@ -110,7 +110,7 @@ function MatchCard({ match, t }: { match: Match; t: TranslateFunction }) {
 export default function MatchesScreen() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { t, language } = useLanguage();
   const navigation = useNavigation();
 
@@ -124,11 +124,12 @@ export default function MatchesScreen() {
   useEffect(() => {
     if (user) {
       loadMatches();
-    } else {
-      // Stop loading if user is not present (or handle redirect)
+    } else if (!authLoading) {
+      // Auth finished but no user - stop loading
       setLoading(false);
     }
-  }, [user]);
+    // If authLoading is true, keep waiting for auth to finish
+  }, [user, authLoading]);
 
   const loadMatches = async () => {
     // 1. Safety check to ensure user exists before query
@@ -178,9 +179,10 @@ export default function MatchesScreen() {
     setLoading(false);
   };
 
-  if (loading) {
+  // Show loading while auth is initializing OR while loading matches data
+  if (authLoading || loading) {
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={[styles.container, styles.centered]}>
         <ActivityIndicator
           size="large"
           color="#e94560"
@@ -239,6 +241,13 @@ export default function MatchesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    ...(Platform.OS === 'web' && {
+      minHeight: '100vh',
+    }),
+  } as any,
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loadingText: {
     color: a11yColors.text.secondary,

@@ -1,10 +1,11 @@
-import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useNavigation } from 'expo-router';
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import LanguageSelector from '../../components/LanguageSelector';
+import VerifiedBadge from '../../components/VerifiedBadge';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { pickImage as pickImageCrossPlatform } from '../../services/imagePicker';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../_layout';
 
@@ -19,6 +20,8 @@ type UserProfile = {
   rising_sign: string;
   bio: string;
   photos: string[];
+  is_verified?: boolean;
+  verified_at?: string;
 };
 
 export default function ProfileScreen() {
@@ -26,7 +29,7 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading: authLoading } = useAuth();
   const { t, language } = useLanguage();
   const navigation = useNavigation();
 
@@ -40,8 +43,12 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (user) {
       loadProfile();
+    } else if (!authLoading) {
+      // Auth finished but no user - stop loading and show login prompt
+      setLoading(false);
     }
-  }, [user]);
+    // If authLoading is true, keep waiting for auth to finish
+  }, [user, authLoading]);
 
   const loadProfile = async () => {
     setLoading(true);
@@ -53,6 +60,7 @@ export default function ProfileScreen() {
       .maybeSingle();
 
     if (error) {
+      console.error('Error loading profile:', error);
     } else {
       setProfile(data);
 
@@ -76,22 +84,17 @@ export default function ProfileScreen() {
   };
 
   const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (status !== 'granted') {
-      Alert.alert(t('error'), t('photoPermission'));
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
+    const result = await pickImageCrossPlatform({
       aspect: [1, 1],
       quality: 0.8,
     });
 
-    if (!result.canceled && result.assets[0]) {
-      uploadImage(result.assets[0].uri);
+    if (result.cancelled) {
+      return;
+    }
+
+    if (result.uri) {
+      uploadImage(result.uri);
     }
   };
 
@@ -160,20 +163,173 @@ export default function ProfileScreen() {
     return `${getMonthName(date.getMonth())} ${date.getDate()}, ${date.getFullYear()}`;
   };
 
-  if (loading) {
+  // Show loading while auth is initializing OR while loading profile data
+  if (authLoading || loading) {
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+      <View style={[styles.container, styles.centered, { backgroundColor: '#0f0f1a' }]}>
         <ActivityIndicator size="large" color="#e94560" />
-      </LinearGradient>
+        <Text style={styles.loadingText}>{t('loading')}</Text>
+      </View>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <View style={[styles.container, styles.centered, { backgroundColor: '#0f0f1a' }]}>
+        <Text style={{ color: '#fff', fontSize: 18, marginBottom: 12 }}>Profile not found</Text>
+        <Text style={{ color: '#888', fontSize: 14, textAlign: 'center', paddingHorizontal: 20 }}>
+          There was an issue loading your profile. Please try logging out and back in.
+        </Text>
+        <TouchableOpacity
+          style={{ marginTop: 20, backgroundColor: '#e94560', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 10 }}
+          onPress={handleLogout}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600' }}>{t('logOut')}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Web version with position fixed to work around parent container clipping
+  if (Platform.OS === 'web') {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 64,
+        left: 0,
+        right: 0,
+        bottom: 60,
+        background: 'linear-gradient(#0f0f1a, #1a1a2e, #16213e)',
+        padding: 20,
+        overflowY: 'auto',
+        zIndex: 1
+      }}>
+        {/* Profile Header */}
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <div
+            onClick={pickImage}
+            style={{
+              width: 120, height: 120, borderRadius: 60,
+              backgroundColor: '#1a1a2e', border: '3px solid #e94560',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 16px', cursor: 'pointer', position: 'relative'
+            }}
+          >
+            {avatarUrl ? (
+              <img src={avatarUrl} style={{ width: '100%', height: '100%', borderRadius: 60, objectFit: 'cover' }} />
+            ) : (
+              <span style={{ fontSize: 48, color: '#e94560', fontWeight: 'bold' }}>
+                {profile?.name?.charAt(0)?.toUpperCase() || '?'}
+              </span>
+            )}
+            <div style={{
+              position: 'absolute', bottom: 0, right: 0,
+              backgroundColor: '#e94560', width: 36, height: 36, borderRadius: 18,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: '3px solid #0f0f1a'
+            }}>
+              📷
+            </div>
+          </div>
+          <h2 style={{ color: '#fff', margin: '0 0 20px', fontSize: 24 }}>{profile?.name}</h2>
+
+          {/* Big Three */}
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            {[
+              { emoji: '☀️', label: t('sun'), value: profile?.sun_sign },
+              { emoji: '🌙', label: t('moon'), value: profile?.moon_sign },
+              { emoji: '⬆️', label: t('rising'), value: profile?.rising_sign }
+            ].map((sign, i) => (
+              <div key={i} style={{
+                backgroundColor: 'rgba(255,255,255,0.05)',
+                borderRadius: 16, padding: 16, minWidth: 100,
+                border: '1px solid rgba(255,255,255,0.08)'
+              }}>
+                <div style={{ fontSize: 24, marginBottom: 8 }}>{sign.emoji}</div>
+                <div style={{ fontSize: 12, color: '#666', textTransform: 'uppercase', marginBottom: 4 }}>{sign.label}</div>
+                <div style={{ fontSize: 16, color: '#fff', fontWeight: 600 }}>{sign.value ? t(sign.value.toLowerCase()) : '?'}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Birth Details */}
+        <div style={{ marginBottom: 24, padding: '0 20px' }}>
+          <h3 style={{ color: '#fff', fontSize: 18, marginBottom: 12 }}>{t('birthDetails')}</h3>
+          <div style={{
+            backgroundColor: 'rgba(255,255,255,0.05)',
+            borderRadius: 16, padding: 16,
+            border: '1px solid rgba(255,255,255,0.08)'
+          }}>
+            {[
+              { icon: '📅', value: formatDate(profile?.birth_date || '') },
+              { icon: '🕐', value: profile?.birth_time || t('notSet') },
+              { icon: '📍', value: profile?.birth_city || t('notSet') }
+            ].map((item, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: i < 2 ? 12 : 0 }}>
+                <span style={{ fontSize: 18 }}>{item.icon}</span>
+                <span style={{ color: '#ccc', fontSize: 15 }}>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 24, padding: '0 20px' }}>
+          {[
+            { icon: '✏️', label: t('editProfile') || 'Edit Profile', href: '/profile/edit' },
+            { icon: '⭐', label: t('premium') || 'Premium', href: '/premium', isPremium: true }
+          ].map((action, i) => (
+            <button
+              key={i}
+              onClick={() => router.push(action.href as any)}
+              style={{
+                flex: 1, backgroundColor: action.isPremium ? 'rgba(233,69,96,0.1)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${action.isPremium ? 'rgba(233,69,96,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                borderRadius: 12, padding: 16, cursor: 'pointer', textAlign: 'center'
+              }}
+            >
+              <div style={{ fontSize: 24, marginBottom: 6 }}>{action.icon}</div>
+              <div style={{ fontSize: 12, color: action.isPremium ? '#e94560' : '#ccc' }}>{action.label}</div>
+            </button>
+          ))}
+        </div>
+
+        {/* Settings */}
+        <div style={{ padding: '0 20px' }}>
+          <h3 style={{ color: '#fff', fontSize: 18, marginBottom: 12 }}>{t('settings')}</h3>
+
+          <div
+            onClick={() => router.push('/onboarding/birth-info')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '14px 0',
+              borderBottom: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer'
+            }}
+          >
+            <span style={{ fontSize: 20 }}>🌙</span>
+            <span style={{ color: '#ccc', fontSize: 16 }}>{t('editBirthInfo')}</span>
+            <span style={{ marginLeft: 'auto', color: '#666' }}>→</span>
+          </div>
+
+          <div
+            onClick={handleLogout}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '14px 0',
+              cursor: 'pointer'
+            }}
+          >
+            <span style={{ fontSize: 20 }}>🚪</span>
+            <span style={{ color: '#e94560', fontSize: 16 }}>{t('logOut')}</span>
+          </div>
+        </div>
+      </div>
     );
   }
 
   return (
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={{ flex: 1 }}>
+        <View style={styles.scrollContent}>
         {/* Profile Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={pickImage} disabled={uploading}>
@@ -197,7 +353,10 @@ export default function ProfileScreen() {
             </View>
           </TouchableOpacity>
 
-          <Text style={styles.name}>{profile?.name || t('yourName')}</Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.name}>{profile?.name || t('yourName')}</Text>
+            {profile?.is_verified && <VerifiedBadge size="medium" />}
+          </View>
 
           <View style={styles.bigThree}>
             <View style={styles.signCard}>
@@ -236,6 +395,23 @@ export default function ProfileScreen() {
             </View>
           </View>
         </View>
+
+        {/* Verification Prompt */}
+        {!profile?.is_verified && (
+          <TouchableOpacity
+            style={styles.verificationPrompt}
+            onPress={() => router.push('/profile/verify')}
+          >
+            <View style={styles.verificationContent}>
+              <Text style={styles.verificationIcon}>✓</Text>
+              <View style={styles.verificationText}>
+                <Text style={styles.verificationTitle}>{t('getVerified')}</Text>
+                <Text style={styles.verificationDesc}>{t('verificationPromptDesc')}</Text>
+              </View>
+            </View>
+            <Text style={styles.verificationArrow}>→</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Quick Actions */}
         <View style={styles.section}>
@@ -295,7 +471,8 @@ export default function ProfileScreen() {
             <Text style={[styles.settingsText, styles.logoutText]}>{t('logOut')}</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+        </View>
+      </View>
     </LinearGradient>
   );
 }
@@ -303,6 +480,18 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    ...(Platform.OS === 'web' && {
+      minHeight: '100vh',
+    }),
+  } as any,
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: '#888',
+    marginTop: 12,
+    fontSize: 14,
   },
   scrollContent: {
     paddingBottom: 32,
@@ -350,11 +539,16 @@ const styles = StyleSheet.create({
   editBadgeText: {
     fontSize: 16,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 20,
+  },
   name: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 20,
   },
   bigThree: {
     flexDirection: 'row',
@@ -470,5 +664,49 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: '#e94560',
+  },
+  verificationPrompt: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
+  },
+  verificationContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  verificationIcon: {
+    fontSize: 24,
+    color: '#3b82f6',
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    textAlign: 'center',
+    lineHeight: 40,
+    marginRight: 12,
+  },
+  verificationText: {
+    flex: 1,
+  },
+  verificationTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#3b82f6',
+    marginBottom: 2,
+  },
+  verificationDesc: {
+    fontSize: 13,
+    color: '#888',
+  },
+  verificationArrow: {
+    fontSize: 20,
+    color: '#3b82f6',
   },
 });

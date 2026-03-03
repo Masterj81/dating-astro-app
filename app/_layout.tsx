@@ -1,10 +1,42 @@
 import * as Sentry from '@sentry/react-native';
 import { Session, User } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
-import * as Notifications from 'expo-notifications';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { LogBox, Platform } from 'react-native';
+import { AuthContext, useAuth } from '../contexts/AuthContext';
+
+// Re-export useAuth for backward compatibility
+export { useAuth };
+
+// Suppress known deprecation warnings from dependencies
+if (Platform.OS === 'web') {
+  const originalWarn = console.warn;
+  console.warn = (...args) => {
+    const message = args[0];
+    // React Navigation's pointerEvents deprecation
+    if (message?.includes?.('pointerEvents')) return;
+    // expo-av deprecation (transitive deps may still use it)
+    if (message?.includes?.('expo-av')) return;
+    // shadow* style props deprecation (react-native-web)
+    if (message?.includes?.('shadow*')) return;
+    if (message?.includes?.('textShadow*')) return;
+    // useNativeDriver not supported on web
+    if (message?.includes?.('useNativeDriver')) return;
+    // expo-notifications web limitation
+    if (message?.includes?.('expo-notifications')) return;
+    // SecureStore size limitation on web
+    if (message?.includes?.('SecureStore')) return;
+    originalWarn.apply(console, args);
+  };
+} else {
+  // Suppress on native as well using LogBox
+  LogBox.ignoreLogs([
+    'props.pointerEvents is deprecated',
+    '[expo-av]',
+  ]);
+}
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { PremiumProvider } from '../contexts/PremiumContext';
 import PaywallModal from '../components/PaywallModal';
@@ -12,50 +44,44 @@ import { registerAndSavePushToken, clearPushToken, startPushTokenRefresh } from 
 import { initializePurchases } from '../services/purchases';
 import { supabase } from '../services/supabase';
 import { syncWidgetWithProfile } from '../services/widgetService';
+import { registerServiceWorker, setupInstallPrompt } from '../services/pwa';
 
-Sentry.init({
-  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || 'https://8efb9346d012b2477c4c849bcaae2238@o4510839384178688.ingest.us.sentry.io/4510839416225792',
+// Only initialize Sentry on native platforms
+if (Platform.OS !== 'web') {
+  Sentry.init({
+    dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || 'https://8efb9346d012b2477c4c849bcaae2238@o4510839384178688.ingest.us.sentry.io/4510839416225792',
 
-  // Disable PII collection for privacy (no IP addresses, cookies, etc.)
-  sendDefaultPii: false,
+    // Disable PII collection for privacy (no IP addresses, cookies, etc.)
+    sendDefaultPii: false,
 
-  // Enable Logs
-  enableLogs: true,
+    // Enable Logs
+    enableLogs: true,
 
-  // Configure Session Replay
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1,
-  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+    // Configure Session Replay
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1,
+    integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
 
-  // Only enable in production
-  enabled: !__DEV__,
-});
+    // Only enable in production
+    enabled: !__DEV__,
+  });
+}
 
-// Auth Context
-type AuthContextType = {
-  user: User | null;
-  session: Session | null;
-  loading: boolean;
-  isEmailVerified: boolean;
-  onboardingCompleted: boolean;
-  signUp: (email: string, password: string, name: string) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signOut: () => Promise<void>;
-  signInWithGoogle: () => Promise<{ error: any }>;
-  signInWithApple: () => Promise<{ error: any }>;
-  signInWithFacebook: () => Promise<{ error: any }>;
-  refreshProfile: () => Promise<void>;
+// Safe Sentry wrappers for web compatibility
+const safeSentry = {
+  captureException: (error: any, hint?: any) => {
+    if (Platform.OS !== 'web') safeSentry.captureException(error, hint);
+    else console.error('Error:', error);
+  },
+  captureMessage: (message: string, level?: any) => {
+    if (Platform.OS !== 'web') safeSentry.captureMessage(message, level);
+    else console.warn('Sentry message:', message);
+  },
+  setUser: (user: { id: string } | null) => {
+    if (Platform.OS !== 'web') safeSentry.setUser(user);
+  },
 };
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-}
 
 function RootLayout() {
   const [user, setUser] = useState<User | null>(null);
@@ -74,7 +100,7 @@ function RootLayout() {
         .from('profiles')
         .select('onboarding_completed, sun_sign')
         .eq('id', userId)
-        .single()
+        .maybeSingle()
         .abortSignal(controller.signal);
 
       clearTimeout(timeoutId);
@@ -93,10 +119,10 @@ function RootLayout() {
     } catch (err: any) {
       if (err.name === 'AbortError') {
         console.warn('Profile fetch timed out');
-        Sentry.captureMessage('Profile fetch timed out', 'warning');
+        safeSentry.captureMessage('Profile fetch timed out', 'warning');
       } else {
         console.error('Error in fetchProfile:', err);
-        Sentry.captureException(err);
+        safeSentry.captureException(err);
       }
     }
   };
@@ -122,11 +148,10 @@ function RootLayout() {
         .from('profiles')
         .select('id')
         .eq('id', userId)
-        .single()
+        .maybeSingle()
         .abortSignal(controller.signal);
 
-      if (selectError && selectError.code !== 'PGRST116') {
-        // PGRST116 = row not found, which is expected for new users
+      if (selectError) {
         clearTimeout(timeoutId);
         console.error('Error checking profile:', selectError);
         return;
@@ -143,7 +168,7 @@ function RootLayout() {
         if (insertError) {
           console.error('Error creating profile:', insertError);
           // Report to Sentry for debugging
-          Sentry.captureException(insertError, {
+          safeSentry.captureException(insertError, {
             extra: { userId, name, context: 'ensureProfileExists' }
           });
         }
@@ -153,10 +178,10 @@ function RootLayout() {
     } catch (err: any) {
       if (err.name === 'AbortError') {
         console.warn('ensureProfileExists timed out');
-        Sentry.captureMessage('ensureProfileExists timed out', 'warning');
+        safeSentry.captureMessage('ensureProfileExists timed out', 'warning');
       } else {
         console.error('Unexpected error in ensureProfileExists:', err);
-        Sentry.captureException(err);
+        safeSentry.captureException(err);
       }
     }
   };
@@ -169,12 +194,12 @@ function RootLayout() {
     const timeoutId = setTimeout(() => {
       didTimeout = true;
       console.warn('Auth session check timed out');
-      Sentry.captureMessage('Auth session check timed out', 'warning');
+      safeSentry.captureMessage('Auth session check timed out', 'warning');
       setLoading(false); // Proceed without auth - user will see login screen
     }, AUTH_TIMEOUT_MS);
 
     supabase.auth.getSession()
-      .then(({ data: { session } }) => {
+      .then(async ({ data: { session } }) => {
         if (didTimeout) return; // Ignore if we already timed out
         clearTimeout(timeoutId);
         setSession(session);
@@ -182,7 +207,7 @@ function RootLayout() {
         setUser(currentUser);
         if (currentUser) {
           setIsEmailVerified(!!currentUser.email_confirmed_at);
-          fetchProfile(currentUser.id);
+          await fetchProfile(currentUser.id); // Wait for profile to load before setting loading=false
         }
         setLoading(false);
       })
@@ -190,7 +215,7 @@ function RootLayout() {
         if (didTimeout) return;
         clearTimeout(timeoutId);
         console.error('Error getting session:', error);
-        Sentry.captureException(error, { extra: { context: 'getSession' } });
+        safeSentry.captureException(error, { extra: { context: 'getSession' } });
         setLoading(false); // Proceed to login screen on error
       });
 
@@ -214,28 +239,26 @@ function RootLayout() {
           try {
             await Promise.race([
               (async () => {
-                await fetchProfile(currentUser.id);
-
-                // Auto-create profile for social auth users on first sign-in
-                if (event === 'SIGNED_IN' && currentUser.app_metadata?.provider !== 'email') {
+                // Always ensure profile exists on sign-in (handles failed profile creation)
+                if (event === 'SIGNED_IN') {
                   const displayName =
                     currentUser.user_metadata?.full_name ||
                     currentUser.user_metadata?.name ||
                     currentUser.email?.split('@')[0] ||
                     'User';
                   await ensureProfileExists(currentUser.id, displayName);
-                  await fetchProfile(currentUser.id);
                 }
+                await fetchProfile(currentUser.id);
               })(),
               timeoutPromise,
             ]);
           } catch (err: any) {
             if (err.message === 'Auth callback timeout') {
               console.warn('Auth state change async operations timed out');
-              Sentry.captureMessage('Auth callback async operations timed out', 'warning');
+              safeSentry.captureMessage('Auth callback async operations timed out', 'warning');
             } else {
               console.error('Error in auth state change:', err);
-              Sentry.captureException(err);
+              safeSentry.captureException(err);
             }
           }
         };
@@ -272,9 +295,9 @@ function RootLayout() {
   // Set Sentry user context on auth changes
   useEffect(() => {
     if (user) {
-      Sentry.setUser({ id: user.id });
+      safeSentry.setUser({ id: user.id });
     } else {
-      Sentry.setUser(null);
+      safeSentry.setUser(null);
     }
   }, [user]);
 
@@ -282,17 +305,28 @@ function RootLayout() {
   useEffect(() => {
     if (!user) return;
 
-    registerAndSavePushToken(user.id);
-    initializePurchases(user.id);
+    // Push notifications only on native
+    if (Platform.OS !== 'web') {
+      registerAndSavePushToken(user.id);
+      // Re-register token when app comes back to foreground (tokens can rotate)
+      const stopRefresh = startPushTokenRefresh(user.id);
 
-    // Re-register token when app comes back to foreground (tokens can rotate)
-    const stopRefresh = startPushTokenRefresh(user.id);
-    return () => stopRefresh();
+      // Initialize RevenueCat for native
+      initializePurchases(user.id);
+
+      return () => stopRefresh();
+    }
   }, [user]);
 
-  // Handle notification taps
+  // Handle notification taps (native only)
   useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+    if (Platform.OS === 'web') {
+      return;
+    }
+
+    // Require expo-notifications only on native to avoid web warnings
+    const Notifications = require('expo-notifications');
+    const subscription = Notifications.addNotificationResponseReceivedListener((response: any) => {
       const data = response.notification.request.content.data;
       if (data?.type === 'match') {
         router.push('/(tabs)/matches');
@@ -302,6 +336,14 @@ function RootLayout() {
     });
 
     return () => subscription.remove();
+  }, []);
+
+  // Initialize PWA on web
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      registerServiceWorker();
+      setupInstallPrompt();
+    }
   }, []);
 
   const signUp = async (email: string, password: string, name: string) => {
@@ -402,4 +444,5 @@ function RootLayout() {
   );
 }
 
-export default Sentry.wrap(RootLayout);
+// Only wrap with Sentry on native platforms
+export default Platform.OS === 'web' ? RootLayout : Sentry.wrap(RootLayout);
