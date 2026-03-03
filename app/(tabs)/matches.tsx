@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useNavigation } from 'expo-router';
+import WebTabWrapper from '../../components/WebTabWrapper';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -182,59 +183,63 @@ export default function MatchesScreen() {
   // Show loading while auth is initializing OR while loading matches data
   if (authLoading || loading) {
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={[styles.container, styles.centered]}>
-        <ActivityIndicator
-          size="large"
-          color="#e94560"
-          accessibilityLabel={t('loadingMatches')}
-        />
-        <Text style={styles.loadingText}>{t('loadingMatches')}</Text>
-      </LinearGradient>
+      <WebTabWrapper>
+        <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={[styles.container, styles.centered]}>
+          <ActivityIndicator
+            size="large"
+            color="#e94560"
+            accessibilityLabel={t('loadingMatches')}
+          />
+          <Text style={styles.loadingText}>{t('loadingMatches')}</Text>
+        </LinearGradient>
+      </WebTabWrapper>
     );
   }
 
   return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      {matches.length > 0 ? (
-        <>
-          <View style={styles.header} accessibilityRole="header">
-            <Text style={styles.headerTitle}>{t('yourMatches')}</Text>
-            <Text style={styles.headerSubtitle}>
-              {matches.length === 1
-                ? t('matchCount', { count: matches.length })
-                : t('matchesCount', { count: matches.length })}
-            </Text>
-          </View>
+    <WebTabWrapper>
+      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+        {matches.length > 0 ? (
+          <>
+            <View style={styles.header} accessibilityRole="header">
+              <Text style={styles.headerTitle}>{t('yourMatches')}</Text>
+              <Text style={styles.headerSubtitle}>
+                {matches.length === 1
+                  ? t('matchCount', { count: matches.length })
+                  : t('matchesCount', { count: matches.length })}
+              </Text>
+            </View>
 
-          <FlatList
-            data={matches}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <MatchCard match={item} t={t} />}
-            contentContainerStyle={styles.list}
-            showsVerticalScrollIndicator={false}
-            accessibilityLabel={`${matches.length} matches`}
-          />
-        </>
-      ) : (
-        <View style={styles.emptyState} accessibilityRole="alert">
-          <Text style={styles.emptyEmoji} accessibilityLabel="">💫</Text>
-          <Text style={styles.emptyTitle}>{t('noMatchesYet')}</Text>
-          <Text style={styles.emptySubtitle}>
-            {t('keepExploring')}
-          </Text>
-          <TouchableOpacity
-            style={styles.discoverButton}
-            onPress={() => {
-              buttonPress();
-              router.push('/(tabs)/discover');
-            }}
-            {...getButtonA11yProps(t('startDiscovering'))}
-          >
-            <Text style={styles.discoverButtonText}>{t('startDiscovering')}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </LinearGradient>
+            <FlatList
+              data={matches}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => <MatchCard match={item} t={t} />}
+              contentContainerStyle={styles.list}
+              showsVerticalScrollIndicator={false}
+              accessibilityLabel={`${matches.length} matches`}
+            />
+          </>
+        ) : (
+          <View style={styles.emptyState} accessibilityRole="alert">
+            <Text style={styles.emptyEmoji} accessibilityLabel="">💫</Text>
+            <Text style={styles.emptyTitle}>{t('noMatchesYet')}</Text>
+            <Text style={styles.emptySubtitle}>
+              {t('keepExploring')}
+            </Text>
+            <TouchableOpacity
+              style={styles.discoverButton}
+              onPress={() => {
+                buttonPress();
+                router.push('/(tabs)/discover');
+              }}
+              {...getButtonA11yProps(t('startDiscovering'))}
+            >
+              <Text style={styles.discoverButtonText}>{t('startDiscovering')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </LinearGradient>
+    </WebTabWrapper>
   );
 }
 

@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useNavigation } from 'expo-router';
+import WebTabWrapper from '../../components/WebTabWrapper';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -8,17 +9,21 @@ import {
   Dimensions,
   Image,
   PanResponder,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
 import ReAnimated, {
+  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming
 } from 'react-native-reanimated';
+import VerifiedBadge from '../../components/VerifiedBadge';
+import VoiceIntroPlayer from '../../components/VoiceIntroPlayer';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { calculateQuickCompatibility } from '../../services/astrologyService';
 import { supabase } from '../../services/supabase';
@@ -54,6 +59,9 @@ type Profile = {
   rising_sign: string;
   bio: string;
   image_url: string;
+  is_verified?: boolean;
+  has_voice_intro?: boolean;
+  voice_intro_url?: string;
 };
 
 type UserProfile = {
@@ -68,7 +76,7 @@ export default function DiscoverScreen() {
   const [loading, setLoading] = useState(true);
   const [dragX, setDragX] = useState(0);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [hasReachedThreshold, setHasReachedThreshold] = useState(false);
+  const hasReachedThresholdRef = useRef(false);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const rotation = useSharedValue(0);
@@ -92,6 +100,11 @@ export default function DiscoverScreen() {
 
   const currentIndexRef = useRef(currentIndex);
   currentIndexRef.current = currentIndex;
+
+  const profilesRef = useRef(profiles);
+  profilesRef.current = profiles;
+
+  const goToNextProfileRef = useRef<(direction: 'left' | 'right') => void>(() => {});
 
   const { user } = useAuth();
 
@@ -119,12 +132,12 @@ export default function DiscoverScreen() {
         toValue: 1,
         tension: 50,
         friction: 7,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.timing(cardOpacity, {
         toValue: 1,
         duration: 300,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start();
   }, [currentIndex, reduceMotion]);
@@ -137,12 +150,12 @@ export default function DiscoverScreen() {
         Animated.timing(pulseAnim, {
           toValue: 1.1,
           duration: 1000,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
           duration: 1000,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
       ])
     ).start();
@@ -178,10 +191,17 @@ export default function DiscoverScreen() {
     }
 
     // Fallback to direct table query
-    const { data, error } = await supabase
+    let query = supabase
       .from('discoverable_profiles')
       .select('*')
       .order('created_at', { ascending: false });
+
+    // Exclude current user's profile
+    if (user) {
+      query = query.neq('id', user.id);
+    }
+
+    const { data, error } = await query;
 
     if (!error) {
       setProfiles(data || []);
@@ -201,7 +221,8 @@ export default function DiscoverScreen() {
   };
 
   const goToNextProfile = async (direction: 'left' | 'right') => {
-    const profile = profiles[currentIndexRef.current];
+    const currentProfiles = profilesRef.current;
+    const profile = currentProfiles[currentIndexRef.current];
 
     // Trigger haptic feedback
     if (direction === 'right') {
@@ -211,44 +232,52 @@ export default function DiscoverScreen() {
     }
 
     if (user && profile && throttleAction('swipe', 500)) {
-      const { error } = await supabase.from('swipes').insert({
+      // Use upsert to handle duplicate swipes gracefully
+      const { error } = await supabase.from('swipes').upsert({
         swiper_id: user.id,
         swiped_id: profile.id,
         action: direction === 'right' ? 'like' : 'pass',
-      });
+      }, { onConflict: 'swiper_id,swiped_id' });
     }
 
-    const nextIndex = currentIndexRef.current < profiles.length - 1
+    const nextIndex = currentIndexRef.current < currentProfiles.length - 1
       ? currentIndexRef.current + 1
       : 0;
 
     setCurrentIndex(nextIndex);
     setDragX(0);
-    setHasReachedThreshold(false);
+    hasReachedThresholdRef.current = false;
 
-    setTimeout(() => {
-      translateX.value = 0;
-      translateY.value = 0;
-      rotation.value = 0;
-    }, 50);
+    // Cancel any ongoing animations and reset values
+    cancelAnimation(translateX);
+    cancelAnimation(translateY);
+    cancelAnimation(rotation);
+    translateX.value = 0;
+    translateY.value = 0;
+    rotation.value = 0;
 
     // Announce for screen readers
-    const nextProfile = profiles[nextIndex];
+    const nextProfile = currentProfiles[nextIndex];
     if (nextProfile) {
       announceForAccessibility(
         t('a11y.matchCard', {
-          name: nextProfile.name,
-          age: nextProfile.age,
-          sign: nextProfile.sun_sign,
+          name: nextProfile.name || t('unknown'),
+          age: nextProfile.age || '?',
+          sign: nextProfile.sun_sign || t('unknown'),
           score: getCompatibility(nextProfile.sun_sign || 'Aries'),
         })
       );
     }
   };
 
-  const panResponder = useMemo(() => PanResponder.create({
+  // Keep ref updated with latest function
+  goToNextProfileRef.current = goToNextProfile;
+
+  const panResponder = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
+    onStartShouldSetPanResponderCapture: () => true,
+    onMoveShouldSetPanResponderCapture: () => true,
     onPanResponderMove: (_, gestureState) => {
       translateX.value = gestureState.dx;
       translateY.value = gestureState.dy * 0.3;
@@ -256,42 +285,30 @@ export default function DiscoverScreen() {
       setDragX(gestureState.dx);
 
       // Haptic feedback when reaching threshold
-      if (Math.abs(gestureState.dx) > SWIPE_THRESHOLD && !hasReachedThreshold) {
-        setHasReachedThreshold(true);
+      if (Math.abs(gestureState.dx) > SWIPE_THRESHOLD && !hasReachedThresholdRef.current) {
+        hasReachedThresholdRef.current = true;
         swipeThreshold();
-      } else if (Math.abs(gestureState.dx) <= SWIPE_THRESHOLD && hasReachedThreshold) {
-        setHasReachedThreshold(false);
+      } else if (Math.abs(gestureState.dx) <= SWIPE_THRESHOLD && hasReachedThresholdRef.current) {
+        hasReachedThresholdRef.current = false;
       }
     },
     onPanResponderRelease: (_, gestureState) => {
-      setHasReachedThreshold(false);
+      hasReachedThresholdRef.current = false;
 
       if (Math.abs(gestureState.dx) > SWIPE_THRESHOLD) {
         const direction = gestureState.dx > 0 ? 'right' : 'left';
-
-        if (reduceMotion) {
-          // Skip animation for reduce motion
-          goToNextProfile(direction);
-        } else {
-          const targetX = direction === 'right' ? width * 1.5 : -width * 1.5;
-          translateX.value = withTiming(targetX, { duration: 300 });
-          rotation.value = withTiming(direction === 'right' ? 30 : -30, { duration: 300 });
-          setTimeout(() => goToNextProfile(direction), 300);
-        }
+        const targetX = direction === 'right' ? width * 1.5 : -width * 1.5;
+        translateX.value = withTiming(targetX, { duration: 300 });
+        rotation.value = withTiming(direction === 'right' ? 30 : -30, { duration: 300 });
+        setTimeout(() => goToNextProfileRef.current(direction), 300);
       } else {
-        if (reduceMotion) {
-          translateX.value = 0;
-          translateY.value = 0;
-          rotation.value = 0;
-        } else {
-          translateX.value = withSpring(0);
-          translateY.value = withSpring(0);
-          rotation.value = withSpring(0);
-        }
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+        rotation.value = withSpring(0);
         setDragX(0);
       }
     },
-  }), [profiles, hasReachedThreshold, reduceMotion]);
+  })).current;
 
   const animatedCardStyle = useAnimatedStyle(() => ({
     transform: [
@@ -339,54 +356,59 @@ export default function DiscoverScreen() {
 
   if (loading) {
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-        <ActivityIndicator
-          size="large"
-          color="#e94560"
-          accessibilityLabel={t('a11y.loadingProfiles')}
-        />
-        <Text style={styles.loadingText}>{t('findingConnections')}</Text>
-      </LinearGradient>
+      <WebTabWrapper>
+        <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+          <ActivityIndicator
+            size="large"
+            color="#e94560"
+            accessibilityLabel={t('a11y.loadingProfiles')}
+          />
+          <Text style={styles.loadingText}>{t('findingConnections')}</Text>
+        </LinearGradient>
+      </WebTabWrapper>
     );
   }
 
   if (!currentProfile || profiles.length === 0) {
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-        <View style={styles.emptyState} accessibilityRole="alert">
-          <Text style={styles.emptyEmoji} accessibilityLabel="">✨</Text>
-          <Text style={styles.emptyTitle}>{t('noMoreProfiles')}</Text>
-          <Text style={styles.emptySubtitle}>{t('checkBackLater')}</Text>
-          <TouchableOpacity
-            style={styles.refreshButton}
-            onPress={handleRefresh}
-            {...getButtonA11yProps(t('refresh'), t('a11y.doubleTapHint'))}
-          >
-            <Text style={styles.refreshText}>{t('refresh')}</Text>
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+      <WebTabWrapper>
+        <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+          <View style={styles.emptyState} accessibilityRole="alert">
+            <Text style={styles.emptyEmoji} accessibilityLabel="">✨</Text>
+            <Text style={styles.emptyTitle}>{t('noMoreProfiles')}</Text>
+            <Text style={styles.emptySubtitle}>{t('checkBackLater')}</Text>
+            <TouchableOpacity
+              style={styles.refreshButton}
+              onPress={handleRefresh}
+              {...getButtonA11yProps(t('refresh'), t('a11y.doubleTapHint'))}
+            >
+              <Text style={styles.refreshText}>{t('refresh')}</Text>
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
+      </WebTabWrapper>
     );
   }
 
   const compatibility = getCompatibility(currentProfile.sun_sign || 'Aries');
 
   return (
+    <WebTabWrapper>
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
       <Animated.View style={{ transform: [{ scale: cardScale }], opacity: cardOpacity }}>
-        <ReAnimated.View
-          style={[styles.card, animatedCardStyle]}
-          {...panResponder.panHandlers}
-          accessible={true}
-          accessibilityLabel={t('a11y.matchCard', {
-            name: currentProfile.name,
-            age: currentProfile.age,
-            sign: currentProfile.sun_sign,
-            score: compatibility,
-          })}
-          accessibilityHint={`${t('a11y.swipeLeftHint')}. ${t('a11y.swipeRightHint')}`}
-          accessibilityRole="adjustable"
-        >
+        <View {...panResponder.panHandlers}>
+          <ReAnimated.View
+            style={[styles.card, animatedCardStyle]}
+            accessible={true}
+            accessibilityLabel={t('a11y.matchCard', {
+              name: currentProfile.name,
+              age: currentProfile.age,
+              sign: currentProfile.sun_sign,
+              score: compatibility,
+            })}
+            accessibilityHint={`${t('a11y.swipeLeftHint')}. ${t('a11y.swipeRightHint')}`}
+            accessibilityRole="adjustable"
+          >
           <Image
             source={{ uri: currentProfile.image_url }}
             style={styles.cardImage}
@@ -426,9 +448,12 @@ export default function DiscoverScreen() {
             </Animated.View>
 
             <View style={styles.cardContent}>
-              <Text style={styles.name} accessibilityRole="header">
-                {currentProfile.name}, {currentProfile.age}
-              </Text>
+              <View style={styles.nameRow}>
+                <Text style={styles.name} accessibilityRole="header">
+                  {currentProfile.name}, {currentProfile.age}
+                </Text>
+                {currentProfile.is_verified && <VerifiedBadge size="small" />}
+              </View>
 
               <View style={styles.signsRow} accessibilityLabel={`Sun sign: ${currentProfile.sun_sign}, Moon sign: ${currentProfile.moon_sign || 'unknown'}, Rising sign: ${currentProfile.rising_sign || 'unknown'}`}>
                 <View style={styles.signPill}>
@@ -447,6 +472,16 @@ export default function DiscoverScreen() {
 
               <Text style={styles.bio} numberOfLines={2}>{currentProfile.bio}</Text>
 
+              {currentProfile.has_voice_intro && currentProfile.voice_intro_url && (
+                <View style={styles.voiceIntroContainer}>
+                  <VoiceIntroPlayer
+                    url={currentProfile.voice_intro_url}
+                    size="small"
+                    showLabel={true}
+                  />
+                </View>
+              )}
+
               <TouchableOpacity
                 style={styles.viewChartButton}
                 onPress={handleViewChart}
@@ -456,7 +491,8 @@ export default function DiscoverScreen() {
               </TouchableOpacity>
             </View>
           </LinearGradient>
-        </ReAnimated.View>
+          </ReAnimated.View>
+        </View>
       </Animated.View>
 
       {/* Action Buttons */}
@@ -499,6 +535,7 @@ export default function DiscoverScreen() {
         {currentIndex + 1} / {profiles.length}
       </Text>
     </LinearGradient>
+    </WebTabWrapper>
   );
 }
 
@@ -508,7 +545,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 20,
-  },
+    ...(Platform.OS === 'web' && {
+      minHeight: '100vh',
+    }),
+  } as any,
   loadingText: {
     color: a11yColors.text.secondary,
     marginTop: 16,
@@ -595,6 +635,11 @@ const styles = StyleSheet.create({
   cardContent: {
     gap: 12,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   name: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -602,6 +647,9 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
+  },
+  voiceIntroContainer: {
+    marginTop: 4,
   },
   signsRow: {
     flexDirection: 'row',

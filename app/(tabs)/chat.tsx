@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useNavigation } from 'expo-router';
+import WebTabWrapper from '../../components/WebTabWrapper';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -203,40 +204,44 @@ export default function ChatListScreen() {
   // Show loading while auth is initializing OR while loading conversations data
   if (authLoading || loading) {
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#e94560" />
-        <Text style={styles.loadingText}>{t('loadingConversations')}</Text>
-      </LinearGradient>
+      <WebTabWrapper>
+        <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={[styles.container, styles.centered]}>
+          <ActivityIndicator size="large" color="#e94560" />
+          <Text style={styles.loadingText}>{t('loadingConversations')}</Text>
+        </LinearGradient>
+      </WebTabWrapper>
     );
   }
 
   return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      {conversations.length > 0 ? (
-        <FlatList
-          data={conversations}
-          keyExtractor={(item) => item.match_id}
-          renderItem={({ item }) => <ConversationRow conversation={item} />}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-        />
-      ) : (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>💬</Text>
-          <Text style={styles.emptyTitle}>{t('noConversations')}</Text>
-          <Text style={styles.emptySubtitle}>
-            {t('matchToChatCosmos')}
-          </Text>
-          <TouchableOpacity
-            style={styles.discoverButton}
-            onPress={() => router.push('/(tabs)/discover')}
-          >
-            <Text style={styles.discoverButtonText}>{t('findMatches')}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </LinearGradient>
+    <WebTabWrapper>
+      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+        {conversations.length > 0 ? (
+          <FlatList
+            data={conversations}
+            keyExtractor={(item) => item.match_id}
+            renderItem={({ item }) => <ConversationRow conversation={item} />}
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+          />
+        ) : (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyEmoji}>💬</Text>
+            <Text style={styles.emptyTitle}>{t('noConversations')}</Text>
+            <Text style={styles.emptySubtitle}>
+              {t('matchToChatCosmos')}
+            </Text>
+            <TouchableOpacity
+              style={styles.discoverButton}
+              onPress={() => router.push('/(tabs)/discover')}
+            >
+              <Text style={styles.discoverButtonText}>{t('findMatches')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </LinearGradient>
+    </WebTabWrapper>
   );
 }
 
