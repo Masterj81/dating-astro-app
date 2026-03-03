@@ -256,8 +256,8 @@ export default function SignupScreen() {
                     {socialLoading === 'apple' ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
-                      <Text style={[styles.socialButtonText, { fontFamily: Platform.OS === 'web' ? 'inherit' : 'System' }]}>
-                        {Platform.OS === 'web' ? '' : '\uF8FF'}
+                      <Text style={styles.socialButtonText}>
+
                       </Text>
                     )}
                   </TouchableOpacity>
