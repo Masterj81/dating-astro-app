@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -256,7 +257,10 @@ export default function SignupScreen() {
                     {socialLoading === 'apple' ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
-                      <Text style={styles.socialButtonText}>A</Text>
+                      <Image
+                        source={require('../../assets/icons/apple-logo.png')}
+                        style={{ width: 22, height: 22, tintColor: '#fff' }}
+                      />
                     )}
                   </TouchableOpacity>
                 )}
