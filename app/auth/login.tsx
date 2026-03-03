@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import AppleIcon from '../../components/AppleIcon';
 import { showAlert } from '../../utils/alert';
 import LanguageSelector from '../../components/LanguageSelector';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -293,7 +293,7 @@ export default function LoginScreen() {
                     {socialLoading === 'apple' ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
-                      <Ionicons name="logo-apple" size={24} color="#fff" />
+                      <AppleIcon size={24} color="#fff" />
                     )}
                   </TouchableOpacity>
                 )}
