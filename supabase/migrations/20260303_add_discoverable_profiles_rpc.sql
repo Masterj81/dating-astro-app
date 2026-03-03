@@ -36,16 +36,16 @@ BEGIN
     COALESCE(p.is_verified, false) as is_verified,
     COALESCE(p.has_voice_intro, false) as has_voice_intro,
     p.voice_intro_url
-  FROM profiles p
+  FROM public.profiles p
   WHERE p.id != p_user_id
     -- Exclude profiles the user has already swiped on
     AND NOT EXISTS (
-      SELECT 1 FROM swipes s
+      SELECT 1 FROM public.swipes s
       WHERE s.swiper_id = p_user_id AND s.swiped_id = p.id
     )
     -- Exclude blocked users (in either direction)
     AND NOT EXISTS (
-      SELECT 1 FROM blocked_users b
+      SELECT 1 FROM public.blocked_users b
       WHERE (b.blocker_id = p_user_id AND b.blocked_id = p.id)
          OR (b.blocker_id = p.id AND b.blocked_id = p_user_id)
     )

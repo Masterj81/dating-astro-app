@@ -4,9 +4,9 @@ import { supabase } from './supabase';
 // Stripe price IDs - set these in your Stripe dashboard
 const STRIPE_PRICES = {
   celestial_monthly: process.env.EXPO_PUBLIC_STRIPE_PRICE_CELESTIAL_MONTHLY || '',
-  celestial_yearly: process.env.EXPO_PUBLIC_STRIPE_PRICE_CELESTIAL_ANNUAL || '',
+  celestial_yearly: process.env.EXPO_PUBLIC_STRIPE_PRICE_CELESTIAL_YEARLY || process.env.EXPO_PUBLIC_STRIPE_PRICE_CELESTIAL_ANNUAL || '',
   cosmic_monthly: process.env.EXPO_PUBLIC_STRIPE_PRICE_COSMIC_MONTHLY || '',
-  cosmic_yearly: process.env.EXPO_PUBLIC_STRIPE_PRICE_COSMIC_ANNUAL || '',
+  cosmic_yearly: process.env.EXPO_PUBLIC_STRIPE_PRICE_COSMIC_YEARLY || process.env.EXPO_PUBLIC_STRIPE_PRICE_COSMIC_ANNUAL || '',
 };
 
 // Coupon code for annual plans (60% off first year)
