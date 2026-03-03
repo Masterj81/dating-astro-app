@@ -372,7 +372,14 @@ export default function BirthInfoScreen() {
 
               <TouchableOpacity
                 style={styles.skipButton}
-                onPress={() => router.back()}
+                onPress={() => {
+                  // Use replace to go to login, as back() may not work on web
+                  if (router.canGoBack()) {
+                    router.back();
+                  } else {
+                    router.replace('/auth/login');
+                  }
+                }}
               >
                 <Text style={styles.skipText}>{t('cancel')}</Text>
               </TouchableOpacity>
