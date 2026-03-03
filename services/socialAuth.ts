@@ -1,8 +1,19 @@
 import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
-import * as Sentry from '@sentry/react-native';
 import { supabase } from './supabase';
+
+// Safe Sentry wrapper - import dynamically to avoid crashes
+const safeCaptureException = (error: any, context?: any) => {
+  try {
+    if (Platform.OS !== 'web') {
+      const Sentry = require('@sentry/react-native');
+      safeCaptureException(error, context);
+    }
+  } catch {
+    console.error('Error logging to Sentry:', error);
+  }
+};
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -26,7 +37,7 @@ export async function signInWithProvider(provider: 'google' | 'facebook') {
 
     if (error || !data.url) {
       const authError = error || new Error('No auth URL returned');
-      Sentry.captureException(authError, {
+      safeCaptureException(authError, {
         extra: { provider, context: 'signInWithProvider.getAuthUrl' }
       });
       return { error: authError };
@@ -47,7 +58,7 @@ export async function signInWithProvider(provider: 'google' | 'facebook') {
       const errorDesc = hashParams.get('error_description') || url.searchParams.get('error_description');
       if (errorParam) {
         const callbackError = new Error(errorDesc || errorParam);
-        Sentry.captureException(callbackError, {
+        safeCaptureException(callbackError, {
           extra: { provider, errorParam, errorDesc, context: 'signInWithProvider.callback' }
         });
         return { error: callbackError };
@@ -59,7 +70,7 @@ export async function signInWithProvider(provider: 'google' | 'facebook') {
           refresh_token: refreshToken,
         });
         if (sessionError) {
-          Sentry.captureException(sessionError, {
+          safeCaptureException(sessionError, {
             extra: { provider, context: 'signInWithProvider.setSession' }
           });
         }
@@ -71,7 +82,7 @@ export async function signInWithProvider(provider: 'google' | 'facebook') {
       if (code) {
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         if (exchangeError) {
-          Sentry.captureException(exchangeError, {
+          safeCaptureException(exchangeError, {
             extra: { provider, context: 'signInWithProvider.exchangeCode' }
           });
         }
@@ -79,7 +90,7 @@ export async function signInWithProvider(provider: 'google' | 'facebook') {
       }
 
       const noTokenError = new Error('No tokens found in callback');
-      Sentry.captureException(noTokenError, {
+      safeCaptureException(noTokenError, {
         extra: { provider, callbackUrl: result.url, context: 'signInWithProvider.noTokens' }
       });
       return { error: noTokenError };
@@ -88,7 +99,7 @@ export async function signInWithProvider(provider: 'google' | 'facebook') {
     // User cancelled or dismissed
     return { error: null };
   } catch (err) {
-    Sentry.captureException(err, {
+    safeCaptureException(err, {
       extra: { provider, context: 'signInWithProvider.unexpected' }
     });
     return { error: err as Error };
@@ -116,7 +127,7 @@ async function signInWithAppleWeb() {
 
     if (error || !data.url) {
       const authError = error || new Error('No auth URL returned');
-      Sentry.captureException(authError, {
+      safeCaptureException(authError, {
         extra: { provider: 'apple', context: 'signInWithAppleWeb.getAuthUrl' }
       });
       return { error: authError };
@@ -134,7 +145,7 @@ async function signInWithAppleWeb() {
       const errorDesc = hashParams.get('error_description') || url.searchParams.get('error_description');
       if (errorParam) {
         const callbackError = new Error(errorDesc || errorParam);
-        Sentry.captureException(callbackError, {
+        safeCaptureException(callbackError, {
           extra: { provider: 'apple', errorParam, errorDesc, context: 'signInWithAppleWeb.callback' }
         });
         return { error: callbackError };
@@ -159,7 +170,7 @@ async function signInWithAppleWeb() {
 
     return { error: null };
   } catch (err) {
-    Sentry.captureException(err, {
+    safeCaptureException(err, {
       extra: { provider: 'apple', context: 'signInWithAppleWeb.unexpected' }
     });
     return { error: err as Error };
@@ -179,7 +190,7 @@ async function signInWithAppleNative() {
 
     if (!credential.identityToken) {
       const noTokenError = new Error('No identity token from Apple');
-      Sentry.captureException(noTokenError, {
+      safeCaptureException(noTokenError, {
         extra: { context: 'signInWithAppleNative.noIdentityToken' }
       });
       return { error: noTokenError };
@@ -191,7 +202,7 @@ async function signInWithAppleNative() {
     });
 
     if (error) {
-      Sentry.captureException(error, {
+      safeCaptureException(error, {
         extra: { context: 'signInWithAppleNative.signInWithIdToken' }
       });
       return { error };
@@ -218,7 +229,7 @@ async function signInWithAppleNative() {
     if (err.code === 'ERR_REQUEST_CANCELED' || err.code === 'ERR_CANCELED') {
       return { error: null };
     }
-    Sentry.captureException(err, {
+    safeCaptureException(err, {
       extra: { errorCode: err.code, context: 'signInWithAppleNative.unexpected' }
     });
     return { error: err };
