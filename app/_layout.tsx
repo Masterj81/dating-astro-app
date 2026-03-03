@@ -70,15 +70,15 @@ if (Platform.OS !== 'web') {
 // Safe Sentry wrappers for web compatibility
 const safeSentry = {
   captureException: (error: any, hint?: any) => {
-    if (Platform.OS !== 'web') safeSentry.captureException(error, hint);
+    if (Platform.OS !== 'web') Sentry.captureException(error, hint);
     else console.error('Error:', error);
   },
   captureMessage: (message: string, level?: any) => {
-    if (Platform.OS !== 'web') safeSentry.captureMessage(message, level);
+    if (Platform.OS !== 'web') Sentry.captureMessage(message, level);
     else console.warn('Sentry message:', message);
   },
   setUser: (user: { id: string } | null) => {
-    if (Platform.OS !== 'web') safeSentry.setUser(user);
+    if (Platform.OS !== 'web') Sentry.setUser(user);
   },
 };
 
