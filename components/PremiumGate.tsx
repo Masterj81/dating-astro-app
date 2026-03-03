@@ -83,6 +83,7 @@ export default function PremiumGate({ feature, children }: PremiumGateProps) {
       'planetary-transits': t('planetaryTransits') || 'Planetary Transits',
       'retrograde-alerts': t('retrogradeAlerts') || 'Retrograde Alerts',
       'lucky-days': t('luckyDays') || 'Lucky Days',
+      'date-planner': t('datePlanner') || 'Date Planner',
     };
 
     return featureNames[feature] || feature;

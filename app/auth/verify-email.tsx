@@ -3,13 +3,14 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { showAlert } from '../../utils/alert';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../_layout';
@@ -64,7 +65,7 @@ export default function VerifyEmailScreen() {
     setSending(false);
 
     if (error) {
-      Alert.alert(t('error'), error.message);
+      showAlert(t('error'), error.message);
     } else {
       setResendCooldown(RESEND_COOLDOWN);
     }
@@ -122,12 +123,18 @@ export default function VerifyEmailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
+    ...(Platform.OS === 'web' && {
+      minHeight: '100vh',
+    }),
+  } as any,
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,
+    maxWidth: 500,
+    alignSelf: 'center',
+    width: '100%',
   },
   icon: {
     fontSize: 64,

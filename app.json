@@ -15,7 +15,8 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "AstroDating needs access to your photo library so you can select photos for your dating profile. For example, you can choose your best photos to show potential matches.",
-        "NSCameraUsageDescription": "AstroDating needs camera access so you can take new photos for your dating profile.",
+        "NSCameraUsageDescription": "AstroDating needs camera access so you can take new photos for your dating profile and record a verification video.",
+        "NSMicrophoneUsageDescription": "AstroDating needs microphone access to record your voice intro and verification video.",
         "NSSiriUsageDescription": "AstroDating uses Siri to check your horoscope and view matches.",
         "NSUserActivityTypes": [
           "CheckHoroscopeIntent",
@@ -24,7 +25,9 @@
         ]
       },
       "entitlements": {
-        "com.apple.security.application-groups": ["group.com.astrodating.app"],
+        "com.apple.security.application-groups": [
+          "group.com.astrodating.app"
+        ],
         "com.apple.developer.siri": true
       }
     },
@@ -37,11 +40,19 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.astrodatingapp.mobile",
-      "versionCode": 4
+      "versionCode": 5
     },
     "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "output": "single",
+      "favicon": "./assets/images/favicon.png",
+      "name": "AstroDating",
+      "shortName": "AstroDating",
+      "description": "Find your cosmic match through astrology",
+      "themeColor": "#0f0f1a",
+      "backgroundColor": "#0f0f1a",
+      "display": "standalone",
+      "orientation": "portrait",
+      "startUrl": "/"
     },
     "plugins": [
       "@bacons/apple-targets",
@@ -66,7 +77,22 @@
           "organization": "personnal-5l"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "AstroDating needs camera access to record your verification video.",
+          "microphonePermission": "AstroDating needs microphone access for video recording.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "AstroDating needs microphone access to record your voice intro."
+        }
+      ],
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true,

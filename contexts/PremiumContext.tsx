@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { Platform } from 'react-native';
 import Purchases from 'react-native-purchases';
-import { useAuth } from '../app/_layout';
+import { useAuth } from './AuthContext';
 import {
   FeatureKey,
   FEATURE_TIERS,
@@ -9,6 +10,7 @@ import {
   getFeatureUsageToday,
 } from '../services/premiumUsage';
 import { initializePurchases, isPurchasesConfigured } from '../services/purchases';
+import { getWebSubscriptionStatus } from '../services/webPayments';
 
 export type SubscriptionTier = 'free' | 'premium' | 'premium_plus';
 
@@ -57,13 +59,33 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
     recommendedTier: 'premium',
   });
 
-  // Check subscription status from RevenueCat
+  // Check subscription status from RevenueCat (native) or Stripe (web)
   const checkSubscriptionTier = useCallback(async (userId?: string): Promise<SubscriptionTier> => {
     // Override for testing/screenshots
     if (FORCE_PREMIUM_FOR_TESTING) {
       return 'premium_plus';
     }
 
+    // Web: Check Stripe subscription via Supabase
+    if (Platform.OS === 'web') {
+      if (!userId) return 'free';
+      try {
+        const webStatus = await getWebSubscriptionStatus(userId);
+        // Map web tier names to our tier names
+        if (webStatus.tier === 'premium_plus' || webStatus.tier === 'cosmic') {
+          return 'premium_plus';
+        }
+        if (webStatus.tier === 'premium' || webStatus.tier === 'celestial') {
+          return 'premium';
+        }
+        return 'free';
+      } catch (error) {
+        console.log('Error checking web subscription:', error);
+        return 'free';
+      }
+    }
+
+    // Native: Check RevenueCat
     try {
       // Ensure RevenueCat is initialized before checking
       if (!isPurchasesConfigured()) {

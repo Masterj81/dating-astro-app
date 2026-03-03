@@ -81,7 +81,12 @@ async function rateLimitedFetch(url: string): Promise<Response> {
  * 4. Fallback: Montreal
  */
 export async function geocodeCity(city: string): Promise<GeoResult> {
-  const normalized = city.toLowerCase().trim();
+  // Normalize: lowercase, trim, and remove accents
+  const normalized = city
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 
   // 1. Exact match
   if (CITY_CACHE[normalized]) {

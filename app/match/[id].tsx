@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import BlockReportMenu from '../../components/BlockReportMenu';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { usePremium } from '../../contexts/PremiumContext';
 import {
@@ -436,7 +437,18 @@ export default function MatchDetailScreen() {
         {/* Match Header */}
         {matchProfile && (
           <View style={styles.matchHeader}>
-            <Text style={styles.matchName}>{matchProfile.name}</Text>
+            <View style={styles.matchHeaderTop}>
+              <Text style={styles.matchName}>{matchProfile.name}</Text>
+              {user && (
+                <BlockReportMenu
+                  userId={user.id}
+                  targetUserId={matchProfile.id}
+                  targetUserName={matchProfile.name}
+                  showUnmatch={false}
+                  onBlock={() => router.replace('/(tabs)/matches')}
+                />
+              )}
+            </View>
             <View style={styles.signRow}>
               <Text style={styles.signBadge}>
                 {getZodiacEmoji(matchProfile.sun_sign || '')} {matchProfile.sun_sign}
@@ -463,9 +475,41 @@ export default function MatchDetailScreen() {
         {!loading && categories.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t('compatibilityBreakdown')}</Text>
-            {categories.map((category) => (
-              <CategoryCard key={category.name} category={category} />
-            ))}
+            {isPremium ? (
+              // Premium users see all categories
+              categories.map((category) => (
+                <CategoryCard key={category.name} category={category} />
+              ))
+            ) : (
+              // Free users see only first 2 categories + unlock prompt
+              <>
+                {categories.slice(0, 2).map((category) => (
+                  <CategoryCard key={category.name} category={category} />
+                ))}
+                <TouchableOpacity
+                  style={styles.unlockMoreContainer}
+                  onPress={() => triggerPaywall('synastry')}
+                >
+                  <View style={styles.lockedCategoriesPreview}>
+                    {categories.slice(2).map((category) => (
+                      <View key={category.name} style={styles.lockedCategoryRow}>
+                        <Text style={styles.lockedCategoryIcon}>{category.icon}</Text>
+                        <Text style={styles.lockedCategoryName}>{category.name}</Text>
+                        <Text style={styles.lockedScore}>???</Text>
+                      </View>
+                    ))}
+                  </View>
+                  <View style={styles.unlockPrompt}>
+                    <Text style={styles.unlockIcon}>✨</Text>
+                    <Text style={styles.unlockTitle}>{t('unlockFullCompatibility')}</Text>
+                    <Text style={styles.unlockSubtitle}>{t('unlockCompatibilityDesc')}</Text>
+                    <View style={styles.unlockButtonContainer}>
+                      <Text style={styles.unlockButtonText}>{t('viewAllPlans')}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         )}
 
@@ -514,6 +558,13 @@ export default function MatchDetailScreen() {
           <TouchableOpacity style={styles.messageButton} onPress={handleSendMessage}>
             <Text style={styles.messageButtonText}>{t('typeMessage')}</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.datePlannerButton}
+            onPress={() => router.push(`/premium/date-planner?matchId=${id}`)}
+          >
+            <Text style={styles.datePlannerIcon}>📅</Text>
+            <Text style={styles.datePlannerText}>{t('planADate')}</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>{t('cancel')}</Text>
           </TouchableOpacity>
@@ -535,11 +586,19 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingHorizontal: 20,
   },
+  matchHeaderTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    marginBottom: 8,
+  },
   matchName: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 8,
+    flex: 1,
+    textAlign: 'center',
   },
   signRow: {
     flexDirection: 'row',
@@ -695,6 +754,75 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 8,
   },
+  unlockMoreContainer: {
+    marginTop: 4,
+  },
+  lockedCategoriesPreview: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 12,
+    opacity: 0.6,
+  },
+  lockedCategoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  lockedCategoryIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  lockedCategoryName: {
+    flex: 1,
+    fontSize: 15,
+    color: '#666',
+  },
+  lockedScore: {
+    fontSize: 16,
+    color: '#444',
+    fontWeight: '600',
+  },
+  unlockPrompt: {
+    backgroundColor: 'rgba(233, 69, 96, 0.1)',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(233, 69, 96, 0.3)',
+    alignItems: 'center',
+  },
+  unlockIcon: {
+    fontSize: 36,
+    marginBottom: 8,
+  },
+  unlockTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  unlockSubtitle: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  unlockButtonContainer: {
+    backgroundColor: '#e94560',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+  },
+  unlockButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
   legend: {
     marginHorizontal: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
@@ -734,6 +862,25 @@ const styles = StyleSheet.create({
   messageButtonText: {
     color: '#fff',
     fontSize: 17,
+    fontWeight: '600',
+  },
+  datePlannerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(147, 51, 234, 0.3)',
+  },
+  datePlannerIcon: {
+    fontSize: 18,
+  },
+  datePlannerText: {
+    color: '#9333ea',
+    fontSize: 16,
     fontWeight: '600',
   },
   backButton: {

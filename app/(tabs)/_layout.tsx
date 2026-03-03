@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { tabSwitch } from '../../services/haptics';
@@ -50,6 +50,14 @@ export default function TabsLayout() {
           fontSize: 11,
           fontWeight: '500',
         },
+        // Fix for web: ensure content area has proper height and overflow
+        ...(Platform.OS === 'web' && {
+          sceneContainerStyle: {
+            flex: 1,
+            height: 'calc(100vh - 124px)',
+            overflow: 'auto',
+          } as any,
+        }),
       }}
     >
       <Tabs.Screen

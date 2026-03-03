@@ -1,21 +1,46 @@
-import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import { AppState, Platform } from 'react-native';
 import { supabase } from './supabase';
 
-// Configure how notifications appear when app is in foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Suppress expo-notifications warning on web BEFORE any require
+// This must happen before the module is loaded to catch the warning
+if (Platform.OS === 'web') {
+  const originalWarn = console.warn;
+  console.warn = (...args: any[]) => {
+    const message = args[0];
+    if (typeof message === 'string' && message.includes('expo-notifications')) {
+      return; // Suppress expo-notifications warnings on web
+    }
+    originalWarn.apply(console, args);
+  };
+}
+
+// Conditionally import native-only modules
+let Device: any = null;
+let Notifications: any = null;
+
+if (Platform.OS !== 'web') {
+  Device = require('expo-device');
+  Notifications = require('expo-notifications');
+
+  // Configure how notifications appear when app is in foreground
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 // Register for push notifications and get token
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
+  // Skip on web - use web push API separately
+  if (Platform.OS === 'web' || !Device || !Notifications) {
+    return null;
+  }
+
   if (!Device.isDevice) {
     console.warn('Push notifications require a physical device');
     return null;

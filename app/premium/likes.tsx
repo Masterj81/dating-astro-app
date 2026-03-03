@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PremiumGate from '../../components/PremiumGate';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
@@ -31,6 +32,7 @@ function LikesScreenContent() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { t } = useLanguage();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     loadLikes();
@@ -178,8 +180,8 @@ function LikesScreenContent() {
   return (
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+      <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
+        <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
           <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.title}>{t('seeWhoLikes')}</Text>
@@ -195,7 +197,7 @@ function LikesScreenContent() {
           data={likes}
           keyExtractor={(item) => item.id}
           renderItem={renderLikeCard}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: 100 + insets.bottom }]}
           showsVerticalScrollIndicator={false}
           numColumns={2}
           columnWrapperStyle={styles.row}

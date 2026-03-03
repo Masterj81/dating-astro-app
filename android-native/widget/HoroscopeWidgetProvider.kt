@@ -1,6 +1,6 @@
-package com.astrodating.app.widget
+package com.astrodatingapp.mobile.widget
 
-import com.astrodating.app.R
+import com.astrodatingapp.mobile.R
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -117,7 +117,7 @@ class HoroscopeWidgetProvider : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, R.layout.widget_layout)
 
             // Get user's sun sign from SharedPreferences
-            val prefs = context.getSharedPreferences("group.com.astrodating.app", Context.MODE_PRIVATE)
+            val prefs = context.getSharedPreferences("group.com.astrodatingapp.mobile", Context.MODE_PRIVATE)
             val sunSignKey = prefs.getString("userSunSign", "aries")?.lowercase() ?: "aries"
             val zodiac = zodiacSigns[sunSignKey] ?: zodiacSigns["aries"]!!
 

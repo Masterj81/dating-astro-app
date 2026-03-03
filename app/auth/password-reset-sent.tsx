@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import {
   Animated,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -59,7 +60,10 @@ export default function PasswordResetSentScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
+    ...(Platform.OS === 'web' && {
+      minHeight: '100vh',
+    }),
+  } as any,
   content: {
     flex: 1,
     justifyContent: 'center',

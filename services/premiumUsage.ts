@@ -13,7 +13,8 @@ export type FeatureKey =
   | 'monthly-horoscope'
   | 'planetary-transits'
   | 'retrograde-alerts'
-  | 'lucky-days';
+  | 'lucky-days'
+  | 'date-planner';
 
 // Mapping of features to their required tier
 export const FEATURE_TIERS: Record<FeatureKey, 'premium' | 'premium_plus'> = {
@@ -29,6 +30,7 @@ export const FEATURE_TIERS: Record<FeatureKey, 'premium' | 'premium_plus'> = {
   'planetary-transits': 'premium_plus',
   'retrograde-alerts': 'premium_plus',
   'lucky-days': 'premium_plus',
+  'date-planner': 'premium_plus',
 };
 
 // Check if a feature has been used today

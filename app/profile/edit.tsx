@@ -1,4 +1,3 @@
-import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -15,7 +14,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import VoiceIntroRecorder from '../../components/VoiceIntroRecorder';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { pickImage as pickImageCrossPlatform } from '../../services/imagePicker';
 import { supabase } from '../../services/supabase';
 import { validateBio, validateName } from '../../utils/validation';
 import { useAuth } from '../_layout';
@@ -28,6 +29,8 @@ type UserProfile = {
   age?: number;
   occupation?: string;
   interests?: string[];
+  voice_intro_url?: string | null;
+  has_voice_intro?: boolean;
 };
 
 const MAX_PHOTOS = 6;
@@ -39,6 +42,8 @@ export default function EditProfileScreen() {
   const [bio, setBio] = useState('');
   const [occupation, setOccupation] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
+  const [voiceIntroUrl, setVoiceIntroUrl] = useState<string | null>(null);
+  const [hasVoiceIntro, setHasVoiceIntro] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
@@ -65,27 +70,30 @@ export default function EditProfileScreen() {
       setBio(data.bio || '');
       setOccupation(data.occupation || '');
       setPhotos(data.photos || []);
+      setVoiceIntroUrl(data.voice_intro_url || null);
+      setHasVoiceIntro(data.has_voice_intro || false);
     }
     setLoading(false);
   };
 
+  const handleVoiceIntroUpdate = (hasIntro: boolean, url?: string) => {
+    setHasVoiceIntro(hasIntro);
+    setVoiceIntroUrl(url || null);
+  };
+
   const pickImage = async (index: number) => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (status !== 'granted') {
-      Alert.alert(t('error'), t('photoPermission'));
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
+    const result = await pickImageCrossPlatform({
       aspect: [3, 4],
       quality: 0.8,
     });
 
-    if (!result.canceled && result.assets[0]) {
-      uploadImage(result.assets[0].uri, index);
+    if (result.cancelled) {
+      // User cancelled or permission denied
+      return;
+    }
+
+    if (result.uri) {
+      uploadImage(result.uri, index);
     }
   };
 
@@ -260,6 +268,17 @@ export default function EditProfileScreen() {
               ))}
             </View>
           </View>
+
+          {/* Voice Intro Section */}
+          {user && (
+            <View style={styles.section}>
+              <VoiceIntroRecorder
+                userId={user.id}
+                existingUrl={voiceIntroUrl}
+                onUpdate={handleVoiceIntroUpdate}
+              />
+            </View>
+          )}
 
           {/* Basic Info Section */}
           <View style={styles.section}>

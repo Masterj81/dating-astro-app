@@ -3,7 +3,6 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   KeyboardAvoidingView,
   Platform,
@@ -13,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { showAlert } from '../../utils/alert';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
 import { validatePassword } from '../../utils/validation';
@@ -34,18 +34,18 @@ export default function ResetPasswordScreen() {
 
   const handleReset = async () => {
     if (!password || !confirmPassword) {
-      Alert.alert(t('error'), t('fillAllFields'));
+      showAlert(t('error'), t('fillAllFields'));
       return;
     }
 
     const passwordResult = validatePassword(password);
     if (!passwordResult.valid) {
-      Alert.alert(t('error'), t(passwordResult.error!));
+      showAlert(t('error'), t(passwordResult.error!));
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert(t('error'), t('passwordsDontMatch'));
+      showAlert(t('error'), t('passwordsDontMatch'));
       return;
     }
 
@@ -54,9 +54,9 @@ export default function ResetPasswordScreen() {
     setLoading(false);
 
     if (error) {
-      Alert.alert(t('error'), error.message);
+      showAlert(t('error'), error.message);
     } else {
-      Alert.alert(t('passwordUpdated'), t('passwordUpdatedDesc'), [
+      showAlert(t('passwordUpdated'), t('passwordUpdatedDesc'), [
         { text: t('ok'), onPress: () => router.replace('/auth/login') },
       ]);
     }
@@ -129,7 +129,10 @@ export default function ResetPasswordScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
+    ...(Platform.OS === 'web' && {
+      minHeight: '100vh',
+    }),
+  } as any,
   keyboardView: {
     flex: 1,
   },

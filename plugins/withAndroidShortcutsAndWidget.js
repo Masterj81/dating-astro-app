@@ -19,6 +19,16 @@ function withAndroidShortcutsAndWidget(config) {
     const manifest = config.modResults;
     const application = manifest.manifest.application[0];
 
+    // Find and update MainActivity for portrait orientation
+    if (application.activity) {
+      const mainActivity = application.activity.find(
+        (activity) => activity.$['android:name'] === '.MainActivity'
+      );
+      if (mainActivity) {
+        mainActivity.$['android:screenOrientation'] = 'portrait';
+      }
+    }
+
     // Add meta-data for shortcuts
     if (!application['meta-data']) {
       application['meta-data'] = [];
@@ -91,7 +101,7 @@ function withAndroidShortcutsAndWidget(config) {
       const valuesDir = path.join(androidPath, 'res', 'values');
       const layoutDir = path.join(androidPath, 'res', 'layout');
       const drawableDir = path.join(androidPath, 'res', 'drawable');
-      const kotlinDir = path.join(androidPath, 'java', 'com', 'astrodating', 'app', 'widget');
+      const kotlinDir = path.join(androidPath, 'java', 'com', 'astrodatingapp', 'mobile', 'widget');
 
       [xmlDir, valuesDir, layoutDir, drawableDir, kotlinDir].forEach((dir) => {
         if (!fs.existsSync(dir)) {
@@ -140,6 +150,25 @@ function withAndroidShortcutsAndWidget(config) {
       if (fs.existsSync(kotlinSource)) {
         fs.copyFileSync(kotlinSource, path.join(kotlinDir, 'HoroscopeWidgetProvider.kt'));
       }
+
+      // Create/update styles.xml for edge-to-edge and system bar colors
+      const stylesContent = `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App theme with edge-to-edge support -->
+    <style name="AppTheme.EdgeToEdge" parent="@style/AppTheme">
+        <!-- Status bar -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <!-- Navigation bar -->
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <!-- Display cutout - use default for better compatibility -->
+        <item name="android:windowLayoutInDisplayCutoutMode">default</item>
+    </style>
+</resources>`;
+
+      const stylesPath = path.join(valuesDir, 'styles_edge_to_edge.xml');
+      fs.writeFileSync(stylesPath, stylesContent);
 
       // Create placeholder drawable icons for shortcuts
       const iconPlaceholder = `<?xml version="1.0" encoding="utf-8"?>

@@ -13,6 +13,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import BlockReportMenu from '../../components/BlockReportMenu';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
 import { throttleAction } from '../../utils/rateLimit';
@@ -48,7 +50,8 @@ export default function ChatScreen() {
   const [matchInfo, setMatchInfo] = useState<MatchInfo | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const { user } = useAuth();
-  const { t } = useLanguage(); // Use t from context for reactive translations
+  const { t } = useLanguage();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (matchId && user) {
@@ -182,7 +185,7 @@ export default function ChatScreen() {
   return (
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: 12 + insets.top }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
@@ -196,6 +199,17 @@ export default function ChatScreen() {
           <Text style={styles.headerName}>{matchInfo?.other_user?.name || t('chat')}</Text>
           <Text style={styles.headerSign}>☀️ {matchInfo?.other_user?.sun_sign || '?'}</Text>
         </View>
+
+        {user && matchInfo?.other_user && (
+          <BlockReportMenu
+            userId={user.id}
+            targetUserId={matchInfo.other_user.id}
+            targetUserName={matchInfo.other_user.name}
+            matchId={matchInfo.id}
+            onBlock={() => router.replace('/(tabs)/matches')}
+            onUnmatch={() => router.replace('/(tabs)/matches')}
+          />
+        )}
       </View>
 
       {/* Messages */}
@@ -223,7 +237,7 @@ export default function ChatScreen() {
         )}
 
         {/* Input */}
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { paddingBottom: 12 + insets.bottom }]}>
           <TextInput
             style={styles.input}
             placeholder={t('typeMessage')}

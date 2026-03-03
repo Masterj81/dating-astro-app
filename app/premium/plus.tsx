@@ -10,11 +10,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function PremiumPlusScreen() {
   const [purchasing, setPurchasing] = useState(false);
   const { t } = useLanguage();
+  const insets = useSafeAreaInsets();
 
   const PREMIUM_PLUS_FEATURES = [
     {
@@ -76,10 +78,10 @@ export default function PremiumPlusScreen() {
 
   return (
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]} showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
+        <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
+          <TouchableOpacity style={[styles.closeButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
             <Text style={styles.closeText}>←</Text>
           </TouchableOpacity>
 

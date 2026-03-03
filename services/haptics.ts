@@ -1,5 +1,10 @@
-import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
+
+// Conditionally import Haptics only on native platforms
+let Haptics: any = null;
+if (Platform.OS !== 'web') {
+  Haptics = require('expo-haptics');
+}
 
 /**
  * Haptic feedback service for iOS
@@ -10,7 +15,15 @@ import { Platform } from 'react-native';
  * Check if haptics are supported on the current device
  */
 export function isHapticsSupported(): boolean {
+  // Haptics only work on iOS native
   return Platform.OS === 'ios';
+}
+
+/**
+ * Check if we're running on web
+ */
+function isWeb(): boolean {
+  return Platform.OS === 'web';
 }
 
 /**
@@ -18,7 +31,7 @@ export function isHapticsSupported(): boolean {
  * Use for: UI taps, toggles, minor state changes
  */
 export async function lightImpact(): Promise<void> {
-  if (!isHapticsSupported()) return;
+  if (!Haptics || !isHapticsSupported()) return;
   await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 }
 
@@ -27,7 +40,7 @@ export async function lightImpact(): Promise<void> {
  * Use for: Swipe threshold reached, selection changes
  */
 export async function mediumImpact(): Promise<void> {
-  if (!isHapticsSupported()) return;
+  if (!Haptics || !isHapticsSupported()) return;
   await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 }
 
@@ -36,7 +49,7 @@ export async function mediumImpact(): Promise<void> {
  * Use for: Completed actions, confirmations
  */
 export async function heavyImpact(): Promise<void> {
-  if (!isHapticsSupported()) return;
+  if (!Haptics || !isHapticsSupported()) return;
   await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 }
 
@@ -45,7 +58,7 @@ export async function heavyImpact(): Promise<void> {
  * Use for: Tab switches, option selections, carousel navigation
  */
 export async function selectionFeedback(): Promise<void> {
-  if (!isHapticsSupported()) return;
+  if (!Haptics || !isHapticsSupported()) return;
   await Haptics.selectionAsync();
 }
 
@@ -54,7 +67,7 @@ export async function selectionFeedback(): Promise<void> {
  * Use for: Like swipe confirmed, match found, message sent
  */
 export async function successNotification(): Promise<void> {
-  if (!isHapticsSupported()) return;
+  if (!Haptics || !isHapticsSupported()) return;
   await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 }
 
@@ -63,7 +76,7 @@ export async function successNotification(): Promise<void> {
  * Use for: Approaching limits, reversible actions
  */
 export async function warningNotification(): Promise<void> {
-  if (!isHapticsSupported()) return;
+  if (!Haptics || !isHapticsSupported()) return;
   await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 }
 
@@ -72,7 +85,7 @@ export async function warningNotification(): Promise<void> {
  * Use for: Errors, failed submissions, blocked actions
  */
 export async function errorNotification(): Promise<void> {
-  if (!isHapticsSupported()) return;
+  if (!Haptics || !isHapticsSupported()) return;
   await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
 }
 

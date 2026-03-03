@@ -8,10 +8,21 @@ export function useReduceMotion(): boolean {
   const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
-    // Get initial value
+    // Web: check prefers-reduced-motion media query
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.matchMedia) {
+        const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+        setReduceMotion(mediaQuery.matches);
+        const handler = (e: MediaQueryListEvent) => setReduceMotion(e.matches);
+        mediaQuery.addEventListener('change', handler);
+        return () => mediaQuery.removeEventListener('change', handler);
+      }
+      return;
+    }
+
+    // Native: use AccessibilityInfo
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
 
-    // Listen for changes
     const subscription = AccessibilityInfo.addEventListener(
       'reduceMotionChanged',
       setReduceMotion
@@ -32,6 +43,11 @@ export function useScreenReader(): boolean {
   const [screenReaderEnabled, setScreenReaderEnabled] = useState(false);
 
   useEffect(() => {
+    // Web: cannot reliably detect screen reader
+    if (Platform.OS === 'web') {
+      return;
+    }
+
     AccessibilityInfo.isScreenReaderEnabled().then(setScreenReaderEnabled);
 
     const subscription = AccessibilityInfo.addEventListener(
@@ -185,6 +201,11 @@ export function getTextInputA11yProps(
  * Announce a message to screen readers
  */
 export function announceForAccessibility(message: string): void {
+  if (Platform.OS === 'web') {
+    // Web: Use ARIA live region (requires DOM element, so just log for now)
+    console.log('Accessibility announcement:', message);
+    return;
+  }
   AccessibilityInfo.announceForAccessibility(message);
 }
 
@@ -192,6 +213,9 @@ export function announceForAccessibility(message: string): void {
  * Set accessibility focus on a component
  */
 export function setAccessibilityFocus(reactTag: number): void {
+  if (Platform.OS === 'web') {
+    return;
+  }
   AccessibilityInfo.setAccessibilityFocus(reactTag);
 }
 

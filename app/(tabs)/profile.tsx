@@ -1,3 +1,4 @@
+import { useIsFocused } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useNavigation } from 'expo-router';
 import { useEffect, useLayoutEffect, useState } from 'react';
@@ -32,6 +33,7 @@ export default function ProfileScreen() {
   const { user, signOut, loading: authLoading } = useAuth();
   const { t, language } = useLanguage();
   const navigation = useNavigation();
+  const isFocused = useIsFocused();
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -191,7 +193,11 @@ export default function ProfileScreen() {
   }
 
   // Web version with position fixed to work around parent container clipping
+  // Only show when this tab is focused to prevent covering other tabs
   if (Platform.OS === 'web') {
+    if (!isFocused) {
+      return null;
+    }
     return (
       <div style={{
         position: 'fixed',

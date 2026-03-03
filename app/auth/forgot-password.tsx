@@ -3,7 +3,6 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   KeyboardAvoidingView,
   Platform,
@@ -13,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { showAlert } from '../../utils/alert';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
 import { validateEmail } from '../../utils/validation';
@@ -33,13 +33,13 @@ export default function ForgotPasswordScreen() {
 
   const handleReset = async () => {
     if (!email) {
-      Alert.alert(t('error'), t('enterYourEmail'));
+      showAlert(t('error'), t('enterYourEmail'));
       return;
     }
 
     const emailResult = validateEmail(email);
     if (!emailResult.valid) {
-      Alert.alert(t('error'), t(emailResult.error!));
+      showAlert(t('error'), t(emailResult.error!));
       return;
     }
 
@@ -50,7 +50,7 @@ export default function ForgotPasswordScreen() {
     setLoading(false);
 
     if (error) {
-      Alert.alert(t('error'), error.message);
+      showAlert(t('error'), error.message);
     } else {
       router.replace({
         pathname: '/auth/password-reset-sent',
@@ -119,7 +119,10 @@ export default function ForgotPasswordScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
+    ...(Platform.OS === 'web' && {
+      minHeight: '100vh',
+    }),
+  } as any,
   keyboardView: {
     flex: 1,
   },

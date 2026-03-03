@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#0f0f1a">
+  <meta name="background-color" content="#0f0f1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AstroDating">
+  <meta name="application-name" content="AstroDating">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- SEO -->
+  <meta name="description" content="Find your cosmic match through astrology. AstroDating uses birth charts and synastry to connect compatible partners.">
+  <meta name="keywords" content="dating, astrology, horoscope, compatibility, synastry, zodiac, birth chart">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="AstroDating - Find Your Cosmic Match">
+  <meta property="og:description" content="Dating app powered by astrology. Match with compatible partners based on birth charts and synastry.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/icon-512.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="AstroDating - Find Your Cosmic Match">
+  <meta name="twitter:description" content="Dating app powered by astrology.">
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- Icons -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+
+  <!-- Splash screens for iOS -->
+  <link rel="apple-touch-startup-image" href="/splash.png">
+
+  <title>AstroDating</title>
+
+  <style>
+    /* Prevent flash of unstyled content */
+    html, body, #root {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      background-color: #0f0f1a;
+      overflow: hidden;
+    }
+
+    /* Loading state */
+    #loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #0f0f1a;
+      z-index: 9999;
+    }
+
+    #loading .spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid rgba(233, 69, 96, 0.3);
+      border-top-color: #e94560;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Hide loading when app is ready */
+    body.app-loaded #loading {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <div class="spinner"></div>
+  </div>
+  <div id="root"></div>
+
+  <script>
+    // Mark app as loaded when React mounts
+    window.addEventListener('DOMContentLoaded', function() {
+      // Give React a moment to render
+      setTimeout(function() {
+        document.body.classList.add('app-loaded');
+      }, 100);
+    });
+  </script>
+</body>
+</html>

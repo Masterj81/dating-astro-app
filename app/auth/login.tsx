@@ -3,7 +3,6 @@ import { Link, router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   KeyboardAvoidingView,
   Platform,
@@ -14,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { showAlert } from '../../utils/alert';
 import LanguageSelector from '../../components/LanguageSelector';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { validateEmail } from '../../utils/validation';
@@ -75,14 +75,14 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     if (!email || !password) {
       errorNotification();
-      Alert.alert(t('error'), t('fillAllFields'));
+      showAlert(t('error'), t('fillAllFields'));
       return;
     }
 
     const emailResult = validateEmail(email);
     if (!emailResult.valid) {
       errorNotification();
-      Alert.alert(t('error'), t(emailResult.error!));
+      showAlert(t('error'), t(emailResult.error!));
       return;
     }
 
@@ -93,7 +93,7 @@ export default function LoginScreen() {
 
     if (error) {
       errorNotification();
-      Alert.alert(t('error'), error.message);
+      showAlert(t('error'), error.message);
     } else {
       router.replace('/');
     }
@@ -110,13 +110,13 @@ export default function LoginScreen() {
       const { error } = await signInFn();
       if (error) {
         errorNotification();
-        Alert.alert(t('error'), t('socialAuthError'));
+        showAlert(t('error'), t('socialAuthError'));
       } else {
         router.replace('/');
       }
     } catch {
       errorNotification();
-      Alert.alert(t('error'), t('socialAuthError'));
+      showAlert(t('error'), t('socialAuthError'));
     } finally {
       setSocialLoading(null);
     }
@@ -278,7 +278,7 @@ export default function LoginScreen() {
                   )}
                 </TouchableOpacity>
 
-                {Platform.OS === 'ios' && (
+                {(Platform.OS === 'ios' || Platform.OS === 'web') && (
                   <TouchableOpacity
                     style={styles.socialButton}
                     onPress={() => handleSocialAuth('apple')}
@@ -292,7 +292,9 @@ export default function LoginScreen() {
                     {socialLoading === 'apple' ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
-                      <Text style={[styles.socialButtonText, { fontFamily: 'System' }]}>{'\uF8FF'}</Text>
+                      <Text style={[styles.socialButtonText, { fontFamily: Platform.OS === 'web' ? 'inherit' : 'System' }]}>
+                        {Platform.OS === 'web' ? '' : '\uF8FF'}
+                      </Text>
                     )}
                   </TouchableOpacity>
                 )}
@@ -333,8 +335,11 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1
-  },
+    flex: 1,
+    ...(Platform.OS === 'web' && {
+      minHeight: '100vh',
+    }),
+  } as any,
   languageContainer: {
     position: 'absolute',
     top: 50,

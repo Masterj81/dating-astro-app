@@ -31,6 +31,10 @@ export function validatePassword(password: string): { valid: boolean; error?: st
   if (!/\d/.test(password)) {
     return { valid: false, error: 'passwordHintStrong' };
   }
+  // Require at least one special character
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(password)) {
+    return { valid: false, error: 'passwordHintStrong' };
+  }
   return { valid: true };
 }
 
