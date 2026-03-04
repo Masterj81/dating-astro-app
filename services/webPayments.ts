@@ -135,13 +135,18 @@ export async function getWebSubscriptionStatus(
   expiresAt: string | null;
   cancelAtPeriodEnd: boolean;
 }> {
+  console.log('Checking web subscription for user:', userId);
+
   const { data, error } = await supabase
     .from('subscriptions')
-    .select('tier, expires_at, cancel_at_period_end')
+    .select('tier, status, expires_at, cancel_at_period_end')
     .eq('user_id', userId)
     .maybeSingle();
 
+  console.log('Subscription query result:', { data, error });
+
   if (error || !data) {
+    console.log('No subscription found or error, returning free tier');
     return {
       tier: 'free',
       expiresAt: null,
@@ -149,6 +154,17 @@ export async function getWebSubscriptionStatus(
     };
   }
 
+  // Check if subscription is active
+  if (data.status !== 'active') {
+    console.log('Subscription not active, status:', data.status);
+    return {
+      tier: 'free',
+      expiresAt: null,
+      cancelAtPeriodEnd: false,
+    };
+  }
+
+  console.log('Active subscription found, tier:', data.tier);
   return {
     tier: data.tier,
     expiresAt: data.expires_at,
