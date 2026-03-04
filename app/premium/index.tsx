@@ -14,9 +14,10 @@ import {
 import { PurchasesPackage } from 'react-native-purchases';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { usePremium } from '../../contexts/PremiumContext';
 import { useAuth } from '../_layout';
 import { getOfferings, purchasePackage, restorePurchases } from '../../services/purchases';
-import { redirectToCheckout, WebSubscriptionPlan } from '../../services/webPayments';
+import { redirectToCheckout, redirectToPortal, WebSubscriptionPlan } from '../../services/webPayments';
 
 // Subscription tiers with features
 const TIERS = {
@@ -57,7 +58,115 @@ const TIERS = {
   },
 };
 
+// Premium features available to subscribers
+const PREMIUM_FEATURES = [
+  { key: 'synastry', icon: '💕', route: '/premium/synastry', tier: 'premium' },
+  { key: 'natal-chart', icon: '🌟', route: '/premium/natal-chart', tier: 'premium' },
+  { key: 'likes', icon: '❤️', route: '/premium/likes', tier: 'premium' },
+];
+
+const PREMIUM_PLUS_FEATURES = [
+  { key: 'daily-horoscope', icon: '🔮', route: '/premium/daily-horoscope', tier: 'premium_plus' },
+  { key: 'monthly-horoscope', icon: '📅', route: '/premium/monthly-horoscope', tier: 'premium_plus' },
+  { key: 'planetary-transits', icon: '🪐', route: '/premium/planetary-transits', tier: 'premium_plus' },
+  { key: 'lucky-days', icon: '🍀', route: '/premium/lucky-days', tier: 'premium_plus' },
+  { key: 'date-planner', icon: '💫', route: '/premium/date-planner', tier: 'premium_plus' },
+];
+
+function PremiumDashboard() {
+  const { t } = useLanguage();
+  const { tier } = usePremium();
+  const { user } = useAuth();
+  const insets = useSafeAreaInsets();
+  const isWeb = Platform.OS === 'web';
+  const isPremiumPlus = tier === 'premium_plus';
+
+  const handleManageSubscription = async () => {
+    if (isWeb && user) {
+      try {
+        await redirectToPortal(user.id);
+      } catch (error) {
+        Alert.alert(t('error'), t('somethingWrong'));
+      }
+    }
+  };
+
+  return (
+    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.header, { paddingTop: 20 + insets.top }]}>
+          <TouchableOpacity style={[styles.closeButton, { top: 16 + insets.top }]} onPress={() => router.back()}>
+            <Text style={styles.closeText}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>{t('premiumFeatures') || 'Premium Features'}</Text>
+          <Text style={styles.subtitle}>
+            {isPremiumPlus ? '🌌 Cosmic' : '✨ Celestial'} {t('member') || 'Member'}
+          </Text>
+        </View>
+
+        {/* Premium Features */}
+        <View style={styles.dashboardSection}>
+          <Text style={styles.sectionTitle}>{t('celestialFeatures') || 'Celestial Features'}</Text>
+          {PREMIUM_FEATURES.map((feature) => (
+            <TouchableOpacity
+              key={feature.key}
+              style={styles.featureCard}
+              onPress={() => router.push(feature.route as any)}
+            >
+              <Text style={styles.featureIcon}>{feature.icon}</Text>
+              <Text style={styles.featureLabel}>{t(feature.key) || feature.key}</Text>
+              <Text style={styles.featureArrow}>→</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Premium Plus Features */}
+        <View style={styles.dashboardSection}>
+          <Text style={styles.sectionTitle}>{t('cosmicFeatures') || 'Cosmic Features'}</Text>
+          {PREMIUM_PLUS_FEATURES.map((feature) => (
+            <TouchableOpacity
+              key={feature.key}
+              style={[styles.featureCard, !isPremiumPlus && styles.featureCardLocked]}
+              onPress={() => {
+                if (isPremiumPlus) {
+                  router.push(feature.route as any);
+                } else {
+                  Alert.alert(
+                    t('upgradeRequired') || 'Upgrade Required',
+                    t('upgradeToCosmicMessage') || 'Upgrade to Cosmic to access this feature.'
+                  );
+                }
+              }}
+            >
+              <Text style={styles.featureIcon}>{feature.icon}</Text>
+              <Text style={[styles.featureLabel, !isPremiumPlus && styles.featureLabelLocked]}>
+                {t(feature.key) || feature.key}
+              </Text>
+              {!isPremiumPlus ? (
+                <Text style={styles.lockIcon}>🔒</Text>
+              ) : (
+                <Text style={styles.featureArrow}>→</Text>
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Manage Subscription */}
+        {isWeb && (
+          <TouchableOpacity style={styles.manageButton} onPress={handleManageSubscription}>
+            <Text style={styles.manageButtonText}>{t('manageSubscription') || 'Manage Subscription'}</Text>
+          </TouchableOpacity>
+        )}
+      </ScrollView>
+    </LinearGradient>
+  );
+}
+
 export default function PremiumScreen() {
+  const { tier, loading: premiumLoading } = usePremium();
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [selectedTier, setSelectedTier] = useState<'celestial' | 'cosmic'>('celestial');
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('yearly');
@@ -67,6 +176,11 @@ export default function PremiumScreen() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === 'web';
+
+  // Show dashboard if user has premium
+  if (!premiumLoading && (tier === 'premium' || tier === 'premium_plus')) {
+    return <PremiumDashboard />;
+  }
 
   useEffect(() => {
     if (!isWeb) {
@@ -577,5 +691,59 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  // Dashboard styles
+  dashboardSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 12,
+  },
+  featureCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  featureCardLocked: {
+    opacity: 0.6,
+  },
+  featureIcon: {
+    fontSize: 24,
+    marginRight: 14,
+  },
+  featureLabel: {
+    flex: 1,
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '500',
+  },
+  featureLabelLocked: {
+    color: '#888',
+  },
+  featureArrow: {
+    fontSize: 18,
+    color: '#888',
+  },
+  lockIcon: {
+    fontSize: 16,
+  },
+  manageButton: {
+    marginHorizontal: 20,
+    marginTop: 10,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  manageButtonText: {
+    color: '#888',
+    fontSize: 15,
   },
 });
