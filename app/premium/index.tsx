@@ -177,6 +177,11 @@ export default function PremiumScreen() {
 
   // Show premium dashboard if user already has premium
   if (isPremium && !premiumLoading) {
+    const features = [
+      ...PREMIUM_FEATURES,
+      ...(isPremiumPlus ? PREMIUM_PLUS_FEATURES : []),
+    ];
+
     return (
       <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
         <ScrollView
@@ -195,10 +200,10 @@ export default function PremiumScreen() {
             <Text style={styles.subtitle}>{t('premiumAccessGranted')}</Text>
           </View>
 
-          {/* Premium Features */}
+          {/* All Features */}
           <View style={styles.featuresSection}>
-            <Text style={styles.featuresSectionTitle}>Premium Features</Text>
-            {PREMIUM_FEATURES.map((feature) => (
+            <Text style={styles.featuresSectionTitle}>Your Premium Features</Text>
+            {features.map((feature) => (
               <TouchableOpacity
                 key={feature.key}
                 style={styles.featureCard}
@@ -207,34 +212,6 @@ export default function PremiumScreen() {
                 <Text style={styles.featureCardIcon}>{feature.icon}</Text>
                 <Text style={styles.featureCardText}>{t(feature.labelKey) || feature.labelKey}</Text>
                 <Text style={styles.featureCardArrow}>→</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Premium Plus Features */}
-          <View style={styles.featuresSection}>
-            <Text style={styles.featuresSectionTitle}>
-              Premium Plus Features {!isPremiumPlus && '🔒'}
-            </Text>
-            {PREMIUM_PLUS_FEATURES.map((feature) => (
-              <TouchableOpacity
-                key={feature.key}
-                style={[styles.featureCard, !isPremiumPlus && styles.featureCardLocked]}
-                onPress={() => {
-                  if (isPremiumPlus) {
-                    router.push(`/premium/${feature.key}` as any);
-                  } else {
-                    router.push('/premium/plus');
-                  }
-                }}
-              >
-                <Text style={styles.featureCardIcon}>{feature.icon}</Text>
-                <Text style={[styles.featureCardText, !isPremiumPlus && styles.featureCardTextLocked]}>
-                  {t(feature.labelKey) || feature.labelKey}
-                </Text>
-                <Text style={styles.featureCardArrow}>
-                  {isPremiumPlus ? '→' : '🔒'}
-                </Text>
               </TouchableOpacity>
             ))}
           </View>
