@@ -2,13 +2,13 @@ import { supabase } from './supabase';
 
 // Feature keys for premium features
 export type FeatureKey =
-  // Premium tier features
+  // Premium tier features (Celestial)
   | 'synastry'
   | 'super-likes'
   | 'likes'
   | 'priority-messages'
-  // Premium Plus tier features
   | 'natal-chart'
+  // Premium Plus tier features (Cosmic)
   | 'daily-horoscope'
   | 'monthly-horoscope'
   | 'planetary-transits'
@@ -18,13 +18,13 @@ export type FeatureKey =
 
 // Mapping of features to their required tier
 export const FEATURE_TIERS: Record<FeatureKey, 'premium' | 'premium_plus'> = {
-  // Premium tier features
+  // Premium tier features (Celestial)
   'synastry': 'premium',
   'super-likes': 'premium',
   'likes': 'premium',
   'priority-messages': 'premium',
-  // Premium Plus tier features
-  'natal-chart': 'premium_plus',
+  'natal-chart': 'premium',
+  // Premium Plus tier features (Cosmic)
   'daily-horoscope': 'premium_plus',
   'monthly-horoscope': 'premium_plus',
   'planetary-transits': 'premium_plus',
