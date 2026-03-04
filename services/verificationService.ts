@@ -2,8 +2,13 @@ import { Camera } from 'expo-camera';
 import { AudioModule } from 'expo-audio';
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
-import { decode } from 'base64-arraybuffer';
 import { supabase } from './supabase';
+
+// Only import on native platforms (not needed for web)
+let decode: ((base64: string) => ArrayBuffer) | null = null;
+if (Platform.OS !== 'web') {
+  decode = require('base64-arraybuffer').decode;
+}
 
 const MIN_RECORDING_DURATION_MS = 5000; // 5 seconds minimum
 const MAX_RECORDING_DURATION_MS = 15000; // 15 seconds maximum
@@ -103,7 +108,7 @@ export async function uploadVerificationVideo(
         console.log('Uploading to Supabase...');
         const result = await supabase.storage
           .from('verifications')
-          .upload(filePath, decode(base64), {
+          .upload(filePath, decode!(base64), {
             upsert: true,
             contentType: 'video/mp4',
           });
