@@ -431,6 +431,8 @@
 
   "premiumFeatures": "Recursos Premium",
   "member": "Membro",
+  "celestialTier": "Celestial",
+  "cosmicTier": "Cósmico",
   "celestialFeatures": "Recursos Celestiais",
   "cosmicFeatures": "Recursos Cósmicos",
   "upgradeRequired": "Atualização necessária",

@@ -60,17 +60,17 @@ const TIERS = {
 
 // Premium features available to subscribers
 const PREMIUM_FEATURES = [
-  { key: 'synastry', icon: '💕', route: '/premium/synastry', tier: 'premium' },
-  { key: 'natal-chart', icon: '🌟', route: '/premium/natal-chart', tier: 'premium' },
-  { key: 'likes', icon: '❤️', route: '/premium/likes', tier: 'premium' },
+  { key: 'advancedSynastry', icon: '💕', route: '/premium/synastry', tier: 'premium' },
+  { key: 'fullNatalChart', icon: '🌟', route: '/premium/natal-chart', tier: 'premium' },
+  { key: 'seeWhoLikes', icon: '❤️', route: '/premium/likes', tier: 'premium' },
 ];
 
 const PREMIUM_PLUS_FEATURES = [
-  { key: 'daily-horoscope', icon: '🔮', route: '/premium/daily-horoscope', tier: 'premium_plus' },
-  { key: 'monthly-horoscope', icon: '📅', route: '/premium/monthly-horoscope', tier: 'premium_plus' },
-  { key: 'planetary-transits', icon: '🪐', route: '/premium/planetary-transits', tier: 'premium_plus' },
-  { key: 'lucky-days', icon: '🍀', route: '/premium/lucky-days', tier: 'premium_plus' },
-  { key: 'date-planner', icon: '💫', route: '/premium/date-planner', tier: 'premium_plus' },
+  { key: 'dailyHoroscope', icon: '🔮', route: '/premium/daily-horoscope', tier: 'premium_plus' },
+  { key: 'monthlyHoroscope', icon: '📅', route: '/premium/monthly-horoscope', tier: 'premium_plus' },
+  { key: 'planetaryTransits', icon: '🪐', route: '/premium/planetary-transits', tier: 'premium_plus' },
+  { key: 'luckyDays', icon: '🍀', route: '/premium/lucky-days', tier: 'premium_plus' },
+  { key: 'datePlanner', icon: '💫', route: '/premium/date-planner', tier: 'premium_plus' },
 ];
 
 function PremiumDashboard() {
@@ -103,7 +103,7 @@ function PremiumDashboard() {
           </TouchableOpacity>
           <Text style={styles.title}>{t('premiumFeatures') || 'Premium Features'}</Text>
           <Text style={styles.subtitle}>
-            {isPremiumPlus ? '🌌 Cosmic' : '✨ Celestial'} {t('member') || 'Member'}
+            {isPremiumPlus ? '🌌 ' + (t('cosmicTier') || 'Cosmic') : '✨ ' + (t('celestialTier') || 'Celestial')} {t('member') || 'Member'}
           </Text>
         </View>
 

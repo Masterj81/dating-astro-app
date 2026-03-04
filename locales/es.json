@@ -431,6 +431,8 @@
 
   "premiumFeatures": "Funciones Premium",
   "member": "Miembro",
+  "celestialTier": "Celestial",
+  "cosmicTier": "Cósmico",
   "celestialFeatures": "Funciones Celestiales",
   "cosmicFeatures": "Funciones Cósmicas",
   "upgradeRequired": "Actualización requerida",

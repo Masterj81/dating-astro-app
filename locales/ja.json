@@ -431,6 +431,8 @@
 
   "premiumFeatures": "プレミアム機能",
   "member": "メンバー",
+  "celestialTier": "セレスティアル",
+  "cosmicTier": "コズミック",
   "celestialFeatures": "セレスティアル機能",
   "cosmicFeatures": "コズミック機能",
   "upgradeRequired": "アップグレードが必要",

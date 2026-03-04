@@ -431,6 +431,8 @@
 
   "premiumFeatures": "高级功能",
   "member": "会员",
+  "celestialTier": "天体",
+  "cosmicTier": "宇宙",
   "celestialFeatures": "天体功能",
   "cosmicFeatures": "宇宙功能",
   "upgradeRequired": "需要升级",

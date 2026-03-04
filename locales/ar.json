@@ -431,6 +431,8 @@
 
   "premiumFeatures": "ميزات بريميوم",
   "member": "عضو",
+  "celestialTier": "سماوي",
+  "cosmicTier": "كوني",
   "celestialFeatures": "الميزات السماوية",
   "cosmicFeatures": "الميزات الكونية",
   "upgradeRequired": "الترقية مطلوبة",
