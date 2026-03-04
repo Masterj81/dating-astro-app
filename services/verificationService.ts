@@ -1,5 +1,8 @@
 import { Camera } from 'expo-camera';
 import { AudioModule } from 'expo-audio';
+import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
+import { decode } from 'base64-arraybuffer';
 import { supabase } from './supabase';
 
 const MIN_RECORDING_DURATION_MS = 5000; // 5 seconds minimum
@@ -49,25 +52,77 @@ export async function uploadVerificationVideo(
   uri: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    console.log('Starting video upload for user:', userId);
+    console.log('Video URI:', uri);
+
     const fileName = `verification_${Date.now()}.mp4`;
     const filePath = `${userId}/${fileName}`;
 
-    // Fetch the video as blob
-    const response = await fetch(uri);
-    const blob = await response.blob();
+    let uploadError;
 
-    // Upload to Supabase storage (private bucket)
-    const { error: uploadError } = await supabase.storage
-      .from('verifications')
-      .upload(filePath, blob, {
-        upsert: true,
-        contentType: 'video/mp4',
-      });
+    if (Platform.OS === 'web') {
+      // Web: use fetch to get blob
+      console.log('Web platform: fetching blob...');
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      console.log('Blob size:', blob.size);
+
+      const result = await supabase.storage
+        .from('verifications')
+        .upload(filePath, blob, {
+          upsert: true,
+          contentType: 'video/mp4',
+        });
+      uploadError = result.error;
+    } else {
+      // Native (iOS/Android): check file info first
+      console.log('Native platform: checking file info...');
+
+      try {
+        const fileInfo = await FileSystem.getInfoAsync(uri);
+        console.log('File info:', JSON.stringify(fileInfo));
+
+        if (!fileInfo.exists) {
+          console.error('File does not exist at URI:', uri);
+          return { success: false, error: 'fileNotFound' };
+        }
+
+        // For Android, ensure we have the correct URI format
+        let fileUri = uri;
+        if (Platform.OS === 'android' && !uri.startsWith('file://')) {
+          fileUri = `file://${uri}`;
+          console.log('Adjusted Android URI:', fileUri);
+        }
+
+        console.log('Reading file as base64...');
+        const base64 = await FileSystem.readAsStringAsync(fileUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        console.log('Base64 length:', base64.length);
+
+        console.log('Uploading to Supabase...');
+        const result = await supabase.storage
+          .from('verifications')
+          .upload(filePath, decode(base64), {
+            upsert: true,
+            contentType: 'video/mp4',
+          });
+        uploadError = result.error;
+      } catch (fileError: any) {
+        console.error('File processing error:', fileError);
+        console.error('Error message:', fileError.message);
+        console.error('Error stack:', fileError.stack);
+        return { success: false, error: 'fileProcessingFailed' };
+      }
+    }
 
     if (uploadError) {
       console.error('Upload error:', uploadError);
+      console.error('Upload error message:', uploadError.message);
       return { success: false, error: 'uploadFailed' };
     }
+
+    console.log('Upload successful, getting signed URL...');
 
     // Get signed URL (since bucket is private)
     const { data: urlData, error: urlError } = await supabase.storage
