@@ -23,6 +23,8 @@ export default function PremiumGate({ feature, children }: PremiumGateProps) {
   const [accessState, setAccessState] = useState<'checking' | 'granted' | 'denied'>('checking');
   const [trialConsumed, setTrialConsumed] = useState(false);
 
+  console.log(`PremiumGate[${feature}] - tier: ${tier}, loading: ${loading}, accessState: ${accessState}`);
+
   useEffect(() => {
     checkAccess();
   }, [tier, loading, feature]);
@@ -39,13 +41,16 @@ export default function PremiumGate({ feature, children }: PremiumGateProps) {
   }, [accessState]);
 
   const checkAccess = async () => {
+    console.log(`PremiumGate[${feature}] checkAccess - loading: ${loading}`);
     if (loading) {
       setAccessState('checking');
       return;
     }
 
     // If user has subscription access, grant immediately
-    if (canAccessFeature(feature)) {
+    const hasAccess = canAccessFeature(feature);
+    console.log(`PremiumGate[${feature}] canAccessFeature: ${hasAccess}`);
+    if (hasAccess) {
       setAccessState('granted');
       return;
     }
@@ -111,6 +116,7 @@ export default function PremiumGate({ feature, children }: PremiumGateProps) {
 
   // Loading state
   if (accessState === 'checking') {
+    console.log(`PremiumGate[${feature}] rendering: LOADING`);
     return (
       <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
         <View style={styles.loadingContainer}>
@@ -122,6 +128,7 @@ export default function PremiumGate({ feature, children }: PremiumGateProps) {
 
   // Access denied - show paywall prompt
   if (accessState === 'denied') {
+    console.log(`PremiumGate[${feature}] rendering: DENIED`);
     const requiredTier = FEATURE_TIERS[feature];
 
     return (
@@ -190,6 +197,7 @@ export default function PremiumGate({ feature, children }: PremiumGateProps) {
   }
 
   // Access granted - render children with optional trial indicator
+  console.log(`PremiumGate[${feature}] rendering: GRANTED - showing children`);
   return (
     <>
       {children}
