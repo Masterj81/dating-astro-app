@@ -55,10 +55,7 @@ export default function EditProfileScreen() {
   }, [user]);
 
   const loadProfile = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    if (!user) return;
     setLoading(true);
 
     const { data, error } = await supabase

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { Platform } from 'react-native';
+import Purchases from 'react-native-purchases';
 import { useAuth } from './AuthContext';
 import {
   FeatureKey,
@@ -8,19 +9,8 @@ import {
   incrementFeatureUsage,
   getFeatureUsageToday,
 } from '../services/premiumUsage';
+import { initializePurchases, isPurchasesConfigured } from '../services/purchases';
 import { getWebSubscriptionStatus } from '../services/webPayments';
-
-// Only import RevenueCat on native platforms
-let Purchases: any = null;
-let initializePurchases: ((userId?: string) => Promise<void>) | null = null;
-let isPurchasesConfigured: (() => boolean) | null = null;
-
-if (Platform.OS !== 'web') {
-  Purchases = require('react-native-purchases').default;
-  const purchasesModule = require('../services/purchases');
-  initializePurchases = purchasesModule.initializePurchases;
-  isPurchasesConfigured = purchasesModule.isPurchasesConfigured;
-}
 
 export type SubscriptionTier = 'free' | 'premium' | 'premium_plus';
 
@@ -98,8 +88,8 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
     // Native: Check RevenueCat
     try {
       // Ensure RevenueCat is initialized before checking
-      if (!isPurchasesConfigured || !isPurchasesConfigured()) {
-        if (userId && initializePurchases) {
+      if (!isPurchasesConfigured()) {
+        if (userId) {
           await initializePurchases(userId);
         } else {
           // Can't check without initialization
@@ -107,7 +97,6 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
         }
       }
 
-      if (!Purchases) return 'free';
       const customerInfo = await Purchases.getCustomerInfo();
 
       // Check for premium_plus first (higher tier)
@@ -147,15 +136,14 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
 
   // Listen for subscription changes (only when user is logged in and Purchases is configured)
   useEffect(() => {
-    // Skip on web or if RevenueCat isn't available
-    if (!user || Platform.OS === 'web' || !Purchases || !isPurchasesConfigured || !isPurchasesConfigured()) {
+    if (!user || !isPurchasesConfigured()) {
       return;
     }
 
     let listener: { remove: () => void } | undefined;
 
     try {
-      listener = Purchases.addCustomerInfoUpdateListener((info: any) => {
+      listener = Purchases.addCustomerInfoUpdateListener((info) => {
         if (info.entitlements.active['premium_plus'] !== undefined) {
           setTier('premium_plus');
         } else if (info.entitlements.active['premium'] !== undefined) {

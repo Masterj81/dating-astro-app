@@ -33,10 +33,7 @@ export default function BlockedUsersScreen() {
   }, [user]);
 
   const loadBlockedUsers = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    if (!user) return;
     setLoading(true);
 
     // In real app, fetch from blocked_users table

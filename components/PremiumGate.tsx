@@ -25,18 +25,7 @@ export default function PremiumGate({ feature, children }: PremiumGateProps) {
 
   useEffect(() => {
     checkAccess();
-  }, [tier, loading, feature]);
-
-  // Failsafe: If stuck in checking state for too long, show denied
-  useEffect(() => {
-    if (accessState === 'checking') {
-      const timeout = setTimeout(() => {
-        console.warn('PremiumGate timeout - falling back to denied state');
-        setAccessState('denied');
-      }, 10000); // 10 second timeout
-      return () => clearTimeout(timeout);
-    }
-  }, [accessState]);
+  }, [tier, loading]);
 
   const checkAccess = async () => {
     if (loading) {
@@ -51,23 +40,14 @@ export default function PremiumGate({ feature, children }: PremiumGateProps) {
     }
 
     // For free users, try to consume trial
-    try {
-      const result = await consumeTrial(feature);
+    const result = await consumeTrial(feature);
 
-      if (result.success) {
-        setAccessState('granted');
-        setTrialConsumed(true);
-      } else if (result.showPaywall) {
-        setAccessState('denied');
-        // Don't auto-show paywall, let user decide
-      } else {
-        // Fallback to denied state if neither success nor showPaywall
-        setAccessState('denied');
-      }
-    } catch (error) {
-      console.error('Error checking trial access:', error);
-      // On error, show denied state so user can still navigate
+    if (result.success) {
+      setAccessState('granted');
+      setTrialConsumed(true);
+    } else if (result.showPaywall) {
       setAccessState('denied');
+      // Don't auto-show paywall, let user decide
     }
   };
 
