@@ -45,7 +45,10 @@ function SynastryScreenContent() {
   }, [matchId, user]);
 
   const loadProfiles = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
     // Load user's profile

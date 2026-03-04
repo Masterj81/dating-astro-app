@@ -67,7 +67,10 @@ export default function PreferencesScreen() {
   }, [user]);
 
   const loadPreferences = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
     const { data } = await supabase

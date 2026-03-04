@@ -61,7 +61,10 @@ function LuckyDaysScreenContent() {
   }, [user]);
 
   const loadUserSign = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
     const { data } = await supabase

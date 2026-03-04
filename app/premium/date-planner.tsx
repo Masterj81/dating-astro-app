@@ -171,7 +171,10 @@ function DatePlannerContent() {
   }, [user, matchId]);
 
   const loadData = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
     try {
