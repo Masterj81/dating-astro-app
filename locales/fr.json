@@ -128,6 +128,7 @@
   "premiumAccessGranted": "Vous avez maintenant accès à toutes les fonctionnalités.",
   "premiumRestored": "Votre accès premium a été restauré.",
   "noPreviousPurchases": "Nous n'avons pas trouvé d'achats précédents.",
+  "startExploring": "Commencer à explorer",
 
   "aries": "Bélier",
   "taurus": "Taureau",
@@ -805,6 +806,9 @@
   "verificationSuccessDesc": "Votre badge vérifié est maintenant visible sur votre profil",
   "done": "Terminé",
   "cameraPermissionDenied": "Les autorisations caméra et microphone sont requises",
+  "uploadFailed": "Échec du téléversement. Veuillez réessayer.",
+  "uploading": "Téléversement...",
+  "verificationFailed": "Échec de la vérification. Veuillez réessayer.",
 
   "datePlanner": "Planificateur de Rendez-vous",
   "datePlannerDesc": "Trouvez les meilleures dates selon les alignements cosmiques",

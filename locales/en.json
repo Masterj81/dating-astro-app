@@ -135,6 +135,7 @@
   "premiumAccessGranted": "You now have access to all features.",
   "premiumRestored": "Your premium access has been restored.",
   "noPreviousPurchases": "We could not find any previous purchases.",
+  "startExploring": "Start Exploring",
 
   "aries": "Aries",
   "taurus": "Taurus",
@@ -812,6 +813,9 @@
   "verificationSuccessDesc": "Your verified badge is now visible on your profile",
   "done": "Done",
   "cameraPermissionDenied": "Camera and microphone permissions are required for verification",
+  "uploadFailed": "Upload failed. Please try again.",
+  "uploading": "Uploading...",
+  "verificationFailed": "Verification failed. Please try again.",
 
   "datePlanner": "Astro Date Planner",
   "datePlannerDesc": "Find the best dates based on cosmic alignments",

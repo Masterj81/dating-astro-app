@@ -128,6 +128,7 @@
   "premiumAccessGranted": "你现在可以访问所有功能。",
   "premiumRestored": "你的高级版访问已恢复。",
   "noPreviousPurchases": "未找到之前的购买记录。",
+  "startExploring": "开始探索",
 
   "aries": "白羊座",
   "taurus": "金牛座",
@@ -805,6 +806,9 @@
   "verificationSuccessDesc": "你的认证徽章现在显示在你的个人资料上",
   "done": "完成",
   "cameraPermissionDenied": "认证需要摄像头和麦克风权限",
+  "uploadFailed": "上传失败，请重试。",
+  "uploading": "上传中...",
+  "verificationFailed": "认证失败，请重试。",
 
   "datePlanner": "星象约会规划师",
   "datePlannerDesc": "根据宇宙排列找到最佳约会日期",

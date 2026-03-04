@@ -14,9 +14,10 @@ import {
 import { PurchasesPackage } from 'react-native-purchases';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { usePremium } from '../../contexts/PremiumContext';
 import { useAuth } from '../_layout';
 import { getOfferings, purchasePackage, restorePurchases } from '../../services/purchases';
-import { redirectToCheckout, WebSubscriptionPlan } from '../../services/webPayments';
+import { redirectToCheckout, redirectToPortal, WebSubscriptionPlan } from '../../services/webPayments';
 
 // Subscription tiers with features
 const TIERS = {
@@ -57,6 +58,24 @@ const TIERS = {
   },
 };
 
+// Premium features list for dashboard
+const PREMIUM_FEATURES = [
+  { key: 'natal-chart', icon: '🌙', labelKey: 'fullNatalChart', tier: 'premium' },
+  { key: 'synastry', icon: '💫', labelKey: 'advancedSynastry', tier: 'premium' },
+  { key: 'likes', icon: '❤️', labelKey: 'seeWhoLikes', tier: 'premium' },
+  { key: 'super-likes', icon: '⭐', labelKey: 'superLikes', tier: 'premium' },
+  { key: 'priority-messages', icon: '💬', labelKey: 'priorityMessages', tier: 'premium' },
+];
+
+const PREMIUM_PLUS_FEATURES = [
+  { key: 'daily-horoscope', icon: '☀️', labelKey: 'dailyHoroscope', tier: 'premium_plus' },
+  { key: 'monthly-horoscope', icon: '📅', labelKey: 'monthlyHoroscope', tier: 'premium_plus' },
+  { key: 'planetary-transits', icon: '🪐', labelKey: 'planetaryTransits', tier: 'premium_plus' },
+  { key: 'retrograde-alerts', icon: '⚠️', labelKey: 'retrogradeAlerts', tier: 'premium_plus' },
+  { key: 'lucky-days', icon: '🍀', labelKey: 'luckyDays', tier: 'premium_plus' },
+  { key: 'date-planner', icon: '💕', labelKey: 'datePlanner', tier: 'premium_plus' },
+];
+
 export default function PremiumScreen() {
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [selectedTier, setSelectedTier] = useState<'celestial' | 'cosmic'>('celestial');
@@ -65,8 +84,12 @@ export default function PremiumScreen() {
   const [purchasing, setPurchasing] = useState(false);
   const { t } = useLanguage();
   const { user } = useAuth();
+  const { tier, loading: premiumLoading } = usePremium();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === 'web';
+
+  const isPremium = tier === 'premium' || tier === 'premium_plus';
+  const isPremiumPlus = tier === 'premium_plus';
 
   useEffect(() => {
     if (!isWeb) {
@@ -141,6 +164,106 @@ export default function PremiumScreen() {
   const currentPrice = billingPeriod === 'monthly'
     ? selectedTierData.monthlyPrice
     : selectedTierData.yearlyPrice;
+
+  const handleManageSubscription = async () => {
+    if (isWeb && user) {
+      try {
+        await redirectToPortal(user.id);
+      } catch (error: any) {
+        Alert.alert(t('error'), error.message || t('somethingWrong'));
+      }
+    }
+  };
+
+  // Show premium dashboard if user already has premium
+  if (isPremium && !premiumLoading) {
+    return (
+      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={[styles.header, { paddingTop: 20 + insets.top }]}>
+            <TouchableOpacity style={[styles.closeButton, { top: 16 + insets.top }]} onPress={() => router.back()}>
+              <Text style={styles.closeText}>✕</Text>
+            </TouchableOpacity>
+            <Text style={styles.dashboardBadge}>
+              {isPremiumPlus ? '🌌 Cosmic' : '✨ Celestial'}
+            </Text>
+            <Text style={styles.title}>{t('welcomePremium')}</Text>
+            <Text style={styles.subtitle}>{t('premiumAccessGranted')}</Text>
+          </View>
+
+          {/* Premium Features */}
+          <View style={styles.featuresSection}>
+            <Text style={styles.featuresSectionTitle}>Premium Features</Text>
+            {PREMIUM_FEATURES.map((feature) => (
+              <TouchableOpacity
+                key={feature.key}
+                style={styles.featureCard}
+                onPress={() => router.push(`/premium/${feature.key}` as any)}
+              >
+                <Text style={styles.featureCardIcon}>{feature.icon}</Text>
+                <Text style={styles.featureCardText}>{t(feature.labelKey) || feature.labelKey}</Text>
+                <Text style={styles.featureCardArrow}>→</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Premium Plus Features */}
+          <View style={styles.featuresSection}>
+            <Text style={styles.featuresSectionTitle}>
+              Premium Plus Features {!isPremiumPlus && '🔒'}
+            </Text>
+            {PREMIUM_PLUS_FEATURES.map((feature) => (
+              <TouchableOpacity
+                key={feature.key}
+                style={[styles.featureCard, !isPremiumPlus && styles.featureCardLocked]}
+                onPress={() => {
+                  if (isPremiumPlus) {
+                    router.push(`/premium/${feature.key}` as any);
+                  } else {
+                    router.push('/premium/plus');
+                  }
+                }}
+              >
+                <Text style={styles.featureCardIcon}>{feature.icon}</Text>
+                <Text style={[styles.featureCardText, !isPremiumPlus && styles.featureCardTextLocked]}>
+                  {t(feature.labelKey) || feature.labelKey}
+                </Text>
+                <Text style={styles.featureCardArrow}>
+                  {isPremiumPlus ? '→' : '🔒'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Upgrade to Premium Plus (if on Celestial) */}
+          {!isPremiumPlus && (
+            <TouchableOpacity
+              style={styles.upgradeButton}
+              onPress={() => router.push('/premium/plus')}
+            >
+              <LinearGradient
+                colors={['#9333ea', '#7c3aed']}
+                style={styles.upgradeGradient}
+              >
+                <Text style={styles.upgradeText}>{t('upgradeToPremiumPlus')}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+
+          {/* Manage Subscription */}
+          {isWeb && (
+            <TouchableOpacity style={styles.manageButton} onPress={handleManageSubscription}>
+              <Text style={styles.manageButtonText}>Manage Subscription</Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+      </LinearGradient>
+    );
+  }
 
   return (
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
@@ -577,5 +700,74 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  // Premium Dashboard styles
+  dashboardBadge: {
+    fontSize: 24,
+    marginBottom: 8,
+  },
+  featuresSection: {
+    paddingHorizontal: 24,
+    marginBottom: 24,
+  },
+  featuresSectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 12,
+  },
+  featureCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  featureCardLocked: {
+    opacity: 0.6,
+  },
+  featureCardIcon: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  featureCardText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#fff',
+  },
+  featureCardTextLocked: {
+    color: '#888',
+  },
+  featureCardArrow: {
+    fontSize: 16,
+    color: '#666',
+  },
+  upgradeButton: {
+    marginHorizontal: 24,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  upgradeGradient: {
+    paddingVertical: 18,
+    alignItems: 'center',
+  },
+  upgradeText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  manageButton: {
+    marginHorizontal: 24,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  manageButtonText: {
+    color: '#888',
+    fontSize: 14,
+    textDecorationLine: 'underline',
   },
 });

@@ -39,7 +39,10 @@ export default function SettingsScreen() {
   });
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoadingPrefs(false);
+      return;
+    }
     (async () => {
       const { data } = await supabase
         .from('profiles')
