@@ -56,10 +56,7 @@ function PlanetaryTransitsScreenContent() {
   }, [user]);
 
   const loadUserSign = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    if (!user) return;
     setLoading(true);
 
     const { data } = await supabase

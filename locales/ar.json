@@ -128,7 +128,6 @@
   "premiumAccessGranted": "لديك الآن الوصول إلى جميع الميزات.",
   "premiumRestored": "تم استعادة وصولك إلى بريميوم.",
   "noPreviousPurchases": "لم نجد مشتريات سابقة.",
-  "startExploring": "ابدأ الاستكشاف",
 
   "aries": "الحمل",
   "taurus": "الثور",
@@ -806,9 +805,6 @@
   "verificationSuccessDesc": "شارة التوثيق الآن مرئية على ملفك الشخصي",
   "done": "تم",
   "cameraPermissionDenied": "أذونات الكاميرا والميكروفون مطلوبة للتوثيق",
-  "uploadFailed": "فشل الرفع. يرجى المحاولة مرة أخرى.",
-  "uploading": "جاري الرفع...",
-  "verificationFailed": "فشل التحقق. يرجى المحاولة مرة أخرى.",
 
   "datePlanner": "مخطط المواعيد الفلكي",
   "datePlannerDesc": "اعثر على أفضل التواريخ بناءً على المحاذاة الكونية",

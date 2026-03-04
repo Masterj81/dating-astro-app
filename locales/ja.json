@@ -128,7 +128,6 @@
   "premiumAccessGranted": "すべての機能にアクセスできるようになりました。",
   "premiumRestored": "プレミアムアクセスが復元されました。",
   "noPreviousPurchases": "以前の購入が見つかりませんでした。",
-  "startExploring": "探索を始める",
 
   "aries": "牡羊座",
   "taurus": "牡牛座",
@@ -806,9 +805,6 @@
   "verificationSuccessDesc": "認証バッジがプロフィールに表示されます",
   "done": "完了",
   "cameraPermissionDenied": "認証にはカメラとマイクの許可が必要です",
-  "uploadFailed": "アップロードに失敗しました。もう一度お試しください。",
-  "uploading": "アップロード中...",
-  "verificationFailed": "認証に失敗しました。もう一度お試しください。",
 
   "datePlanner": "アストロデートプランナー",
   "datePlannerDesc": "宇宙の配置に基づいて最適な日を見つけましょう",

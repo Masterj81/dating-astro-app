@@ -45,10 +45,7 @@ function SynastryScreenContent() {
   }, [matchId, user]);
 
   const loadProfiles = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    if (!user) return;
     setLoading(true);
 
     // Load user's profile
@@ -64,15 +61,11 @@ function SynastryScreenContent() {
 
     // Load match's profile if matchId provided
     if (matchId) {
-      const { data: matchData, error: matchError } = await supabase
-        .from('profiles')
+      const { data: matchData } = await supabase
+        .from('discoverable_profiles')
         .select('*')
         .eq('id', matchId)
-        .maybeSingle();
-
-      if (matchError) {
-        console.error('Error loading match profile:', matchError);
-      }
+        .single();
 
       if (matchData) {
         setMatchProfile(matchData);

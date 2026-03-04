@@ -128,7 +128,6 @@
   "premiumAccessGranted": "Você agora tem acesso a todos os recursos.",
   "premiumRestored": "Seu acesso premium foi restaurado.",
   "noPreviousPurchases": "Não encontramos compras anteriores.",
-  "startExploring": "Começar a explorar",
 
   "aries": "Áries",
   "taurus": "Touro",
@@ -806,9 +805,6 @@
   "verificationSuccessDesc": "Seu selo verificado agora está visível no seu perfil",
   "done": "Concluído",
   "cameraPermissionDenied": "Permissões de câmera e microfone são necessárias",
-  "uploadFailed": "Falha no envio. Por favor, tente novamente.",
-  "uploading": "Enviando...",
-  "verificationFailed": "Falha na verificação. Por favor, tente novamente.",
 
   "datePlanner": "Planejador de Encontros",
   "datePlannerDesc": "Encontre as melhores datas com base em alinhamentos cósmicos",

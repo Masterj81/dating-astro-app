@@ -128,7 +128,6 @@
   "premiumAccessGranted": "Ahora tienes acceso a todas las funciones.",
   "premiumRestored": "Tu acceso premium ha sido restaurado.",
   "noPreviousPurchases": "No encontramos compras anteriores.",
-  "startExploring": "Empezar a explorar",
 
   "aries": "Aries",
   "taurus": "Tauro",
@@ -806,9 +805,6 @@
   "verificationSuccessDesc": "Tu insignia verificada ahora es visible en tu perfil",
   "done": "Listo",
   "cameraPermissionDenied": "Se requieren permisos de cámara y micrófono para la verificación",
-  "uploadFailed": "Error al subir. Por favor, inténtalo de nuevo.",
-  "uploading": "Subiendo...",
-  "verificationFailed": "Verificación fallida. Por favor, inténtalo de nuevo.",
 
   "datePlanner": "Planificador de Citas",
   "datePlannerDesc": "Encuentra las mejores fechas según alineaciones cósmicas",

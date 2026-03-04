@@ -128,7 +128,6 @@
   "premiumAccessGranted": "Du hast jetzt Zugang zu allen Funktionen.",
   "premiumRestored": "Dein Premium-Zugang wurde wiederhergestellt.",
   "noPreviousPurchases": "Wir konnten keine früheren Käufe finden.",
-  "startExploring": "Entdecken starten",
 
   "aries": "Widder",
   "taurus": "Stier",
@@ -806,9 +805,6 @@
   "verificationSuccessDesc": "Dein Verifizierungsbadge ist jetzt auf deinem Profil sichtbar",
   "done": "Fertig",
   "cameraPermissionDenied": "Kamera- und Mikrofonberechtigungen sind erforderlich",
-  "uploadFailed": "Upload fehlgeschlagen. Bitte versuche es erneut.",
-  "uploading": "Wird hochgeladen...",
-  "verificationFailed": "Verifizierung fehlgeschlagen. Bitte versuche es erneut.",
 
   "datePlanner": "Astro-Datumsplaner",
   "datePlannerDesc": "Finde die besten Dates basierend auf kosmischen Ausrichtungen",

@@ -39,10 +39,7 @@ function LikesScreenContent() {
   }, [user]);
 
   const loadLikes = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    if (!user) return;
     setLoading(true);
 
     // Get users who liked the current user
