@@ -429,6 +429,14 @@
   "dominantFixed": "固定星座占主导地位，你坚定、执着、可靠。",
   "dominantMutable": "变动星座占主导地位，你适应力强、灵活、多才多艺。",
 
+  "premiumFeatures": "高级功能",
+  "member": "会员",
+  "celestialFeatures": "天体功能",
+  "cosmicFeatures": "宇宙功能",
+  "upgradeRequired": "需要升级",
+  "upgradeToCosmicMessage": "此功能需要宇宙级别。升级以解锁所有功能。",
+  "manageSubscription": "管理订阅",
+
   "premiumPlus": "高级Plus",
   "premiumPlusSubtitle": "包含每日指导的完整占星体验",
   "whatsIncluded": "包含内容",

@@ -436,6 +436,14 @@
   "dominantFixed": "With a dominance of Fixed signs, you are determined, persistent, and reliable. Once you commit to something, you see it through. Stability and loyalty define you.",
   "dominantMutable": "With a dominance of Mutable signs, you are adaptable, flexible, and versatile. You handle change well and can see multiple perspectives. You are the editors and refiners of the zodiac.",
 
+  "premiumFeatures": "Premium Features",
+  "member": "Member",
+  "celestialFeatures": "Celestial Features",
+  "cosmicFeatures": "Cosmic Features",
+  "upgradeRequired": "Upgrade Required",
+  "upgradeToCosmicMessage": "This feature requires Cosmic tier. Upgrade to unlock all features.",
+  "manageSubscription": "Manage Subscription",
+
   "premiumPlus": "Premium Plus",
   "premiumPlusSubtitle": "Complete astrology experience with daily guidance",
   "whatsIncluded": "What's Included",

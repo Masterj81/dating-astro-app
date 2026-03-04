@@ -429,6 +429,14 @@
   "dominantFixed": "Com dominância de signos Fixos, você é determinado, persistente e confiável.",
   "dominantMutable": "Com dominância de signos Mutáveis, você é adaptável, flexível e versátil.",
 
+  "premiumFeatures": "Recursos Premium",
+  "member": "Membro",
+  "celestialFeatures": "Recursos Celestiais",
+  "cosmicFeatures": "Recursos Cósmicos",
+  "upgradeRequired": "Atualização necessária",
+  "upgradeToCosmicMessage": "Este recurso requer o nível Cósmico. Atualize para desbloquear todos os recursos.",
+  "manageSubscription": "Gerenciar assinatura",
+
   "premiumPlus": "Premium Plus",
   "premiumPlusSubtitle": "Experiência astrológica completa com orientação diária",
   "whatsIncluded": "O que está incluído",

@@ -429,6 +429,14 @@
   "dominantFixed": "Mit einer Dominanz fixer Zeichen bist du entschlossen, beharrlich und zuverlässig.",
   "dominantMutable": "Mit einer Dominanz veränderlicher Zeichen bist du anpassungsfähig, flexibel und vielseitig.",
 
+  "premiumFeatures": "Premium-Funktionen",
+  "member": "Mitglied",
+  "celestialFeatures": "Himmlische Funktionen",
+  "cosmicFeatures": "Kosmische Funktionen",
+  "upgradeRequired": "Upgrade erforderlich",
+  "upgradeToCosmicMessage": "Diese Funktion erfordert die Kosmische Stufe. Upgrade, um alle Funktionen freizuschalten.",
+  "manageSubscription": "Abonnement verwalten",
+
   "premiumPlus": "Premium Plus",
   "premiumPlusSubtitle": "Komplette astrologische Erfahrung mit täglicher Anleitung",
   "whatsIncluded": "Was enthalten ist",

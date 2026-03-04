@@ -429,6 +429,14 @@
   "dominantFixed": "Con dominancia de signos Fijos, eres determinado, persistente y confiable. Una vez comprometido, lo llevas hasta el final. La estabilidad y lealtad te definen.",
   "dominantMutable": "Con dominancia de signos Mutables, eres adaptable, flexible y versátil. Manejas bien el cambio y puedes ver múltiples perspectivas. Eres los editores y refinadores del zodiaco.",
 
+  "premiumFeatures": "Funciones Premium",
+  "member": "Miembro",
+  "celestialFeatures": "Funciones Celestiales",
+  "cosmicFeatures": "Funciones Cósmicas",
+  "upgradeRequired": "Actualización requerida",
+  "upgradeToCosmicMessage": "Esta función requiere el nivel Cósmico. Actualiza para desbloquear todas las funciones.",
+  "manageSubscription": "Gestionar suscripción",
+
   "premiumPlus": "Premium Plus",
   "premiumPlusSubtitle": "Experiencia astrológica completa con guía diaria",
   "whatsIncluded": "Qué Incluye",

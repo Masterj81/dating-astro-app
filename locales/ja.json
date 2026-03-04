@@ -429,6 +429,14 @@
   "dominantFixed": "不動宮の星座が支配的な場合、あなたは決意があり、粘り強く、信頼できます。",
   "dominantMutable": "柔軟宮の星座が支配的な場合、あなたは適応力があり、柔軟で多才です。",
 
+  "premiumFeatures": "プレミアム機能",
+  "member": "メンバー",
+  "celestialFeatures": "セレスティアル機能",
+  "cosmicFeatures": "コズミック機能",
+  "upgradeRequired": "アップグレードが必要",
+  "upgradeToCosmicMessage": "この機能にはコズミックティアが必要です。すべての機能を解除するにはアップグレードしてください。",
+  "manageSubscription": "サブスクリプションを管理",
+
   "premiumPlus": "プレミアムプラス",
   "premiumPlusSubtitle": "毎日のガイダンスを含む完全な占星術体験",
   "whatsIncluded": "含まれるもの",
