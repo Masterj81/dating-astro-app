@@ -49,7 +49,7 @@ import { registerServiceWorker, setupInstallPrompt } from '../services/pwa';
 // Only initialize Sentry on native platforms
 if (Platform.OS !== 'web') {
   Sentry.init({
-    dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || 'https://8efb9346d012b2477c4c849bcaae2238@o4510839384178688.ingest.us.sentry.io/4510839416225792',
+    dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
 
     // Disable PII collection for privacy (no IP addresses, cookies, etc.)
     sendDefaultPii: false,
