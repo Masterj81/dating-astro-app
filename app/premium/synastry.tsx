@@ -32,6 +32,7 @@ type CompatibilityArea = {
 };
 
 function SynastryScreenContent() {
+  console.log('SynastryScreenContent mounting...');
   const { matchId } = useLocalSearchParams<{ matchId: string }>();
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -39,6 +40,8 @@ function SynastryScreenContent() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
+
+  console.log('SynastryScreenContent - user:', user?.id, 'loading:', loading, 'insets:', insets);
 
   useEffect(() => {
     loadProfiles();
@@ -204,6 +207,7 @@ function SynastryScreenContent() {
   };
 
   if (loading) {
+    console.log('SynastryScreenContent - rendering LOADING state');
     return (
       <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
         <ActivityIndicator size="large" color="#e94560" />
@@ -211,6 +215,7 @@ function SynastryScreenContent() {
     );
   }
 
+  console.log('SynastryScreenContent - rendering CONTENT');
   const overallScore = calculateOverallScore();
   const areas = getCompatibilityAreas();
   const aspects = getAspects();

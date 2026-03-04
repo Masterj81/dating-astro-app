@@ -199,7 +199,7 @@ export default function PremiumGate({ feature, children }: PremiumGateProps) {
   // Access granted - render children with optional trial indicator
   console.log(`PremiumGate[${feature}] rendering: GRANTED - showing children`);
   return (
-    <>
+    <View style={{ flex: 1 }}>
       {children}
 
       {/* Show trial indicator for free users using trial */}
@@ -217,7 +217,7 @@ export default function PremiumGate({ feature, children }: PremiumGateProps) {
           </Text>
         </TouchableOpacity>
       )}
-    </>
+    </View>
   );
 }
 
