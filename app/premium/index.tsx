@@ -18,35 +18,55 @@ import { useAuth } from '../_layout';
 import { getOfferings, purchasePackage, restorePurchases } from '../../services/purchases';
 import { redirectToCheckout, WebSubscriptionPlan } from '../../services/webPayments';
 
-// Web pricing plans
-const WEB_PLANS: { id: WebSubscriptionPlan; name: string; price: string; period: string; badge?: string; originalPrice?: string }[] = [
-  { id: 'celestial_monthly', name: 'Celestial', price: '$9.99', period: 'month' },
-  { id: 'celestial_yearly', name: 'Celestial', price: '$47.95', period: 'year', badge: '60% OFF', originalPrice: '$119.88' },
-  { id: 'cosmic_monthly', name: 'Cosmic', price: '$14.99', period: 'month' },
-  { id: 'cosmic_yearly', name: 'Cosmic', price: '$71.95', period: 'year', badge: '60% OFF', originalPrice: '$179.88' },
-];
+// Subscription tiers with features
+const TIERS = {
+  celestial: {
+    name: 'Celestial',
+    emoji: '✨',
+    monthlyPrice: '$9.99',
+    yearlyPrice: '$47.95',
+    yearlyOriginal: '$119.88',
+    color: '#e94560',
+    features: [
+      'Unlimited swipes',
+      'See who likes you',
+      'Full natal chart analysis',
+      'Advanced synastry reports',
+      '5 Super Likes per day',
+      'Priority messages',
+      'No ads',
+    ],
+  },
+  cosmic: {
+    name: 'Cosmic',
+    emoji: '🌌',
+    monthlyPrice: '$14.99',
+    yearlyPrice: '$71.95',
+    yearlyOriginal: '$179.88',
+    color: '#9333ea',
+    features: [
+      'Everything in Celestial',
+      'Daily personalized horoscope',
+      'Monthly forecast predictions',
+      'Planetary transit alerts',
+      'Retrograde notifications',
+      'Lucky days calendar',
+      'AI-powered date planner',
+      'Unlimited Super Likes',
+    ],
+  },
+};
 
 export default function PremiumScreen() {
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
-  const [selectedPackage, setSelectedPackage] = useState<PurchasesPackage | null>(null);
-  const [selectedWebPlan, setSelectedWebPlan] = useState<WebSubscriptionPlan>('celestial_yearly');
+  const [selectedTier, setSelectedTier] = useState<'celestial' | 'cosmic'>('celestial');
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('yearly');
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
-  const [, setRefresh] = useState(0);
   const { t } = useLanguage();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === 'web';
-
-  const PREMIUM_FEATURES = [
-    { emoji: '♾️', title: t('unlimitedSwipes'), description: t('unlimitedSwipesDesc'), route: null },
-    { emoji: '🌙', title: t('fullNatalChart'), description: t('fullNatalChartDesc'), route: '/premium/natal-chart' },
-    { emoji: '💫', title: t('advancedSynastry'), description: t('advancedSynastryDesc'), route: '/premium/synastry' },
-    { emoji: '⭐', title: t('superLikes'), description: t('superLikesDesc'), route: '/premium/super-likes' },
-    { emoji: '🔮', title: t('seeWhoLikes'), description: t('seeWhoLikesDesc'), route: '/premium/likes' },
-    { emoji: '💬', title: t('priorityMessages'), description: t('priorityMessagesDesc'), route: '/premium/priority-messages' },
-    { emoji: '📅', title: t('datePlanner'), description: t('datePlannerDesc'), route: '/premium/date-planner', isPremiumPlus: true },
-  ];
 
   useEffect(() => {
     if (!isWeb) {
@@ -60,14 +80,14 @@ export default function PremiumScreen() {
     setLoading(true);
     const availablePackages = await getOfferings();
     setPackages(availablePackages);
-    if (availablePackages.length > 0) {
-      setSelectedPackage(availablePackages[0]);
-    }
     setLoading(false);
   };
 
+  const getSelectedPlanId = (): WebSubscriptionPlan => {
+    return `${selectedTier}_${billingPeriod}` as WebSubscriptionPlan;
+  };
+
   const handlePurchase = async () => {
-    // Web: Redirect to Stripe Checkout
     if (isWeb) {
       if (!user) {
         Alert.alert(t('error'), t('pleaseLogin'));
@@ -75,7 +95,7 @@ export default function PremiumScreen() {
       }
       setPurchasing(true);
       try {
-        await redirectToCheckout(selectedWebPlan, user.id);
+        await redirectToCheckout(getSelectedPlanId(), user.id);
       } catch (error: any) {
         Alert.alert(t('error'), error.message || t('somethingWrong'));
         setPurchasing(false);
@@ -84,12 +104,13 @@ export default function PremiumScreen() {
     }
 
     // Native: Use RevenueCat
+    const selectedPackage = packages.find(pkg =>
+      pkg.identifier.toLowerCase().includes(selectedTier) &&
+      pkg.identifier.toLowerCase().includes(billingPeriod)
+    );
+
     if (!selectedPackage) {
-      Alert.alert(
-        t('testMode'),
-        t('testModeMessage'),
-        [{ text: t('ok'), onPress: () => router.back() }]
-      );
+      Alert.alert(t('testMode'), t('testModeMessage'), [{ text: t('ok'), onPress: () => router.back() }]);
       return;
     }
 
@@ -98,9 +119,7 @@ export default function PremiumScreen() {
     setPurchasing(false);
 
     if (result.success) {
-      Alert.alert(t('welcomePremium'), t('premiumAccessGranted'), [
-        { text: t('ok'), onPress: () => router.back() },
-      ]);
+      Alert.alert(t('welcomePremium'), t('premiumAccessGranted'), [{ text: t('ok'), onPress: () => router.back() }]);
     } else if (!result.cancelled) {
       Alert.alert(t('error'), t('somethingWrong'));
     }
@@ -112,177 +131,182 @@ export default function PremiumScreen() {
     setLoading(false);
 
     if (result.isPremium) {
-      Alert.alert(t('success'), t('premiumRestored'), [
-        { text: t('ok'), onPress: () => router.back() },
-      ]);
+      Alert.alert(t('success'), t('premiumRestored'), [{ text: t('ok'), onPress: () => router.back() }]);
     } else {
       Alert.alert(t('error'), t('noPreviousPurchases'));
     }
   };
 
+  const selectedTierData = TIERS[selectedTier];
+  const currentPrice = billingPeriod === 'monthly'
+    ? selectedTierData.monthlyPrice
+    : selectedTierData.yearlyPrice;
+
   return (
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View style={[styles.header, { paddingTop: 20 + insets.top }]}>
           <TouchableOpacity style={[styles.closeButton, { top: 16 + insets.top }]} onPress={() => router.back()}>
             <Text style={styles.closeText}>✕</Text>
           </TouchableOpacity>
-
-          <Text style={styles.starIcon}>⭐</Text>
           <Text style={styles.title}>{t('unlockPremium')}</Text>
           <Text style={styles.subtitle}>{t('discoverDestiny')}</Text>
         </View>
 
-        {/* Features */}
-        <View style={styles.features}>
-          {PREMIUM_FEATURES.map((feature, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[styles.featureRow, (feature as any).isPremiumPlus && styles.featureRowPlus]}
-              onPress={() => feature.route && router.push(feature.route as any)}
-              activeOpacity={feature.route ? 0.7 : 1}
-            >
-              <Text style={styles.featureEmoji}>{feature.emoji}</Text>
-              <View style={styles.featureText}>
-                <View style={styles.featureTitleRow}>
-                  <Text style={styles.featureTitle}>{feature.title}</Text>
-                  {(feature as any).isPremiumPlus && (
-                    <View style={styles.plusBadge}>
-                      <Text style={styles.plusBadgeText}>PLUS</Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={styles.featureDescription}>{feature.description}</Text>
-              </View>
-              {feature.route && (
-                <Text style={[(feature as any).isPremiumPlus ? styles.featureArrowPlus : styles.featureArrow]}>→</Text>
-              )}
-            </TouchableOpacity>
-          ))}
+        {/* Promo Banner */}
+        <View style={styles.promoBanner}>
+          <Text style={styles.promoText}>
+            🎉 Limited Time: <Text style={styles.promoHighlight}>60% OFF</Text> yearly plans until April 30th!
+          </Text>
         </View>
 
-        {/* Pricing */}
-        <View style={styles.pricing}>
-          {loading ? (
-            <ActivityIndicator color="#e94560" />
-          ) : isWeb ? (
-            // Web: Show Stripe plans
-            <View style={styles.webPricingContainer}>
-              {/* Celestial Tier */}
-              <Text style={styles.tierTitle}>✨ Celestial</Text>
-              <View style={styles.tierOptions}>
-                {WEB_PLANS.filter(p => p.id.startsWith('celestial')).map((plan) => (
-                  <TouchableOpacity
-                    key={plan.id}
-                    style={[
-                      styles.priceOption,
-                      selectedWebPlan === plan.id && styles.priceOptionSelected,
-                    ]}
-                    onPress={() => setSelectedWebPlan(plan.id)}
-                  >
-                    {plan.badge && (
-                      <View style={styles.saveBadge}>
-                        <Text style={styles.saveText}>{plan.badge}</Text>
-                      </View>
-                    )}
-                    <Text style={styles.priceTitle}>{plan.period === 'month' ? t('monthly') : t('yearly')}</Text>
-                    {plan.originalPrice && (
-                      <Text style={styles.originalPrice}>{plan.originalPrice}</Text>
-                    )}
-                    <Text style={styles.priceAmount}>{plan.price}</Text>
-                    <Text style={styles.pricePeriod}>/{plan.period}</Text>
-                  </TouchableOpacity>
-                ))}
+        {/* Billing Toggle */}
+        <View style={styles.billingToggle}>
+          <TouchableOpacity
+            style={[styles.billingOption, billingPeriod === 'monthly' && styles.billingOptionActive]}
+            onPress={() => setBillingPeriod('monthly')}
+          >
+            <Text style={[styles.billingText, billingPeriod === 'monthly' && styles.billingTextActive]}>
+              Monthly
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.billingOption, billingPeriod === 'yearly' && styles.billingOptionActive]}
+            onPress={() => setBillingPeriod('yearly')}
+          >
+            <Text style={[styles.billingText, billingPeriod === 'yearly' && styles.billingTextActive]}>
+              Yearly
+            </Text>
+            {billingPeriod === 'yearly' && (
+              <View style={styles.saveBadgeSmall}>
+                <Text style={styles.saveBadgeText}>SAVE 60%</Text>
               </View>
+            )}
+          </TouchableOpacity>
+        </View>
 
-              {/* Cosmic Tier */}
-              <Text style={[styles.tierTitle, styles.cosmicTitle]}>🌌 Cosmic</Text>
-              <View style={styles.tierOptions}>
-                {WEB_PLANS.filter(p => p.id.startsWith('cosmic')).map((plan) => (
-                  <TouchableOpacity
-                    key={plan.id}
-                    style={[
-                      styles.priceOption,
-                      styles.cosmicOption,
-                      selectedWebPlan === plan.id && styles.priceOptionSelectedCosmic,
-                    ]}
-                    onPress={() => setSelectedWebPlan(plan.id)}
-                  >
-                    {plan.badge && (
-                      <View style={styles.saveBadge}>
-                        <Text style={styles.saveText}>{plan.badge}</Text>
-                      </View>
-                    )}
-                    <Text style={styles.priceTitle}>{plan.period === 'month' ? t('monthly') : t('yearly')}</Text>
-                    {plan.originalPrice && (
-                      <Text style={styles.originalPrice}>{plan.originalPrice}</Text>
-                    )}
-                    <Text style={styles.priceAmount}>{plan.price}</Text>
-                    <Text style={styles.pricePeriod}>/{plan.period}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+        {/* Tier Cards */}
+        <View style={styles.tiersContainer}>
+          {/* Celestial Tier */}
+          <TouchableOpacity
+            style={[
+              styles.tierCard,
+              selectedTier === 'celestial' && styles.tierCardSelected,
+              { borderColor: selectedTier === 'celestial' ? TIERS.celestial.color : 'rgba(255,255,255,0.1)' },
+            ]}
+            onPress={() => setSelectedTier('celestial')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.tierHeader}>
+              <Text style={styles.tierEmoji}>{TIERS.celestial.emoji}</Text>
+              <Text style={[styles.tierName, { color: TIERS.celestial.color }]}>
+                {TIERS.celestial.name}
+              </Text>
             </View>
-          ) : packages.length > 0 ? (
-            // Native: Show RevenueCat packages
-            packages.map((pkg) => (
-              <TouchableOpacity
-                key={pkg.identifier}
-                style={[
-                  styles.priceOption,
-                  selectedPackage?.identifier === pkg.identifier && styles.priceOptionSelected,
-                ]}
-                onPress={() => setSelectedPackage(pkg)}
-              >
-                <Text style={styles.priceTitle}>{pkg.product.title}</Text>
-                <Text style={styles.priceAmount}>{pkg.product.priceString}</Text>
-                <Text style={styles.pricePeriod}>
-                  {pkg.packageType === 'MONTHLY' ? `/${t('monthly').toLowerCase()}` : `/${t('yearly').toLowerCase()}`}
-                </Text>
-              </TouchableOpacity>
-            ))
-          ) : (
-            // Native fallback: Show placeholder prices
-            <>
-              <TouchableOpacity
-                style={[styles.priceOption, styles.priceOptionSelected]}
-                onPress={() => { }}
-              >
-                <View style={styles.popularBadge}>
-                  <Text style={styles.popularText}>{t('mostPopular')}</Text>
-                </View>
-                <Text style={styles.priceTitle}>{t('monthly')}</Text>
-                <Text style={styles.priceAmount}>$9.99</Text>
-                <Text style={styles.pricePeriod}>/{t('monthly').toLowerCase()}</Text>
-              </TouchableOpacity>
 
-              <TouchableOpacity style={styles.priceOption} onPress={() => { }}>
-                <View style={styles.saveBadge}>
-                  <Text style={styles.saveText}>{t('save50')}</Text>
+            <View style={styles.priceContainer}>
+              {billingPeriod === 'yearly' && (
+                <Text style={styles.originalPrice}>{TIERS.celestial.yearlyOriginal}</Text>
+              )}
+              <Text style={styles.price}>
+                {billingPeriod === 'monthly' ? TIERS.celestial.monthlyPrice : TIERS.celestial.yearlyPrice}
+              </Text>
+              <Text style={styles.pricePeriod}>
+                /{billingPeriod === 'monthly' ? 'month' : 'year'}
+              </Text>
+            </View>
+
+            <View style={styles.featuresContainer}>
+              {TIERS.celestial.features.map((feature, index) => (
+                <View key={index} style={styles.featureRow}>
+                  <Text style={[styles.checkmark, { color: TIERS.celestial.color }]}>✓</Text>
+                  <Text style={styles.featureText}>{feature}</Text>
                 </View>
-                <Text style={styles.priceTitle}>{t('yearly')}</Text>
-                <Text style={styles.priceAmount}>$59.99</Text>
-                <Text style={styles.pricePeriod}>/{t('yearly').toLowerCase()}</Text>
-              </TouchableOpacity>
-            </>
-          )}
+              ))}
+            </View>
+
+            {selectedTier === 'celestial' && (
+              <View style={[styles.selectedIndicator, { backgroundColor: TIERS.celestial.color }]}>
+                <Text style={styles.selectedText}>Selected</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* Cosmic Tier */}
+          <TouchableOpacity
+            style={[
+              styles.tierCard,
+              selectedTier === 'cosmic' && styles.tierCardSelected,
+              { borderColor: selectedTier === 'cosmic' ? TIERS.cosmic.color : 'rgba(255,255,255,0.1)' },
+            ]}
+            onPress={() => setSelectedTier('cosmic')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.popularTag}>
+              <Text style={styles.popularTagText}>MOST POPULAR</Text>
+            </View>
+
+            <View style={styles.tierHeader}>
+              <Text style={styles.tierEmoji}>{TIERS.cosmic.emoji}</Text>
+              <Text style={[styles.tierName, { color: TIERS.cosmic.color }]}>
+                {TIERS.cosmic.name}
+              </Text>
+            </View>
+
+            <View style={styles.priceContainer}>
+              {billingPeriod === 'yearly' && (
+                <Text style={styles.originalPrice}>{TIERS.cosmic.yearlyOriginal}</Text>
+              )}
+              <Text style={styles.price}>
+                {billingPeriod === 'monthly' ? TIERS.cosmic.monthlyPrice : TIERS.cosmic.yearlyPrice}
+              </Text>
+              <Text style={styles.pricePeriod}>
+                /{billingPeriod === 'monthly' ? 'month' : 'year'}
+              </Text>
+            </View>
+
+            <View style={styles.featuresContainer}>
+              {TIERS.cosmic.features.map((feature, index) => (
+                <View key={index} style={styles.featureRow}>
+                  <Text style={[styles.checkmark, { color: TIERS.cosmic.color }]}>✓</Text>
+                  <Text style={styles.featureText}>{feature}</Text>
+                </View>
+              ))}
+            </View>
+
+            {selectedTier === 'cosmic' && (
+              <View style={[styles.selectedIndicator, { backgroundColor: TIERS.cosmic.color }]}>
+                <Text style={styles.selectedText}>Selected</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Subscribe Button */}
         <TouchableOpacity
           style={styles.subscribeButton}
           onPress={handlePurchase}
-          disabled={purchasing}
+          disabled={purchasing || loading}
         >
           <LinearGradient
-            colors={['#e94560', '#c23a51']}
+            colors={selectedTier === 'cosmic' ? ['#9333ea', '#7c3aed'] : ['#e94560', '#c23a51']}
             style={styles.subscribeGradient}
           >
             {purchasing ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.subscribeText}>{t('startFreeTrial')}</Text>
+              <View style={styles.subscribeContent}>
+                <Text style={styles.subscribeText}>
+                  Subscribe to {selectedTierData.name}
+                </Text>
+                <Text style={styles.subscribePriceText}>
+                  {currentPrice}/{billingPeriod === 'monthly' ? 'mo' : 'yr'}
+                </Text>
+              </View>
             )}
           </LinearGradient>
         </TouchableOpacity>
@@ -296,19 +320,12 @@ export default function PremiumScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Premium Plus Upsell - only on native */}
-        {!isWeb && (
-          <TouchableOpacity style={styles.premiumPlusUpsell} onPress={() => router.push('/premium/plus')}>
-            <View style={styles.premiumPlusContent}>
-              <Text style={styles.premiumPlusEmoji}>✨</Text>
-              <View style={styles.premiumPlusText}>
-                <Text style={styles.premiumPlusTitle}>{t('premiumPlus')}</Text>
-                <Text style={styles.premiumPlusDesc}>{t('dailyHoroscopeFeature')} + {t('monthlyHoroscopeFeature')}</Text>
-              </View>
-              <Text style={styles.premiumPlusArrow}>→</Text>
-            </View>
-          </TouchableOpacity>
-        )}
+        {/* Promo Footer */}
+        <View style={styles.promoFooter}>
+          <Text style={styles.promoFooterText}>
+            💫 Get 60% off your first year when you subscribe to any yearly plan. Offer valid until April 30th, 2026.
+          </Text>
+        </View>
       </ScrollView>
     </LinearGradient>
   );
@@ -327,7 +344,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     paddingTop: 20,
-    paddingBottom: 24,
+    paddingBottom: 16,
   },
   closeButton: {
     position: 'absolute',
@@ -344,10 +361,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
   },
-  starIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -358,155 +371,155 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#888',
   },
-  features: {
-    paddingHorizontal: 24,
-    marginBottom: 24,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  promoBanner: {
+    backgroundColor: 'rgba(74, 222, 128, 0.15)',
+    marginHorizontal: 24,
+    marginBottom: 20,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(74, 222, 128, 0.3)',
   },
-  featureEmoji: {
-    fontSize: 28,
-    marginRight: 16,
-    width: 40,
+  promoText: {
+    color: '#fff',
+    fontSize: 14,
     textAlign: 'center',
   },
-  featureRowPlus: {
-    backgroundColor: 'rgba(147, 51, 234, 0.08)',
-    borderBottomColor: 'rgba(147, 51, 234, 0.2)',
+  promoHighlight: {
+    color: '#4ade80',
+    fontWeight: 'bold',
   },
-  featureText: {
-    flex: 1,
-  },
-  featureTitleRow: {
+  billingToggle: {
     flexDirection: 'row',
+    marginHorizontal: 24,
+    marginBottom: 24,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    padding: 4,
+  },
+  billingOption: {
+    flex: 1,
+    paddingVertical: 12,
     alignItems: 'center',
+    borderRadius: 10,
+    flexDirection: 'row',
+    justifyContent: 'center',
     gap: 8,
   },
-  featureTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 2,
+  billingOptionActive: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
-  plusBadge: {
-    backgroundColor: '#9333ea',
+  billingText: {
+    color: '#888',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  billingTextActive: {
+    color: '#fff',
+  },
+  saveBadgeSmall: {
+    backgroundColor: '#4ade80',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
-  plusBadgeText: {
+  saveBadgeText: {
+    color: '#000',
     fontSize: 9,
-    fontWeight: '700',
-    color: '#fff',
+    fontWeight: 'bold',
   },
-  featureDescription: {
-    fontSize: 13,
-    color: '#888',
-  },
-  featureArrow: {
-    fontSize: 18,
-    color: '#e94560',
-    marginLeft: 8,
-  },
-  featureArrowPlus: {
-    fontSize: 18,
-    color: '#9333ea',
-    marginLeft: 8,
-  },
-  pricing: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  tiersContainer: {
     paddingHorizontal: 24,
-    gap: 12,
+    gap: 16,
     marginBottom: 24,
   },
-  webPricingContainer: {
-    width: '100%',
-  },
-  tierTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#e94560',
-    marginBottom: 12,
-    marginTop: 8,
-  },
-  cosmicTitle: {
-    color: '#9333ea',
-    marginTop: 20,
-  },
-  tierOptions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  cosmicOption: {
-    borderColor: 'rgba(147, 51, 234, 0.3)',
-    backgroundColor: 'rgba(147, 51, 234, 0.05)',
-  },
-  priceOptionSelectedCosmic: {
-    borderColor: '#9333ea',
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
-  },
-  originalPrice: {
-    fontSize: 14,
-    color: '#666',
-    textDecorationLine: 'line-through',
-    marginBottom: 2,
-  },
-  priceOption: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
+  tierCard: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 20,
+    padding: 24,
     borderWidth: 2,
-    borderColor: 'transparent',
+    position: 'relative',
   },
-  priceOptionSelected: {
-    borderColor: '#e94560',
-    backgroundColor: 'rgba(233, 69, 96, 0.1)',
+  tierCardSelected: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
-  popularBadge: {
-    backgroundColor: '#e94560',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginBottom: 8,
+  popularTag: {
+    position: 'absolute',
+    top: -1,
+    right: 20,
+    backgroundColor: '#9333ea',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
   },
-  popularText: {
+  popularTagText: {
     color: '#fff',
     fontSize: 10,
     fontWeight: 'bold',
   },
-  saveBadge: {
-    backgroundColor: '#4ade80',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginBottom: 8,
+  tierHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 12,
   },
-  saveText: {
-    color: '#000',
-    fontSize: 10,
+  tierEmoji: {
+    fontSize: 32,
+  },
+  tierName: {
+    fontSize: 24,
     fontWeight: 'bold',
   },
-  priceTitle: {
-    fontSize: 14,
-    color: '#888',
+  priceContainer: {
+    marginBottom: 20,
+  },
+  originalPrice: {
+    fontSize: 16,
+    color: '#666',
+    textDecorationLine: 'line-through',
     marginBottom: 4,
   },
-  priceAmount: {
-    fontSize: 24,
+  price: {
+    fontSize: 36,
     fontWeight: 'bold',
     color: '#fff',
   },
   pricePeriod: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 14,
+    color: '#888',
+    marginTop: 2,
+  },
+  featuresContainer: {
+    gap: 12,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  checkmark: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  featureText: {
+    fontSize: 14,
+    color: '#ccc',
+    flex: 1,
+  },
+  selectedIndicator: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  selectedText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 'bold',
   },
   subscribeButton: {
     marginHorizontal: 24,
@@ -517,16 +530,25 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: 'center',
   },
+  subscribeContent: {
+    alignItems: 'center',
+  },
   subscribeText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
+  },
+  subscribePriceText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 14,
+    marginTop: 4,
   },
   trialText: {
     textAlign: 'center',
     color: '#666',
     fontSize: 13,
     marginTop: 12,
+    paddingHorizontal: 24,
   },
   restoreButton: {
     marginTop: 20,
@@ -537,38 +559,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textDecorationLine: 'underline',
   },
-  premiumPlusUpsell: {
+  promoFooter: {
     marginHorizontal: 24,
     marginTop: 24,
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(147, 51, 234, 0.3)',
-  },
-  premiumPlusContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 16,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 12,
   },
-  premiumPlusEmoji: {
-    fontSize: 28,
-    marginRight: 12,
-  },
-  premiumPlusText: {
-    flex: 1,
-  },
-  premiumPlusTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#9333ea',
-    marginBottom: 2,
-  },
-  premiumPlusDesc: {
-    fontSize: 12,
+  promoFooterText: {
     color: '#888',
-  },
-  premiumPlusArrow: {
-    fontSize: 18,
-    color: '#9333ea',
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
