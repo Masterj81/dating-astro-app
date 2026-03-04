@@ -20,6 +20,8 @@ export default function PremiumLayout() {
       <Stack.Screen name="likes" />
       <Stack.Screen name="super-likes" />
       <Stack.Screen name="priority-messages" />
+      <Stack.Screen name="date-planner" />
+      <Stack.Screen name="success" />
     </Stack>
   );
 }

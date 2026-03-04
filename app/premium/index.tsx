@@ -177,21 +177,18 @@ export default function PremiumScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === 'web';
 
+  // Check if user has premium access
+  const hasPremiumAccess = !premiumLoading && (tier === 'premium' || tier === 'premium_plus');
+
   console.log('PremiumScreen - tier:', tier, 'premiumLoading:', premiumLoading);
 
-  // Show dashboard if user has premium
-  if (!premiumLoading && (tier === 'premium' || tier === 'premium_plus')) {
-    console.log('Showing PremiumDashboard');
-    return <PremiumDashboard />;
-  }
-
   useEffect(() => {
-    if (!isWeb) {
+    if (!isWeb && !hasPremiumAccess) {
       loadOfferings();
     } else {
       setLoading(false);
     }
-  }, []);
+  }, [isWeb, hasPremiumAccess]);
 
   const loadOfferings = async () => {
     setLoading(true);
@@ -258,6 +255,12 @@ export default function PremiumScreen() {
   const currentPrice = billingPeriod === 'monthly'
     ? selectedTierData.monthlyPrice
     : selectedTierData.yearlyPrice;
+
+  // Show dashboard if user has premium (must be after all hooks)
+  if (hasPremiumAccess) {
+    console.log('Showing PremiumDashboard');
+    return <PremiumDashboard />;
+  }
 
   return (
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
