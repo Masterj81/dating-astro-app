@@ -67,12 +67,15 @@ const getModality = (sign: string): string => {
 };
 
 function NatalChartScreenContent() {
+  console.log('NatalChartScreenContent mounting...');
   const [chartData, setChartData] = useState<NatalChartData | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedSection, setExpandedSection] = useState<string | null>('sun');
   const { user } = useAuth();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
+
+  console.log('NatalChartScreenContent - user:', user?.id, 'loading:', loading);
 
   const signs = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
                  'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
@@ -267,6 +270,7 @@ function NatalChartScreenContent() {
   };
 
   if (loading) {
+    console.log('NatalChartScreenContent - rendering LOADING state');
     return (
       <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
         <View style={styles.loadingContainer}>
@@ -276,6 +280,7 @@ function NatalChartScreenContent() {
     );
   }
 
+  console.log('NatalChartScreenContent - rendering CONTENT, chartData:', chartData ? 'loaded' : 'null');
   const positions = chartData ? getPlanetaryPositions(chartData) : [];
   const elements = calculateElements(positions);
   const modalities = calculateModalities(positions);
