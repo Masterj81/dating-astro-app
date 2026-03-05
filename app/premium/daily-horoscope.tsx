@@ -3,7 +3,6 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -127,7 +126,6 @@ function DailyHoroscopeScreenContent() {
 
   const sections = getHoroscopeSections();
   const moonPhase = getMoonPhase();
-  const isWeb = Platform.OS === 'web';
 
   const renderContent = () => (
     <>
@@ -209,20 +207,20 @@ function DailyHoroscopeScreenContent() {
 
   return (
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      {/* Header - outside scroll area */}
-      <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
-        <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>{t('dailyHoroscope')}</Text>
-        <Text style={styles.date}>{dateString}</Text>
-      </View>
-
       <ScrollView
-        style={isWeb ? styles.webScrollView : { flex: 1 }}
+        style={{ flex: 1 }}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Header */}
+        <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
+          <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
+            <Text style={styles.backText}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>{t('dailyHoroscope')}</Text>
+          <Text style={styles.date}>{dateString}</Text>
+        </View>
+
         {renderContent()}
       </ScrollView>
     </LinearGradient>
@@ -232,11 +230,6 @@ function DailyHoroscopeScreenContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  webScrollView: {
-    flex: 1,
-    // @ts-ignore - web-specific CSS
-    overflowY: 'auto',
   },
   scrollContent: {
     paddingBottom: 40,

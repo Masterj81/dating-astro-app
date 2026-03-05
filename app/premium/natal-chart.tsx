@@ -3,7 +3,6 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -286,8 +285,6 @@ function NatalChartScreenContent() {
   const elements = calculateElements(positions);
   const modalities = calculateModalities(positions);
 
-  const isWeb = Platform.OS === 'web';
-
   const renderContent = () => (
     <>
       {/* Birth Info */}
@@ -516,20 +513,20 @@ function NatalChartScreenContent() {
 
   return (
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      {/* Header - outside scroll area */}
-      <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
-        <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>{t('fullNatalChart')}</Text>
-        <Text style={styles.subtitle}>{t('natalChartSubtitle')}</Text>
-      </View>
-
       <ScrollView
-        style={isWeb ? styles.webScrollView : { flex: 1 }}
+        style={{ flex: 1 }}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Header */}
+        <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
+          <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
+            <Text style={styles.backText}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>{t('fullNatalChart')}</Text>
+          <Text style={styles.subtitle}>{t('natalChartSubtitle')}</Text>
+        </View>
+
         {renderContent()}
       </ScrollView>
     </LinearGradient>
@@ -539,11 +536,6 @@ function NatalChartScreenContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  webScrollView: {
-    flex: 1,
-    // @ts-ignore - web-specific CSS
-    overflowY: 'auto',
   },
   loadingContainer: {
     flex: 1,
