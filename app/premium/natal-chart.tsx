@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -511,6 +512,34 @@ function NatalChartScreenContent() {
     </>
   );
 
+  const content = (
+    <>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
+        <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
+          <Text style={styles.backText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>{t('fullNatalChart')}</Text>
+        <Text style={styles.subtitle}>{t('natalChartSubtitle')}</Text>
+      </View>
+
+      {renderContent()}
+    </>
+  );
+
+  // On web, use a simple scrollable div instead of ScrollView
+  if (Platform.OS === 'web') {
+    return (
+      <View style={styles.webContainer}>
+        <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.webGradient}>
+          <View style={[styles.webScrollContent, { paddingBottom: 60 + insets.bottom }]}>
+            {content}
+          </View>
+        </LinearGradient>
+      </View>
+    );
+  }
+
   return (
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
       <ScrollView
@@ -518,16 +547,7 @@ function NatalChartScreenContent() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
-          <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
-            <Text style={styles.backText}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>{t('fullNatalChart')}</Text>
-          <Text style={styles.subtitle}>{t('natalChartSubtitle')}</Text>
-        </View>
-
-        {renderContent()}
+        {content}
       </ScrollView>
     </LinearGradient>
   );
@@ -536,6 +556,16 @@ function NatalChartScreenContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  webContainer: {
+    flex: 1,
+    overflow: 'auto' as any,
+  },
+  webGradient: {
+    minHeight: '100%',
+  },
+  webScrollContent: {
+    paddingBottom: 60,
   },
   loadingContainer: {
     flex: 1,
