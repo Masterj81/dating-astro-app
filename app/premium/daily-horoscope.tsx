@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  ScrollView,
+  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -128,7 +128,7 @@ function DailyHoroscopeScreenContent() {
   const moonPhase = getMoonPhase();
 
   const renderContent = () => (
-    <>
+    <View>
       {/* Sign Card */}
       <View style={styles.signCard}>
         <Text style={styles.signEmoji}>☀️</Text>
@@ -202,27 +202,30 @@ function DailyHoroscopeScreenContent() {
         <Text style={styles.premiumIcon}>✨</Text>
         <Text style={styles.premiumText}>{t('premiumPlusFeature')}</Text>
       </View>
-    </>
+    </View>
   );
+
+  // Create data array for FlatList
+  const flatListData = [{ key: 'content' }];
 
   return (
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      <ScrollView
-        style={{ flex: 1 }}
+      {/* Header - outside FlatList */}
+      <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
+        <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
+          <Text style={styles.backText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>{t('dailyHoroscope')}</Text>
+        <Text style={styles.date}>{dateString}</Text>
+      </View>
+
+      <FlatList
+        data={flatListData}
+        keyExtractor={(item) => item.key}
+        renderItem={() => renderContent()}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
-          <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
-            <Text style={styles.backText}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>{t('dailyHoroscope')}</Text>
-          <Text style={styles.date}>{dateString}</Text>
-        </View>
-
-        {renderContent()}
-      </ScrollView>
+      />
     </LinearGradient>
   );
 }

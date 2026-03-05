@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-  ScrollView,
+  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -79,21 +79,9 @@ function SuperLikesScreenContent() {
     t('superLikeTip4') || 'Save Super Likes for profiles that truly resonate with you',
   ];
 
-  return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + insets.bottom }]} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
-          <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
-            <Text style={styles.backText}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>{t('superLikes') || 'Super Likes'}</Text>
-          <Text style={styles.subtitle}>
-            {t('superLikesSubtitle') || 'Make a lasting first impression'}
-          </Text>
-        </View>
-
-        {/* Stats Card */}
+  const renderContent = () => (
+    <View>
+      {/* Stats Card */}
         <View style={styles.statsCard}>
           <View style={styles.mainStat}>
             <Text style={styles.mainStatNumber}>{stats.available}</Text>
@@ -213,7 +201,31 @@ function SuperLikesScreenContent() {
             </Text>
           </LinearGradient>
         </TouchableOpacity>
-      </ScrollView>
+    </View>
+  );
+
+  const sections = [{ key: 'content' }];
+
+  return (
+    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+      {/* Header - outside FlatList */}
+      <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
+        <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
+          <Text style={styles.backText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>{t('superLikes') || 'Super Likes'}</Text>
+        <Text style={styles.subtitle}>
+          {t('superLikesSubtitle') || 'Make a lasting first impression'}
+        </Text>
+      </View>
+
+      <FlatList
+        data={sections}
+        keyExtractor={(item) => item.key}
+        renderItem={() => renderContent()}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+      />
 
       {/* Premium Badge */}
       <View style={styles.premiumBadge}>

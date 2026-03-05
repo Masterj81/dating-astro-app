@@ -286,7 +286,7 @@ function NatalChartScreenContent() {
   const modalities = calculateModalities(positions);
 
   const renderContent = () => (
-    <>
+    <View>
       {/* Birth Info */}
       {chartData && (
         <View style={styles.birthInfo}>
@@ -508,7 +508,7 @@ function NatalChartScreenContent() {
         <Text style={styles.premiumIcon}>⭐</Text>
         <Text style={styles.premiumText}>{t('premiumFeature')}</Text>
       </View>
-    </>
+    </View>
   );
 
   // Create data array for FlatList

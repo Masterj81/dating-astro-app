@@ -2,8 +2,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
+  FlatList,
   Image,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -112,21 +112,9 @@ function PriorityMessagesScreenContent() {
     t('starter4') || "I love that we share similar cosmic energy. What drew you to astrology?",
   ];
 
-  return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + insets.bottom }]} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
-          <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
-            <Text style={styles.backText}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>{t('priorityMessages') || 'Priority Messages'}</Text>
-          <Text style={styles.subtitle}>
-            {t('priorityMessagesSubtitle') || 'Get noticed in crowded inboxes'}
-          </Text>
-        </View>
-
-        {/* Stats Card */}
+  const renderContent = () => (
+    <View>
+      {/* Stats Card */}
         <View style={styles.statsCard}>
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
@@ -267,7 +255,31 @@ function PriorityMessagesScreenContent() {
             </Text>
           </LinearGradient>
         </TouchableOpacity>
-      </ScrollView>
+    </View>
+  );
+
+  const sections = [{ key: 'content' }];
+
+  return (
+    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+      {/* Header - outside FlatList */}
+      <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
+        <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
+          <Text style={styles.backText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>{t('priorityMessages') || 'Priority Messages'}</Text>
+        <Text style={styles.subtitle}>
+          {t('priorityMessagesSubtitle') || 'Get noticed in crowded inboxes'}
+        </Text>
+      </View>
+
+      <FlatList
+        data={sections}
+        keyExtractor={(item) => item.key}
+        renderItem={() => renderContent()}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+      />
 
       {/* Premium Badge */}
       <View style={styles.premiumBadge}>

@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  ScrollView,
+  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -205,19 +205,9 @@ function PlanetaryTransitsScreenContent() {
   const transits = getCurrentTransits();
   const upcomingTransits = getUpcomingTransits();
 
-  return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
-          <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
-            <Text style={styles.backText}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>{t('planetaryTransits')}</Text>
-          <Text style={styles.subtitle}>{t('planetaryTransitsSubtitle')}</Text>
-        </View>
-
-        {/* Personal Impact */}
+  const renderContent = () => (
+    <View>
+      {/* Personal Impact */}
         <View style={styles.personalCard}>
           <Text style={styles.personalEmoji}>🎯</Text>
           <View style={styles.personalInfo}>
@@ -308,7 +298,29 @@ function PlanetaryTransitsScreenContent() {
           <Text style={styles.premiumIcon}>✨</Text>
           <Text style={styles.premiumText}>{t('premiumPlusFeature')}</Text>
         </View>
-      </ScrollView>
+    </View>
+  );
+
+  const sections = [{ key: 'content' }];
+
+  return (
+    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+      {/* Header - outside FlatList */}
+      <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
+        <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
+          <Text style={styles.backText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>{t('planetaryTransits')}</Text>
+        <Text style={styles.subtitle}>{t('planetaryTransitsSubtitle')}</Text>
+      </View>
+
+      <FlatList
+        data={sections}
+        keyExtractor={(item) => item.key}
+        renderItem={() => renderContent()}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+      />
     </LinearGradient>
   );
 }

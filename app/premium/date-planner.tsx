@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  FlatList,
   ScrollView,
   StyleSheet,
   Text,
@@ -278,25 +279,9 @@ function DatePlannerContent() {
     );
   }
 
-  return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>←</Text>
-          </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <Text style={styles.title}>{t('datePlanner')}</Text>
-            {matchName && (
-              <Text style={styles.subtitle}>
-                {t('planningWith')} {matchName}
-              </Text>
-            )}
-          </View>
-        </View>
-
-        {/* Top 5 Dates */}
+  const renderContent = () => (
+    <View>
+      {/* Top 5 Dates */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
             ✨ {t('top5Dates')}
@@ -375,7 +360,35 @@ function DatePlannerContent() {
             </View>
           </View>
         </View>
-      </ScrollView>
+    </View>
+  );
+
+  const sections = [{ key: 'content' }];
+
+  return (
+    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+      {/* Header - outside FlatList */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Text style={styles.backText}>←</Text>
+        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <Text style={styles.title}>{t('datePlanner')}</Text>
+          {matchName && (
+            <Text style={styles.subtitle}>
+              {t('planningWith')} {matchName}
+            </Text>
+          )}
+        </View>
+      </View>
+
+      <FlatList
+        data={sections}
+        keyExtractor={(item) => item.key}
+        renderItem={() => renderContent()}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      />
     </LinearGradient>
   );
 }

@@ -221,7 +221,7 @@ function SynastryScreenContent() {
   const aspects = getAspects();
 
   const renderContent = () => (
-    <>
+    <View>
       {/* Profiles Comparison */}
       <View style={styles.profilesSection}>
         <View style={styles.profileCard}>
@@ -323,7 +323,7 @@ function SynastryScreenContent() {
           </Text>
         </View>
       </View>
-    </>
+    </View>
   );
 
   // Create data array for FlatList

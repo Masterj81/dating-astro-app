@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
-  ScrollView,
+  FlatList,
   StyleSheet,
   Switch,
   Text,
@@ -128,19 +128,9 @@ function RetrogradeAlertsScreenContent() {
   const retrogrades = getRetrogrades();
   const [expandedPlanet, setExpandedPlanet] = useState<string | null>('mercury');
 
-  return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
-          <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
-            <Text style={styles.backText}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>{t('retrogradeAlerts')}</Text>
-          <Text style={styles.subtitle}>{t('retrogradeSubtitle')}</Text>
-        </View>
-
-        {/* Current Status Overview */}
+  const renderContent = () => (
+    <View>
+      {/* Current Status Overview */}
         <View style={styles.statusOverview}>
           <View style={styles.statusItem}>
             <View style={[styles.statusDot, { backgroundColor: '#f87171' }]} />
@@ -265,7 +255,29 @@ function RetrogradeAlertsScreenContent() {
           <Text style={styles.premiumIcon}>✨</Text>
           <Text style={styles.premiumText}>{t('premiumPlusFeature')}</Text>
         </View>
-      </ScrollView>
+    </View>
+  );
+
+  const sections = [{ key: 'content' }];
+
+  return (
+    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+      {/* Header - outside FlatList */}
+      <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
+        <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
+          <Text style={styles.backText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>{t('retrogradeAlerts')}</Text>
+        <Text style={styles.subtitle}>{t('retrogradeSubtitle')}</Text>
+      </View>
+
+      <FlatList
+        data={sections}
+        keyExtractor={(item) => item.key}
+        renderItem={() => renderContent()}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+      />
     </LinearGradient>
   );
 }
