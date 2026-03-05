@@ -218,17 +218,13 @@ function DailyHoroscopeScreenContent() {
         <Text style={styles.date}>{dateString}</Text>
       </View>
 
-      {isWeb ? (
-        <View style={styles.webScrollContainer}>
-          <View style={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}>
-            {renderContent()}
-          </View>
-        </View>
-      ) : (
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]} showsVerticalScrollIndicator={false}>
-          {renderContent()}
-        </ScrollView>
-      )}
+      <ScrollView
+        style={isWeb ? styles.webScrollView : { flex: 1 }}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {renderContent()}
+      </ScrollView>
     </LinearGradient>
   );
 }
@@ -237,9 +233,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  webScrollContainer: {
+  webScrollView: {
     flex: 1,
-    overflow: 'scroll' as const,
+    // @ts-ignore - web-specific CSS
+    overflowY: 'auto',
   },
   scrollContent: {
     paddingBottom: 40,
