@@ -3,8 +3,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
-  ScrollView,
+  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -512,9 +511,12 @@ function NatalChartScreenContent() {
     </>
   );
 
-  const content = (
-    <>
-      {/* Header */}
+  // Create data array for FlatList
+  const sections = [{ key: 'content' }];
+
+  return (
+    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+      {/* Header - outside FlatList like likes page */}
       <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
         <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
           <Text style={styles.backText}>←</Text>
@@ -523,32 +525,13 @@ function NatalChartScreenContent() {
         <Text style={styles.subtitle}>{t('natalChartSubtitle')}</Text>
       </View>
 
-      {renderContent()}
-    </>
-  );
-
-  // On web, use a simple scrollable div instead of ScrollView
-  if (Platform.OS === 'web') {
-    return (
-      <View style={styles.webContainer}>
-        <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.webGradient}>
-          <View style={[styles.webScrollContent, { paddingBottom: 60 + insets.bottom }]}>
-            {content}
-          </View>
-        </LinearGradient>
-      </View>
-    );
-  }
-
-  return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      <ScrollView
-        style={{ flex: 1 }}
+      <FlatList
+        data={sections}
+        keyExtractor={(item) => item.key}
+        renderItem={() => renderContent()}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
-      >
-        {content}
-      </ScrollView>
+      />
     </LinearGradient>
   );
 }
@@ -556,16 +539,6 @@ function NatalChartScreenContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  webContainer: {
-    flex: 1,
-    overflow: 'auto' as any,
-  },
-  webGradient: {
-    minHeight: '100%',
-  },
-  webScrollContent: {
-    paddingBottom: 60,
   },
   loadingContainer: {
     flex: 1,
