@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -220,18 +221,23 @@ function SynastryScreenContent() {
   const areas = getCompatibilityAreas();
   const aspects = getAspects();
 
+  const scrollContainerStyle = Platform.select({
+    web: { flex: 1, overflowY: 'auto' as const },
+    default: { flex: 1 },
+  });
+
   return (
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom, flexGrow: 1 }]} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
-          <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
-            <Text style={styles.backText}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>{t('advancedSynastry')}</Text>
-          <Text style={styles.subtitle}>{t('synastrySubtitle') || 'Deep compatibility analysis'}</Text>
-        </View>
+      {/* Header - outside scroll area like likes page */}
+      <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
+        <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
+          <Text style={styles.backText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>{t('advancedSynastry')}</Text>
+        <Text style={styles.subtitle}>{t('synastrySubtitle') || 'Deep compatibility analysis'}</Text>
+      </View>
 
+      <ScrollView style={scrollContainerStyle} contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]} showsVerticalScrollIndicator={false}>
         {/* Profiles Comparison */}
         <View style={styles.profilesSection}>
           <View style={styles.profileCard}>
