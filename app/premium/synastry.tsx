@@ -221,14 +221,118 @@ function SynastryScreenContent() {
   const areas = getCompatibilityAreas();
   const aspects = getAspects();
 
-  const scrollContainerStyle = Platform.select({
-    web: { flex: 1, overflowY: 'auto' as const },
-    default: { flex: 1 },
-  });
+  // On web, use a View with overflow for scrolling since ScrollView has issues
+  const isWeb = Platform.OS === 'web';
+
+  const renderContent = () => (
+    <>
+      {/* Profiles Comparison */}
+      <View style={styles.profilesSection}>
+        <View style={styles.profileCard}>
+          <Text style={styles.profileName}>{userProfile?.name || t('you')}</Text>
+          <View style={styles.profileSigns}>
+            <Text style={styles.profileSign}>☀️ {userProfile?.sun_sign || '?'}</Text>
+            <Text style={styles.profileSign}>🌙 {userProfile?.moon_sign || '?'}</Text>
+            <Text style={styles.profileSign}>⬆️ {userProfile?.rising_sign || '?'}</Text>
+          </View>
+        </View>
+
+        <View style={styles.vsContainer}>
+          <Text style={styles.vsText}>💕</Text>
+        </View>
+
+        <View style={styles.profileCard}>
+          <Text style={styles.profileName}>{matchProfile?.name || t('match')}</Text>
+          <View style={styles.profileSigns}>
+            <Text style={styles.profileSign}>☀️ {matchProfile?.sun_sign || '?'}</Text>
+            <Text style={styles.profileSign}>🌙 {matchProfile?.moon_sign || '?'}</Text>
+            <Text style={styles.profileSign}>⬆️ {matchProfile?.rising_sign || '?'}</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Overall Score */}
+      <View style={styles.scoreSection}>
+        <View style={styles.scoreCircle}>
+          <Text style={styles.scoreNumber}>{overallScore}%</Text>
+          <Text style={styles.scoreLabel}>{t('cosmicCompatibility') || 'Cosmic Match'}</Text>
+        </View>
+        <Text style={styles.scoreDescription}>
+          {overallScore >= 80
+            ? t('highCompatibility') || 'Exceptional cosmic alignment! You share a powerful connection.'
+            : overallScore >= 60
+            ? t('goodCompatibility') || 'Strong potential for a meaningful relationship.'
+            : t('growthCompatibility') || 'This pairing offers opportunities for growth and learning.'}
+        </Text>
+      </View>
+
+      {/* Compatibility Areas */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('compatibilityBreakdown') || 'Compatibility Breakdown'}</Text>
+        {areas.map((area, index) => (
+          <View key={index} style={styles.areaCard}>
+            <View style={styles.areaHeader}>
+              <Text style={styles.areaEmoji}>{area.emoji}</Text>
+              <Text style={styles.areaName}>{area.area}</Text>
+              <Text style={styles.areaScore}>{area.score}%</Text>
+            </View>
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { width: `${area.score}%` }]} />
+            </View>
+            <Text style={styles.areaDescription}>{area.description}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Planetary Aspects */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('keyAspects') || 'Key Planetary Aspects'}</Text>
+        {aspects.map((aspect, index) => (
+          <View key={index} style={styles.aspectRow}>
+            <View style={[styles.aspectDot, { backgroundColor: getInfluenceColor(aspect.influence) }]} />
+            <View style={styles.aspectInfo}>
+              <Text style={styles.aspectTitle}>
+                {aspect.planet1} {aspect.aspect} {aspect.planet2}
+              </Text>
+              <Text style={styles.aspectOrb}>{t('orb') || 'Orb'}: {aspect.orb}°</Text>
+              <Text style={styles.aspectDesc}>{aspect.description}</Text>
+            </View>
+          </View>
+        ))}
+
+        <View style={styles.legend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#4ade80' }]} />
+            <Text style={styles.legendText}>{t('harmonious') || 'Harmonious'}</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#f87171' }]} />
+            <Text style={styles.legendText}>{t('challenging') || 'Challenging'}</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#fbbf24' }]} />
+            <Text style={styles.legendText}>{t('neutral') || 'Neutral'}</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Relationship Advice */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('cosmicAdvice') || 'Cosmic Advice'}</Text>
+        <View style={styles.adviceCard}>
+          <Text style={styles.adviceEmoji}>✨</Text>
+          <Text style={styles.adviceTitle}>{t('strengthenBond') || 'Strengthen Your Bond'}</Text>
+          <Text style={styles.adviceText}>
+            {t('adviceText') || 'Focus on open communication during Mercury retrograde periods. Plan romantic activities during Venus transits for maximum connection. Your composite chart suggests Sunday evenings are ideal for quality time together.'}
+          </Text>
+        </View>
+      </View>
+    </>
+  );
 
   return (
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      {/* Header - outside scroll area like likes page */}
+      {/* Header - outside scroll area */}
       <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
         <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
           <Text style={styles.backText}>←</Text>
@@ -237,109 +341,17 @@ function SynastryScreenContent() {
         <Text style={styles.subtitle}>{t('synastrySubtitle') || 'Deep compatibility analysis'}</Text>
       </View>
 
-      <ScrollView style={scrollContainerStyle} contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]} showsVerticalScrollIndicator={false}>
-        {/* Profiles Comparison */}
-        <View style={styles.profilesSection}>
-          <View style={styles.profileCard}>
-            <Text style={styles.profileName}>{userProfile?.name || t('you')}</Text>
-            <View style={styles.profileSigns}>
-              <Text style={styles.profileSign}>☀️ {userProfile?.sun_sign || '?'}</Text>
-              <Text style={styles.profileSign}>🌙 {userProfile?.moon_sign || '?'}</Text>
-              <Text style={styles.profileSign}>⬆️ {userProfile?.rising_sign || '?'}</Text>
-            </View>
-          </View>
-
-          <View style={styles.vsContainer}>
-            <Text style={styles.vsText}>💕</Text>
-          </View>
-
-          <View style={styles.profileCard}>
-            <Text style={styles.profileName}>{matchProfile?.name || t('match')}</Text>
-            <View style={styles.profileSigns}>
-              <Text style={styles.profileSign}>☀️ {matchProfile?.sun_sign || '?'}</Text>
-              <Text style={styles.profileSign}>🌙 {matchProfile?.moon_sign || '?'}</Text>
-              <Text style={styles.profileSign}>⬆️ {matchProfile?.rising_sign || '?'}</Text>
-            </View>
+      {isWeb ? (
+        <View style={styles.webScrollContainer}>
+          <View style={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}>
+            {renderContent()}
           </View>
         </View>
-
-        {/* Overall Score */}
-        <View style={styles.scoreSection}>
-          <View style={styles.scoreCircle}>
-            <Text style={styles.scoreNumber}>{overallScore}%</Text>
-            <Text style={styles.scoreLabel}>{t('cosmicCompatibility') || 'Cosmic Match'}</Text>
-          </View>
-          <Text style={styles.scoreDescription}>
-            {overallScore >= 80
-              ? t('highCompatibility') || 'Exceptional cosmic alignment! You share a powerful connection.'
-              : overallScore >= 60
-              ? t('goodCompatibility') || 'Strong potential for a meaningful relationship.'
-              : t('growthCompatibility') || 'This pairing offers opportunities for growth and learning.'}
-          </Text>
-        </View>
-
-        {/* Compatibility Areas */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('compatibilityBreakdown') || 'Compatibility Breakdown'}</Text>
-          {areas.map((area, index) => (
-            <View key={index} style={styles.areaCard}>
-              <View style={styles.areaHeader}>
-                <Text style={styles.areaEmoji}>{area.emoji}</Text>
-                <Text style={styles.areaName}>{area.area}</Text>
-                <Text style={styles.areaScore}>{area.score}%</Text>
-              </View>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: `${area.score}%` }]} />
-              </View>
-              <Text style={styles.areaDescription}>{area.description}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Planetary Aspects */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('keyAspects') || 'Key Planetary Aspects'}</Text>
-          {aspects.map((aspect, index) => (
-            <View key={index} style={styles.aspectRow}>
-              <View style={[styles.aspectDot, { backgroundColor: getInfluenceColor(aspect.influence) }]} />
-              <View style={styles.aspectInfo}>
-                <Text style={styles.aspectTitle}>
-                  {aspect.planet1} {aspect.aspect} {aspect.planet2}
-                </Text>
-                <Text style={styles.aspectOrb}>{t('orb') || 'Orb'}: {aspect.orb}°</Text>
-                <Text style={styles.aspectDesc}>{aspect.description}</Text>
-              </View>
-            </View>
-          ))}
-
-          <View style={styles.legend}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#4ade80' }]} />
-              <Text style={styles.legendText}>{t('harmonious') || 'Harmonious'}</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#f87171' }]} />
-              <Text style={styles.legendText}>{t('challenging') || 'Challenging'}</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#fbbf24' }]} />
-              <Text style={styles.legendText}>{t('neutral') || 'Neutral'}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Relationship Advice */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('cosmicAdvice') || 'Cosmic Advice'}</Text>
-          <View style={styles.adviceCard}>
-            <Text style={styles.adviceEmoji}>✨</Text>
-            <Text style={styles.adviceTitle}>{t('strengthenBond') || 'Strengthen Your Bond'}</Text>
-            <Text style={styles.adviceText}>
-              {t('adviceText') || 'Focus on open communication during Mercury retrograde periods. Plan romantic activities during Venus transits for maximum connection. Your composite chart suggests Sunday evenings are ideal for quality time together.'}
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
+      ) : (
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]} showsVerticalScrollIndicator={false}>
+          {renderContent()}
+        </ScrollView>
+      )}
     </LinearGradient>
   );
 }
@@ -347,6 +359,10 @@ function SynastryScreenContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  webScrollContainer: {
+    flex: 1,
+    overflow: 'scroll' as const,
   },
   scrollContent: {
     paddingBottom: 40,

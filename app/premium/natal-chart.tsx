@@ -286,14 +286,237 @@ function NatalChartScreenContent() {
   const elements = calculateElements(positions);
   const modalities = calculateModalities(positions);
 
-  const scrollContainerStyle = Platform.select({
-    web: { flex: 1, overflowY: 'auto' as const },
-    default: { flex: 1 },
-  });
+  const isWeb = Platform.OS === 'web';
+
+  const renderContent = () => (
+    <>
+      {/* Birth Info */}
+      {chartData && (
+        <View style={styles.birthInfo}>
+          <Text style={styles.birthInfoTitle}>{t('birthDetails')}</Text>
+          <View style={styles.birthInfoRow}>
+            <Text style={styles.birthInfoLabel}>📅</Text>
+            <Text style={styles.birthInfoValue}>{chartData.birth_date || t('notSet')}</Text>
+          </View>
+          <View style={styles.birthInfoRow}>
+            <Text style={styles.birthInfoLabel}>🕐</Text>
+            <Text style={styles.birthInfoValue}>{chartData.birth_time || t('notSet')}</Text>
+          </View>
+          <View style={styles.birthInfoRow}>
+            <Text style={styles.birthInfoLabel}>📍</Text>
+            <Text style={styles.birthInfoValue}>{chartData.birth_city || t('notSet')}</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Chart Wheel Visual */}
+      <View style={styles.chartWheel}>
+        <View style={styles.wheelOuter}>
+          <View style={styles.wheelInner}>
+            <Text style={styles.wheelCenter}>✦</Text>
+          </View>
+          <Text style={[styles.wheelSign, { top: 5, left: '45%' }]}>♈</Text>
+          <Text style={[styles.wheelSign, { top: '15%', right: '10%' }]}>♉</Text>
+          <Text style={[styles.wheelSign, { top: '40%', right: 0 }]}>♊</Text>
+          <Text style={[styles.wheelSign, { bottom: '40%', right: 0 }]}>♋</Text>
+          <Text style={[styles.wheelSign, { bottom: '15%', right: '10%' }]}>♌</Text>
+          <Text style={[styles.wheelSign, { bottom: 5, left: '45%' }]}>♍</Text>
+          <Text style={[styles.wheelSign, { bottom: '15%', left: '10%' }]}>♎</Text>
+          <Text style={[styles.wheelSign, { bottom: '40%', left: 0 }]}>♏</Text>
+          <Text style={[styles.wheelSign, { top: '40%', left: 0 }]}>♐</Text>
+          <Text style={[styles.wheelSign, { top: '15%', left: '10%' }]}>♑</Text>
+        </View>
+      </View>
+
+      {/* Sun Sign Interpretation */}
+      <View style={styles.section}>
+        <TouchableOpacity
+          style={styles.interpretationHeader}
+          onPress={() => setExpandedSection(expandedSection === 'sun' ? null : 'sun')}
+        >
+          <View style={styles.interpretationHeaderLeft}>
+            <Text style={styles.interpretationEmoji}>☀️</Text>
+            <View>
+              <Text style={styles.interpretationTitle}>{t('sunSign') || 'Sun Sign'}</Text>
+              <Text style={styles.interpretationSign}>{chartData?.sun_sign || 'Unknown'}</Text>
+            </View>
+          </View>
+          <Text style={styles.expandIcon}>{expandedSection === 'sun' ? '−' : '+'}</Text>
+        </TouchableOpacity>
+        {expandedSection === 'sun' && (
+          <View style={styles.interpretationContent}>
+            <Text style={styles.interpretationLabel}>{t('coreIdentity') || 'Core Identity & Life Purpose'}</Text>
+            <Text style={styles.interpretationText}>
+              {getSunInterpretation(chartData?.sun_sign || '')}
+            </Text>
+            <View style={styles.keyTraits}>
+              <Text style={styles.keyTraitsTitle}>{t('keyTraits') || 'Key Traits'}</Text>
+              <Text style={styles.keyTraitsText}>{getSignDescription(chartData?.sun_sign || '')}</Text>
+            </View>
+            <View style={styles.elementBadge}>
+              <Text style={styles.elementBadgeText}>
+                {t(getElement(chartData?.sun_sign || ''))} {t('element') || 'Element'}
+              </Text>
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* Moon Sign Interpretation */}
+      <View style={styles.section}>
+        <TouchableOpacity
+          style={styles.interpretationHeader}
+          onPress={() => setExpandedSection(expandedSection === 'moon' ? null : 'moon')}
+        >
+          <View style={styles.interpretationHeaderLeft}>
+            <Text style={styles.interpretationEmoji}>🌙</Text>
+            <View>
+              <Text style={styles.interpretationTitle}>{t('moonSign') || 'Moon Sign'}</Text>
+              <Text style={styles.interpretationSign}>{chartData?.moon_sign || 'Unknown'}</Text>
+            </View>
+          </View>
+          <Text style={styles.expandIcon}>{expandedSection === 'moon' ? '−' : '+'}</Text>
+        </TouchableOpacity>
+        {expandedSection === 'moon' && (
+          <View style={styles.interpretationContent}>
+            <Text style={styles.interpretationLabel}>{t('emotionalNature') || 'Emotional Nature & Inner Self'}</Text>
+            <Text style={styles.interpretationText}>
+              {getMoonInterpretation(chartData?.moon_sign || '')}
+            </Text>
+            <View style={styles.keyTraits}>
+              <Text style={styles.keyTraitsTitle}>{t('emotionalNeeds') || 'Emotional Needs'}</Text>
+              <Text style={styles.keyTraitsText}>{getSignDescription(chartData?.moon_sign || '')}</Text>
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* Rising Sign Interpretation */}
+      <View style={styles.section}>
+        <TouchableOpacity
+          style={styles.interpretationHeader}
+          onPress={() => setExpandedSection(expandedSection === 'rising' ? null : 'rising')}
+        >
+          <View style={styles.interpretationHeaderLeft}>
+            <Text style={styles.interpretationEmoji}>⬆️</Text>
+            <View>
+              <Text style={styles.interpretationTitle}>{t('risingSign') || 'Rising Sign'}</Text>
+              <Text style={styles.interpretationSign}>{chartData?.rising_sign || 'Unknown'}</Text>
+            </View>
+          </View>
+          <Text style={styles.expandIcon}>{expandedSection === 'rising' ? '−' : '+'}</Text>
+        </TouchableOpacity>
+        {expandedSection === 'rising' && (
+          <View style={styles.interpretationContent}>
+            <Text style={styles.interpretationLabel}>{t('publicPersona') || 'Public Persona & First Impressions'}</Text>
+            <Text style={styles.interpretationText}>
+              {getRisingInterpretation(chartData?.rising_sign || '')}
+            </Text>
+            <View style={styles.keyTraits}>
+              <Text style={styles.keyTraitsTitle}>{t('howOthersSeeYou') || 'How Others See You'}</Text>
+              <Text style={styles.keyTraitsText}>{getSignDescription(chartData?.rising_sign || '')}</Text>
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* All Planetary Positions */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('planetaryPositions')}</Text>
+        {positions.map((pos, index) => (
+          <View key={index} style={styles.planetRow}>
+            <Text style={styles.planetEmoji}>{pos.emoji}</Text>
+            <View style={styles.planetInfo}>
+              <Text style={styles.planetName}>{pos.planet}</Text>
+              <Text style={styles.planetDetail}>
+                {t(pos.sign.toLowerCase()) || pos.sign} {pos.degree}° • {t('house')} {pos.house}
+              </Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {/* Elements & Modalities Analysis */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('elementsModalities')}</Text>
+
+        {/* Elements */}
+        <View style={styles.analysisCard}>
+          <Text style={styles.analysisTitle}>{t('elementBalance') || 'Element Balance'}</Text>
+          <View style={styles.elementsRow}>
+            <View style={[styles.elementCard, elements.fire >= 3 && styles.elementCardDominant]}>
+              <Text style={styles.elementEmoji}>🔥</Text>
+              <Text style={styles.elementName}>{t('fire')}</Text>
+              <Text style={styles.elementCount}>{elements.fire}</Text>
+            </View>
+            <View style={[styles.elementCard, elements.earth >= 3 && styles.elementCardDominant]}>
+              <Text style={styles.elementEmoji}>🌍</Text>
+              <Text style={styles.elementName}>{t('earth')}</Text>
+              <Text style={styles.elementCount}>{elements.earth}</Text>
+            </View>
+            <View style={[styles.elementCard, elements.air >= 3 && styles.elementCardDominant]}>
+              <Text style={styles.elementEmoji}>💨</Text>
+              <Text style={styles.elementName}>{t('air')}</Text>
+              <Text style={styles.elementCount}>{elements.air}</Text>
+            </View>
+            <View style={[styles.elementCard, elements.water >= 3 && styles.elementCardDominant]}>
+              <Text style={styles.elementEmoji}>💧</Text>
+              <Text style={styles.elementName}>{t('water')}</Text>
+              <Text style={styles.elementCount}>{elements.water}</Text>
+            </View>
+          </View>
+          <Text style={styles.analysisText}>{getElementInterpretation(elements)}</Text>
+        </View>
+
+        {/* Modalities */}
+        <View style={styles.analysisCard}>
+          <Text style={styles.analysisTitle}>{t('modalityBalance') || 'Modality Balance'}</Text>
+          <View style={styles.modalitiesRow}>
+            <View style={[styles.modalityCard, modalities.cardinal >= 3 && styles.modalityCardDominant]}>
+              <Text style={styles.modalityEmoji}>🚀</Text>
+              <Text style={styles.modalityName}>{t('cardinal') || 'Cardinal'}</Text>
+              <Text style={styles.modalityCount}>{modalities.cardinal}</Text>
+            </View>
+            <View style={[styles.modalityCard, modalities.fixed >= 3 && styles.modalityCardDominant]}>
+              <Text style={styles.modalityEmoji}>🏔️</Text>
+              <Text style={styles.modalityName}>{t('fixed') || 'Fixed'}</Text>
+              <Text style={styles.modalityCount}>{modalities.fixed}</Text>
+            </View>
+            <View style={[styles.modalityCard, modalities.mutable >= 3 && styles.modalityCardDominant]}>
+              <Text style={styles.modalityEmoji}>🌊</Text>
+              <Text style={styles.modalityName}>{t('mutable') || 'Mutable'}</Text>
+              <Text style={styles.modalityCount}>{modalities.mutable}</Text>
+            </View>
+          </View>
+          <Text style={styles.analysisText}>{getModalityInterpretation(modalities)}</Text>
+        </View>
+      </View>
+
+      {/* Overall Summary */}
+      <View style={styles.section}>
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryTitle}>{t('cosmicSummary') || 'Your Cosmic Summary'}</Text>
+          <Text style={styles.summaryText}>
+            {t('cosmicSummaryText', {
+              sun: chartData?.sun_sign || 'Unknown',
+              moon: chartData?.moon_sign || 'Unknown',
+              rising: chartData?.rising_sign || 'Unknown'
+            }) || `As a ${chartData?.sun_sign || 'Unknown'} Sun with ${chartData?.moon_sign || 'Unknown'} Moon and ${chartData?.rising_sign || 'Unknown'} Rising, you possess a unique blend of energies. Your Sun drives your conscious self, your Moon nurtures your emotional world, and your Rising shapes how you navigate life's journey.`}
+          </Text>
+        </View>
+      </View>
+
+      {/* Premium Badge */}
+      <View style={styles.premiumBadge}>
+        <Text style={styles.premiumIcon}>⭐</Text>
+        <Text style={styles.premiumText}>{t('premiumFeature')}</Text>
+      </View>
+    </>
+  );
 
   return (
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      {/* Header - outside scroll area like likes page */}
+      {/* Header - outside scroll area */}
       <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
         <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
           <Text style={styles.backText}>←</Text>
@@ -302,229 +525,17 @@ function NatalChartScreenContent() {
         <Text style={styles.subtitle}>{t('natalChartSubtitle')}</Text>
       </View>
 
-      <ScrollView style={scrollContainerStyle} contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + insets.bottom }]} showsVerticalScrollIndicator={false}>
-        {/* Birth Info */}
-        {chartData && (
-          <View style={styles.birthInfo}>
-            <Text style={styles.birthInfoTitle}>{t('birthDetails')}</Text>
-            <View style={styles.birthInfoRow}>
-              <Text style={styles.birthInfoLabel}>📅</Text>
-              <Text style={styles.birthInfoValue}>{chartData.birth_date || t('notSet')}</Text>
-            </View>
-            <View style={styles.birthInfoRow}>
-              <Text style={styles.birthInfoLabel}>🕐</Text>
-              <Text style={styles.birthInfoValue}>{chartData.birth_time || t('notSet')}</Text>
-            </View>
-            <View style={styles.birthInfoRow}>
-              <Text style={styles.birthInfoLabel}>📍</Text>
-              <Text style={styles.birthInfoValue}>{chartData.birth_city || t('notSet')}</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Chart Wheel Visual */}
-        <View style={styles.chartWheel}>
-          <View style={styles.wheelOuter}>
-            <View style={styles.wheelInner}>
-              <Text style={styles.wheelCenter}>✦</Text>
-            </View>
-            <Text style={[styles.wheelSign, { top: 5, left: '45%' }]}>♈</Text>
-            <Text style={[styles.wheelSign, { top: '15%', right: '10%' }]}>♉</Text>
-            <Text style={[styles.wheelSign, { top: '40%', right: 0 }]}>♊</Text>
-            <Text style={[styles.wheelSign, { bottom: '40%', right: 0 }]}>♋</Text>
-            <Text style={[styles.wheelSign, { bottom: '15%', right: '10%' }]}>♌</Text>
-            <Text style={[styles.wheelSign, { bottom: 5, left: '45%' }]}>♍</Text>
-            <Text style={[styles.wheelSign, { bottom: '15%', left: '10%' }]}>♎</Text>
-            <Text style={[styles.wheelSign, { bottom: '40%', left: 0 }]}>♏</Text>
-            <Text style={[styles.wheelSign, { top: '40%', left: 0 }]}>♐</Text>
-            <Text style={[styles.wheelSign, { top: '15%', left: '10%' }]}>♑</Text>
+      {isWeb ? (
+        <View style={styles.webScrollContainer}>
+          <View style={[styles.scrollContent, { paddingBottom: 60 + insets.bottom }]}>
+            {renderContent()}
           </View>
         </View>
-
-        {/* Sun Sign Interpretation */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={styles.interpretationHeader}
-            onPress={() => setExpandedSection(expandedSection === 'sun' ? null : 'sun')}
-          >
-            <View style={styles.interpretationHeaderLeft}>
-              <Text style={styles.interpretationEmoji}>☀️</Text>
-              <View>
-                <Text style={styles.interpretationTitle}>{t('sunSign') || 'Sun Sign'}</Text>
-                <Text style={styles.interpretationSign}>{chartData?.sun_sign || 'Unknown'}</Text>
-              </View>
-            </View>
-            <Text style={styles.expandIcon}>{expandedSection === 'sun' ? '−' : '+'}</Text>
-          </TouchableOpacity>
-          {expandedSection === 'sun' && (
-            <View style={styles.interpretationContent}>
-              <Text style={styles.interpretationLabel}>{t('coreIdentity') || 'Core Identity & Life Purpose'}</Text>
-              <Text style={styles.interpretationText}>
-                {getSunInterpretation(chartData?.sun_sign || '')}
-              </Text>
-              <View style={styles.keyTraits}>
-                <Text style={styles.keyTraitsTitle}>{t('keyTraits') || 'Key Traits'}</Text>
-                <Text style={styles.keyTraitsText}>{getSignDescription(chartData?.sun_sign || '')}</Text>
-              </View>
-              <View style={styles.elementBadge}>
-                <Text style={styles.elementBadgeText}>
-                  {t(getElement(chartData?.sun_sign || ''))} {t('element') || 'Element'}
-                </Text>
-              </View>
-            </View>
-          )}
-        </View>
-
-        {/* Moon Sign Interpretation */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={styles.interpretationHeader}
-            onPress={() => setExpandedSection(expandedSection === 'moon' ? null : 'moon')}
-          >
-            <View style={styles.interpretationHeaderLeft}>
-              <Text style={styles.interpretationEmoji}>🌙</Text>
-              <View>
-                <Text style={styles.interpretationTitle}>{t('moonSign') || 'Moon Sign'}</Text>
-                <Text style={styles.interpretationSign}>{chartData?.moon_sign || 'Unknown'}</Text>
-              </View>
-            </View>
-            <Text style={styles.expandIcon}>{expandedSection === 'moon' ? '−' : '+'}</Text>
-          </TouchableOpacity>
-          {expandedSection === 'moon' && (
-            <View style={styles.interpretationContent}>
-              <Text style={styles.interpretationLabel}>{t('emotionalNature') || 'Emotional Nature & Inner Self'}</Text>
-              <Text style={styles.interpretationText}>
-                {getMoonInterpretation(chartData?.moon_sign || '')}
-              </Text>
-              <View style={styles.keyTraits}>
-                <Text style={styles.keyTraitsTitle}>{t('emotionalNeeds') || 'Emotional Needs'}</Text>
-                <Text style={styles.keyTraitsText}>{getSignDescription(chartData?.moon_sign || '')}</Text>
-              </View>
-            </View>
-          )}
-        </View>
-
-        {/* Rising Sign Interpretation */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={styles.interpretationHeader}
-            onPress={() => setExpandedSection(expandedSection === 'rising' ? null : 'rising')}
-          >
-            <View style={styles.interpretationHeaderLeft}>
-              <Text style={styles.interpretationEmoji}>⬆️</Text>
-              <View>
-                <Text style={styles.interpretationTitle}>{t('risingSign') || 'Rising Sign'}</Text>
-                <Text style={styles.interpretationSign}>{chartData?.rising_sign || 'Unknown'}</Text>
-              </View>
-            </View>
-            <Text style={styles.expandIcon}>{expandedSection === 'rising' ? '−' : '+'}</Text>
-          </TouchableOpacity>
-          {expandedSection === 'rising' && (
-            <View style={styles.interpretationContent}>
-              <Text style={styles.interpretationLabel}>{t('publicPersona') || 'Public Persona & First Impressions'}</Text>
-              <Text style={styles.interpretationText}>
-                {getRisingInterpretation(chartData?.rising_sign || '')}
-              </Text>
-              <View style={styles.keyTraits}>
-                <Text style={styles.keyTraitsTitle}>{t('howOthersSeeYou') || 'How Others See You'}</Text>
-                <Text style={styles.keyTraitsText}>{getSignDescription(chartData?.rising_sign || '')}</Text>
-              </View>
-            </View>
-          )}
-        </View>
-
-        {/* All Planetary Positions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('planetaryPositions')}</Text>
-          {positions.map((pos, index) => (
-            <View key={index} style={styles.planetRow}>
-              <Text style={styles.planetEmoji}>{pos.emoji}</Text>
-              <View style={styles.planetInfo}>
-                <Text style={styles.planetName}>{pos.planet}</Text>
-                <Text style={styles.planetDetail}>
-                  {t(pos.sign.toLowerCase()) || pos.sign} {pos.degree}° • {t('house')} {pos.house}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Elements & Modalities Analysis */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('elementsModalities')}</Text>
-
-          {/* Elements */}
-          <View style={styles.analysisCard}>
-            <Text style={styles.analysisTitle}>{t('elementBalance') || 'Element Balance'}</Text>
-            <View style={styles.elementsRow}>
-              <View style={[styles.elementCard, elements.fire >= 3 && styles.elementCardDominant]}>
-                <Text style={styles.elementEmoji}>🔥</Text>
-                <Text style={styles.elementName}>{t('fire')}</Text>
-                <Text style={styles.elementCount}>{elements.fire}</Text>
-              </View>
-              <View style={[styles.elementCard, elements.earth >= 3 && styles.elementCardDominant]}>
-                <Text style={styles.elementEmoji}>🌍</Text>
-                <Text style={styles.elementName}>{t('earth')}</Text>
-                <Text style={styles.elementCount}>{elements.earth}</Text>
-              </View>
-              <View style={[styles.elementCard, elements.air >= 3 && styles.elementCardDominant]}>
-                <Text style={styles.elementEmoji}>💨</Text>
-                <Text style={styles.elementName}>{t('air')}</Text>
-                <Text style={styles.elementCount}>{elements.air}</Text>
-              </View>
-              <View style={[styles.elementCard, elements.water >= 3 && styles.elementCardDominant]}>
-                <Text style={styles.elementEmoji}>💧</Text>
-                <Text style={styles.elementName}>{t('water')}</Text>
-                <Text style={styles.elementCount}>{elements.water}</Text>
-              </View>
-            </View>
-            <Text style={styles.analysisText}>{getElementInterpretation(elements)}</Text>
-          </View>
-
-          {/* Modalities */}
-          <View style={styles.analysisCard}>
-            <Text style={styles.analysisTitle}>{t('modalityBalance') || 'Modality Balance'}</Text>
-            <View style={styles.modalitiesRow}>
-              <View style={[styles.modalityCard, modalities.cardinal >= 3 && styles.modalityCardDominant]}>
-                <Text style={styles.modalityEmoji}>🚀</Text>
-                <Text style={styles.modalityName}>{t('cardinal') || 'Cardinal'}</Text>
-                <Text style={styles.modalityCount}>{modalities.cardinal}</Text>
-              </View>
-              <View style={[styles.modalityCard, modalities.fixed >= 3 && styles.modalityCardDominant]}>
-                <Text style={styles.modalityEmoji}>🏔️</Text>
-                <Text style={styles.modalityName}>{t('fixed') || 'Fixed'}</Text>
-                <Text style={styles.modalityCount}>{modalities.fixed}</Text>
-              </View>
-              <View style={[styles.modalityCard, modalities.mutable >= 3 && styles.modalityCardDominant]}>
-                <Text style={styles.modalityEmoji}>🌊</Text>
-                <Text style={styles.modalityName}>{t('mutable') || 'Mutable'}</Text>
-                <Text style={styles.modalityCount}>{modalities.mutable}</Text>
-              </View>
-            </View>
-            <Text style={styles.analysisText}>{getModalityInterpretation(modalities)}</Text>
-          </View>
-        </View>
-
-        {/* Overall Summary */}
-        <View style={styles.section}>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>{t('cosmicSummary') || 'Your Cosmic Summary'}</Text>
-            <Text style={styles.summaryText}>
-              {t('cosmicSummaryText', {
-                sun: chartData?.sun_sign || 'Unknown',
-                moon: chartData?.moon_sign || 'Unknown',
-                rising: chartData?.rising_sign || 'Unknown'
-              }) || `As a ${chartData?.sun_sign || 'Unknown'} Sun with ${chartData?.moon_sign || 'Unknown'} Moon and ${chartData?.rising_sign || 'Unknown'} Rising, you possess a unique blend of energies. Your Sun drives your conscious self, your Moon nurtures your emotional world, and your Rising shapes how you navigate life's journey.`}
-            </Text>
-          </View>
-        </View>
-
-        {/* Premium Badge */}
-        <View style={styles.premiumBadge}>
-          <Text style={styles.premiumIcon}>⭐</Text>
-          <Text style={styles.premiumText}>{t('premiumFeature')}</Text>
-        </View>
-      </ScrollView>
+      ) : (
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + insets.bottom }]} showsVerticalScrollIndicator={false}>
+          {renderContent()}
+        </ScrollView>
+      )}
     </LinearGradient>
   );
 }
@@ -532,6 +543,10 @@ function NatalChartScreenContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  webScrollContainer: {
+    flex: 1,
+    overflow: 'scroll' as const,
   },
   loadingContainer: {
     flex: 1,

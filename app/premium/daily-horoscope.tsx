@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -126,93 +127,108 @@ function DailyHoroscopeScreenContent() {
 
   const sections = getHoroscopeSections();
   const moonPhase = getMoonPhase();
+  const isWeb = Platform.OS === 'web';
+
+  const renderContent = () => (
+    <>
+      {/* Sign Card */}
+      <View style={styles.signCard}>
+        <Text style={styles.signEmoji}>☀️</Text>
+        <View style={styles.signInfo}>
+          <Text style={styles.signLabel}>{t('yourSign')}</Text>
+          <Text style={styles.signName}>{sunSign ? t(sunSign.toLowerCase()) : t('unknown')}</Text>
+        </View>
+        <View style={styles.moonInfo}>
+          <Text style={styles.moonEmoji}>{moonPhase.emoji}</Text>
+          <Text style={styles.moonName}>{moonPhase.name}</Text>
+        </View>
+      </View>
+
+      {/* Daily Overview */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('todaysOverview')}</Text>
+        <View style={styles.overviewCard}>
+          <Text style={styles.overviewText}>
+            {t('dailyOverviewContent', { sign: sunSign ? t(sunSign.toLowerCase()) : '' })}
+          </Text>
+        </View>
+      </View>
+
+      {/* Overall Rating */}
+      <View style={styles.ratingSection}>
+        <Text style={styles.ratingLabel}>{t('overallEnergy')}</Text>
+        <Text style={styles.ratingStars}>★★★★☆</Text>
+        <Text style={styles.ratingPercent}>82%</Text>
+      </View>
+
+      {/* Horoscope Sections */}
+      {sections.map((section, index) => (
+        <View key={index} style={styles.horoscopeCard}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardEmoji}>{section.emoji}</Text>
+            <Text style={styles.cardTitle}>{section.title}</Text>
+            <Text style={styles.cardRating}>{renderStars(section.rating)}</Text>
+          </View>
+          <Text style={styles.cardContent}>{section.content}</Text>
+        </View>
+      ))}
+
+      {/* Lucky Numbers & Colors */}
+      <View style={styles.luckySection}>
+        <View style={styles.luckyItem}>
+          <Text style={styles.luckyLabel}>{t('luckyNumbers')}</Text>
+          <Text style={styles.luckyValue}>7, 14, 23</Text>
+        </View>
+        <View style={styles.luckyItem}>
+          <Text style={styles.luckyLabel}>{t('luckyColor')}</Text>
+          <View style={styles.colorDots}>
+            <View style={[styles.colorDot, { backgroundColor: '#9333ea' }]} />
+            <View style={[styles.colorDot, { backgroundColor: '#e94560' }]} />
+          </View>
+        </View>
+        <View style={styles.luckyItem}>
+          <Text style={styles.luckyLabel}>{t('luckyTime')}</Text>
+          <Text style={styles.luckyValue}>2:00 PM</Text>
+        </View>
+      </View>
+
+      {/* Affirmation */}
+      <View style={styles.affirmationCard}>
+        <Text style={styles.affirmationEmoji}>✨</Text>
+        <Text style={styles.affirmationLabel}>{t('dailyAffirmation')}</Text>
+        <Text style={styles.affirmationText}>{t('affirmationContent')}</Text>
+      </View>
+
+      {/* Premium Badge */}
+      <View style={styles.premiumBadge}>
+        <Text style={styles.premiumIcon}>✨</Text>
+        <Text style={styles.premiumText}>{t('premiumPlusFeature')}</Text>
+      </View>
+    </>
+  );
 
   return (
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
-          <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
-            <Text style={styles.backText}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>{t('dailyHoroscope')}</Text>
-          <Text style={styles.date}>{dateString}</Text>
-        </View>
+      {/* Header - outside scroll area */}
+      <View style={[styles.header, { paddingTop: 60 + insets.top }]}>
+        <TouchableOpacity style={[styles.backButton, { top: 50 + insets.top }]} onPress={() => router.back()}>
+          <Text style={styles.backText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>{t('dailyHoroscope')}</Text>
+        <Text style={styles.date}>{dateString}</Text>
+      </View>
 
-        {/* Sign Card */}
-        <View style={styles.signCard}>
-          <Text style={styles.signEmoji}>☀️</Text>
-          <View style={styles.signInfo}>
-            <Text style={styles.signLabel}>{t('yourSign')}</Text>
-            <Text style={styles.signName}>{sunSign ? t(sunSign.toLowerCase()) : t('unknown')}</Text>
-          </View>
-          <View style={styles.moonInfo}>
-            <Text style={styles.moonEmoji}>{moonPhase.emoji}</Text>
-            <Text style={styles.moonName}>{moonPhase.name}</Text>
+      {isWeb ? (
+        <View style={styles.webScrollContainer}>
+          <View style={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}>
+            {renderContent()}
           </View>
         </View>
-
-        {/* Daily Overview */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('todaysOverview')}</Text>
-          <View style={styles.overviewCard}>
-            <Text style={styles.overviewText}>
-              {t('dailyOverviewContent', { sign: sunSign ? t(sunSign.toLowerCase()) : '' })}
-            </Text>
-          </View>
-        </View>
-
-        {/* Overall Rating */}
-        <View style={styles.ratingSection}>
-          <Text style={styles.ratingLabel}>{t('overallEnergy')}</Text>
-          <Text style={styles.ratingStars}>★★★★☆</Text>
-          <Text style={styles.ratingPercent}>82%</Text>
-        </View>
-
-        {/* Horoscope Sections */}
-        {sections.map((section, index) => (
-          <View key={index} style={styles.horoscopeCard}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardEmoji}>{section.emoji}</Text>
-              <Text style={styles.cardTitle}>{section.title}</Text>
-              <Text style={styles.cardRating}>{renderStars(section.rating)}</Text>
-            </View>
-            <Text style={styles.cardContent}>{section.content}</Text>
-          </View>
-        ))}
-
-        {/* Lucky Numbers & Colors */}
-        <View style={styles.luckySection}>
-          <View style={styles.luckyItem}>
-            <Text style={styles.luckyLabel}>{t('luckyNumbers')}</Text>
-            <Text style={styles.luckyValue}>7, 14, 23</Text>
-          </View>
-          <View style={styles.luckyItem}>
-            <Text style={styles.luckyLabel}>{t('luckyColor')}</Text>
-            <View style={styles.colorDots}>
-              <View style={[styles.colorDot, { backgroundColor: '#9333ea' }]} />
-              <View style={[styles.colorDot, { backgroundColor: '#e94560' }]} />
-            </View>
-          </View>
-          <View style={styles.luckyItem}>
-            <Text style={styles.luckyLabel}>{t('luckyTime')}</Text>
-            <Text style={styles.luckyValue}>2:00 PM</Text>
-          </View>
-        </View>
-
-        {/* Affirmation */}
-        <View style={styles.affirmationCard}>
-          <Text style={styles.affirmationEmoji}>✨</Text>
-          <Text style={styles.affirmationLabel}>{t('dailyAffirmation')}</Text>
-          <Text style={styles.affirmationText}>{t('affirmationContent')}</Text>
-        </View>
-
-        {/* Premium Badge */}
-        <View style={styles.premiumBadge}>
-          <Text style={styles.premiumIcon}>✨</Text>
-          <Text style={styles.premiumText}>{t('premiumPlusFeature')}</Text>
-        </View>
-      </ScrollView>
+      ) : (
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]} showsVerticalScrollIndicator={false}>
+          {renderContent()}
+        </ScrollView>
+      )}
     </LinearGradient>
   );
 }
@@ -220,6 +236,10 @@ function DailyHoroscopeScreenContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  webScrollContainer: {
+    flex: 1,
+    overflow: 'scroll' as const,
   },
   scrollContent: {
     paddingBottom: 40,
