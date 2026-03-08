@@ -25,21 +25,29 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarPosition: 'bottom',
-        tabBarStyle: {
-          backgroundColor: '#0f0f1a',
-          borderTopColor: 'rgba(255, 255, 255, 0.1)',
-          borderTopWidth: 1,
-          height: Platform.OS === 'web' ? 70 : 60 + insets.bottom,
-          paddingBottom: Platform.OS === 'ios' ? insets.bottom : 8,
-          paddingTop: 8,
-          ...(Platform.OS === 'web' && {
+        tabBarStyle: Platform.select({
+          web: {
+            backgroundColor: '#0f0f1a',
+            borderTopColor: 'rgba(255, 255, 255, 0.1)',
+            borderTopWidth: 1,
+            height: 70,
+            paddingBottom: 8,
+            paddingTop: 8,
             position: 'fixed' as const,
             left: 0,
             right: 0,
             bottom: 0,
             zIndex: 1000,
-          }),
-        },
+          },
+          default: {
+            backgroundColor: '#0f0f1a',
+            borderTopColor: 'rgba(255, 255, 255, 0.1)',
+            borderTopWidth: 1,
+            height: 60 + insets.bottom,
+            paddingBottom: Platform.OS === 'ios' ? insets.bottom : 8,
+            paddingTop: 8,
+          },
+        }),
         tabBarItemStyle: {
           flex: 1,
         },
