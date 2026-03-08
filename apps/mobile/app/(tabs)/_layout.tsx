@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { tabSwitch } from '../../services/haptics';
@@ -20,26 +20,29 @@ export default function TabsLayout() {
     tabSwitch();
   };
 
+  const tabBarStyle: ViewStyle = {
+    backgroundColor: '#0f0f1a',
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    borderTopWidth: 1,
+    height: Platform.OS === 'web' ? 70 : 60 + insets.bottom,
+    paddingBottom: Platform.OS === 'ios' ? insets.bottom : 8,
+    paddingTop: 8,
+    ...(Platform.OS === 'web'
+      ? {
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+        }
+      : {}),
+  };
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarPosition: 'bottom',
-        tabBarStyle: {
-          backgroundColor: '#0f0f1a',
-          borderTopColor: 'rgba(255, 255, 255, 0.1)',
-          borderTopWidth: 1,
-          height: Platform.OS === 'web' ? 70 : 60 + insets.bottom,
-          paddingBottom: Platform.OS === 'ios' ? insets.bottom : 8,
-          paddingTop: 8,
-          ...(Platform.OS === 'web' && {
-            position: 'fixed',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 1000,
-          }),
-        } as any,
+        tabBarStyle,
         tabBarItemStyle: {
           flex: 1,
         },
