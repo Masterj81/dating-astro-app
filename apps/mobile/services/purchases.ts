@@ -133,7 +133,9 @@ export async function checkSubscriptionTier(): Promise<SubscriptionTier> {
 export async function restorePurchases() {
   try {
     const customerInfo = await Purchases.restorePurchases();
-    const isPremium = customerInfo.entitlements.active['premium'] !== undefined;
+    const isPremium =
+      customerInfo.entitlements.active['premium'] !== undefined ||
+      customerInfo.entitlements.active['premium_plus'] !== undefined;
     return { success: true, isPremium };
   } catch (error) {
     return { success: false, isPremium: false };

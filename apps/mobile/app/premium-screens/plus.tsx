@@ -1,7 +1,7 @@
 import { useIsFocused } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -12,14 +12,44 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { PurchasesPackage } from 'react-native-purchases';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { usePremium } from '../../contexts/PremiumContext';
+import { getOfferings, purchasePackage } from '../../services/purchases';
 
 export default function PremiumPlusScreen() {
   const [purchasing, setPurchasing] = useState(false);
+  const [premiumPlusPackage, setPremiumPlusPackage] = useState<PurchasesPackage | null>(null);
   const { t } = useLanguage();
+  const { refreshSubscription } = usePremium();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+
+  // Load available packages on mount (native only)
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      loadPackages();
+    }
+  }, []);
+
+  const loadPackages = async () => {
+    try {
+      const packages = await getOfferings();
+      // Find the premium_plus package (monthly or annual)
+      const plusPkg = packages.find(
+        (pkg) =>
+          pkg.identifier.includes('premium_plus') ||
+          pkg.identifier.includes('plus') ||
+          pkg.product.identifier.includes('premium_plus')
+      );
+      if (plusPkg) {
+        setPremiumPlusPackage(plusPkg);
+      }
+    } catch (error) {
+      console.error('Failed to load packages:', error);
+    }
+  };
 
   const PREMIUM_PLUS_FEATURES = [
     {
@@ -67,21 +97,54 @@ export default function PremiumPlusScreen() {
   ];
 
   const handlePurchase = async () => {
+    // Web: redirect to Stripe checkout (handled separately)
+    if (Platform.OS === 'web') {
+      // Web purchases go through Stripe - redirect to premium tab which handles web payments
+      router.push('/(tabs)/premium' as any);
+      return;
+    }
+
+    // Native: use RevenueCat
+    if (!premiumPlusPackage) {
+      Alert.alert(
+        t('error') || 'Error',
+        t('packageNotAvailable') || 'Premium Plus package is not available. Please try again later.',
+        [{ text: t('ok') || 'OK' }]
+      );
+      return;
+    }
+
     setPurchasing(true);
-    // Simulated purchase
-    setTimeout(() => {
-      setPurchasing(false);
-      if (Platform.OS === 'web') {
-        alert(t('testModeMessage') || 'This is test mode. No actual purchase will be made.');
-        router.back();
+    try {
+      const result = await purchasePackage(premiumPlusPackage);
+
+      if (result.success) {
+        // Refresh subscription status in context
+        await refreshSubscription();
+        Alert.alert(
+          t('purchaseSuccess') || 'Success!',
+          t('premiumPlusActivated') || 'Premium Plus has been activated. Enjoy your new features!',
+          [{ text: t('ok') || 'OK', onPress: () => router.back() }]
+        );
+      } else if (result.cancelled) {
+        // User cancelled - no action needed
       } else {
         Alert.alert(
-          t('testMode'),
-          t('testModeMessage'),
-          [{ text: t('ok'), onPress: () => router.back() }]
+          t('purchaseFailed') || 'Purchase Failed',
+          t('purchaseError') || 'There was an error processing your purchase. Please try again.',
+          [{ text: t('ok') || 'OK' }]
         );
       }
-    }, 1000);
+    } catch (error) {
+      console.error('Purchase error:', error);
+      Alert.alert(
+        t('error') || 'Error',
+        t('purchaseError') || 'There was an error processing your purchase. Please try again.',
+        [{ text: t('ok') || 'OK' }]
+      );
+    } finally {
+      setPurchasing(false);
+    }
   };
 
   // Web version with position fixed

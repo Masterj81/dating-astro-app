@@ -24,6 +24,8 @@
   },
   "overrides": {
     "@supabase/supabase-js": "^2.93.3",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "expo-constants": "~18.0.13",
+    "expo-asset": "~12.0.12"
   }
 }
