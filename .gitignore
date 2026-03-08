@@ -45,9 +45,19 @@ app-example
 # Claude Code
 .claude/
 
-# Web (Next.js)
-web/.next/
-web/node_modules/
-web/.env*.local
+# Monorepo workspaces
+apps/*/.next/
+apps/*/.expo/
+apps/*/node_modules/
+apps/*/.env*.local
+packages/*/node_modules/
+packages/*/dist/
 
+# Root env
 .env.local
+
+# Vercel
+.vercel
+
+# Turbo
+.turbo/

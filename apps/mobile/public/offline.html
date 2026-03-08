@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Offline - AstroDating</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #0f0f1a;
+      color: #fff;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+    .wrap {
+      height: 100%;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 24px;
+    }
+    .btn {
+      margin-top: 16px;
+      background: #e94560;
+      border: 0;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div>
+      <h1>You are offline</h1>
+      <p>Please reconnect and try again.</p>
+      <button class="btn" onclick="location.reload()">Retry</button>
+    </div>
+  </div>
+</body>
+</html>
