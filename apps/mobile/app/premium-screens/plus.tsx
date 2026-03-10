@@ -25,6 +25,8 @@ export default function PremiumPlusScreen() {
   const { refreshSubscription } = usePremium();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+  const celestialTierLabel = t('celestialTier') || 'Celestial';
+  const cosmicTierLabel = t('cosmicTier') || 'Cosmic';
 
   // Load available packages on mount (native only)
   useEffect(() => {
@@ -52,13 +54,6 @@ export default function PremiumPlusScreen() {
   };
 
   const PREMIUM_PLUS_FEATURES = [
-    {
-      emoji: '\u{1F319}',
-      title: t('fullNatalChart'),
-      description: t('fullNatalChartDesc'),
-      route: '/premium-screens/natal-chart',
-      included: true
-    },
     {
       emoji: '\u{2600}\u{FE0F}',
       title: t('dailyHoroscopeFeature'),
@@ -201,7 +196,7 @@ export default function PremiumPlusScreen() {
             }}>PLUS</span>
           </div>
           <h1 style={{ color: '#fff', fontSize: 28, fontWeight: 'bold', margin: '0 0 8px' }}>
-            {t('premiumPlus')}
+            {cosmicTierLabel}
           </h1>
           <p style={{ color: '#888', fontSize: 16, margin: 0, padding: '0 40px' }}>
             {t('premiumPlusSubtitle')}
@@ -261,7 +256,7 @@ export default function PremiumPlusScreen() {
             ) : (
               <>
                 <div style={{ color: '#fff', fontSize: 18, fontWeight: 600 }}>
-                  {t('upgradeToPremiumPlus')}
+                  {`Upgrade to ${cosmicTierLabel}`}
                 </div>
                 <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, marginTop: 4 }}>
                   $14.99/{t('monthly')?.toLowerCase()}
@@ -292,7 +287,7 @@ export default function PremiumPlusScreen() {
               <Text style={styles.plusText}>PLUS</Text>
             </View>
           </View>
-          <Text style={styles.title}>{t('premiumPlus')}</Text>
+          <Text style={styles.title}>{cosmicTierLabel}</Text>
           <Text style={styles.subtitle}>{t('premiumPlusSubtitle')}</Text>
         </View>
 
@@ -327,13 +322,14 @@ export default function PremiumPlusScreen() {
 
           <View style={styles.comparisonCard}>
             <View style={styles.planColumn}>
-              <Text style={styles.planHeader}>{t('premium')}</Text>
+              <Text style={styles.planHeader}>{celestialTierLabel}</Text>
               <Text style={styles.planPrice}>$9.99/{t('monthly').toLowerCase()}</Text>
               <View style={styles.planFeatures}>
                 <Text style={styles.planFeature}>✓ {t('unlimitedSwipes')}</Text>
                 <Text style={styles.planFeature}>✓ {t('advancedSynastry')}</Text>
                 <Text style={styles.planFeature}>✓ {t('superLikes')}</Text>
                 <Text style={styles.planFeature}>✓ {t('seeWhoLikes')}</Text>
+                <Text style={styles.planFeature}>✓ {t('fullNatalChart')}</Text>
                 <Text style={styles.planFeatureMissing}>✗ {t('dailyHoroscopeFeature')}</Text>
                 <Text style={styles.planFeatureMissing}>✗ {t('monthlyHoroscopeFeature')}</Text>
               </View>
@@ -345,11 +341,10 @@ export default function PremiumPlusScreen() {
               <View style={styles.recommendedBadge}>
                 <Text style={styles.recommendedText}>{t('recommended')}</Text>
               </View>
-              <Text style={styles.planHeaderHighlight}>{t('premiumPlus')}</Text>
+              <Text style={styles.planHeaderHighlight}>{cosmicTierLabel}</Text>
               <Text style={styles.planPriceHighlight}>$14.99/{t('monthly').toLowerCase()}</Text>
               <View style={styles.planFeatures}>
                 <Text style={styles.planFeatureHighlight}>✓ {t('allPremiumFeatures')}</Text>
-                <Text style={styles.planFeatureHighlight}>✓ {t('fullNatalChart')}</Text>
                 <Text style={styles.planFeatureHighlight}>✓ {t('dailyHoroscopeFeature')}</Text>
                 <Text style={styles.planFeatureHighlight}>✓ {t('monthlyHoroscopeFeature')}</Text>
                 <Text style={styles.planFeatureHighlight}>✓ {t('planetaryTransits')}</Text>
@@ -373,7 +368,7 @@ export default function PremiumPlusScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Text style={styles.subscribeText}>{t('upgradeToPremiumPlus')}</Text>
+                <Text style={styles.subscribeText}>{`Upgrade to ${cosmicTierLabel}`}</Text>
                 <Text style={styles.subscribePriceText}>$14.99/{t('monthly').toLowerCase()}</Text>
               </>
             )}

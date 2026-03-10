@@ -794,6 +794,7 @@
   "microphonePermissionDenied": "Se requiere permiso del micrófono para grabar audio",
   "recordingFailed": "Error al grabar. Por favor, inténtalo de nuevo.",
   "playbackFailed": "Error de reproducción. Por favor, inténtalo de nuevo.",
+  "fileProcessingFailed": "Error al procesar el archivo. Por favor, inténtalo de nuevo.",
   "noActiveRecording": "No hay grabación activa",
 
   "getVerified": "Verificar Perfil",

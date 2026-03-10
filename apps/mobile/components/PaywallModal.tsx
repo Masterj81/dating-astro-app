@@ -83,9 +83,9 @@ export default function PaywallModal() {
 
   const getTierDisplayName = (tier: SubscriptionTier): string => {
     if (tier === 'premium_plus') {
-      return t('premiumPlus') || 'Premium Plus';
+      return t('cosmicTier') || 'Cosmic';
     }
-    return t('premium') || 'Premium';
+    return t('celestialTier') || 'Celestial';
   };
 
   const getTierPrice = (tier: SubscriptionTier): string => {

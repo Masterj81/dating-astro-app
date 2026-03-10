@@ -794,6 +794,7 @@
   "microphonePermissionDenied": "Mikrofonberechtigung ist für Audioaufnahmen erforderlich",
   "recordingFailed": "Aufnahme fehlgeschlagen. Bitte versuche es erneut.",
   "playbackFailed": "Wiedergabe fehlgeschlagen. Bitte versuche es erneut.",
+  "fileProcessingFailed": "Dateiverarbeitung fehlgeschlagen. Bitte versuche es erneut.",
   "noActiveRecording": "Keine aktive Aufnahme",
 
   "getVerified": "Verifizierung erhalten",

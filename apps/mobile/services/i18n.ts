@@ -49,14 +49,14 @@ export const getCurrentLanguage = () => currentLanguage;
 
 // Get available languages
 export const getAvailableLanguages = () => [
-  { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  { code: 'es', name: 'Español', flag: '🇪🇸' },
-  { code: 'ar', name: 'العربية', flag: '🇸🇦' },
-  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-  { code: 'pt', name: 'Português', flag: '🇧🇷' },
-  { code: 'ja', name: '日本語', flag: '🇯🇵' },
-  { code: 'zh', name: '中文', flag: '🇨🇳' },
+  { code: 'en', name: 'English', flag: '\u{1F1FA}\u{1F1F8}' },
+  { code: 'fr', name: 'French', flag: '\u{1F1EB}\u{1F1F7}' },
+  { code: 'es', name: 'Spanish', flag: '\u{1F1EA}\u{1F1F8}' },
+  { code: 'ar', name: 'Arabic', flag: '\u{1F1F8}\u{1F1E6}' },
+  { code: 'de', name: 'German', flag: '\u{1F1E9}\u{1F1EA}' },
+  { code: 'pt', name: 'Portuguese', flag: '\u{1F1E7}\u{1F1F7}' },
+  { code: 'ja', name: 'Japanese', flag: '\u{1F1EF}\u{1F1F5}' },
+  { code: 'zh', name: 'Chinese', flag: '\u{1F1E8}\u{1F1F3}' },
 ];
 
 // Initialize language from saved preference
@@ -82,3 +82,4 @@ export const t = (key: string, options?: Record<string, string | number>) => {
 };
 
 export default i18n;
+

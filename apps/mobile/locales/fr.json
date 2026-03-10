@@ -794,6 +794,7 @@
   "microphonePermissionDenied": "L'autorisation du microphone est requise pour enregistrer",
   "recordingFailed": "Échec de l'enregistrement. Veuillez réessayer.",
   "playbackFailed": "Échec de la lecture. Veuillez réessayer.",
+  "fileProcessingFailed": "Échec du traitement du fichier. Veuillez réessayer.",
   "noActiveRecording": "Aucun enregistrement actif",
 
   "getVerified": "Obtenir la Vérification",

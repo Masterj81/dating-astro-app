@@ -794,6 +794,7 @@
   "microphonePermissionDenied": "إذن الميكروفون مطلوب لتسجيل الصوت",
   "recordingFailed": "فشل التسجيل. يرجى المحاولة مرة أخرى.",
   "playbackFailed": "فشل التشغيل. يرجى المحاولة مرة أخرى.",
+  "fileProcessingFailed": "فشل في معالجة الملف. يرجى المحاولة مرة أخرى.",
   "noActiveRecording": "لا يوجد تسجيل نشط",
 
   "getVerified": "احصل على التوثيق",

@@ -1,15 +1,8 @@
 import { Camera } from 'expo-camera';
 import { AudioModule } from 'expo-audio';
-import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
 import { debugLog } from '../utils/debug';
-
-// Only import on native platforms (not needed for web)
-let decode: ((base64: string) => ArrayBuffer) | null = null;
-if (Platform.OS !== 'web') {
-  decode = require('base64-arraybuffer').decode;
-}
 
 const MIN_RECORDING_DURATION_MS = 5000; // 5 seconds minimum
 const MAX_RECORDING_DURATION_MS = 15000; // 15 seconds maximum
@@ -61,10 +54,14 @@ export async function uploadVerificationVideo(
     debugLog('Starting video upload for user:', userId);
     debugLog('Video URI:', uri);
 
-    const fileName = `verification_${Date.now()}.mp4`;
-    const filePath = `${userId}/${fileName}`;
+    const getExtFromMime = (mime: string) => {
+      if (mime.includes('quicktime')) return 'mov';
+      if (mime.includes('webm')) return 'webm';
+      return 'mp4';
+    };
 
     let uploadError;
+    let filePath = `${userId}/verification_${Date.now()}.mp4`;
 
     if (Platform.OS === 'web') {
       // Web: use fetch to get blob
@@ -72,46 +69,34 @@ export async function uploadVerificationVideo(
       const response = await fetch(uri);
       const blob = await response.blob();
       debugLog('Blob size:', blob.size);
+      const contentType = blob.type || 'video/mp4';
+      const ext = getExtFromMime(contentType);
+      filePath = `${userId}/verification_${Date.now()}.${ext}`;
 
       const result = await supabase.storage
         .from('verifications')
         .upload(filePath, blob, {
           upsert: true,
-          contentType: 'video/mp4',
+          contentType,
         });
       uploadError = result.error;
     } else {
-      // Native (iOS/Android): check file info first
-      debugLog('Native platform: checking file info...');
+      // Native (iOS/Android): fetch blob directly to support content:// and file:// URIs
+      debugLog('Native platform: fetching blob...');
 
       try {
-        const fileInfo = await FileSystem.getInfoAsync(uri);
-        debugLog('File info:', JSON.stringify(fileInfo));
-
-        if (!fileInfo.exists) {
-          console.error('File does not exist at URI:', uri);
-          return { success: false, error: 'fileNotFound' };
-        }
-
-        // For Android, ensure we have the correct URI format
-        let fileUri = uri;
-        if (Platform.OS === 'android' && !uri.startsWith('file://')) {
-          fileUri = `file://${uri}`;
-          debugLog('Adjusted Android URI:', fileUri);
-        }
-
-        debugLog('Reading file as base64...');
-        const base64 = await FileSystem.readAsStringAsync(fileUri, {
-          encoding: 'base64',
-        });
-        debugLog('Base64 length:', base64.length);
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const contentType = blob.type || 'video/mp4';
+        const ext = getExtFromMime(contentType);
+        filePath = `${userId}/verification_${Date.now()}.${ext}`;
 
         debugLog('Uploading to Supabase...');
         const result = await supabase.storage
           .from('verifications')
-          .upload(filePath, decode!(base64), {
+          .upload(filePath, blob, {
             upsert: true,
-            contentType: 'video/mp4',
+            contentType,
           });
         uploadError = result.error;
       } catch (fileError: any) {

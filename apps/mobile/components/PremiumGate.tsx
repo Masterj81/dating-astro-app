@@ -76,9 +76,9 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
 
   const getTierDisplayName = (tierName: SubscriptionTier): string => {
     if (tierName === 'premium_plus') {
-      return t('premiumPlus') || 'Premium Plus';
+      return t('cosmicTier') || 'Cosmic';
     }
-    return t('premium') || 'Premium';
+    return t('celestialTier') || 'Celestial';
   };
 
   const getFeatureDisplayName = (featureName: FeatureKey): string => {

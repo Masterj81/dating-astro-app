@@ -45,7 +45,7 @@ export default function LanguageSelector({ onLanguageChange }: Props) {
       >
         <Text style={styles.flag}>{currentLanguage.flag}</Text>
         <Text style={styles.langName}>{currentLanguage.name}</Text>
-        <Text style={styles.arrow}>▼</Text>
+        <Text style={styles.arrow}>{'\u25BE'}</Text>
       </TouchableOpacity>
 
       <Modal
@@ -82,7 +82,7 @@ export default function LanguageSelector({ onLanguageChange }: Props) {
                 {loadingLang === lang.code ? (
                   <ActivityIndicator size="small" color="#e94560" />
                 ) : language === lang.code ? (
-                  <Text style={styles.checkmark}>✓</Text>
+                  <Text style={styles.checkmark}>{'\u2713'}</Text>
                 ) : null}
               </TouchableOpacity>
             ))}
@@ -184,3 +184,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
+

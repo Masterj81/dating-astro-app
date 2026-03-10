@@ -100,25 +100,36 @@ export default function ProfileScreen() {
   };
 
   const uploadImage = async (uri: string) => {
+    if (!user?.id) {
+      Alert.alert(t('error'), t('somethingWrong'));
+      return;
+    }
+
     setUploading(true);
 
     try {
-      const ext = uri.split('.').pop()?.toLowerCase() || 'jpg';
-      const fileName = `avatar.${ext}`;
-      const filePath = `${user?.id}/${fileName}`;
+      const getExtFromMime = (mime: string) => {
+        if (mime.includes('png')) return 'png';
+        if (mime.includes('webp')) return 'webp';
+        return 'jpg';
+      };
 
       const response = await fetch(uri);
       const blob = await response.blob();
+      const mimeType = blob.type || 'image/jpeg';
+      const ext = getExtFromMime(mimeType);
+      const fileName = `avatar.${ext}`;
+      const filePath = `${user.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, blob, {
           upsert: true,
-          contentType: `image/${ext}`,
+          contentType: mimeType,
         });
 
       if (uploadError) {
-        Alert.alert(t('error'), t('failedUpload'));
+        Alert.alert(t('error'), `${t('failedUpload')}${uploadError.message ? `: ${uploadError.message}` : ''}`);
         setUploading(false);
         return;
       }

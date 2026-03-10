@@ -25,6 +25,13 @@ const COSMIC_FEATURES = [
   { key: 'datePlanner', icon: '\u{1F4AB}', route: '/premium-screens/date-planner' },
 ];
 
+const PAYWALL_PREVIEW_FEATURES = [
+  { key: 'fullNatalChart', icon: '\u{1F31F}', fallback: 'Natal Chart' },
+  { key: 'advancedSynastry', icon: '\u{1F495}', fallback: 'Synastry' },
+  { key: 'dailyHoroscope', icon: '\u{1F52E}', fallback: 'Horoscopes' },
+  { key: 'luckyDays', icon: '\u{1F340}', fallback: 'Lucky Days' },
+];
+
 function FeatureCard({ title, icon, onPress, locked = false }: {
   title: string;
   icon: string;
@@ -81,8 +88,8 @@ export default function PremiumScreen() {
           </p>
 
           {/* Features preview */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginBottom: 32, maxWidth: 320 }}>
-            {['🌟 Natal Chart', '💕 Synastry', '🔮 Horoscopes', '🍀 Lucky Days'].map((feature, i) => (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginBottom: 32, maxWidth: 360 }}>
+            {PAYWALL_PREVIEW_FEATURES.map((feature, i) => (
               <div key={i} style={{
                 backgroundColor: 'rgba(255,255,255,0.05)',
                 padding: '8px 16px',
@@ -90,7 +97,7 @@ export default function PremiumScreen() {
                 color: '#ccc',
                 fontSize: 14
               }}>
-                {feature}
+                {feature.icon} {t(feature.key) || feature.fallback}
               </div>
             ))}
           </div>
@@ -130,9 +137,9 @@ export default function PremiumScreen() {
 
           {/* Features preview */}
           <View style={styles.featuresPreview}>
-            {['🌟 Natal Chart', '💕 Synastry', '🔮 Horoscopes', '🍀 Lucky Days'].map((feature, i) => (
+            {PAYWALL_PREVIEW_FEATURES.map((feature, i) => (
               <View key={i} style={styles.featureTag}>
-                <Text style={styles.featureTagText}>{feature}</Text>
+                <Text style={styles.featureTagText}>{feature.icon} {t(feature.key) || feature.fallback}</Text>
               </View>
             ))}
           </View>
@@ -164,6 +171,7 @@ export default function PremiumScreen() {
         background="linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%)"
         padding={20}
       >
+        <div style={{ maxWidth: 920, margin: '0 auto', width: '100%' }}>
         {/* Header */}
         <div style={{ marginBottom: 30 }}>
           <h1 style={{ fontSize: 32, fontWeight: 'bold', color: '#fff', marginBottom: 8, margin: 0 }}>
@@ -179,7 +187,7 @@ export default function PremiumScreen() {
           <h2 style={{ fontSize: 18, fontWeight: 600, color: '#888', marginBottom: 15, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 15px' }}>
             {t('celestialFeatures') || 'Celestial Features'}
           </h2>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
             {CELESTIAL_FEATURES.map((feature) => (
               <div
                 key={feature.key}
@@ -187,9 +195,8 @@ export default function PremiumScreen() {
                 style={{
                   backgroundColor: 'rgba(255,255,255,0.05)',
                   borderRadius: 20,
-                  padding: 20,
-                  width: 'calc(50% - 6px)',
-                  aspectRatio: '1',
+                  padding: 16,
+                  minHeight: 150,
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'center',
@@ -213,7 +220,7 @@ export default function PremiumScreen() {
           <h2 style={{ fontSize: 18, fontWeight: 600, color: '#888', marginBottom: 15, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 15px' }}>
             {t('cosmicFeatures') || 'Cosmic Features'}
           </h2>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
             {COSMIC_FEATURES.map((feature) => (
               <div
                 key={feature.key}
@@ -227,9 +234,8 @@ export default function PremiumScreen() {
                 style={{
                   backgroundColor: 'rgba(255,255,255,0.05)',
                   borderRadius: 20,
-                  padding: 20,
-                  width: 'calc(50% - 6px)',
-                  aspectRatio: '1',
+                  padding: 16,
+                  minHeight: 150,
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'center',
@@ -280,6 +286,7 @@ export default function PremiumScreen() {
             <span style={{ color: '#9333ea', fontSize: 20, fontWeight: 'bold' }}>→</span>
           </div>
         )}
+        </div>
       </WebTabWrapper>
     );
   }

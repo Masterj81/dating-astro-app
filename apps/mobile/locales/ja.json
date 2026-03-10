@@ -794,6 +794,7 @@
   "microphonePermissionDenied": "音声録音にはマイクの許可が必要です",
   "recordingFailed": "録音に失敗しました。もう一度お試しください。",
   "playbackFailed": "再生に失敗しました。もう一度お試しください。",
+  "fileProcessingFailed": "ファイル処理に失敗しました。もう一度お試しください。",
   "noActiveRecording": "アクティブな録音がありません",
 
   "getVerified": "認証を取得",

@@ -801,6 +801,7 @@
   "microphonePermissionDenied": "Microphone permission is required to record audio",
   "recordingFailed": "Recording failed. Please try again.",
   "playbackFailed": "Playback failed. Please try again.",
+  "fileProcessingFailed": "File processing failed. Please try again.",
   "noActiveRecording": "No active recording",
 
   "getVerified": "Get Verified",

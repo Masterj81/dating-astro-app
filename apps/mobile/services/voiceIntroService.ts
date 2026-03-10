@@ -84,19 +84,29 @@ export async function uploadVoiceIntro(
   uri: string
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
-    const fileName = `voice_intro_${Date.now()}.m4a`;
-    const filePath = `${userId}/${fileName}`;
+    if (!userId) {
+      return { success: false, error: 'uploadFailed' };
+    }
 
-    // Fetch the file as blob
+    const getExtFromMime = (mime: string) => {
+      if (mime.includes('mpeg')) return 'mp3';
+      if (mime.includes('wav')) return 'wav';
+      if (mime.includes('ogg')) return 'ogg';
+      return 'm4a';
+    };
+
     const response = await fetch(uri);
     const blob = await response.blob();
+    const mimeType = blob.type || 'audio/mp4';
+    const fileName = `voice_intro_${Date.now()}.${getExtFromMime(mimeType)}`;
+    const filePath = `${userId}/${fileName}`;
 
     // Upload to Supabase storage
     const { error: uploadError } = await supabase.storage
       .from('voice-intros')
       .upload(filePath, blob, {
         upsert: true,
-        contentType: 'audio/m4a',
+        contentType: mimeType,
       });
 
     if (uploadError) {

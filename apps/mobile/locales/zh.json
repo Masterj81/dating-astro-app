@@ -794,6 +794,7 @@
   "microphonePermissionDenied": "需要麦克风权限才能录制音频",
   "recordingFailed": "录制失败，请重试。",
   "playbackFailed": "播放失败，请重试。",
+  "fileProcessingFailed": "文件处理失败，请重试。",
   "noActiveRecording": "没有活动的录音",
 
   "getVerified": "获取认证",
