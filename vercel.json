@@ -1,6 +1,7 @@
 {
-  "buildCommand": "cd apps/web && npm run build",
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
   "installCommand": "npm install",
-  "framework": null,
+  "buildCommand": "npm run build --workspace=@astro/web",
   "outputDirectory": "apps/web/.next"
 }
