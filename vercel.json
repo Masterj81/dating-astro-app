@@ -1,7 +1,6 @@
 {
-  "framework": "nextjs",
-  "buildCommand": "npm run build --workspace=@astro/web",
+  "buildCommand": "cd apps/web && npm run build",
   "installCommand": "npm install",
-  "outputDirectory": "apps/web/.next",
-  "ignoreCommand": ""
+  "framework": null,
+  "outputDirectory": "apps/web/.next"
 }
