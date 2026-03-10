@@ -1,6 +1,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useNavigation } from 'expo-router';
 import { useEffect, useLayoutEffect, useState } from 'react';
+import { decode } from 'base64-arraybuffer';
+import * as FileSystem from 'expo-file-system';
 import { ActivityIndicator, Alert, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import LanguageSelector from '../../components/LanguageSelector';
 import VerifiedBadge from '../../components/VerifiedBadge';
@@ -114,16 +116,26 @@ export default function ProfileScreen() {
         return 'jpg';
       };
 
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const mimeType = blob.type || 'image/jpeg';
+      let uploadBody: Blob | ArrayBuffer;
+      let mimeType = 'image/jpeg';
+      if (Platform.OS === 'web') {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        mimeType = blob.type || mimeType;
+        uploadBody = blob;
+      } else {
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        uploadBody = decode(base64);
+      }
       const ext = getExtFromMime(mimeType);
       const fileName = `avatar.${ext}`;
       const filePath = `${user.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, blob, {
+        .upload(filePath, uploadBody, {
           upsert: true,
           contentType: mimeType,
         });

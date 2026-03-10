@@ -1,6 +1,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { decode } from 'base64-arraybuffer';
+import * as FileSystem from 'expo-file-system';
 import {
   ActivityIndicator,
   Alert,
@@ -111,22 +113,39 @@ export default function EditProfileScreen() {
     setUploadingIndex(index);
 
     try {
-      const ext = uri.split('.').pop()?.toLowerCase() || 'jpg';
+      const getExtFromMime = (mime: string) => {
+        if (mime.includes('png')) return 'png';
+        if (mime.includes('webp')) return 'webp';
+        return 'jpg';
+      };
+
+      let uploadBody: Blob | ArrayBuffer;
+      let mimeType = 'image/jpeg';
+      if (Platform.OS === 'web') {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        mimeType = blob.type || mimeType;
+        uploadBody = blob;
+      } else {
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        uploadBody = decode(base64);
+      }
+
+      const ext = getExtFromMime(mimeType);
       const fileName = `photo_${index}_${Date.now()}.${ext}`;
       const filePath = `${user.id}/${fileName}`;
 
-      const response = await fetch(uri);
-      const blob = await response.blob();
-
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, blob, {
+        .upload(filePath, uploadBody, {
           upsert: true,
-          contentType: `image/${ext}`,
+          contentType: mimeType,
         });
 
       if (uploadError) {
-        Alert.alert(t('error'), t('failedUpload'));
+        Alert.alert(t('error'), `${t('failedUpload')}${uploadError.message ? `: ${uploadError.message}` : ''}`);
         setUploadingIndex(null);
         return;
       }

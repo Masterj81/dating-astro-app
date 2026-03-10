@@ -5,6 +5,9 @@ import {
   createAudioPlayer,
 } from 'expo-audio';
 import type { AudioPlayer } from 'expo-audio';
+import { decode } from 'base64-arraybuffer';
+import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
 import { supabase } from './supabase';
 
 const MAX_RECORDING_DURATION_MS = 30000; // 30 seconds
@@ -95,16 +98,26 @@ export async function uploadVoiceIntro(
       return 'm4a';
     };
 
-    const response = await fetch(uri);
-    const blob = await response.blob();
-    const mimeType = blob.type || 'audio/mp4';
+    let uploadBody: Blob | ArrayBuffer;
+    let mimeType = 'audio/mp4';
+    if (Platform.OS === 'web') {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      mimeType = blob.type || mimeType;
+      uploadBody = blob;
+    } else {
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      uploadBody = decode(base64);
+    }
     const fileName = `voice_intro_${Date.now()}.${getExtFromMime(mimeType)}`;
     const filePath = `${userId}/${fileName}`;
 
     // Upload to Supabase storage
     const { error: uploadError } = await supabase.storage
       .from('voice-intros')
-      .upload(filePath, blob, {
+      .upload(filePath, uploadBody, {
         upsert: true,
         contentType: mimeType,
       });

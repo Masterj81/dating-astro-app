@@ -1,5 +1,7 @@
 import { Camera } from 'expo-camera';
 import { AudioModule } from 'expo-audio';
+import { decode } from 'base64-arraybuffer';
+import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
 import { debugLog } from '../utils/debug';
@@ -81,20 +83,22 @@ export async function uploadVerificationVideo(
         });
       uploadError = result.error;
     } else {
-      // Native (iOS/Android): fetch blob directly to support content:// and file:// URIs
-      debugLog('Native platform: fetching blob...');
+      // Native (iOS/Android): use base64 -> ArrayBuffer (more reliable than Blob on RN)
+      debugLog('Native platform: reading base64...');
 
       try {
-        const response = await fetch(uri);
-        const blob = await response.blob();
-        const contentType = blob.type || 'video/mp4';
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const uploadBody = decode(base64);
+        const contentType = 'video/mp4';
         const ext = getExtFromMime(contentType);
         filePath = `${userId}/verification_${Date.now()}.${ext}`;
 
         debugLog('Uploading to Supabase...');
         const result = await supabase.storage
           .from('verifications')
-          .upload(filePath, blob, {
+          .upload(filePath, uploadBody, {
             upsert: true,
             contentType,
           });

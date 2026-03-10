@@ -1,7 +1,6 @@
 {
   "appName": "星座约会",
   "tagline": "命中注定的缘分",
-
   "signIn": "登录",
   "signUp": "注册",
   "email": "邮箱",
@@ -25,7 +24,6 @@
   "mustBe18": "您必须年满18岁",
   "futureBirthDate": "出生日期不能是未来的日期",
   "invalidBirthDateFormat": "日期格式无效，请使用MM/DD/YYYY",
-
   "yourBirthChart": "你的星盘",
   "birthChartSubtitle": "输入出生信息来计算你的太阳、月亮和上升星座",
   "birthDate": "出生日期",
@@ -46,14 +44,12 @@
   "continue": "继续",
   "enterBirthDate": "请输入你的出生日期",
   "invalidDateFormat": "日期格式无效。请使用年/月/日",
-
   "discover": "发现",
   "matches": "配对",
   "chat": "聊天",
   "profile": "个人资料",
   "messages": "消息",
   "myChart": "我的星盘",
-
   "findingConnections": "寻找宇宙缘分...",
   "noMoreProfiles": "没有更多了",
   "checkBackLater": "稍后再来看看新的缘分！",
@@ -62,7 +58,6 @@
   "match": "配对",
   "like": "喜欢",
   "nope": "不喜欢",
-
   "yourMatches": "你的宇宙缘分",
   "noMatchesYet": "还没有配对",
   "keepExploring": "继续探索找到你的宇宙缘分",
@@ -74,7 +69,6 @@
   "minutesAgo": "{{count}}分钟前",
   "hoursAgo": "{{count}}小时前",
   "daysAgo": "{{count}}天前",
-
   "noConversations": "还没有对话",
   "matchToChat": "配对后开始聊天",
   "matchToChatCosmos": "配对后聊聊宇宙",
@@ -86,7 +80,6 @@
   "now": "现在",
   "startCosmicConversation": "开始你的宇宙对话！",
   "sayHelloTo": "向{{name}}打招呼",
-
   "birthDetails": "出生信息",
   "settings": "设置",
   "upgradeToPremium": "升级到高级版",
@@ -98,7 +91,6 @@
   "failedUpload": "上传失败",
   "photoUpdated": "头像已更新！",
   "somethingWrong": "出了点问题",
-
   "unlockPremium": "解锁高级版",
   "discoverDestiny": "发现你的宇宙命运",
   "unlimitedSwipes": "无限滑动",
@@ -128,7 +120,6 @@
   "premiumAccessGranted": "你现在可以访问所有功能。",
   "premiumRestored": "你的高级版访问已恢复。",
   "noPreviousPurchases": "未找到之前的购买记录。",
-
   "aries": "白羊座",
   "taurus": "金牛座",
   "gemini": "双子座",
@@ -141,11 +132,9 @@
   "capricorn": "摩羯座",
   "aquarius": "水瓶座",
   "pisces": "双鱼座",
-
-  "sun": "太阳",
+  "sun": "日",
   "moon": "月亮",
   "rising": "上升",
-
   "error": "错误",
   "success": "成功",
   "loading": "加载中...",
@@ -153,7 +142,6 @@
   "translating": "翻译中...",
   "ok": "确定",
   "unknown": "未知",
-
   "premiumFeature": "高级功能",
   "liked": "喜欢了",
   "likeBack": "回喜欢",
@@ -161,7 +149,6 @@
   "likesCount": "{{count}}人喜欢你",
   "noLikesYetTitle": "还没有喜欢",
   "noLikesYetText": "继续探索，你的宇宙缘分会找到你！",
-
   "natalChartSubtitle": "你的完整宇宙蓝图",
   "bigThree": "三大星象",
   "planetaryPositions": "行星位置",
@@ -185,7 +172,6 @@
   "capricornDesc": "自律、有野心、负责任",
   "aquariusDesc": "独立、有创意、人道主义",
   "piscesDesc": "有同情心、艺术性、直觉强",
-
   "compatibilityAnalysis": "兼容性分析",
   "compatibilitySubtitle": "深入了解你的宇宙连接",
   "synastrySubtitle": "深度相容性分析",
@@ -222,7 +208,6 @@
   "challenging": "挑战",
   "cosmicAdvice": "宇宙建议",
   "viewFullChart": "查看完整合盘",
-
   "standOut": "脱颖而出",
   "standOutDesc": "你的资料会显示在他们列表的顶部",
   "higherMatchRate": "3倍匹配率",
@@ -251,7 +236,6 @@
   "superLikeTip4": "将超级喜欢留给真正与你共鸣的资料",
   "startSuperLiking": "开始超级喜欢",
   "superLikesSubtitle": "留下持久的第一印象",
-
   "priorityMessagesSubtitle": "在拥挤的收件箱中脱颖而出",
   "sent": "已发送",
   "responseRate": "回复率",
@@ -276,7 +260,6 @@
   "copy": "复制",
   "recentPriority": "最近的优先消息",
   "sendPriorityMessage": "发送优先消息",
-
   "editProfile": "编辑资料",
   "save": "保存",
   "photos": "照片",
@@ -301,7 +284,6 @@
   "preferences": "偏好设置",
   "premium": "高级版",
   "allSettings": "所有设置",
-
   "account": "账户",
   "discoveryPreferences": "发现偏好",
   "notifications": "通知",
@@ -327,7 +309,6 @@
   "logoutConfirm": "确定要退出登录吗？",
   "cantOpenLink": "无法打开链接",
   "madeWithLove": "用 ♥ 和 ✨ 制作",
-
   "ageRange": "年龄范围",
   "yearsOld": "岁",
   "minimum": "最小",
@@ -348,7 +329,6 @@
   "zodiacSigns": "星座",
   "highCompatibility": "高兼容性",
   "preferencesUpdated": "偏好设置已更新",
-
   "noBlockedUsers": "没有被屏蔽的用户",
   "noBlockedUsersText": "你还没有屏蔽任何人。当你屏蔽某人时，他们会出现在这里。",
   "blockedOn": "屏蔽于",
@@ -356,13 +336,11 @@
   "unblockConfirm": "确定要取消屏蔽 {{name}} 吗？",
   "unblock": "取消屏蔽",
   "blockInfo": "被屏蔽的用户无法查看你的资料、发送消息或与你匹配。",
-
   "mercury": "水星",
   "venus": "金星",
   "mars": "火星",
   "jupiter": "木星",
   "saturn": "土星",
-
   "sunSign": "太阳星座",
   "moonSign": "月亮星座",
   "risingSign": "上升星座",
@@ -380,7 +358,6 @@
   "mutable": "变动",
   "cosmicSummary": "你的宇宙总结",
   "cosmicSummaryText": "作为{{sun}}太阳、{{moon}}月亮和{{rising}}上升的你，拥有独特的能量组合。你的太阳驱动着你的意识自我，月亮滋养着你的情感世界，上升星座塑造着你如何驾驭人生旅程。",
-
   "sunInAries": "你的太阳在白羊座使你成为具有开拓精神的天生领导者。你以勇气和热情面对生活，随时准备迎接新挑战。",
   "sunInTaurus": "太阳在金牛座的你体现了稳定和感性。你通过建立持久的事物——关系、家庭、事业——来找到自己的身份。",
   "sunInGemini": "你的双子座太阳给你一种好奇、适应力强的性格。你认同自己是沟通者，是思想和人的连接者。",
@@ -393,7 +370,6 @@
   "sunInCapricorn": "太阳在摩羯座的你认同成就和精通。",
   "sunInAquarius": "你的水瓶座太阳给你独特、进步的本性。",
   "sunInPisces": "太阳在双鱼座，你有深深的同情心和艺术本性。",
-
   "moonInAries": "你的月亮在白羊座给你热情、火热的情感。",
   "moonInTaurus": "月亮在金牛座的你对安全和舒适有深深的情感需求。",
   "moonInGemini": "你的双子座月亮使你在情感上多才多艺且善于沟通。",
@@ -406,7 +382,6 @@
   "moonInCapricorn": "月亮在摩羯座的你有控制的、保守的情感。",
   "moonInAquarius": "你的水瓶座月亮给你对情感的超然、理智的态度。",
   "moonInPisces": "月亮在双鱼座，你有无限的同情心和敏感性。",
-
   "risingInAries": "白羊座上升的你看起来自信、直接、充满活力。",
   "risingInTaurus": "你的金牛座上升给你平静、稳重的存在感。",
   "risingInGemini": "双子座上升的你看起来好奇、机智、多才多艺。",
@@ -419,16 +394,13 @@
   "risingInCapricorn": "你的摩羯座上升给你严肃、有抱负的存在感。",
   "risingInAquarius": "水瓶座上升的你看起来独特、友好、进步。",
   "risingInPisces": "你的双鱼座上升给你梦幻、富有同情心的存在感。",
-
   "dominantFire": "你的星盘中火元素占主导地位，你天生热情、有创造力、行动导向。",
   "dominantEarth": "你的星盘中土元素占主导地位，你务实、踏实、可靠。",
   "dominantAir": "你的星盘中风元素占主导地位，你聪明、善于沟通、社交。",
   "dominantWater": "你的星盘中水元素占主导地位，你情感丰富、直觉强、有同理心。",
-
   "dominantCardinal": "开创星座占主导地位，你是发起者和领导者。",
   "dominantFixed": "固定星座占主导地位，你坚定、执着、可靠。",
   "dominantMutable": "变动星座占主导地位，你适应力强、灵活、多才多艺。",
-
   "premiumFeatures": "高级功能",
   "member": "会员",
   "celestialTier": "天体",
@@ -438,7 +410,6 @@
   "upgradeRequired": "需要升级",
   "upgradeToCosmicMessage": "此功能需要宇宙级别。升级以解锁所有功能。",
   "manageSubscription": "管理订阅",
-
   "premiumPlus": "高级Plus",
   "premiumPlusSubtitle": "包含每日指导的完整占星体验",
   "whatsIncluded": "包含内容",
@@ -458,8 +429,6 @@
   "upgradeToPremiumPlus": "升级到高级Plus",
   "viewRegularPremium": "查看普通高级版",
   "premiumPlusFeature": "高级Plus功能",
-
-  "dailyHoroscope": "每日星座运势",
   "yourSign": "你的星座",
   "todaysOverview": "今日概览",
   "dailyOverviewContent": "今天为{{sign}}带来强大的宇宙能量。星星排列支持你的个人成长和关系。相信你的直觉，对意外的机会保持开放。",
@@ -485,7 +454,6 @@
   "waningGibbous": "亏凸月",
   "lastQuarter": "下弦月",
   "waningCrescent": "残月",
-
   "monthlyHoroscope": "每月星座运势",
   "monthlyForecastFor": "月度预测",
   "monthlyOverview": "月度概览",
@@ -509,7 +477,7 @@
   "venusEntersDesc": "爱情和财务得到提升。浪漫举动和投资的绝佳时机。",
   "fullMoonEvent": "你星座的满月",
   "fullMoonDesc": "情绪高涨。完成和启示的时刻。相信这个过程。",
-  "mercuryRetrograde": "水星逆行开始",
+  "mercuryRetrograde": "水星逆行",
   "mercuryRetroDesc": "沟通可能会很棘手。仔细检查细节，如果可能的话避免签署合同。",
   "newMoonEvent": "新月 - 新的开始",
   "newMoonDesc": "设定新意图的完美时机。为未来的成长播下种子。",
@@ -519,7 +487,6 @@
   "forLove": "爱情",
   "forCareer": "事业",
   "forManifestation": "实现愿望",
-
   "planetaryTransitsSubtitle": "实时宇宙对你生活的影响",
   "personalImpact": "个人影响",
   "transitsFor": "过境",
@@ -563,7 +530,6 @@
   "transitTip1": "绿色（和谐）- 支持性能量，利用机会",
   "transitTip2": "黄色（中性）- 混合能量，保持灵活",
   "transitTip3": "红色（挑战性）- 通过障碍获得成长机会",
-
   "retrogradeSubtitle": "领先于行星逆行",
   "retrograde": "逆行",
   "upcoming": "即将",
@@ -579,7 +545,6 @@
   "whatToAvoid": "该避免什么",
   "tapToExpand": "点击查看详情",
   "tapToCollapse": "点击收起",
-  "mercuryRetrograde": "水星逆行",
   "venusRetrograde": "金星逆行",
   "marsRetrograde": "火星逆行",
   "jupiterRetrograde": "木星逆行",
@@ -628,7 +593,6 @@
   "survivalTip1": "• 逆行不是负面的 - 它们是反思和审查的时间。",
   "survivalTip2": "• 前后的阴影期对准备和整合同样重要。",
   "survivalTip3": "• 利用这段时间放慢脚步，重新审视旧项目。",
-
   "luckyDaysCalculator": "幸运日",
   "luckyDaysFor": "幸运日",
   "love": "爱情",
@@ -664,7 +628,6 @@
   "luckyTip1": "在你的幸运日计划重要事件以获得更好的结果",
   "luckyTip2": "幸运时间放大正能量 - 明智地使用它",
   "luckyTip3": "即使在不幸运的日子，你的态度决定你的成功",
-
   "january": "一月",
   "february": "二月",
   "march": "三月",
@@ -701,7 +664,6 @@
   "st": "日",
   "nd": "日",
   "rd": "日",
-
   "trialExhausted": "免费预览已使用",
   "trialExhaustedDesc": "您已使用今日的免费预览。订阅即可获得无限访问。",
   "unlockNow": "解锁完整功能",
@@ -709,7 +671,6 @@
   "notNow": "暂不需要",
   "required": "需要",
   "freePreviewAvailable": "每天1次免费预览",
-
   "checkYourEmail": "请查收邮件",
   "verificationEmailSent": "我们已向您的邮箱发送了验证链接。请检查收件箱并点击链接以验证您的账户。",
   "resendVerificationEmail": "重新发送验证邮件",
@@ -733,7 +694,6 @@
   "socialAuthError": "社交登录失败，请重试。",
   "sessionExpired": "会话已过期",
   "sessionExpiredDesc": "您的会话已过期，请重新登录。",
-
   "privacyPolicyTitle": "隐私政策",
   "termsOfServiceTitle": "服务条款",
   "effectiveDate": "生效日期",
@@ -752,11 +712,8 @@
   "termination": "终止",
   "disclaimers": "免责声明",
   "limitationOfLiability": "责任限制",
-
   "block": "屏蔽",
-  "unblock": "取消屏蔽",
   "blockUser": "屏蔽用户",
-  "unblockUser": "取消屏蔽用户",
   "reportUser": "举报用户",
   "unmatch": "取消匹配",
   "moreOptions": "更多选项",
@@ -778,7 +735,6 @@
   "reportSuccessMessage": "感谢您的举报。我们将审核此账户并采取适当措施。",
   "reportError": "提交举报失败，请重试。",
   "reportNote": "举报是保密的。用户不会知道是你举报了他们。",
-
   "voiceIntro": "语音介绍",
   "voiceIntroHint": "录制30秒的介绍让配对听到你的声音",
   "tapToRecord": "点击录制",
@@ -796,7 +752,6 @@
   "playbackFailed": "播放失败，请重试。",
   "fileProcessingFailed": "文件处理失败，请重试。",
   "noActiveRecording": "没有活动的录音",
-
   "getVerified": "获取认证",
   "verificationSubtitle": "为你的个人资料添加认证徽章以建立信任",
   "verifyStep1": "录制一段短视频自拍（5-15秒）",
@@ -816,7 +771,6 @@
   "verificationSuccessDesc": "你的认证徽章现在显示在你的个人资料上",
   "done": "完成",
   "cameraPermissionDenied": "认证需要摄像头和麦克风权限",
-
   "datePlanner": "星象约会规划师",
   "datePlannerDesc": "根据宇宙排列找到最佳约会日期",
   "planADate": "规划约会",
@@ -837,14 +791,12 @@
   "goodVibes": "建立连接的积极能量",
   "neutralEnergy": "一般的宇宙能量 - 需要用心",
   "challengingEnergy": "重要约会考虑选择其他日子",
-  "sun": "日",
   "mon": "一",
   "tue": "二",
   "wed": "三",
   "thu": "四",
   "fri": "五",
   "sat": "六",
-
   "a11y": {
     "discoverTab": "发现新配对",
     "matchesTab": "查看你的配对",
@@ -883,5 +835,23 @@
     "formError": "错误：{{message}}",
     "requiredField": "此字段为必填项",
     "priceAnnouncement": "每{{period}} {{price}}"
-  }
+  },
+  "uploadFailed": "上传失败",
+  "uploadfailed": "上传失败",
+  "unlockCosmos": "Unlock the Cosmos",
+  "viewPlans": "View Plans",
+  "premiumRequired": "Access natal charts, synastry, horoscopes and more",
+  "startingAt": "Starting at $9.99/month",
+  "cosmicHub": "Cosmic Hub",
+  "cosmicMember": "Cosmic Member",
+  "celestialMember": "Celestial Member",
+  "upgradeToCosmic": "Upgrade to Cosmic",
+  "unlockAllFeatures": "Unlock daily horoscopes, transits & more",
+  "verifyingAccess": "Verifying access...",
+  "consultingStars": "Consulting the stars...",
+  "packageNotAvailable": "Package not available. Please try again later.",
+  "premiumPlusActivated": "Subscription has been activated. Enjoy your new features!",
+  "purchaseError": "There was an error processing your purchase. Please try again.",
+  "purchaseFailed": "Purchase Failed",
+  "purchaseSuccess": "Success!"
 }

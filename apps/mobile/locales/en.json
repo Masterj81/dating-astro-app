@@ -1,7 +1,6 @@
 {
   "appName": "AstroDating",
   "tagline": "Written in the stars",
-
   "signIn": "Sign In",
   "signUp": "Sign Up",
   "email": "Email",
@@ -27,7 +26,6 @@
   "invalidBirthDateFormat": "Invalid date format. Please use MM/DD/YYYY",
   "accountCreated": "Account Created",
   "checkEmailVerification": "Please check your email to verify your account.",
-
   "yourBirthChart": "Your Birth Chart",
   "birthChartSubtitle": "Enter your birth details to calculate your Sun, Moon & Rising signs",
   "birthDate": "Birth Date",
@@ -53,14 +51,12 @@
   "continue": "Continue",
   "enterBirthDate": "Please enter your birth date",
   "invalidDateFormat": "Invalid date format. Please use MM/DD/YYYY",
-
   "discover": "Discover",
   "matches": "Matches",
   "chat": "Chat",
   "profile": "Profile",
   "messages": "Messages",
   "myChart": "My Chart",
-
   "findingConnections": "Finding cosmic connections...",
   "noMoreProfiles": "No more profiles",
   "checkBackLater": "Check back later for new cosmic connections!",
@@ -69,7 +65,6 @@
   "match": "Match",
   "like": "LIKE",
   "nope": "NOPE",
-
   "yourMatches": "Your Cosmic Connections",
   "noMatchesYet": "No matches yet",
   "keepExploring": "Keep exploring to find your cosmic connection",
@@ -81,7 +76,6 @@
   "minutesAgo": "{{count}}m ago",
   "hoursAgo": "{{count}}h ago",
   "daysAgo": "{{count}}d ago",
-
   "noConversations": "No conversations yet",
   "matchToChat": "Match with someone to start chatting",
   "matchToChatCosmos": "Match with someone to start chatting about the cosmos",
@@ -93,7 +87,6 @@
   "now": "Now",
   "startCosmicConversation": "Start your cosmic conversation!",
   "sayHelloTo": "Say hello to {{name}}",
-
   "birthDetails": "Birth Details",
   "settings": "Settings",
   "upgradeToPremium": "Upgrade to Premium",
@@ -103,9 +96,10 @@
   "language": "Language",
   "photoPermission": "Please allow access to your photos to upload a profile picture.",
   "failedUpload": "Failed to upload image",
+  "uploadFailed": "Upload failed. Please try again.",
+  "uploadfailed": "Upload failed. Please try again.",
   "photoUpdated": "Profile photo updated!",
   "somethingWrong": "Something went wrong",
-
   "unlockPremium": "Unlock Premium",
   "discoverDestiny": "Discover your cosmic destiny",
   "unlimitedSwipes": "Unlimited Swipes",
@@ -135,7 +129,6 @@
   "premiumAccessGranted": "You now have access to all features.",
   "premiumRestored": "Your premium access has been restored.",
   "noPreviousPurchases": "We could not find any previous purchases.",
-
   "aries": "Aries",
   "taurus": "Taurus",
   "gemini": "Gemini",
@@ -148,11 +141,9 @@
   "capricorn": "Capricorn",
   "aquarius": "Aquarius",
   "pisces": "Pisces",
-
   "sun": "Sun",
   "moon": "Moon",
   "rising": "Rising",
-
   "error": "Error",
   "success": "Success",
   "loading": "Loading...",
@@ -160,7 +151,6 @@
   "translating": "Translating...",
   "ok": "OK",
   "unknown": "Unknown",
-
   "premiumFeature": "Premium Feature",
   "liked": "Liked",
   "likeBack": "Like Back",
@@ -168,7 +158,6 @@
   "likesCount": "{{count}} people like you",
   "noLikesYetTitle": "No Likes Yet",
   "noLikesYetText": "Keep discovering and your cosmic matches will find you!",
-
   "natalChartSubtitle": "Your complete cosmic blueprint",
   "bigThree": "The Big Three",
   "planetaryPositions": "Planetary Positions",
@@ -192,7 +181,6 @@
   "capricornDesc": "Disciplined, ambitious, and responsible",
   "aquariusDesc": "Independent, original, and humanitarian",
   "piscesDesc": "Compassionate, artistic, and intuitive",
-
   "compatibilityAnalysis": "Compatibility Analysis",
   "compatibilitySubtitle": "Deep dive into your cosmic connection",
   "synastrySubtitle": "Deep compatibility analysis",
@@ -229,7 +217,6 @@
   "challenging": "Challenging",
   "cosmicAdvice": "Cosmic Advice",
   "viewFullChart": "View Full Synastry Chart",
-
   "standOut": "Stand Out",
   "standOutDesc": "Your profile appears at the top of their stack",
   "higherMatchRate": "3x Higher Match Rate",
@@ -258,7 +245,6 @@
   "superLikeTip4": "Save Super Likes for profiles that truly resonate with you",
   "startSuperLiking": "Start Super Liking",
   "superLikesSubtitle": "Make a lasting first impression",
-
   "priorityMessagesSubtitle": "Get noticed in crowded inboxes",
   "sent": "Sent",
   "responseRate": "Response Rate",
@@ -283,7 +269,6 @@
   "copy": "Copy",
   "recentPriority": "Recent Priority Messages",
   "sendPriorityMessage": "Send a Priority Message",
-
   "editProfile": "Edit Profile",
   "save": "Save",
   "photos": "Photos",
@@ -308,7 +293,6 @@
   "preferences": "Preferences",
   "premium": "Premium",
   "allSettings": "All Settings",
-
   "account": "Account",
   "discoveryPreferences": "Discovery Preferences",
   "notifications": "Notifications",
@@ -334,7 +318,6 @@
   "logoutConfirm": "Are you sure you want to log out?",
   "cantOpenLink": "Couldn't open link",
   "madeWithLove": "Made with ♥ and ✨",
-
   "ageRange": "Age Range",
   "yearsOld": "years old",
   "minimum": "Min",
@@ -355,7 +338,6 @@
   "zodiacSigns": "zodiac signs",
   "highCompatibility": "High compatibility",
   "preferencesUpdated": "Preferences updated",
-
   "noBlockedUsers": "No Blocked Users",
   "noBlockedUsersText": "You haven't blocked anyone yet. When you block someone, they'll appear here.",
   "blockedOn": "Blocked on",
@@ -363,13 +345,11 @@
   "unblockConfirm": "Are you sure you want to unblock {{name}}?",
   "unblock": "Unblock",
   "blockInfo": "Blocked users cannot see your profile, send you messages, or match with you.",
-
   "mercury": "Mercury",
   "venus": "Venus",
   "mars": "Mars",
   "jupiter": "Jupiter",
   "saturn": "Saturn",
-
   "sunSign": "Sun Sign",
   "moonSign": "Moon Sign",
   "risingSign": "Rising Sign",
@@ -387,7 +367,6 @@
   "mutable": "Mutable",
   "cosmicSummary": "Your Cosmic Summary",
   "cosmicSummaryText": "As a {{sun}} Sun with {{moon}} Moon and {{rising}} Rising, you possess a unique blend of energies. Your Sun drives your conscious self, your Moon nurtures your emotional world, and your Rising shapes how you navigate life's journey.",
-
   "sunInAries": "Your Sun in Aries makes you a natural leader with pioneering spirit. You approach life with courage and enthusiasm, always ready to take on new challenges. Your identity is tied to being first, being bold, and blazing trails for others to follow.",
   "sunInTaurus": "With your Sun in Taurus, you embody stability and sensuality. You find your identity through building lasting things - relationships, homes, careers. Your approach to life is patient and methodical, valuing quality over quantity.",
   "sunInGemini": "Your Gemini Sun gives you a curious, adaptable nature. You identify with being the communicator, the connector of ideas and people. Your mind is quick and versatile, always seeking new information and experiences.",
@@ -400,7 +379,6 @@
   "sunInCapricorn": "With your Sun in Capricorn, you identify with achievement and mastery. You are naturally ambitious and disciplined, with a strong sense of responsibility. Your life purpose involves building something lasting.",
   "sunInAquarius": "Your Aquarius Sun gives you a unique, progressive nature. You identify with being different and ahead of your time. Your life purpose involves innovation and humanitarian progress.",
   "sunInPisces": "With the Sun in Pisces, you have a deeply compassionate and artistic nature. You identify with the interconnectedness of all things. Your life purpose involves healing, creativity, and spiritual growth.",
-
   "moonInAries": "Your Moon in Aries gives you passionate, fiery emotions. You need excitement and action to feel emotionally fulfilled. You process feelings quickly and directly, preferring to confront issues head-on.",
   "moonInTaurus": "With your Moon in Taurus, you have deep emotional needs for security and comfort. You process feelings slowly and need time to adjust to changes. Sensual pleasures and material stability soothe your soul.",
   "moonInGemini": "Your Gemini Moon makes you emotionally versatile and communicative. You need mental stimulation to feel emotionally balanced. Talking through your feelings helps you process them.",
@@ -413,7 +391,6 @@
   "moonInCapricorn": "With your Moon in Capricorn, you have controlled, reserved emotions. You need achievement and structure to feel secure. You process feelings through work and practical action.",
   "moonInAquarius": "Your Aquarius Moon gives you a detached, intellectual approach to emotions. You need freedom and friendship to feel emotionally balanced. You process feelings through understanding them objectively.",
   "moonInPisces": "With the Moon in Pisces, you have boundless compassion and sensitivity. You need spiritual connection and creative outlets. You absorb others' emotions easily and need time alone to recharge.",
-
   "risingInAries": "With Aries Rising, you come across as confident, direct, and energetic. People see you as a leader and pioneer. You approach new situations with courage and enthusiasm.",
   "risingInTaurus": "Your Taurus Rising gives you a calm, grounded presence. Others see you as reliable and sensual. You approach life at your own steady pace, valuing comfort and beauty.",
   "risingInGemini": "With Gemini Rising, you appear curious, witty, and versatile. People see you as communicative and youthful. You approach life with mental agility and adaptability.",
@@ -426,26 +403,33 @@
   "risingInCapricorn": "Your Capricorn Rising gives you a serious, ambitious presence. Others see you as responsible and mature. You approach life with determination and long-term vision.",
   "risingInAquarius": "With Aquarius Rising, you appear unique, friendly, and progressive. People see you as independent and innovative. You approach life as an individual, not following the crowd.",
   "risingInPisces": "Your Pisces Rising gives you a dreamy, compassionate presence. Others see you as artistic and spiritually inclined. You approach life with imagination and sensitivity.",
-
   "dominantFire": "With a dominance of Fire in your chart, you are naturally enthusiastic, creative, and action-oriented. You lead with passion and inspire others with your energy and vision.",
   "dominantEarth": "With a dominance of Earth in your chart, you are practical, grounded, and reliable. You build things that last and approach life with patience and determination.",
   "dominantAir": "With a dominance of Air in your chart, you are intellectual, communicative, and social. You process life through ideas and connections, always seeking understanding.",
   "dominantWater": "With a dominance of Water in your chart, you are emotional, intuitive, and empathetic. You navigate life through feelings and have deep psychological insight.",
-
   "dominantCardinal": "With a dominance of Cardinal signs, you are an initiator and leader. You start new projects and inspire action in others. Change and new beginnings energize you.",
   "dominantFixed": "With a dominance of Fixed signs, you are determined, persistent, and reliable. Once you commit to something, you see it through. Stability and loyalty define you.",
   "dominantMutable": "With a dominance of Mutable signs, you are adaptable, flexible, and versatile. You handle change well and can see multiple perspectives. You are the editors and refiners of the zodiac.",
-
   "premiumFeatures": "Premium Features",
   "member": "Member",
+  "cosmicHub": "Cosmic Hub",
+  "celestialMember": "Celestial Member",
+  "cosmicMember": "Cosmic Member",
   "celestialTier": "Celestial",
   "cosmicTier": "Cosmic",
   "celestialFeatures": "Celestial Features",
   "cosmicFeatures": "Cosmic Features",
+  "unlockCosmos": "Unlock the Cosmos",
+  "premiumRequired": "Access natal charts, synastry, horoscopes and more",
+  "viewPlans": "View Plans",
+  "startingAt": "Starting at $9.99/month",
+  "upgradeToCosmic": "Upgrade to Cosmic",
+  "unlockAllFeatures": "Unlock daily horoscopes, transits & more",
+  "verifyingAccess": "Verifying access...",
+  "consultingStars": "Consulting the stars...",
   "upgradeRequired": "Upgrade Required",
   "upgradeToCosmicMessage": "This feature requires Cosmic tier. Upgrade to unlock all features.",
   "manageSubscription": "Manage Subscription",
-
   "premiumPlus": "Premium Plus",
   "premiumPlusSubtitle": "Complete astrology experience with daily guidance",
   "whatsIncluded": "What's Included",
@@ -463,10 +447,13 @@
   "recommended": "RECOMMENDED",
   "allPremiumFeatures": "All Premium Features",
   "upgradeToPremiumPlus": "Upgrade to Premium Plus",
+  "packageNotAvailable": "Package not available. Please try again later.",
+  "purchaseSuccess": "Success!",
+  "purchaseFailed": "Purchase Failed",
+  "purchaseError": "There was an error processing your purchase. Please try again.",
+  "premiumPlusActivated": "Subscription has been activated. Enjoy your new features!",
   "viewRegularPremium": "View Regular Premium",
   "premiumPlusFeature": "Premium Plus Feature",
-
-  "dailyHoroscope": "Daily Horoscope",
   "yourSign": "Your Sign",
   "todaysOverview": "Today's Overview",
   "dailyOverviewContent": "Today brings powerful cosmic energy for {{sign}}. The stars align to support your personal growth and relationships. Trust your intuition and stay open to unexpected opportunities.",
@@ -492,7 +479,6 @@
   "waningGibbous": "Waning Gibbous",
   "lastQuarter": "Last Quarter",
   "waningCrescent": "Waning Crescent",
-
   "monthlyHoroscope": "Monthly Horoscope",
   "monthlyForecastFor": "Monthly Forecast For",
   "monthlyOverview": "Monthly Overview",
@@ -516,7 +502,7 @@
   "venusEntersDesc": "Love and finances receive a boost. Excellent time for romantic gestures and investments.",
   "fullMoonEvent": "Full Moon in Your Sign",
   "fullMoonDesc": "Emotions run high. A time of completion and revelation. Trust the process.",
-  "mercuryRetrograde": "Mercury Retrograde Begins",
+  "mercuryRetrograde": "Mercury Retrograde",
   "mercuryRetroDesc": "Communication may be tricky. Double-check details and avoid signing contracts if possible.",
   "newMoonEvent": "New Moon - Fresh Start",
   "newMoonDesc": "Perfect time for setting new intentions. Plant seeds for future growth.",
@@ -526,7 +512,6 @@
   "forLove": "For Love",
   "forCareer": "For Career",
   "forManifestation": "For Manifestation",
-
   "planetaryTransitsSubtitle": "Real-time cosmic influences on your life",
   "personalImpact": "Personal Impact",
   "transitsFor": "Transits for",
@@ -570,7 +555,6 @@
   "transitTip1": "Green (Harmonious) - Supportive energy, take advantage of opportunities",
   "transitTip2": "Yellow (Neutral) - Mixed energy, stay flexible and adaptable",
   "transitTip3": "Red (Challenging) - Growth opportunities through obstacles",
-
   "retrogradeSubtitle": "Stay ahead of planetary retrogrades",
   "retrograde": "Retrograde",
   "upcoming": "Upcoming",
@@ -586,7 +570,6 @@
   "whatToAvoid": "What to Avoid",
   "tapToExpand": "Tap to see details",
   "tapToCollapse": "Tap to collapse",
-  "mercuryRetrograde": "Mercury Retrograde",
   "venusRetrograde": "Venus Retrograde",
   "marsRetrograde": "Mars Retrograde",
   "jupiterRetrograde": "Jupiter Retrograde",
@@ -635,7 +618,6 @@
   "survivalTip1": "• Retrogrades are not inherently negative - they're times for reflection, review, and revision.",
   "survivalTip2": "• The shadow periods before and after are equally important for preparation and integration.",
   "survivalTip3": "• Use this time to slow down, revisit old projects, and tie up loose ends.",
-
   "luckyDaysCalculator": "Lucky Days",
   "luckyDaysFor": "Lucky Days For",
   "love": "Love",
@@ -671,7 +653,6 @@
   "luckyTip1": "Plan important events on your lucky days for better outcomes",
   "luckyTip2": "The lucky hour amplifies the positive energy - use it wisely",
   "luckyTip3": "Even on non-lucky days, your attitude determines your success",
-
   "january": "January",
   "february": "February",
   "march": "March",
@@ -708,7 +689,6 @@
   "st": "st",
   "nd": "nd",
   "rd": "rd",
-
   "trialExhausted": "Free Preview Used",
   "trialExhaustedDesc": "You've used your free daily preview. Subscribe for unlimited access.",
   "unlockNow": "Unlock Full Access",
@@ -716,7 +696,6 @@
   "notNow": "Not Now",
   "required": "REQUIRED",
   "freePreviewAvailable": "1 free preview per day",
-
   "checkYourEmail": "Check Your Email",
   "verificationEmailSent": "We sent a verification link to your email address. Please check your inbox and click the link to verify your account.",
   "resendVerificationEmail": "Resend Verification Email",
@@ -740,7 +719,6 @@
   "socialAuthError": "Social sign-in failed. Please try again.",
   "sessionExpired": "Session Expired",
   "sessionExpiredDesc": "Your session has expired. Please sign in again.",
-
   "privacyPolicyTitle": "Privacy Policy",
   "termsOfServiceTitle": "Terms of Service",
   "effectiveDate": "Effective Date",
@@ -759,11 +737,8 @@
   "termination": "Termination",
   "disclaimers": "Disclaimers",
   "limitationOfLiability": "Limitation of Liability",
-
   "block": "Block",
-  "unblock": "Unblock",
   "blockUser": "Block User",
-  "unblockUser": "Unblock User",
   "reportUser": "Report User",
   "unmatch": "Unmatch",
   "moreOptions": "More options",
@@ -785,7 +760,6 @@
   "reportSuccessMessage": "Thank you for reporting. We'll review this account and take appropriate action.",
   "reportError": "Failed to submit report. Please try again.",
   "reportNote": "Reports are confidential. The user won't know you reported them.",
-
   "voiceIntro": "Voice Intro",
   "voiceIntroHint": "Record a 30-second intro to let matches hear your voice",
   "tapToRecord": "Tap to Record",
@@ -803,7 +777,6 @@
   "playbackFailed": "Playback failed. Please try again.",
   "fileProcessingFailed": "File processing failed. Please try again.",
   "noActiveRecording": "No active recording",
-
   "getVerified": "Get Verified",
   "verificationSubtitle": "Add a verified badge to your profile to build trust with potential matches",
   "verifyStep1": "Record a short selfie video (5-15 seconds)",
@@ -823,7 +796,6 @@
   "verificationSuccessDesc": "Your verified badge is now visible on your profile",
   "done": "Done",
   "cameraPermissionDenied": "Camera and microphone permissions are required for verification",
-
   "datePlanner": "Astro Date Planner",
   "datePlannerDesc": "Find the best dates based on cosmic alignments",
   "planADate": "Plan a Date",
@@ -844,14 +816,12 @@
   "goodVibes": "Positive energy for building connections",
   "neutralEnergy": "Average cosmic energy - be intentional",
   "challengingEnergy": "Consider another day for important dates",
-  "sun": "Sun",
   "mon": "Mon",
   "tue": "Tue",
   "wed": "Wed",
   "thu": "Thu",
   "fri": "Fri",
   "sat": "Sat",
-
   "a11y": {
     "discoverTab": "Discover new matches",
     "matchesTab": "View your matches",

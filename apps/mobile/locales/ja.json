@@ -1,7 +1,6 @@
 {
   "appName": "AstroDating",
   "tagline": "星に書かれた運命",
-
   "signIn": "ログイン",
   "signUp": "新規登録",
   "email": "メール",
@@ -25,7 +24,6 @@
   "mustBe18": "18歳以上である必要があります",
   "futureBirthDate": "生年月日は未来の日付にできません",
   "invalidBirthDateFormat": "無効な日付形式です。MM/DD/YYYYを使用してください",
-
   "yourBirthChart": "あなたの出生図",
   "birthChartSubtitle": "太陽、月、上昇宮を計算するために生年月日を入力",
   "birthDate": "生年月日",
@@ -46,14 +44,12 @@
   "continue": "続ける",
   "enterBirthDate": "生年月日を入力してください",
   "invalidDateFormat": "無効な日付形式です。年/月/日を使用してください",
-
   "discover": "発見",
   "matches": "マッチ",
   "chat": "チャット",
   "profile": "プロフィール",
   "messages": "メッセージ",
   "myChart": "マイチャート",
-
   "findingConnections": "宇宙のつながりを探しています...",
   "noMoreProfiles": "プロフィールがありません",
   "checkBackLater": "後でまた新しいつながりを確認してください！",
@@ -62,7 +58,6 @@
   "match": "マッチ",
   "like": "いいね",
   "nope": "パス",
-
   "yourMatches": "あなたの宇宙のつながり",
   "noMatchesYet": "まだマッチがありません",
   "keepExploring": "宇宙のつながりを見つけるために探索を続けて",
@@ -74,7 +69,6 @@
   "minutesAgo": "{{count}}分前",
   "hoursAgo": "{{count}}時間前",
   "daysAgo": "{{count}}日前",
-
   "noConversations": "まだ会話がありません",
   "matchToChat": "チャットを始めるにはマッチしてください",
   "matchToChatCosmos": "宇宙について話すためにマッチしてください",
@@ -86,7 +80,6 @@
   "now": "今",
   "startCosmicConversation": "宇宙の会話を始めよう！",
   "sayHelloTo": "{{name}}に挨拶しよう",
-
   "birthDetails": "出生情報",
   "settings": "設定",
   "upgradeToPremium": "プレミアムにアップグレード",
@@ -98,7 +91,6 @@
   "failedUpload": "アップロード失敗",
   "photoUpdated": "プロフィール写真を更新しました！",
   "somethingWrong": "問題が発生しました",
-
   "unlockPremium": "プレミアムを解除",
   "discoverDestiny": "宇宙の運命を発見",
   "unlimitedSwipes": "無制限スワイプ",
@@ -128,7 +120,6 @@
   "premiumAccessGranted": "すべての機能にアクセスできるようになりました。",
   "premiumRestored": "プレミアムアクセスが復元されました。",
   "noPreviousPurchases": "以前の購入が見つかりませんでした。",
-
   "aries": "牡羊座",
   "taurus": "牡牛座",
   "gemini": "双子座",
@@ -141,11 +132,9 @@
   "capricorn": "山羊座",
   "aquarius": "水瓶座",
   "pisces": "魚座",
-
-  "sun": "太陽",
+  "sun": "日",
   "moon": "月",
   "rising": "上昇宮",
-
   "error": "エラー",
   "success": "成功",
   "loading": "読み込み中...",
@@ -153,7 +142,6 @@
   "translating": "翻訳中...",
   "ok": "OK",
   "unknown": "不明",
-
   "premiumFeature": "プレミアム機能",
   "liked": "いいね",
   "likeBack": "いいねを返す",
@@ -161,7 +149,6 @@
   "likesCount": "{{count}}人があなたを気に入っています",
   "noLikesYetTitle": "まだいいねがありません",
   "noLikesYetText": "探索を続けると、コズミックマッチがあなたを見つけます！",
-
   "natalChartSubtitle": "あなたの完全なコズミックブループリント",
   "bigThree": "ビッグスリー",
   "planetaryPositions": "惑星位置",
@@ -185,7 +172,6 @@
   "capricornDesc": "規律正しく野心的、責任感がある",
   "aquariusDesc": "独立心があり独創的、人道主義的",
   "piscesDesc": "思いやりがあり芸術的、直感的",
-
   "compatibilityAnalysis": "相性分析",
   "compatibilitySubtitle": "コズミックコネクションの深掘り",
   "synastrySubtitle": "詳細な相性分析",
@@ -222,7 +208,6 @@
   "challenging": "チャレンジング",
   "cosmicAdvice": "コズミックアドバイス",
   "viewFullChart": "完全な相性チャートを見る",
-
   "standOut": "目立つ",
   "standOutDesc": "あなたのプロフィールが彼らのリストの一番上に表示されます",
   "higherMatchRate": "3倍のマッチ率",
@@ -251,7 +236,6 @@
   "superLikeTip4": "本当に響くプロフィールにスーパーいいねを取っておく",
   "startSuperLiking": "スーパーいいねを始める",
   "superLikesSubtitle": "印象に残る第一印象を",
-
   "priorityMessagesSubtitle": "混雑した受信箱で目立つ",
   "sent": "送信済み",
   "responseRate": "返信率",
@@ -276,7 +260,6 @@
   "copy": "コピー",
   "recentPriority": "最近の優先メッセージ",
   "sendPriorityMessage": "優先メッセージを送る",
-
   "editProfile": "プロフィールを編集",
   "save": "保存",
   "photos": "写真",
@@ -301,7 +284,6 @@
   "preferences": "設定",
   "premium": "プレミアム",
   "allSettings": "すべての設定",
-
   "account": "アカウント",
   "discoveryPreferences": "発見の設定",
   "notifications": "通知",
@@ -327,7 +309,6 @@
   "logoutConfirm": "ログアウトしてもよろしいですか？",
   "cantOpenLink": "リンクを開けませんでした",
   "madeWithLove": "♥ と ✨ で作成",
-
   "ageRange": "年齢範囲",
   "yearsOld": "歳",
   "minimum": "最小",
@@ -348,7 +329,6 @@
   "zodiacSigns": "星座",
   "highCompatibility": "高い相性",
   "preferencesUpdated": "設定が更新されました",
-
   "noBlockedUsers": "ブロックしたユーザーなし",
   "noBlockedUsersText": "まだ誰もブロックしていません。誰かをブロックするとここに表示されます。",
   "blockedOn": "ブロック日",
@@ -356,13 +336,11 @@
   "unblockConfirm": "{{name}}のブロックを解除してもよろしいですか？",
   "unblock": "ブロック解除",
   "blockInfo": "ブロックされたユーザーはあなたのプロフィールを見たり、メッセージを送ったり、マッチしたりできません。",
-
   "mercury": "水星",
   "venus": "金星",
   "mars": "火星",
   "jupiter": "木星",
   "saturn": "土星",
-
   "sunSign": "太陽星座",
   "moonSign": "月星座",
   "risingSign": "上昇宮",
@@ -380,7 +358,6 @@
   "mutable": "柔軟宮",
   "cosmicSummary": "あなたのコズミックサマリー",
   "cosmicSummaryText": "{{sun}}の太陽、{{moon}}の月、{{rising}}のアセンダントを持つあなたは、ユニークなエネルギーのブレンドを持っています。太陽は意識的な自己を導き、月は感情の世界を育み、アセンダントは人生の旅路をどう進むかを形作ります。",
-
   "sunInAries": "牡羊座の太陽は、あなたを開拓精神を持つ生まれながらのリーダーにします。勇気と熱意を持って人生に取り組み、常に新しい挑戦に立ち向かう準備ができています。",
   "sunInTaurus": "牡牛座の太陽を持つあなたは、安定と官能を体現しています。持続するもの—関係、家、キャリア—を築くことで自分のアイデンティティを見出します。",
   "sunInGemini": "双子座の太陽は、好奇心旺盛で適応力のある性質を与えます。コミュニケーター、アイデアと人々を繋ぐ者として自分を定義します。",
@@ -393,7 +370,6 @@
   "sunInCapricorn": "山羊座の太陽を持つあなたは、達成と熟達と自分を同一視します。",
   "sunInAquarius": "水瓶座の太陽は、ユニークで進歩的な性質を与えます。",
   "sunInPisces": "魚座に太陽がある場合、あなたは深く思いやりがあり芸術的な性質を持っています。",
-
   "moonInAries": "牡羊座の月は、情熱的で燃えるような感情を与えます。",
   "moonInTaurus": "牡牛座の月を持つあなたは、安心感と快適さへの深い感情的ニーズがあります。",
   "moonInGemini": "双子座の月は、あなたを感情的に多才でコミュニケーション力のある人にします。",
@@ -406,7 +382,6 @@
   "moonInCapricorn": "山羊座の月を持つあなたは、抑制された控えめな感情を持っています。",
   "moonInAquarius": "水瓶座の月は、感情に対する超然とした知的なアプローチを与えます。",
   "moonInPisces": "魚座に月がある場合、あなたは無限の思いやりと感受性を持っています。",
-
   "risingInAries": "牡羊座の上昇宮で、あなたは自信に満ち、直接的でエネルギッシュに見えます。",
   "risingInTaurus": "牡牛座の上昇宮は、穏やかで地に足のついた存在感を与えます。",
   "risingInGemini": "双子座の上昇宮で、あなたは好奇心旺盛で機知に富み、多才に見えます。",
@@ -419,16 +394,13 @@
   "risingInCapricorn": "山羊座の上昇宮は、真剣で野心的な存在感を与えます。",
   "risingInAquarius": "水瓶座の上昇宮で、あなたはユニークでフレンドリー、進歩的に見えます。",
   "risingInPisces": "魚座の上昇宮は、夢見がちで思いやりのある存在感を与えます。",
-
   "dominantFire": "チャートに火のエレメントが支配的な場合、あなたは自然と熱心で創造的、行動志向です。",
   "dominantEarth": "チャートに地のエレメントが支配的な場合、あなたは実用的で地に足がつき、信頼できます。",
   "dominantAir": "チャートに風のエレメントが支配的な場合、あなたは知的でコミュニケーション力があり、社交的です。",
   "dominantWater": "チャートに水のエレメントが支配的な場合、あなたは感情的で直感的、共感力があります。",
-
   "dominantCardinal": "活動宮の星座が支配的な場合、あなたはイニシエーターでありリーダーです。",
   "dominantFixed": "不動宮の星座が支配的な場合、あなたは決意があり、粘り強く、信頼できます。",
   "dominantMutable": "柔軟宮の星座が支配的な場合、あなたは適応力があり、柔軟で多才です。",
-
   "premiumFeatures": "プレミアム機能",
   "member": "メンバー",
   "celestialTier": "セレスティアル",
@@ -438,7 +410,6 @@
   "upgradeRequired": "アップグレードが必要",
   "upgradeToCosmicMessage": "この機能にはコズミックティアが必要です。すべての機能を解除するにはアップグレードしてください。",
   "manageSubscription": "サブスクリプションを管理",
-
   "premiumPlus": "プレミアムプラス",
   "premiumPlusSubtitle": "毎日のガイダンスを含む完全な占星術体験",
   "whatsIncluded": "含まれるもの",
@@ -458,8 +429,6 @@
   "upgradeToPremiumPlus": "プレミアムプラスにアップグレード",
   "viewRegularPremium": "通常のプレミアムを見る",
   "premiumPlusFeature": "プレミアムプラス機能",
-
-  "dailyHoroscope": "毎日の星占い",
   "yourSign": "あなたの星座",
   "todaysOverview": "今日の概要",
   "dailyOverviewContent": "今日は{{sign}}に強力な宇宙エネルギーをもたらします。星があなたの個人的な成長と人間関係をサポートするために整列します。直感を信じて、予期せぬ機会にオープンでいてください。",
@@ -485,7 +454,6 @@
   "waningGibbous": "寝待月",
   "lastQuarter": "下弦の月",
   "waningCrescent": "暁月",
-
   "monthlyHoroscope": "月間星占い",
   "monthlyForecastFor": "月間予報",
   "monthlyOverview": "月間概要",
@@ -509,7 +477,7 @@
   "venusEntersDesc": "愛と財政が後押しを受けます。ロマンチックなジェスチャーや投資に最適な時期です。",
   "fullMoonEvent": "あなたの星座での満月",
   "fullMoonDesc": "感情が高まります。完成と啓示の時。プロセスを信頼してください。",
-  "mercuryRetrograde": "水星逆行開始",
+  "mercuryRetrograde": "水星逆行",
   "mercuryRetroDesc": "コミュニケーションが難しくなるかもしれません。詳細を二度確認し、可能であれば契約への署名を避けてください。",
   "newMoonEvent": "新月 - 新たなスタート",
   "newMoonDesc": "新しい意図を設定するのに最適な時期です。将来の成長のための種を蒔きましょう。",
@@ -519,7 +487,6 @@
   "forLove": "恋愛に",
   "forCareer": "キャリアに",
   "forManifestation": "実現に",
-
   "planetaryTransitsSubtitle": "あなたの人生へのリアルタイムの宇宙的影響",
   "personalImpact": "個人的な影響",
   "transitsFor": "トランジット",
@@ -563,7 +530,6 @@
   "transitTip1": "緑（調和的）- 支援的なエネルギー、機会を活用",
   "transitTip2": "黄（中立）- 混合エネルギー、柔軟に",
   "transitTip3": "赤（挑戦的）- 障害を通じた成長の機会",
-
   "retrogradeSubtitle": "惑星の逆行に先んじる",
   "retrograde": "逆行",
   "upcoming": "今後",
@@ -579,7 +545,6 @@
   "whatToAvoid": "避けるべきこと",
   "tapToExpand": "タップして詳細を見る",
   "tapToCollapse": "タップして閉じる",
-  "mercuryRetrograde": "水星逆行",
   "venusRetrograde": "金星逆行",
   "marsRetrograde": "火星逆行",
   "jupiterRetrograde": "木星逆行",
@@ -628,7 +593,6 @@
   "survivalTip1": "• 逆行は否定的ではありません - 振り返りと見直しの時間です。",
   "survivalTip2": "• 前後のシャドウ期間も準備と統合に同様に重要です。",
   "survivalTip3": "• この時間を使ってペースを落とし、古いプロジェクトを見直しましょう。",
-
   "luckyDaysCalculator": "ラッキーデー",
   "luckyDaysFor": "ラッキーデー",
   "love": "恋愛",
@@ -664,7 +628,6 @@
   "luckyTip1": "より良い結果のためにラッキーデーに重要なイベントを計画",
   "luckyTip2": "ラッキーアワーはポジティブなエネルギーを増幅 - 賢く使う",
   "luckyTip3": "ラッキーでない日でも、あなたの態度が成功を決める",
-
   "january": "1月",
   "february": "2月",
   "march": "3月",
@@ -701,7 +664,6 @@
   "st": "日",
   "nd": "日",
   "rd": "日",
-
   "trialExhausted": "無料プレビュー使用済み",
   "trialExhaustedDesc": "本日の無料プレビューを使用しました。無制限アクセスにはサブスクリプションが必要です。",
   "unlockNow": "フルアクセスを解除",
@@ -709,7 +671,6 @@
   "notNow": "今はしない",
   "required": "必須",
   "freePreviewAvailable": "1日1回無料プレビュー",
-
   "checkYourEmail": "メールを確認してください",
   "verificationEmailSent": "確認リンクをメールアドレスに送信しました。受信トレイを確認し、リンクをクリックしてアカウントを確認してください。",
   "resendVerificationEmail": "確認メールを再送信",
@@ -733,7 +694,6 @@
   "socialAuthError": "ソーシャルサインインに失敗しました。もう一度お試しください。",
   "sessionExpired": "セッション期限切れ",
   "sessionExpiredDesc": "セッションが期限切れになりました。再度サインインしてください。",
-
   "privacyPolicyTitle": "プライバシーポリシー",
   "termsOfServiceTitle": "利用規約",
   "effectiveDate": "発効日",
@@ -752,11 +712,8 @@
   "termination": "利用終了",
   "disclaimers": "免責事項",
   "limitationOfLiability": "責任の制限",
-
   "block": "ブロック",
-  "unblock": "ブロック解除",
   "blockUser": "ユーザーをブロック",
-  "unblockUser": "ユーザーのブロックを解除",
   "reportUser": "ユーザーを報告",
   "unmatch": "マッチを解除",
   "moreOptions": "その他のオプション",
@@ -778,7 +735,6 @@
   "reportSuccessMessage": "ご報告ありがとうございます。このアカウントを確認し、適切な対応を取ります。",
   "reportError": "報告の送信に失敗しました。もう一度お試しください。",
   "reportNote": "報告は機密扱いです。ユーザーはあなたが報告したことを知りません。",
-
   "voiceIntro": "ボイス紹介",
   "voiceIntroHint": "マッチにあなたの声を聞いてもらうため、30秒の紹介を録音しましょう",
   "tapToRecord": "タップして録音",
@@ -796,7 +752,6 @@
   "playbackFailed": "再生に失敗しました。もう一度お試しください。",
   "fileProcessingFailed": "ファイル処理に失敗しました。もう一度お試しください。",
   "noActiveRecording": "アクティブな録音がありません",
-
   "getVerified": "認証を取得",
   "verificationSubtitle": "プロフィールに認証バッジを追加して信頼を築きましょう",
   "verifyStep1": "短いセルフィービデオを撮影（5〜15秒）",
@@ -816,7 +771,6 @@
   "verificationSuccessDesc": "認証バッジがプロフィールに表示されます",
   "done": "完了",
   "cameraPermissionDenied": "認証にはカメラとマイクの許可が必要です",
-
   "datePlanner": "アストロデートプランナー",
   "datePlannerDesc": "宇宙の配置に基づいて最適な日を見つけましょう",
   "planADate": "デートを計画",
@@ -837,14 +791,12 @@
   "goodVibes": "つながりを築くためのポジティブなエネルギー",
   "neutralEnergy": "平均的な宇宙エネルギー - 意識的に",
   "challengingEnergy": "重要なデートには別の日を検討してください",
-  "sun": "日",
   "mon": "月",
   "tue": "火",
   "wed": "水",
   "thu": "木",
   "fri": "金",
   "sat": "土",
-
   "a11y": {
     "discoverTab": "新しいマッチを発見",
     "matchesTab": "マッチを見る",
@@ -883,5 +835,23 @@
     "formError": "エラー：{{message}}",
     "requiredField": "この項目は必須です",
     "priceAnnouncement": "{{period}}あたり{{price}}"
-  }
+  },
+  "uploadFailed": "アップロード失敗",
+  "uploadfailed": "アップロード失敗",
+  "unlockCosmos": "Unlock the Cosmos",
+  "viewPlans": "View Plans",
+  "premiumRequired": "Access natal charts, synastry, horoscopes and more",
+  "startingAt": "Starting at $9.99/month",
+  "cosmicHub": "Cosmic Hub",
+  "cosmicMember": "Cosmic Member",
+  "celestialMember": "Celestial Member",
+  "upgradeToCosmic": "Upgrade to Cosmic",
+  "unlockAllFeatures": "Unlock daily horoscopes, transits & more",
+  "verifyingAccess": "Verifying access...",
+  "consultingStars": "Consulting the stars...",
+  "packageNotAvailable": "Package not available. Please try again later.",
+  "premiumPlusActivated": "Subscription has been activated. Enjoy your new features!",
+  "purchaseError": "There was an error processing your purchase. Please try again.",
+  "purchaseFailed": "Purchase Failed",
+  "purchaseSuccess": "Success!"
 }

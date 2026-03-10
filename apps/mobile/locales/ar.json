@@ -1,7 +1,6 @@
 {
   "appName": "أسترو ديتنج",
   "tagline": "مكتوب في النجوم",
-
   "signIn": "تسجيل الدخول",
   "signUp": "إنشاء حساب",
   "email": "البريد الإلكتروني",
@@ -25,7 +24,6 @@
   "mustBe18": "يجب أن يكون عمرك 18 عامًا على الأقل",
   "futureBirthDate": "لا يمكن أن يكون تاريخ الميلاد في المستقبل",
   "invalidBirthDateFormat": "صيغة تاريخ غير صالحة. استخدم MM/DD/YYYY",
-
   "yourBirthChart": "خريطتك الفلكية",
   "birthChartSubtitle": "أدخل تفاصيل ميلادك لحساب برجك الشمسي والقمري والطالع",
   "birthDate": "تاريخ الميلاد",
@@ -46,14 +44,12 @@
   "continue": "استمرار",
   "enterBirthDate": "يرجى إدخال تاريخ ميلادك",
   "invalidDateFormat": "صيغة تاريخ غير صالحة. استخدم يوم/شهر/سنة",
-
   "discover": "اكتشف",
   "matches": "التطابقات",
   "chat": "دردشة",
   "profile": "الملف الشخصي",
   "messages": "الرسائل",
   "myChart": "خريطتي",
-
   "findingConnections": "البحث عن روابط كونية...",
   "noMoreProfiles": "لا مزيد من الملفات",
   "checkBackLater": "عد لاحقاً لروابط كونية جديدة!",
@@ -62,7 +58,6 @@
   "match": "تطابق",
   "like": "أعجبني",
   "nope": "لا",
-
   "yourMatches": "روابطك الكونية",
   "noMatchesYet": "لا تطابقات بعد",
   "keepExploring": "استمر في الاستكشاف لإيجاد رابطك الكوني",
@@ -74,7 +69,6 @@
   "minutesAgo": "منذ {{count}} دقيقة",
   "hoursAgo": "منذ {{count}} ساعة",
   "daysAgo": "منذ {{count}} يوم",
-
   "noConversations": "لا محادثات بعد",
   "matchToChat": "تطابق مع شخص للبدء بالمحادثة",
   "matchToChatCosmos": "تطابق مع شخص للدردشة حول الكون",
@@ -86,7 +80,6 @@
   "now": "الآن",
   "startCosmicConversation": "ابدأ محادثتك الكونية!",
   "sayHelloTo": "قل مرحباً لـ {{name}}",
-
   "birthDetails": "تفاصيل الميلاد",
   "settings": "الإعدادات",
   "upgradeToPremium": "الترقية إلى بريميوم",
@@ -98,7 +91,6 @@
   "failedUpload": "فشل رفع الصورة",
   "photoUpdated": "تم تحديث صورة الملف الشخصي!",
   "somethingWrong": "حدث خطأ ما",
-
   "unlockPremium": "فتح بريميوم",
   "discoverDestiny": "اكتشف قدرك الكوني",
   "unlimitedSwipes": "سحبات غير محدودة",
@@ -128,7 +120,6 @@
   "premiumAccessGranted": "لديك الآن الوصول إلى جميع الميزات.",
   "premiumRestored": "تم استعادة وصولك إلى بريميوم.",
   "noPreviousPurchases": "لم نجد مشتريات سابقة.",
-
   "aries": "الحمل",
   "taurus": "الثور",
   "gemini": "الجوزاء",
@@ -141,11 +132,9 @@
   "capricorn": "الجدي",
   "aquarius": "الدلو",
   "pisces": "الحوت",
-
-  "sun": "الشمس",
+  "sun": "أحد",
   "moon": "القمر",
   "rising": "الطالع",
-
   "error": "خطأ",
   "success": "نجاح",
   "loading": "جاري التحميل...",
@@ -153,7 +142,6 @@
   "translating": "جاري الترجمة...",
   "ok": "موافق",
   "unknown": "غير معروف",
-
   "premiumFeature": "ميزة مميزة",
   "liked": "أعجبك",
   "likeBack": "رد الإعجاب",
@@ -161,7 +149,6 @@
   "likesCount": "{{count}} أشخاص معجبون بك",
   "noLikesYetTitle": "لا إعجابات بعد",
   "noLikesYetText": "استمر في الاكتشاف وستجدك توائمك الكونية!",
-
   "natalChartSubtitle": "خريطتك الكونية الكاملة",
   "bigThree": "الثلاثة الكبار",
   "planetaryPositions": "مواقع الكواكب",
@@ -185,7 +172,6 @@
   "capricornDesc": "منضبط وطموح ومسؤول",
   "aquariusDesc": "مستقل وأصيل وإنساني",
   "piscesDesc": "رحيم وفني وحدسي",
-
   "compatibilityAnalysis": "تحليل التوافق",
   "compatibilitySubtitle": "غوص عميق في اتصالك الكوني",
   "synastrySubtitle": "تحليل التوافق العميق",
@@ -222,7 +208,6 @@
   "challenging": "تحدي",
   "cosmicAdvice": "نصائح كونية",
   "viewFullChart": "عرض خريطة التوافق الكاملة",
-
   "standOut": "تميّز",
   "standOutDesc": "يظهر ملفك في أعلى قائمتهم",
   "higherMatchRate": "3 أضعاف احتمالية التطابق",
@@ -251,7 +236,6 @@
   "superLikeTip4": "احفظ السوبر لايك للملفات التي تتوافق معك حقًا",
   "startSuperLiking": "ابدأ السوبر لايك",
   "superLikesSubtitle": "اترك انطباعًا أوليًا دائمًا",
-
   "priorityMessagesSubtitle": "تميّز في صناديق البريد المزدحمة",
   "sent": "مرسل",
   "responseRate": "معدل الرد",
@@ -276,7 +260,6 @@
   "copy": "نسخ",
   "recentPriority": "رسائل الأولوية الأخيرة",
   "sendPriorityMessage": "إرسال رسالة أولوية",
-
   "editProfile": "تعديل الملف الشخصي",
   "save": "حفظ",
   "photos": "الصور",
@@ -301,7 +284,6 @@
   "preferences": "التفضيلات",
   "premium": "مميز",
   "allSettings": "جميع الإعدادات",
-
   "account": "الحساب",
   "discoveryPreferences": "تفضيلات الاكتشاف",
   "notifications": "الإشعارات",
@@ -327,7 +309,6 @@
   "logoutConfirm": "هل أنت متأكد أنك تريد تسجيل الخروج؟",
   "cantOpenLink": "تعذر فتح الرابط",
   "madeWithLove": "صنع بـ ♥ و ✨",
-
   "ageRange": "نطاق العمر",
   "yearsOld": "سنة",
   "minimum": "الحد الأدنى",
@@ -348,7 +329,6 @@
   "zodiacSigns": "علامات الأبراج",
   "highCompatibility": "توافق عالي",
   "preferencesUpdated": "تم تحديث التفضيلات",
-
   "noBlockedUsers": "لا يوجد مستخدمون محظورون",
   "noBlockedUsersText": "لم تحظر أي شخص بعد. عندما تحظر شخصًا ما، سيظهر هنا.",
   "blockedOn": "تم الحظر في",
@@ -356,13 +336,11 @@
   "unblockConfirm": "هل أنت متأكد أنك تريد إلغاء حظر {{name}}؟",
   "unblock": "إلغاء الحظر",
   "blockInfo": "لا يمكن للمستخدمين المحظورين رؤية ملفك الشخصي أو إرسال رسائل إليك أو التطابق معك.",
-
   "mercury": "عطارد",
   "venus": "الزهرة",
   "mars": "المريخ",
   "jupiter": "المشتري",
   "saturn": "زحل",
-
   "sunSign": "البرج الشمسي",
   "moonSign": "البرج القمري",
   "risingSign": "البرج الطالع",
@@ -380,7 +358,6 @@
   "mutable": "متغير",
   "cosmicSummary": "ملخصك الكوني",
   "cosmicSummaryText": "كشمس في {{sun}} مع قمر في {{moon}} وطالع في {{rising}}، تمتلك مزيجاً فريداً من الطاقات. شمسك تقود ذاتك الواعية، قمرك يغذي عالمك العاطفي، وطالعك يشكل كيفية تنقلك في رحلة الحياة.",
-
   "sunInAries": "شمسك في الحمل تجعلك قائداً طبيعياً بروح ريادية. تتعامل مع الحياة بشجاعة وحماس، دائماً مستعد لمواجهة تحديات جديدة. هويتك مرتبطة بأن تكون الأول والجريء.",
   "sunInTaurus": "مع شمسك في الثور، أنت تجسد الاستقرار والحسية. تجد هويتك من خلال بناء أشياء دائمة - العلاقات والمنازل والمهن. نهجك في الحياة صبور ومنهجي.",
   "sunInGemini": "شمسك في الجوزاء تمنحك طبيعة فضولية وقابلة للتكيف. تعرف نفسك كمتواصل وموصل للأفكار والناس. عقلك سريع ومتعدد الاستخدامات.",
@@ -393,7 +370,6 @@
   "sunInCapricorn": "مع شمسك في الجدي، تعرف نفسك بالإنجاز والإتقان. أنت طموح ومنضبط بطبيعتك، مع إحساس قوي بالمسؤولية.",
   "sunInAquarius": "شمسك في الدلو تمنحك طبيعة فريدة وتقدمية. تعرف نفسك كمختلف ومتقدم على عصرك.",
   "sunInPisces": "مع الشمس في الحوت، لديك طبيعة عميقة الرحمة وفنية. تعرف نفسك بالترابط بين كل الأشياء.",
-
   "moonInAries": "قمرك في الحمل يمنحك عواطف متحمسة ونارية. تحتاج إلى الإثارة والعمل لتشعر بالرضا العاطفي.",
   "moonInTaurus": "مع قمرك في الثور، لديك احتياجات عاطفية عميقة للأمان والراحة. المتع الحسية تهدئ روحك.",
   "moonInGemini": "قمرك في الجوزاء يجعلك متعدد الاستخدامات عاطفياً ومتواصلاً. تحتاج إلى التحفيز الذهني لتشعر بالتوازن.",
@@ -406,7 +382,6 @@
   "moonInCapricorn": "مع قمرك في الجدي، لديك عواطف متحكم بها ومتحفظة. تحتاج إلى الإنجاز والهيكل لتشعر بالأمان.",
   "moonInAquarius": "قمرك في الدلو يمنحك نهجاً منفصلاً وفكرياً تجاه العواطف. تحتاج إلى الحرية والصداقة لتشعر بالتوازن.",
   "moonInPisces": "مع القمر في الحوت، لديك رحمة وحساسية لا حدود لها. تحتاج إلى الاتصال الروحي والمنافذ الإبداعية.",
-
   "risingInAries": "مع الطالع الحمل، تبدو واثقاً ومباشراً وحيوياً. يراك الناس كقائد ورائد.",
   "risingInTaurus": "طالعك الثور يمنحك حضوراً هادئاً ومتجذراً. يراك الآخرون كموثوق وحسي.",
   "risingInGemini": "مع الطالع الجوزاء، تبدو فضولياً وذكياً ومتعدد الاستخدامات. يراك الناس كمتواصل وشاب.",
@@ -419,16 +394,13 @@
   "risingInCapricorn": "طالعك الجدي يمنحك حضوراً جاداً وطموحاً. يراك الآخرون كمسؤول وناضج.",
   "risingInAquarius": "مع الطالع الدلو، تبدو فريداً وودوداً وتقدمياً. يراك الناس كمستقل ومبتكر.",
   "risingInPisces": "طالعك الحوت يمنحك حضوراً حالماً ورحيماً. يراك الآخرون كفنان وروحاني.",
-
   "dominantFire": "مع هيمنة النار في خريطتك، أنت متحمس ومبدع وموجه نحو العمل بطبيعتك. تقود بشغف وتلهم الآخرين بطاقتك ورؤيتك.",
   "dominantEarth": "مع هيمنة الأرض في خريطتك، أنت عملي ومتجذر وموثوق. تبني أشياء تدوم وتتعامل مع الحياة بصبر وتصميم.",
   "dominantAir": "مع هيمنة الهواء في خريطتك، أنت فكري وتواصلي واجتماعي. تعالج الحياة من خلال الأفكار والاتصالات.",
   "dominantWater": "مع هيمنة الماء في خريطتك، أنت عاطفي وحدسي ومتعاطف. تتنقل في الحياة من خلال المشاعر ولديك بصيرة نفسية عميقة.",
-
   "dominantCardinal": "مع هيمنة العلامات الأساسية، أنت مبادر وقائد. تبدأ مشاريع جديدة وتلهم العمل في الآخرين.",
   "dominantFixed": "مع هيمنة العلامات الثابتة، أنت مصمم ومثابر وموثوق. بمجرد الالتزام، تمضي حتى النهاية.",
   "dominantMutable": "مع هيمنة العلامات المتغيرة، أنت قابل للتكيف ومرن ومتعدد الاستخدامات. تتعامل مع التغيير جيداً ويمكنك رؤية وجهات نظر متعددة.",
-
   "premiumFeatures": "ميزات بريميوم",
   "member": "عضو",
   "celestialTier": "سماوي",
@@ -438,7 +410,6 @@
   "upgradeRequired": "الترقية مطلوبة",
   "upgradeToCosmicMessage": "هذه الميزة تتطلب المستوى الكوني. قم بالترقية لفتح جميع الميزات.",
   "manageSubscription": "إدارة الاشتراك",
-
   "premiumPlus": "بريميوم بلس",
   "premiumPlusSubtitle": "تجربة فلكية كاملة مع توجيه يومي",
   "whatsIncluded": "ما المتضمن",
@@ -458,8 +429,6 @@
   "upgradeToPremiumPlus": "الترقية إلى بريميوم بلس",
   "viewRegularPremium": "عرض بريميوم العادي",
   "premiumPlusFeature": "ميزة بريميوم بلس",
-
-  "dailyHoroscope": "الأبراج اليومية",
   "yourSign": "برجك",
   "todaysOverview": "نظرة عامة اليوم",
   "dailyOverviewContent": "يجلب اليوم طاقة كونية قوية لـ {{sign}}. تصطف النجوم لدعم نموك الشخصي وعلاقاتك. ثق بحدسك وابقَ منفتحاً على الفرص غير المتوقعة.",
@@ -485,7 +454,6 @@
   "waningGibbous": "الأحدب المتناقص",
   "lastQuarter": "الربع الأخير",
   "waningCrescent": "الهلال المتناقص",
-
   "monthlyHoroscope": "الأبراج الشهرية",
   "monthlyForecastFor": "التوقعات الشهرية لـ",
   "monthlyOverview": "النظرة العامة الشهرية",
@@ -509,7 +477,7 @@
   "venusEntersDesc": "الحب والمال يتلقيان دفعة. وقت ممتاز للإيماءات الرومانسية والاستثمارات.",
   "fullMoonEvent": "البدر في برجك",
   "fullMoonDesc": "المشاعر تتأجج. وقت للاكتمال والكشف. ثق بالعملية.",
-  "mercuryRetrograde": "بداية تراجع عطارد",
+  "mercuryRetrograde": "عطارد متراجع",
   "mercuryRetroDesc": "التواصل قد يكون صعباً. تحقق مرتين من التفاصيل وتجنب توقيع العقود إن أمكن.",
   "newMoonEvent": "القمر الجديد - بداية جديدة",
   "newMoonDesc": "وقت مثالي لتحديد نوايا جديدة. ازرع بذوراً للنمو المستقبلي.",
@@ -519,7 +487,6 @@
   "forLove": "للحب",
   "forCareer": "للعمل",
   "forManifestation": "للتجسيد",
-
   "planetaryTransitsSubtitle": "التأثيرات الكونية في الوقت الفعلي على حياتك",
   "personalImpact": "التأثير الشخصي",
   "transitsFor": "العبور لـ",
@@ -563,7 +530,6 @@
   "transitTip1": "أخضر (متناغم) - طاقة داعمة، استفد من الفرص",
   "transitTip2": "أصفر (محايد) - طاقة مختلطة، ابقَ مرناً",
   "transitTip3": "أحمر (صعب) - فرص نمو من خلال العقبات",
-
   "retrogradeSubtitle": "ابقَ متقدماً على التراجعات الكوكبية",
   "retrograde": "تراجع",
   "upcoming": "قادم",
@@ -579,7 +545,6 @@
   "whatToAvoid": "ما يجب تجنبه",
   "tapToExpand": "اضغط لرؤية التفاصيل",
   "tapToCollapse": "اضغط للطي",
-  "mercuryRetrograde": "عطارد متراجع",
   "venusRetrograde": "الزهرة متراجعة",
   "marsRetrograde": "المريخ متراجع",
   "jupiterRetrograde": "المشتري متراجع",
@@ -628,7 +593,6 @@
   "survivalTip1": "• التراجعات ليست سلبية - إنها أوقات للتأمل والمراجعة.",
   "survivalTip2": "• فترات الظل قبل وبعد مهمة بنفس القدر للتحضير.",
   "survivalTip3": "• استخدم هذا الوقت للتباطؤ ومراجعة المشاريع القديمة.",
-
   "luckyDaysCalculator": "الأيام المحظوظة",
   "luckyDaysFor": "الأيام المحظوظة لـ",
   "love": "الحب",
@@ -664,7 +628,6 @@
   "luckyTip1": "خطط للأحداث المهمة في أيامك المحظوظة لنتائج أفضل",
   "luckyTip2": "الساعة المحظوظة تضخم الطاقة الإيجابية - استخدمها بحكمة",
   "luckyTip3": "حتى في الأيام غير المحظوظة، موقفك يحدد نجاحك",
-
   "january": "يناير",
   "february": "فبراير",
   "march": "مارس",
@@ -701,7 +664,6 @@
   "st": "",
   "nd": "",
   "rd": "",
-
   "trialExhausted": "تم استخدام المعاينة المجانية",
   "trialExhaustedDesc": "لقد استخدمت معاينتك المجانية اليومية. اشترك للوصول غير المحدود.",
   "unlockNow": "فتح الوصول الكامل",
@@ -709,7 +671,6 @@
   "notNow": "ليس الآن",
   "required": "مطلوب",
   "freePreviewAvailable": "معاينة مجانية واحدة يومياً",
-
   "checkYourEmail": "تحقق من بريدك الإلكتروني",
   "verificationEmailSent": "أرسلنا رابط تحقق إلى بريدك الإلكتروني. يرجى التحقق من صندوق الوارد والنقر على الرابط لتأكيد حسابك.",
   "resendVerificationEmail": "إعادة إرسال بريد التحقق",
@@ -733,7 +694,6 @@
   "socialAuthError": "فشل تسجيل الدخول الاجتماعي. يرجى المحاولة مرة أخرى.",
   "sessionExpired": "انتهت الجلسة",
   "sessionExpiredDesc": "انتهت صلاحية جلستك. يرجى تسجيل الدخول مرة أخرى.",
-
   "privacyPolicyTitle": "سياسة الخصوصية",
   "termsOfServiceTitle": "شروط الخدمة",
   "effectiveDate": "تاريخ السريان",
@@ -752,11 +712,8 @@
   "termination": "الإنهاء",
   "disclaimers": "إخلاء المسؤولية",
   "limitationOfLiability": "تحديد المسؤولية",
-
   "block": "حظر",
-  "unblock": "إلغاء الحظر",
   "blockUser": "حظر المستخدم",
-  "unblockUser": "إلغاء حظر المستخدم",
   "reportUser": "الإبلاغ عن المستخدم",
   "unmatch": "إلغاء التطابق",
   "moreOptions": "المزيد من الخيارات",
@@ -778,7 +735,6 @@
   "reportSuccessMessage": "شكراً لإبلاغك. سنراجع هذا الحساب ونتخذ الإجراء المناسب.",
   "reportError": "فشل إرسال البلاغ. يرجى المحاولة مرة أخرى.",
   "reportNote": "البلاغات سرية. لن يعرف المستخدم أنك أبلغت عنه.",
-
   "voiceIntro": "تعريف صوتي",
   "voiceIntroHint": "سجل تعريفاً مدته 30 ثانية ليسمع التطابقات صوتك",
   "tapToRecord": "اضغط للتسجيل",
@@ -796,7 +752,6 @@
   "playbackFailed": "فشل التشغيل. يرجى المحاولة مرة أخرى.",
   "fileProcessingFailed": "فشل في معالجة الملف. يرجى المحاولة مرة أخرى.",
   "noActiveRecording": "لا يوجد تسجيل نشط",
-
   "getVerified": "احصل على التوثيق",
   "verificationSubtitle": "أضف شارة موثقة إلى ملفك الشخصي لبناء الثقة",
   "verifyStep1": "سجل فيديو سيلفي قصير (5-15 ثانية)",
@@ -816,7 +771,6 @@
   "verificationSuccessDesc": "شارة التوثيق الآن مرئية على ملفك الشخصي",
   "done": "تم",
   "cameraPermissionDenied": "أذونات الكاميرا والميكروفون مطلوبة للتوثيق",
-
   "datePlanner": "مخطط المواعيد الفلكي",
   "datePlannerDesc": "اعثر على أفضل التواريخ بناءً على المحاذاة الكونية",
   "planADate": "خطط لموعد",
@@ -837,14 +791,12 @@
   "goodVibes": "طاقة إيجابية لبناء الروابط",
   "neutralEnergy": "طاقة كونية متوسطة - كن متعمداً",
   "challengingEnergy": "فكر في يوم آخر للمواعيد المهمة",
-  "sun": "أحد",
   "mon": "إثن",
   "tue": "ثلا",
   "wed": "أرب",
   "thu": "خمي",
   "fri": "جمع",
   "sat": "سبت",
-
   "a11y": {
     "discoverTab": "اكتشف تطابقات جديدة",
     "matchesTab": "عرض تطابقاتك",
@@ -883,5 +835,23 @@
     "formError": "خطأ: {{message}}",
     "requiredField": "هذا الحقل مطلوب",
     "priceAnnouncement": "{{price}} لكل {{period}}"
-  }
+  },
+  "uploadFailed": "فشل رفع الصورة",
+  "uploadfailed": "فشل رفع الصورة",
+  "unlockCosmos": "Unlock the Cosmos",
+  "viewPlans": "View Plans",
+  "premiumRequired": "Access natal charts, synastry, horoscopes and more",
+  "startingAt": "Starting at $9.99/month",
+  "cosmicHub": "Cosmic Hub",
+  "cosmicMember": "Cosmic Member",
+  "celestialMember": "Celestial Member",
+  "upgradeToCosmic": "Upgrade to Cosmic",
+  "unlockAllFeatures": "Unlock daily horoscopes, transits & more",
+  "verifyingAccess": "Verifying access...",
+  "consultingStars": "Consulting the stars...",
+  "packageNotAvailable": "Package not available. Please try again later.",
+  "premiumPlusActivated": "Subscription has been activated. Enjoy your new features!",
+  "purchaseError": "There was an error processing your purchase. Please try again.",
+  "purchaseFailed": "Purchase Failed",
+  "purchaseSuccess": "Success!"
 }

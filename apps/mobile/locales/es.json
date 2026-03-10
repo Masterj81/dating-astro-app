@@ -1,7 +1,6 @@
 {
   "appName": "AstroDating",
   "tagline": "Escrito en las estrellas",
-
   "signIn": "Iniciar Sesión",
   "signUp": "Registrarse",
   "email": "Correo",
@@ -25,7 +24,6 @@
   "mustBe18": "Debes tener al menos 18 años",
   "futureBirthDate": "La fecha de nacimiento no puede ser en el futuro",
   "invalidBirthDateFormat": "Formato de fecha inválido. Usa MM/DD/AAAA",
-
   "yourBirthChart": "Tu Carta Natal",
   "birthChartSubtitle": "Ingresa tus datos de nacimiento para calcular tu Sol, Luna y Ascendente",
   "birthDate": "Fecha de nacimiento",
@@ -46,14 +44,12 @@
   "continue": "Continuar",
   "enterBirthDate": "Por favor ingresa tu fecha de nacimiento",
   "invalidDateFormat": "Formato de fecha inválido. Usa DD/MM/AAAA",
-
   "discover": "Descubrir",
   "matches": "Matchs",
   "chat": "Chat",
   "profile": "Perfil",
   "messages": "Mensajes",
   "myChart": "Mi Carta",
-
   "findingConnections": "Buscando conexiones cósmicas...",
   "noMoreProfiles": "No hay más perfiles",
   "checkBackLater": "¡Vuelve más tarde para nuevas conexiones!",
@@ -62,7 +58,6 @@
   "match": "Match",
   "like": "ME GUSTA",
   "nope": "NO",
-
   "yourMatches": "Tus Conexiones Cósmicas",
   "noMatchesYet": "Aún no hay matchs",
   "keepExploring": "Sigue explorando para encontrar tu conexión cósmica",
@@ -74,7 +69,6 @@
   "minutesAgo": "hace {{count}}m",
   "hoursAgo": "hace {{count}}h",
   "daysAgo": "hace {{count}}d",
-
   "noConversations": "Aún no hay conversaciones",
   "matchToChat": "Haz match con alguien para empezar a chatear",
   "matchToChatCosmos": "Haz match con alguien para chatear sobre el cosmos",
@@ -86,7 +80,6 @@
   "now": "Ahora",
   "startCosmicConversation": "¡Comienza tu conversación cósmica!",
   "sayHelloTo": "Saluda a {{name}}",
-
   "birthDetails": "Datos de Nacimiento",
   "settings": "Configuración",
   "upgradeToPremium": "Pasar a Premium",
@@ -98,7 +91,6 @@
   "failedUpload": "Error al subir imagen",
   "photoUpdated": "¡Foto de perfil actualizada!",
   "somethingWrong": "Algo salió mal",
-
   "unlockPremium": "Desbloquear Premium",
   "discoverDestiny": "Descubre tu destino cósmico",
   "unlimitedSwipes": "Swipes Ilimitados",
@@ -128,7 +120,6 @@
   "premiumAccessGranted": "Ahora tienes acceso a todas las funciones.",
   "premiumRestored": "Tu acceso premium ha sido restaurado.",
   "noPreviousPurchases": "No encontramos compras anteriores.",
-
   "aries": "Aries",
   "taurus": "Tauro",
   "gemini": "Géminis",
@@ -141,11 +132,9 @@
   "capricorn": "Capricornio",
   "aquarius": "Acuario",
   "pisces": "Piscis",
-
-  "sun": "Sol",
+  "sun": "Dom",
   "moon": "Luna",
   "rising": "Ascendente",
-
   "error": "Error",
   "success": "Éxito",
   "loading": "Cargando...",
@@ -153,7 +142,6 @@
   "translating": "Traduciendo...",
   "ok": "OK",
   "unknown": "Desconocido",
-
   "premiumFeature": "Función Premium",
   "liked": "Le gustó",
   "likeBack": "Devolver Like",
@@ -161,7 +149,6 @@
   "likesCount": "{{count}} personas te gustan",
   "noLikesYetTitle": "Sin Likes Aún",
   "noLikesYetText": "¡Sigue descubriendo y tus matches cósmicos te encontrarán!",
-
   "natalChartSubtitle": "Tu plano cósmico completo",
   "bigThree": "Los Tres Grandes",
   "planetaryPositions": "Posiciones Planetarias",
@@ -185,7 +172,6 @@
   "capricornDesc": "Disciplinado, ambicioso y responsable",
   "aquariusDesc": "Independiente, original y humanitario",
   "piscesDesc": "Compasivo, artístico e intuitivo",
-
   "compatibilityAnalysis": "Análisis de Compatibilidad",
   "compatibilitySubtitle": "Inmersión profunda en tu conexión cósmica",
   "synastrySubtitle": "Análisis de compatibilidad profundo",
@@ -222,7 +208,6 @@
   "challenging": "Desafiante",
   "cosmicAdvice": "Consejos Cósmicos",
   "viewFullChart": "Ver Tema Sinástrico Completo",
-
   "standOut": "Destaca",
   "standOutDesc": "Tu perfil aparece primero en su lista",
   "higherMatchRate": "3x Más Probabilidad",
@@ -251,7 +236,6 @@
   "superLikeTip4": "Guarda tus Super Likes para perfiles que realmente resuenen contigo",
   "startSuperLiking": "Empezar a Super Likear",
   "superLikesSubtitle": "Haz una primera impresión duradera",
-
   "priorityMessagesSubtitle": "Destaca en bandejas de entrada llenas",
   "sent": "Enviados",
   "responseRate": "Tasa de Respuesta",
@@ -276,7 +260,6 @@
   "copy": "Copiar",
   "recentPriority": "Mensajes Prioritarios Recientes",
   "sendPriorityMessage": "Enviar Mensaje Prioritario",
-
   "editProfile": "Editar Perfil",
   "save": "Guardar",
   "photos": "Fotos",
@@ -301,7 +284,6 @@
   "preferences": "Preferencias",
   "premium": "Premium",
   "allSettings": "Todos los Ajustes",
-
   "account": "Cuenta",
   "discoveryPreferences": "Preferencias de Descubrimiento",
   "notifications": "Notificaciones",
@@ -327,7 +309,6 @@
   "logoutConfirm": "¿Estás seguro de que quieres cerrar sesión?",
   "cantOpenLink": "No se pudo abrir el enlace",
   "madeWithLove": "Hecho con ♥ y ✨",
-
   "ageRange": "Rango de Edad",
   "yearsOld": "años",
   "minimum": "Mín",
@@ -348,21 +329,18 @@
   "zodiacSigns": "signos zodiacales",
   "highCompatibility": "Alta compatibilidad",
   "preferencesUpdated": "Preferencias actualizadas",
-
   "noBlockedUsers": "Sin Usuarios Bloqueados",
   "noBlockedUsersText": "No has bloqueado a nadie. Cuando bloquees a alguien, aparecerá aquí.",
   "blockedOn": "Bloqueado el",
-  "unblockUser": "Desbloquear Usuario",
+  "unblockUser": "Desbloquear usuario",
   "unblockConfirm": "¿Estás seguro de que quieres desbloquear a {{name}}?",
   "unblock": "Desbloquear",
   "blockInfo": "Los usuarios bloqueados no pueden ver tu perfil, enviarte mensajes ni hacer match contigo.",
-
   "mercury": "Mercurio",
   "venus": "Venus",
   "mars": "Marte",
   "jupiter": "Júpiter",
   "saturn": "Saturno",
-
   "sunSign": "Signo Solar",
   "moonSign": "Signo Lunar",
   "risingSign": "Signo Ascendente",
@@ -380,7 +358,6 @@
   "mutable": "Mutable",
   "cosmicSummary": "Tu Resumen Cósmico",
   "cosmicSummaryText": "Como Sol en {{sun}} con Luna en {{moon}} y Ascendente en {{rising}}, posees una mezcla única de energías. Tu Sol impulsa tu yo consciente, tu Luna nutre tu mundo emocional, y tu Ascendente da forma a cómo navegas el viaje de la vida.",
-
   "sunInAries": "Tu Sol en Aries te convierte en un líder natural con espíritu pionero. Abordas la vida con coraje y entusiasmo, siempre listo para enfrentar nuevos desafíos. Tu identidad está ligada a ser el primero, ser audaz y abrir caminos para otros.",
   "sunInTaurus": "Con tu Sol en Tauro, encarnas la estabilidad y sensualidad. Encuentras tu identidad construyendo cosas duraderas: relaciones, hogares, carreras. Tu enfoque de la vida es paciente y metódico, valorando la calidad sobre la cantidad.",
   "sunInGemini": "Tu Sol en Géminis te da una naturaleza curiosa y adaptable. Te identificas como el comunicador, el conector de ideas y personas. Tu mente es rápida y versátil, siempre buscando nueva información.",
@@ -393,7 +370,6 @@
   "sunInCapricorn": "Con tu Sol en Capricornio, te identificas con el logro y la maestría. Eres naturalmente ambicioso y disciplinado, con un fuerte sentido de responsabilidad. Tu propósito de vida involucra construir algo duradero.",
   "sunInAquarius": "Tu Sol en Acuario te da una naturaleza única y progresista. Te identificas como diferente y adelantado a tu tiempo. Tu propósito de vida involucra innovación y progreso humanitario.",
   "sunInPisces": "Con el Sol en Piscis, tienes una naturaleza profundamente compasiva y artística. Te identificas con la interconexión de todas las cosas. Tu propósito de vida involucra sanación, creatividad y crecimiento espiritual.",
-
   "moonInAries": "Tu Luna en Aries te da emociones apasionadas y ardientes. Necesitas emoción y acción para sentirte emocionalmente satisfecho. Procesas los sentimientos rápida y directamente.",
   "moonInTaurus": "Con tu Luna en Tauro, tienes profundas necesidades emocionales de seguridad y comodidad. Procesas los sentimientos lentamente y necesitas tiempo para adaptarte a los cambios. Los placeres sensuales calman tu alma.",
   "moonInGemini": "Tu Luna en Géminis te hace emocionalmente versátil y comunicativo. Necesitas estimulación mental para sentirte emocionalmente equilibrado. Hablar de tus sentimientos te ayuda a procesarlos.",
@@ -406,7 +382,6 @@
   "moonInCapricorn": "Con tu Luna en Capricornio, tienes emociones controladas y reservadas. Necesitas logros y estructura para sentirte seguro. Procesas los sentimientos a través del trabajo y la acción práctica.",
   "moonInAquarius": "Tu Luna en Acuario te da un enfoque desapegado e intelectual de las emociones. Necesitas libertad y amistad para sentirte equilibrado. Entiendes tus sentimientos objetivamente.",
   "moonInPisces": "Con la Luna en Piscis, tienes compasión y sensibilidad sin límites. Necesitas conexión espiritual y salidas creativas. Absorbes las emociones de otros fácilmente.",
-
   "risingInAries": "Con Ascendente Aries, pareces confiado, directo y enérgico. La gente te ve como un líder y pionero. Abordas nuevas situaciones con coraje y entusiasmo.",
   "risingInTaurus": "Tu Ascendente Tauro te da una presencia tranquila y arraigada. Otros te ven como confiable y sensual. Abordas la vida a tu propio ritmo, valorando la comodidad y la belleza.",
   "risingInGemini": "Con Ascendente Géminis, pareces curioso, ingenioso y versátil. La gente te ve como comunicativo y juvenil. Abordas la vida con agilidad mental y adaptabilidad.",
@@ -419,16 +394,13 @@
   "risingInCapricorn": "Tu Ascendente Capricornio te da una presencia seria y ambiciosa. Otros te ven como responsable y maduro. Abordas la vida con determinación y visión a largo plazo.",
   "risingInAquarius": "Con Ascendente Acuario, pareces único, amigable y progresista. La gente te ve como independiente e innovador. Abordas la vida como individuo, sin seguir a la multitud.",
   "risingInPisces": "Tu Ascendente Piscis te da una presencia soñadora y compasiva. Otros te ven como artístico y espiritual. Abordas la vida con imaginación y sensibilidad.",
-
   "dominantFire": "Con dominancia de Fuego en tu carta, eres naturalmente entusiasta, creativo y orientado a la acción. Lideras con pasión e inspiras a otros con tu energía y visión.",
   "dominantEarth": "Con dominancia de Tierra en tu carta, eres práctico, arraigado y confiable. Construyes cosas que duran y abordas la vida con paciencia y determinación.",
   "dominantAir": "Con dominancia de Aire en tu carta, eres intelectual, comunicativo y social. Procesas la vida a través de ideas y conexiones, siempre buscando comprensión.",
   "dominantWater": "Con dominancia de Agua en tu carta, eres emocional, intuitivo y empático. Navegas la vida a través de sentimientos y tienes profunda perspicacia psicológica.",
-
   "dominantCardinal": "Con dominancia de signos Cardinales, eres un iniciador y líder. Comienzas nuevos proyectos e inspiras acción en otros. El cambio y los nuevos comienzos te energizan.",
   "dominantFixed": "Con dominancia de signos Fijos, eres determinado, persistente y confiable. Una vez comprometido, lo llevas hasta el final. La estabilidad y lealtad te definen.",
   "dominantMutable": "Con dominancia de signos Mutables, eres adaptable, flexible y versátil. Manejas bien el cambio y puedes ver múltiples perspectivas. Eres los editores y refinadores del zodiaco.",
-
   "premiumFeatures": "Funciones Premium",
   "member": "Miembro",
   "celestialTier": "Celestial",
@@ -438,7 +410,6 @@
   "upgradeRequired": "Actualización requerida",
   "upgradeToCosmicMessage": "Esta función requiere el nivel Cósmico. Actualiza para desbloquear todas las funciones.",
   "manageSubscription": "Gestionar suscripción",
-
   "premiumPlus": "Premium Plus",
   "premiumPlusSubtitle": "Experiencia astrológica completa con guía diaria",
   "whatsIncluded": "Qué Incluye",
@@ -458,8 +429,6 @@
   "upgradeToPremiumPlus": "Mejora a Premium Plus",
   "viewRegularPremium": "Ver Premium Regular",
   "premiumPlusFeature": "Función Premium Plus",
-
-  "dailyHoroscope": "Horóscopo Diario",
   "yourSign": "Tu Signo",
   "todaysOverview": "Resumen del Día",
   "dailyOverviewContent": "Hoy trae energía cósmica poderosa para {{sign}}. Las estrellas se alinean para apoyar tu crecimiento personal y relaciones. Confía en tu intuición y mantente abierto a oportunidades inesperadas.",
@@ -485,7 +454,6 @@
   "waningGibbous": "Gibosa Menguante",
   "lastQuarter": "Cuarto Menguante",
   "waningCrescent": "Luna Menguante",
-
   "monthlyHoroscope": "Horóscopo Mensual",
   "monthlyForecastFor": "Pronóstico Mensual Para",
   "monthlyOverview": "Resumen Mensual",
@@ -509,7 +477,7 @@
   "venusEntersDesc": "El amor y las finanzas reciben un impulso. Excelente momento para gestos románticos e inversiones.",
   "fullMoonEvent": "Luna Llena en Tu Signo",
   "fullMoonDesc": "Las emociones están intensas. Un tiempo de completación y revelación. Confía en el proceso.",
-  "mercuryRetrograde": "Comienza Mercurio Retrógrado",
+  "mercuryRetrograde": "Mercurio Retrógrado",
   "mercuryRetroDesc": "La comunicación puede ser complicada. Verifica dos veces los detalles y evita firmar contratos si es posible.",
   "newMoonEvent": "Luna Nueva - Nuevo Comienzo",
   "newMoonDesc": "Momento perfecto para establecer nuevas intenciones. Planta semillas para el crecimiento futuro.",
@@ -519,7 +487,6 @@
   "forLove": "Para el Amor",
   "forCareer": "Para la Carrera",
   "forManifestation": "Para Manifestar",
-
   "planetaryTransitsSubtitle": "Influencias cósmicas en tiempo real en tu vida",
   "personalImpact": "Impacto Personal",
   "transitsFor": "Tránsitos para",
@@ -563,7 +530,6 @@
   "transitTip1": "Verde (Armonioso) - Energía de apoyo, aprovecha las oportunidades",
   "transitTip2": "Amarillo (Neutro) - Energía mixta, mantente flexible",
   "transitTip3": "Rojo (Desafiante) - Oportunidades de crecimiento a través de obstáculos",
-
   "retrogradeSubtitle": "Mantente adelante de los retrógrados planetarios",
   "retrograde": "Retrógrado",
   "upcoming": "Próximo",
@@ -579,7 +545,6 @@
   "whatToAvoid": "Qué Evitar",
   "tapToExpand": "Toca para ver detalles",
   "tapToCollapse": "Toca para colapsar",
-  "mercuryRetrograde": "Mercurio Retrógrado",
   "venusRetrograde": "Venus Retrógrado",
   "marsRetrograde": "Marte Retrógrado",
   "jupiterRetrograde": "Júpiter Retrógrado",
@@ -628,7 +593,6 @@
   "survivalTip1": "• Los retrógrados no son negativos - son tiempos de reflexión y revisión.",
   "survivalTip2": "• Los períodos de sombra antes y después son igualmente importantes.",
   "survivalTip3": "• Usa este tiempo para desacelerar y revisar viejos proyectos.",
-
   "luckyDaysCalculator": "Días de Suerte",
   "luckyDaysFor": "Días de Suerte Para",
   "love": "Amor",
@@ -664,7 +628,6 @@
   "luckyTip1": "Planifica eventos importantes en tus días de suerte para mejores resultados",
   "luckyTip2": "La hora de la suerte amplifica la energía positiva - úsala sabiamente",
   "luckyTip3": "Incluso en días no afortunados, tu actitud determina tu éxito",
-
   "january": "Enero",
   "february": "Febrero",
   "march": "Marzo",
@@ -701,7 +664,6 @@
   "st": "",
   "nd": "",
   "rd": "",
-
   "trialExhausted": "Vista previa gratuita usada",
   "trialExhaustedDesc": "Has usado tu vista previa gratuita diaria. Suscribete para acceso ilimitado.",
   "unlockNow": "Desbloquear acceso completo",
@@ -709,7 +671,6 @@
   "notNow": "Ahora no",
   "required": "REQUERIDO",
   "freePreviewAvailable": "1 vista previa gratuita por dia",
-
   "checkYourEmail": "Revisa tu correo",
   "verificationEmailSent": "Enviamos un enlace de verificacion a tu correo electronico. Revisa tu bandeja de entrada y haz clic en el enlace para verificar tu cuenta.",
   "resendVerificationEmail": "Reenviar correo de verificacion",
@@ -733,7 +694,6 @@
   "socialAuthError": "El inicio de sesion social fallo. Intentalo de nuevo.",
   "sessionExpired": "Sesion expirada",
   "sessionExpiredDesc": "Tu sesion ha expirado. Inicia sesion nuevamente.",
-
   "privacyPolicyTitle": "Politica de privacidad",
   "termsOfServiceTitle": "Terminos de servicio",
   "effectiveDate": "Fecha de vigencia",
@@ -752,11 +712,8 @@
   "termination": "Terminacion",
   "disclaimers": "Descargos de responsabilidad",
   "limitationOfLiability": "Limitacion de responsabilidad",
-
   "block": "Bloquear",
-  "unblock": "Desbloquear",
   "blockUser": "Bloquear usuario",
-  "unblockUser": "Desbloquear usuario",
   "reportUser": "Reportar usuario",
   "unmatch": "Deshacer match",
   "moreOptions": "Más opciones",
@@ -778,7 +735,6 @@
   "reportSuccessMessage": "Gracias por reportar. Revisaremos esta cuenta y tomaremos las medidas apropiadas.",
   "reportError": "Error al enviar el reporte. Por favor, inténtalo de nuevo.",
   "reportNote": "Los reportes son confidenciales. El usuario no sabrá que lo reportaste.",
-
   "voiceIntro": "Intro de Voz",
   "voiceIntroHint": "Graba una introducción de 30 segundos para que tus matches escuchen tu voz",
   "tapToRecord": "Toca para Grabar",
@@ -796,7 +752,6 @@
   "playbackFailed": "Error de reproducción. Por favor, inténtalo de nuevo.",
   "fileProcessingFailed": "Error al procesar el archivo. Por favor, inténtalo de nuevo.",
   "noActiveRecording": "No hay grabación activa",
-
   "getVerified": "Verificar Perfil",
   "verificationSubtitle": "Añade una insignia verificada a tu perfil para generar confianza",
   "verifyStep1": "Graba un video selfie corto (5-15 segundos)",
@@ -816,7 +771,6 @@
   "verificationSuccessDesc": "Tu insignia verificada ahora es visible en tu perfil",
   "done": "Listo",
   "cameraPermissionDenied": "Se requieren permisos de cámara y micrófono para la verificación",
-
   "datePlanner": "Planificador de Citas",
   "datePlannerDesc": "Encuentra las mejores fechas según alineaciones cósmicas",
   "planADate": "Planificar una Cita",
@@ -837,14 +791,12 @@
   "goodVibes": "Energía positiva para construir conexiones",
   "neutralEnergy": "Energía cósmica promedio - sé intencional",
   "challengingEnergy": "Considera otro día para citas importantes",
-  "sun": "Dom",
   "mon": "Lun",
   "tue": "Mar",
   "wed": "Mié",
   "thu": "Jue",
   "fri": "Vie",
   "sat": "Sáb",
-
   "a11y": {
     "discoverTab": "Descubrir nuevas conexiones",
     "matchesTab": "Ver tus matchs",
@@ -883,5 +835,23 @@
     "formError": "Error: {{message}}",
     "requiredField": "Este campo es obligatorio",
     "priceAnnouncement": "{{price}} por {{period}}"
-  }
+  },
+  "uploadFailed": "Error al subir imagen",
+  "uploadfailed": "Error al subir imagen",
+  "unlockCosmos": "Unlock the Cosmos",
+  "viewPlans": "View Plans",
+  "premiumRequired": "Access natal charts, synastry, horoscopes and more",
+  "startingAt": "Starting at $9.99/month",
+  "cosmicHub": "Cosmic Hub",
+  "cosmicMember": "Cosmic Member",
+  "celestialMember": "Celestial Member",
+  "upgradeToCosmic": "Upgrade to Cosmic",
+  "unlockAllFeatures": "Unlock daily horoscopes, transits & more",
+  "verifyingAccess": "Verifying access...",
+  "consultingStars": "Consulting the stars...",
+  "packageNotAvailable": "Package not available. Please try again later.",
+  "premiumPlusActivated": "Subscription has been activated. Enjoy your new features!",
+  "purchaseError": "There was an error processing your purchase. Please try again.",
+  "purchaseFailed": "Purchase Failed",
+  "purchaseSuccess": "Success!"
 }
