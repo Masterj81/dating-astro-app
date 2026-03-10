@@ -1,9 +1,6 @@
 {
-  "buildCommand": "npx expo export --platform web",
-  "outputDirectory": "dist",
-  "framework": null,
-  "trailingSlash": false,
-  "rewrites": [
-    { "source": "/:path*", "destination": "/index.html" }
-  ]
+  "framework": "nextjs",
+  "buildCommand": "npm run build --workspace=@astro/web",
+  "installCommand": "npm install",
+  "outputDirectory": "apps/web/.next"
 }
