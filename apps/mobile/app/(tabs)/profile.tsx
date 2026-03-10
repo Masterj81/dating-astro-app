@@ -1,7 +1,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useNavigation } from 'expo-router';
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LanguageSelector from '../../components/LanguageSelector';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import WebTabWrapper from '../../components/WebTabWrapper';
@@ -34,6 +35,7 @@ export default function ProfileScreen() {
   const { user, signOut, loading: authLoading } = useAuth();
   const { t, language } = useLanguage();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -356,8 +358,12 @@ export default function ProfileScreen() {
 
   return (
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      <View style={{ flex: 1 }}>
-        <View style={styles.scrollContent}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
+      >
         {/* Profile Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={pickImage} disabled={uploading}>
@@ -491,8 +497,7 @@ export default function ProfileScreen() {
             <Text style={[styles.settingsText, styles.logoutText]}>{t('logOut')}</Text>
           </TouchableOpacity>
         </View>
-        </View>
-      </View>
+      </ScrollView>
     </LinearGradient>
   );
 }
