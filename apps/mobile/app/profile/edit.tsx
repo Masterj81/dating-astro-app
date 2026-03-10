@@ -1,8 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { decode } from 'base64-arraybuffer';
-import * as FileSystem from 'expo-file-system';
 import {
   ActivityIndicator,
   Alert,
@@ -19,6 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import VoiceIntroRecorder from '../../components/VoiceIntroRecorder';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { readFileAsArrayBuffer, getExtFromMime } from '../../services/fileUtils';
 import { pickImage as pickImageCrossPlatform } from '../../services/imagePicker';
 import { supabase } from '../../services/supabase';
 import { validateBio, validateName } from '../../utils/validation';
@@ -113,26 +112,7 @@ export default function EditProfileScreen() {
     setUploadingIndex(index);
 
     try {
-      const getExtFromMime = (mime: string) => {
-        if (mime.includes('png')) return 'png';
-        if (mime.includes('webp')) return 'webp';
-        return 'jpg';
-      };
-
-      let uploadBody: Blob | ArrayBuffer;
-      let mimeType = 'image/jpeg';
-      if (Platform.OS === 'web') {
-        const response = await fetch(uri);
-        const blob = await response.blob();
-        mimeType = blob.type || mimeType;
-        uploadBody = blob;
-      } else {
-        const base64 = await FileSystem.readAsStringAsync(uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        uploadBody = decode(base64);
-      }
-
+      const { data: uploadBody, mimeType } = await readFileAsArrayBuffer(uri);
       const ext = getExtFromMime(mimeType);
       const fileName = `photo_${index}_${Date.now()}.${ext}`;
       const filePath = `${user.id}/${fileName}`;
@@ -145,8 +125,8 @@ export default function EditProfileScreen() {
         });
 
       if (uploadError) {
-        Alert.alert(t('error'), `${t('failedUpload')}${uploadError.message ? `: ${uploadError.message}` : ''}`);
-        setUploadingIndex(null);
+        console.error('Supabase upload error:', uploadError);
+        Alert.alert(t('error'), t('uploadFailed') || t('failedUpload'));
         return;
       }
 
@@ -157,11 +137,12 @@ export default function EditProfileScreen() {
       const newPhotos = [...photos];
       newPhotos[index] = urlData.publicUrl;
       setPhotos(newPhotos.filter(Boolean));
-    } catch (_error) {
-      Alert.alert(t('error'), t('somethingWrong'));
+    } catch (error: any) {
+      console.error('Image upload failed:', error);
+      Alert.alert(t('error'), t('uploadFailed') || t('somethingWrong'));
+    } finally {
+      setUploadingIndex(null);
     }
-
-    setUploadingIndex(null);
   };
 
   const removePhoto = (index: number) => {

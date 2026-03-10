@@ -1,13 +1,12 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useNavigation } from 'expo-router';
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { decode } from 'base64-arraybuffer';
-import * as FileSystem from 'expo-file-system';
 import { ActivityIndicator, Alert, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import LanguageSelector from '../../components/LanguageSelector';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import WebTabWrapper from '../../components/WebTabWrapper';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { readFileAsArrayBuffer, getExtFromMime } from '../../services/fileUtils';
 import { pickImage as pickImageCrossPlatform } from '../../services/imagePicker';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -103,35 +102,16 @@ export default function ProfileScreen() {
 
   const uploadImage = async (uri: string) => {
     if (!user?.id) {
-      Alert.alert(t('error'), t('somethingWrong'));
+      Alert.alert(t('error'), t('notLoggedIn') || t('somethingWrong'));
       return;
     }
 
     setUploading(true);
 
     try {
-      const getExtFromMime = (mime: string) => {
-        if (mime.includes('png')) return 'png';
-        if (mime.includes('webp')) return 'webp';
-        return 'jpg';
-      };
-
-      let uploadBody: Blob | ArrayBuffer;
-      let mimeType = 'image/jpeg';
-      if (Platform.OS === 'web') {
-        const response = await fetch(uri);
-        const blob = await response.blob();
-        mimeType = blob.type || mimeType;
-        uploadBody = blob;
-      } else {
-        const base64 = await FileSystem.readAsStringAsync(uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        uploadBody = decode(base64);
-      }
+      const { data: uploadBody, mimeType } = await readFileAsArrayBuffer(uri);
       const ext = getExtFromMime(mimeType);
-      const fileName = `avatar.${ext}`;
-      const filePath = `${user.id}/${fileName}`;
+      const filePath = `${user.id}/avatar.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
@@ -141,8 +121,8 @@ export default function ProfileScreen() {
         });
 
       if (uploadError) {
-        Alert.alert(t('error'), `${t('failedUpload')}${uploadError.message ? `: ${uploadError.message}` : ''}`);
-        setUploading(false);
+        console.error('Supabase upload error:', uploadError);
+        Alert.alert(t('error'), t('uploadFailed') || t('failedUpload'));
         return;
       }
 
@@ -157,18 +137,21 @@ export default function ProfileScreen() {
           photos: [publicUrl],
           updated_at: new Date().toISOString(),
         })
-        .eq('id', user?.id);
+        .eq('id', user.id);
 
       if (updateError) {
+        console.error('Profile update error:', updateError);
+        Alert.alert(t('error'), t('profileUpdateFailed') || t('somethingWrong'));
       } else {
         setAvatarUrl(publicUrl + '?t=' + Date.now());
         Alert.alert(t('success'), t('photoUpdated'));
       }
-    } catch (_error) {
-      Alert.alert(t('error'), t('somethingWrong'));
+    } catch (error: any) {
+      console.error('Image upload failed:', error);
+      Alert.alert(t('error'), t('uploadFailed') || t('somethingWrong'));
+    } finally {
+      setUploading(false);
     }
-
-    setUploading(false);
   };
 
   const handleLogout = async () => {

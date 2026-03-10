@@ -40,7 +40,7 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.astrodatingapp.mobile",
-      "versionCode": 27,
+      "versionCode": 28,
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO"

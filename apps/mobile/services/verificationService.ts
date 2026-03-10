@@ -1,10 +1,8 @@
 import { Camera } from 'expo-camera';
 import { AudioModule } from 'expo-audio';
-import { decode } from 'base64-arraybuffer';
-import * as FileSystem from 'expo-file-system';
-import { Platform } from 'react-native';
 import { supabase } from './supabase';
 import { debugLog } from '../utils/debug';
+import { readFileAsArrayBuffer, getExtFromMime } from './fileUtils';
 
 const MIN_RECORDING_DURATION_MS = 5000; // 5 seconds minimum
 const MAX_RECORDING_DURATION_MS = 15000; // 15 seconds maximum
@@ -56,64 +54,21 @@ export async function uploadVerificationVideo(
     debugLog('Starting video upload for user:', userId);
     debugLog('Video URI:', uri);
 
-    const getExtFromMime = (mime: string) => {
-      if (mime.includes('quicktime')) return 'mov';
-      if (mime.includes('webm')) return 'webm';
-      return 'mp4';
-    };
+    const { data: uploadBody, mimeType } = await readFileAsArrayBuffer(uri);
+    const ext = getExtFromMime(mimeType);
+    const filePath = `${userId}/verification_${Date.now()}.${ext}`;
 
-    let uploadError;
-    let filePath = `${userId}/verification_${Date.now()}.mp4`;
+    debugLog('Uploading to Supabase, size:', uploadBody.byteLength);
 
-    if (Platform.OS === 'web') {
-      // Web: use fetch to get blob
-      debugLog('Web platform: fetching blob...');
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      debugLog('Blob size:', blob.size);
-      const contentType = blob.type || 'video/mp4';
-      const ext = getExtFromMime(contentType);
-      filePath = `${userId}/verification_${Date.now()}.${ext}`;
-
-      const result = await supabase.storage
-        .from('verifications')
-        .upload(filePath, blob, {
-          upsert: true,
-          contentType,
-        });
-      uploadError = result.error;
-    } else {
-      // Native (iOS/Android): use base64 -> ArrayBuffer (more reliable than Blob on RN)
-      debugLog('Native platform: reading base64...');
-
-      try {
-        const base64 = await FileSystem.readAsStringAsync(uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        const uploadBody = decode(base64);
-        const contentType = 'video/mp4';
-        const ext = getExtFromMime(contentType);
-        filePath = `${userId}/verification_${Date.now()}.${ext}`;
-
-        debugLog('Uploading to Supabase...');
-        const result = await supabase.storage
-          .from('verifications')
-          .upload(filePath, uploadBody, {
-            upsert: true,
-            contentType,
-          });
-        uploadError = result.error;
-      } catch (fileError: any) {
-        console.error('File processing error:', fileError);
-        console.error('Error message:', fileError.message);
-        console.error('Error stack:', fileError.stack);
-        return { success: false, error: 'fileProcessingFailed' };
-      }
-    }
+    const { error: uploadError } = await supabase.storage
+      .from('verifications')
+      .upload(filePath, uploadBody, {
+        upsert: true,
+        contentType: mimeType,
+      });
 
     if (uploadError) {
       console.error('Upload error:', uploadError);
-      console.error('Upload error message:', uploadError.message);
       return { success: false, error: 'uploadFailed' };
     }
 
@@ -143,8 +98,8 @@ export async function uploadVerificationVideo(
     }
 
     return { success: true };
-  } catch (error) {
-    console.error('Error uploading verification video:', error);
+  } catch (error: any) {
+    console.error('Video upload failed:', error);
     return { success: false, error: 'uploadFailed' };
   }
 }

@@ -5,10 +5,8 @@ import {
   createAudioPlayer,
 } from 'expo-audio';
 import type { AudioPlayer } from 'expo-audio';
-import { decode } from 'base64-arraybuffer';
-import * as FileSystem from 'expo-file-system';
-import { Platform } from 'react-native';
 import { supabase } from './supabase';
+import { readFileAsArrayBuffer, getExtFromMime } from './fileUtils';
 
 const MAX_RECORDING_DURATION_MS = 30000; // 30 seconds
 
@@ -86,32 +84,14 @@ export async function uploadVoiceIntro(
   userId: string,
   uri: string
 ): Promise<{ success: boolean; url?: string; error?: string }> {
+  if (!userId) {
+    return { success: false, error: 'uploadFailed' };
+  }
+
   try {
-    if (!userId) {
-      return { success: false, error: 'uploadFailed' };
-    }
-
-    const getExtFromMime = (mime: string) => {
-      if (mime.includes('mpeg')) return 'mp3';
-      if (mime.includes('wav')) return 'wav';
-      if (mime.includes('ogg')) return 'ogg';
-      return 'm4a';
-    };
-
-    let uploadBody: Blob | ArrayBuffer;
-    let mimeType = 'audio/mp4';
-    if (Platform.OS === 'web') {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      mimeType = blob.type || mimeType;
-      uploadBody = blob;
-    } else {
-      const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      uploadBody = decode(base64);
-    }
-    const fileName = `voice_intro_${Date.now()}.${getExtFromMime(mimeType)}`;
+    const { data: uploadBody, mimeType } = await readFileAsArrayBuffer(uri);
+    const ext = getExtFromMime(mimeType);
+    const fileName = `voice_intro_${Date.now()}.${ext}`;
     const filePath = `${userId}/${fileName}`;
 
     // Upload to Supabase storage
@@ -150,8 +130,8 @@ export async function uploadVoiceIntro(
     }
 
     return { success: true, url: publicUrl };
-  } catch (error) {
-    console.error('Error uploading voice intro:', error);
+  } catch (error: any) {
+    console.error('Voice intro upload failed:', error);
     return { success: false, error: 'uploadFailed' };
   }
 }
