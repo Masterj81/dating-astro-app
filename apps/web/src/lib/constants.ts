@@ -9,6 +9,6 @@ export const SITE = {
   links: {
     appStore: "https://apps.apple.com/app/astrodating/id0000000000",
     playStore:
-      "https://play.google.com/store/apps/details?id=com.astrodating.app",
+      "https://play.google.com/store/apps/details?id=com.astrodatingapp.mobile",
   },
 } as const;

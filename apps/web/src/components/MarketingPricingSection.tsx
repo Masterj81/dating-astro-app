@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { formatPrice, type PriceMap } from "@/lib/billingPriceFormat";
 
 const FREE_FEATURES = [
@@ -34,6 +35,7 @@ const COSMIC_FEATURES = [
 export function MarketingPricingSection() {
   const prem = useTranslations("premium");
   const locale = useLocale();
+  const router = useRouter();
   const [prices, setPrices] = useState<PriceMap>({});
   const [loaded, setLoaded] = useState(false);
 
@@ -86,6 +88,7 @@ export function MarketingPricingSection() {
             cta={prem("getStarted")}
             highlighted={false}
             loading={false}
+            onCtaClick={() => router.push(`/${locale}/auth/signup`)}
           />
           <PricingCard
             name={prem("celestial")}
@@ -96,6 +99,7 @@ export function MarketingPricingSection() {
             highlighted
             badge={prem("mostPopular")}
             loading={!loaded}
+            onCtaClick={() => router.push(`/${locale}/app/plans`)}
           />
           <PricingCard
             name={prem("cosmic")}
@@ -105,6 +109,7 @@ export function MarketingPricingSection() {
             cta={prem("goCosmic")}
             highlighted={false}
             loading={!loaded}
+            onCtaClick={() => router.push(`/${locale}/app/plans`)}
           />
         </div>
       </div>
@@ -121,6 +126,7 @@ function PricingCard({
   highlighted,
   badge,
   loading,
+  onCtaClick,
 }: {
   name: string;
   price: string;
@@ -130,6 +136,7 @@ function PricingCard({
   highlighted: boolean;
   badge?: string;
   loading: boolean;
+  onCtaClick: () => void;
 }) {
   return (
     <div
@@ -167,6 +174,8 @@ function PricingCard({
         ))}
       </ul>
       <button
+        type="button"
+        onClick={onCtaClick}
         className={`w-full rounded-full py-2.5 text-sm font-medium transition-colors ${
           highlighted
             ? "bg-accent text-white hover:bg-accent-hover"
