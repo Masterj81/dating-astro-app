@@ -5,23 +5,12 @@ import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { createCheckoutSession, type WebCheckoutPlan } from "@/lib/web-checkout";
+import { formatPrice as formatBillingPrice, type PriceMap } from "@/lib/billingPriceFormat";
 
 type SessionState = {
   userId: string;
   currentTier: string;
 };
-
-type PriceMap = Partial<
-  Record<
-    WebCheckoutPlan,
-    {
-      priceId: string;
-      unitAmount: number | null;
-      currency: string;
-      interval: string | null;
-    } | null
-  >
->;
 
 const PLANS: Array<{
   key: WebCheckoutPlan;
@@ -144,26 +133,13 @@ export function PlansCheckout() {
     return Math.round(((annualizedMonthly - yearlyPrice) / annualizedMonthly) * 100);
   };
 
-  const formatPrice = (planKey: WebCheckoutPlan) => {
-    const price = prices[planKey];
-    if (!price?.currency || price.unitAmount == null) {
-      return t("priceUnavailable");
-    }
-
-    const amount = price.unitAmount / 100;
-    const formatted = new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: price.currency.toUpperCase(),
-    }).format(amount);
-    const intervalLabel =
-      price.interval === "month"
-        ? t("period_monthly")
-        : price.interval === "year"
-          ? t("period_yearly")
-          : null;
-
-    return `${formatted}${intervalLabel ? ` / ${intervalLabel}` : ""}`;
+  const periodLabels = {
+    monthly: t("period_monthly"),
+    yearly: t("period_yearly"),
   };
+
+  const formatPlanPrice = (planKey: WebCheckoutPlan) =>
+    formatBillingPrice(prices[planKey] ?? null, locale, periodLabels, t("priceUnavailable"));
 
   if (loading) {
     return (
@@ -252,7 +228,7 @@ export function PlansCheckout() {
 
               <div className="mt-6 rounded-2xl border border-border bg-bg/70 px-4 py-4">
                 <div className="text-sm text-text-dim">{t("billingCadence")}</div>
-                <div className="mt-1 text-lg font-medium text-white">{formatPrice(plan.key)}</div>
+                <div className="mt-1 text-lg font-medium text-white">{formatPlanPrice(plan.key)}</div>
               </div>
 
               <button
