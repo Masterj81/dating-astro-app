@@ -1,19 +1,19 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #0f0f1a;
-  --color-bg-secondary: #1a1a2e;
-  --color-bg-tertiary: #16213e;
-  --color-accent: #e94560;
-  --color-accent-hover: #d13a54;
-  --color-purple: #c084fc;
-  --color-purple-light: #a78bfa;
-  --color-text: #e0e0e0;
-  --color-text-muted: #c0c0c0;
-  --color-text-dim: #888888;
-  --color-border: #2a2a40;
-  --color-card: #1a1a2e;
-  --color-card-hover: #22223a;
+  --color-bg: #090b13;
+  --color-bg-secondary: #141a2b;
+  --color-bg-tertiary: #202946;
+  --color-accent: #e85d75;
+  --color-accent-hover: #d93c5a;
+  --color-purple: #7681ff;
+  --color-purple-light: #4da7ff;
+  --color-text: #f7f4ee;
+  --color-text-muted: #c9c2b8;
+  --color-text-dim: #8e8a84;
+  --color-border: rgba(255, 255, 255, 0.12);
+  --color-card: rgba(255, 255, 255, 0.07);
+  --color-card-hover: rgba(255, 255, 255, 0.12);
 }
 
 html {
@@ -21,9 +21,54 @@ html {
 }
 
 body {
-  background: var(--color-bg);
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 8% 10%, rgba(232, 93, 117, 0.18), transparent 24%),
+    radial-gradient(circle at 88% 12%, rgba(118, 129, 255, 0.22), transparent 20%),
+    radial-gradient(circle at 50% 120%, rgba(77, 167, 255, 0.14), transparent 28%),
+    linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-secondary) 46%, var(--color-bg-tertiary) 100%);
   color: var(--color-text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: "Segoe UI", "SF Pro Display", "Helvetica Neue", sans-serif;
+}
+
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+body::before {
+  background:
+    radial-gradient(circle at 12% 22%, rgba(232, 93, 117, 0.16), transparent 18%),
+    radial-gradient(circle at 82% 8%, rgba(77, 167, 255, 0.10), transparent 14%),
+    radial-gradient(circle at 78% 84%, rgba(118, 129, 255, 0.18), transparent 18%);
+  filter: blur(18px);
+}
+
+body::after {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 120px 120px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 85%);
+}
+
+body > div {
+  position: relative;
+}
+
+a,
+button {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    opacity 180ms ease;
 }
 
 ::selection {

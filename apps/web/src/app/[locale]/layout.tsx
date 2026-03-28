@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
-import { NextIntlClientProvider, hasLocale } from "next-intl";
+import { hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+import { LocaleProviders } from "@/components/LocaleProviders";
 import { SITE } from "@/lib/constants";
 
 export function generateStaticParams() {
@@ -41,7 +40,8 @@ export async function generateMetadata({
       description: t("description"),
       images: ["/og-image.png"],
     },
-    icons: { icon: "/favicon.png" },
+    icons: { icon: "/favicon.png", apple: "/icon-192.png" },
+    manifest: "/manifest.json",
   };
 }
 
@@ -66,12 +66,15 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} dir={dir} className="dark">
+      <head>
+        <meta name="theme-color" content="#e94560" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      </head>
       <body className="min-h-screen flex flex-col">
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          <Header />
-          <main className="flex-1">{children}</main>
-          <Footer />
-        </NextIntlClientProvider>
+        <LocaleProviders locale={locale} messages={messages}>
+          {children}
+        </LocaleProviders>
       </body>
     </html>
   );

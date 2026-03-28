@@ -7,85 +7,166 @@
     body {
       width: 1200px;
       height: 630px;
-      background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      position: relative;
       overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(245, 89, 120, 0.22), transparent 30%),
+        radial-gradient(circle at top right, rgba(160, 125, 255, 0.14), transparent 32%),
+        linear-gradient(135deg, #0d1020 0%, #171a2d 46%, #11152a 100%);
+      color: #f7f4ee;
+      position: relative;
     }
-    .stars {
+    .frame {
       position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
+      inset: 36px;
+      border-radius: 36px;
+      padding: 54px 64px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)),
+        linear-gradient(135deg, rgba(18,20,37,0.96), rgba(14,16,31,0.92));
+      border: 1px solid rgba(255,255,255,0.09);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+    .frame::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 36px;
       background-image:
-        radial-gradient(2px 2px at 20px 30px, #fff, transparent),
-        radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
-        radial-gradient(1px 1px at 90px 40px, #fff, transparent),
-        radial-gradient(2px 2px at 160px 120px, rgba(255,255,255,0.6), transparent),
-        radial-gradient(1px 1px at 230px 80px, #fff, transparent),
-        radial-gradient(2px 2px at 300px 150px, rgba(255,255,255,0.7), transparent),
-        radial-gradient(1px 1px at 400px 60px, #fff, transparent),
-        radial-gradient(2px 2px at 500px 200px, rgba(255,255,255,0.5), transparent),
-        radial-gradient(1px 1px at 600px 100px, #fff, transparent),
-        radial-gradient(2px 2px at 700px 180px, rgba(255,255,255,0.8), transparent),
-        radial-gradient(1px 1px at 800px 50px, #fff, transparent),
-        radial-gradient(2px 2px at 900px 220px, rgba(255,255,255,0.6), transparent),
-        radial-gradient(1px 1px at 1000px 90px, #fff, transparent),
-        radial-gradient(2px 2px at 1100px 160px, rgba(255,255,255,0.7), transparent),
-        radial-gradient(1px 1px at 150px 400px, #fff, transparent),
-        radial-gradient(2px 2px at 350px 500px, rgba(255,255,255,0.5), transparent),
-        radial-gradient(1px 1px at 550px 450px, #fff, transparent),
-        radial-gradient(2px 2px at 750px 520px, rgba(255,255,255,0.8), transparent),
-        radial-gradient(1px 1px at 950px 380px, #fff, transparent),
-        radial-gradient(2px 2px at 1050px 480px, rgba(255,255,255,0.6), transparent);
-      opacity: 0.6;
+        radial-gradient(2px 2px at 12% 18%, rgba(255,255,255,0.85), transparent),
+        radial-gradient(1.5px 1.5px at 24% 32%, rgba(255,255,255,0.55), transparent),
+        radial-gradient(2px 2px at 71% 16%, rgba(255,255,255,0.65), transparent),
+        radial-gradient(1.5px 1.5px at 84% 28%, rgba(255,255,255,0.55), transparent),
+        radial-gradient(2px 2px at 18% 72%, rgba(255,255,255,0.55), transparent),
+        radial-gradient(1.5px 1.5px at 63% 74%, rgba(255,255,255,0.75), transparent),
+        radial-gradient(2px 2px at 90% 68%, rgba(255,255,255,0.5), transparent);
+      opacity: 0.55;
+      pointer-events: none;
     }
     .content {
       position: relative;
       z-index: 1;
-      text-align: center;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 48px;
     }
-    .icon {
-      width: 120px;
-      height: 120px;
-      margin-bottom: 30px;
+    .copy {
+      max-width: 620px;
     }
-    .star {
-      fill: #e94560;
-    }
-    .circle {
-      fill: none;
-      stroke: #e94560;
-      stroke-width: 2;
-      opacity: 0.5;
-    }
-    h1 {
-      font-size: 72px;
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(233, 69, 96, 0.3);
+      background: rgba(233, 69, 96, 0.08);
+      color: #f58ca0;
+      font-size: 18px;
       font-weight: 700;
-      margin-bottom: 16px;
-      background: linear-gradient(90deg, #fff 0%, #c084fc 100%);
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+    .title {
+      font-size: 78px;
+      line-height: 0.95;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      margin-bottom: 18px;
+      color: #f7f4ee;
+    }
+    .accent {
+      background: linear-gradient(90deg, #ffffff 0%, #f28ba2 34%, #b996ff 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-    p {
-      font-size: 32px;
-      color: #c0c0c0;
-      max-width: 800px;
+    .subtitle {
+      font-size: 30px;
+      line-height: 1.35;
+      color: rgba(247, 244, 238, 0.76);
+      max-width: 560px;
+    }
+    .mark-wrap {
+      width: 300px;
+      height: 300px;
+      border-radius: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at 50% 20%, rgba(255,255,255,0.08), transparent 40%),
+        linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow:
+        0 24px 80px rgba(7, 9, 18, 0.4),
+        inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+    .logo {
+      width: 190px;
+      height: 190px;
+    }
+    .foot {
+      position: absolute;
+      left: 64px;
+      right: 64px;
+      bottom: 44px;
+      z-index: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: rgba(247, 244, 238, 0.42);
+      font-size: 18px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
     }
   </style>
 </head>
 <body>
-  <div class="stars"></div>
-  <div class="content">
-    <svg class="icon" viewBox="0 0 100 100">
-      <circle class="circle" cx="50" cy="50" r="45"/>
-      <path class="star" d="M50 15 L56 40 L80 40 L60 55 L68 80 L50 65 L32 80 L40 55 L20 40 L44 40 Z"/>
-    </svg>
-    <h1>AstroDating</h1>
-    <p>Find your cosmic match through astrology</p>
+  <div class="frame">
+    <div class="content">
+      <div class="copy">
+        <div class="eyebrow">Astrology Dating</div>
+        <h1 class="title">Astro<span class="accent">Dating</span></h1>
+        <p class="subtitle">Find your cosmic match through astrology, synastry, and real birth-chart compatibility.</p>
+      </div>
+
+      <div class="mark-wrap">
+        <svg class="logo" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="logo-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#1a1a2e"/>
+              <stop offset="100%" stop-color="#0f0f1a"/>
+            </linearGradient>
+          </defs>
+          <rect width="128" height="128" rx="24" fill="url(#logo-bg)"/>
+          <path
+            d="M64 98
+               C40 82 24 66 24 48
+               C24 36 33 28 44 28
+               C53 28 60 33 64 40
+               C68 33 75 28 84 28
+               C95 28 104 36 104 48
+               C104 66 88 82 64 98Z"
+            fill="none"
+            stroke="#E94560"
+            stroke-width="2.5"
+            stroke-opacity="0.42"
+          />
+          <path
+            d="M64 26 L74.3 51.7 L104 51.7 L80 69.1 L89.4 97 L64 80.2 L38.6 97 L48 69.1 L24 51.7 L53.7 51.7 Z"
+            fill="#F7F4EE"
+          />
+        </svg>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>Real astrology</span>
+      <span>astrodatingapp.com</span>
+    </div>
   </div>
 </body>
 </html>

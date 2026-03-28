@@ -1,22 +1,55 @@
 "use client";
 
-import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { getSupabaseBrowser } from "@/lib/supabase-browser";
 
 type Step = "email" | "verify" | "done";
 
 export function AccountDeletionFlow() {
   const t = useTranslations("accountDelete");
-  const tc = useTranslations("common");
+  const locale = useLocale();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
+  const [userId, setUserId] = useState("");
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    let active = true;
+
+    const loadEmail = async () => {
+      try {
+        const supabase = getSupabaseBrowser();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!active) {
+          return;
+        }
+
+        setEmail(session?.user?.email || "");
+        setUserId(session?.user?.id || "");
+      } catch {
+        if (active) {
+          setEmail("");
+          setUserId("");
+        }
+      }
+    };
+
+    loadEmail();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   async function requestCode(e: React.FormEvent) {
     e.preventDefault();
-    if (!email) return;
+    if (!email || !userId) return;
 
     setLoading(true);
     setError("");
@@ -25,7 +58,7 @@ export function AccountDeletionFlow() {
       const res = await fetch("/api/account/request-deletion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, userId }),
       });
 
       if (!res.ok) {
@@ -52,7 +85,7 @@ export function AccountDeletionFlow() {
       const res = await fetch("/api/account/confirm-deletion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code }),
+        body: JSON.stringify({ email, userId, code }),
       });
 
       if (!res.ok) {
@@ -60,7 +93,10 @@ export function AccountDeletionFlow() {
         throw new Error(body.error || "Something went wrong");
       }
 
+      const supabase = getSupabaseBrowser();
+      await supabase.auth.signOut();
       setStep("done");
+      window.location.assign(`/${locale}/auth/signup`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -108,26 +144,16 @@ export function AccountDeletionFlow() {
             <p className="text-sm text-text-muted">{t("step1Desc")}</p>
           </div>
 
-          <div>
-            <label htmlFor="delete-email" className="mb-1 block text-sm text-text-muted">
-              {t("emailLabel")}
-            </label>
-            <input
-              id="delete-email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-white placeholder-text-dim outline-none focus:border-purple-light"
-              placeholder={t("emailPlaceholder")}
-            />
+          <div className="rounded-lg border border-border bg-bg px-4 py-3">
+            <p className="mb-1 text-sm text-text-muted">{t("emailLabel")}</p>
+            <p className="text-sm text-white">{email || t("loading")}</p>
           </div>
 
           {error && <p className="text-sm text-accent">{error}</p>}
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !email || !userId}
             className="w-full rounded-full bg-accent py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
           >
             {loading ? t("sendingCode") : t("sendCode")}
@@ -185,7 +211,7 @@ export function AccountDeletionFlow() {
             }}
             className="w-full text-sm text-text-dim hover:text-white"
           >
-            {tc("goBack")}
+            {t("goBack")}
           </button>
         </form>
       )}
