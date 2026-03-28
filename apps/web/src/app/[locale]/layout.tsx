@@ -68,8 +68,7 @@ export default async function LocaleLayout({
     <html lang={locale} dir={dir} className="dark">
       <head>
         <meta name="theme-color" content="#e94560" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="min-h-screen flex flex-col">
         <LocaleProviders locale={locale} messages={messages}>
