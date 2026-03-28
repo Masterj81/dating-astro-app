@@ -28,7 +28,7 @@ const CATEGORIES = [
   },
   {
     nameKey: "catBilling",
-    questions: ["manageSub", "refund", "autoRenew"],
+    questions: ["manageSub", "refund", "autoRenew", "promoCode"],
   },
   {
     nameKey: "catSafety",
@@ -37,6 +37,10 @@ const CATEGORIES = [
   {
     nameKey: "catAstrology",
     questions: ["birthTime", "sunVsFull", "personalizedHoroscopes"],
+  },
+  {
+    nameKey: "catWebApp",
+    questions: ["webApp", "installPwa", "webSync"],
   },
 ] as const;
 
