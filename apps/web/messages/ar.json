@@ -1121,6 +1121,24 @@
     "profileSupportLabel": "الدعم",
     "profileSupportTitle": "الابلاغ عن مشكلة",
     "profileSupportBody": "إذا كان هناك خلل في حسابك أو اشتراكك أو مع مستخدم آخر، تواصل مع الدعم عبر البريد الإلكتروني مع أكبر قدر ممكن من التفاصيل.",
-    "sending": "جارٍ الإرسال..."
+    "sending": "جارٍ الإرسال...",
+    "tarotReading": "قراءة التاروت",
+    "weeklyTarotSubtitle": "إرشادك الكوني الأسبوعي",
+    "monthlyTarotSubtitle": "إرشادك الكوني الشهري",
+    "loveFocus": "الحب",
+    "generalFocus": "عام",
+    "tapToReveal": "انقر على كل بطاقة لكشف قراءتك",
+    "reversed": "معكوسة",
+    "yourReading": "قراءتك",
+    "tarot_past": "الماضي",
+    "tarot_present": "الحاضر",
+    "tarot_future": "المستقبل",
+    "tarot_advice": "نصيحة كونية",
+    "tarotLocked": "قراءة التاروت",
+    "tarotLockedBody": "قراءات التاروت متاحة مع خطط Celestial (شهري) أو Cosmic (أسبوعي).",
+    "weeklyReading": "قراءة أسبوعية",
+    "monthlyReading": "قراءة شهرية",
+    "cardsInSpread": "البطاقات في الانتشار",
+    "upgradeForWeekly": "قم بالترقية إلى Cosmic للحصول على قراءات أسبوعية وبطاقة النصيحة الكونية الإضافية."
   }
 }

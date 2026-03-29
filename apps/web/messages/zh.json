@@ -1121,6 +1121,24 @@
     "profileSupportLabel": "支持",
     "profileSupportTitle": "报告问题",
     "profileSupportBody": "如果你的账户、订阅或其他用户出现问题，请通过电子邮件联系支持团队，并尽量提供详细信息。",
-    "sending": "发送中..."
+    "sending": "发送中...",
+    "tarotReading": "塔罗牌阅读",
+    "weeklyTarotSubtitle": "您的每周宇宙指引",
+    "monthlyTarotSubtitle": "您的每月宇宙指引",
+    "loveFocus": "爱情",
+    "generalFocus": "综合",
+    "tapToReveal": "点击每张牌揭示您的阅读",
+    "reversed": "逆位",
+    "yourReading": "您的解读",
+    "tarot_past": "过去",
+    "tarot_present": "现在",
+    "tarot_future": "未来",
+    "tarot_advice": "宇宙建议",
+    "tarotLocked": "塔罗牌阅读",
+    "tarotLockedBody": "塔罗牌阅读可通过Celestial（月度）或Cosmic（每周）计划使用。",
+    "weeklyReading": "每周阅读",
+    "monthlyReading": "每月阅读",
+    "cardsInSpread": "牌阵中的牌数",
+    "upgradeForWeekly": "升级到Cosmic，获得每周阅读和额外的宇宙建议牌。"
   }
 }

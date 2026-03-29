@@ -1121,6 +1121,24 @@
     "profileSupportLabel": "サポート",
     "profileSupportTitle": "問題を報告",
     "profileSupportBody": "アカウント、サブスクリプション、または他のユーザーに問題がある場合は、できるだけ詳しくメールでサポートへ連絡してください。",
-    "sending": "送信中..."
+    "sending": "送信中...",
+    "tarotReading": "タロットリーディング",
+    "weeklyTarotSubtitle": "今週の宇宙のガイダンス",
+    "monthlyTarotSubtitle": "今月の宇宙のガイダンス",
+    "loveFocus": "恋愛",
+    "generalFocus": "総合",
+    "tapToReveal": "カードをクリックしてリーディングを表示",
+    "reversed": "逆位置",
+    "yourReading": "あなたのリーディング",
+    "tarot_past": "過去",
+    "tarot_present": "現在",
+    "tarot_future": "未来",
+    "tarot_advice": "宇宙のアドバイス",
+    "tarotLocked": "タロットリーディング",
+    "tarotLockedBody": "タロットリーディングはCelestial（月間）またはCosmic（週間）プランでご利用いただけます。",
+    "weeklyReading": "週間リーディング",
+    "monthlyReading": "月間リーディング",
+    "cardsInSpread": "スプレッドのカード数",
+    "upgradeForWeekly": "Cosmicにアップグレードして、週間リーディングとボーナスの宇宙のアドバイスカードを入手。"
   }
 }

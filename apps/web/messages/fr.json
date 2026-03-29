@@ -1121,6 +1121,24 @@
     "profileSupportLabel": "Support",
     "profileSupportTitle": "Signaler un probleme",
     "profileSupportBody": "Si quelque chose ne va pas avec ton compte, ton abonnement ou un autre utilisateur, contacte le support par email avec le plus de details possible.",
-    "sending": "Envoi en cours..."
+    "sending": "Envoi en cours...",
+    "tarotReading": "Lecture de Tarot",
+    "weeklyTarotSubtitle": "Votre guidance cosmique hebdomadaire",
+    "monthlyTarotSubtitle": "Votre guidance cosmique mensuelle",
+    "loveFocus": "Amour",
+    "generalFocus": "Général",
+    "tapToReveal": "Cliquez sur chaque carte pour révéler votre lecture",
+    "reversed": "Inversée",
+    "yourReading": "Votre Lecture",
+    "tarot_past": "Passé",
+    "tarot_present": "Présent",
+    "tarot_future": "Futur",
+    "tarot_advice": "Conseil Cosmique",
+    "tarotLocked": "Lecture de Tarot",
+    "tarotLockedBody": "Les lectures de tarot sont disponibles avec les forfaits Celestial (mensuel) ou Cosmic (hebdomadaire).",
+    "weeklyReading": "Lecture Hebdomadaire",
+    "monthlyReading": "Lecture Mensuelle",
+    "cardsInSpread": "Cartes dans le tirage",
+    "upgradeForWeekly": "Passez à Cosmic pour des lectures hebdomadaires et la carte bonus Conseil Cosmique."
   }
 }

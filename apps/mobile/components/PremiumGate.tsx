@@ -96,6 +96,8 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
       'retrograde-alerts': t('retrogradeAlerts') || 'Retrograde Alerts',
       'lucky-days': t('luckyDays') || 'Lucky Days',
       'date-planner': t('datePlanner') || 'Date Planner',
+      'weekly-tarot': t('weeklyTarot') || 'Weekly Tarot',
+      'monthly-tarot': t('monthlyTarot') || 'Monthly Tarot',
     };
 
     return featureNames[featureName] || featureName;

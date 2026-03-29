@@ -1104,6 +1104,24 @@
     "profileSupportLabel": "Suporte",
     "profileSupportTitle": "Reportar um problema",
     "profileSupportBody": "Se algo estiver errado com sua conta, assinatura ou com outro usuario, contate o suporte por email e inclua o maximo de detalhes possivel.",
-    "sending": "Enviando..."
+    "sending": "Enviando...",
+    "tarotReading": "Leitura de Tarot",
+    "weeklyTarotSubtitle": "Sua orientação cósmica semanal",
+    "monthlyTarotSubtitle": "Sua orientação cósmica mensal",
+    "loveFocus": "Amor",
+    "generalFocus": "Geral",
+    "tapToReveal": "Clique em cada carta para revelar sua leitura",
+    "reversed": "Invertida",
+    "yourReading": "Sua Leitura",
+    "tarot_past": "Passado",
+    "tarot_present": "Presente",
+    "tarot_future": "Futuro",
+    "tarot_advice": "Conselho Cósmico",
+    "tarotLocked": "Leitura de Tarot",
+    "tarotLockedBody": "As leituras de tarot estão disponíveis com os planos Celestial (mensal) ou Cosmic (semanal).",
+    "weeklyReading": "Leitura Semanal",
+    "monthlyReading": "Leitura Mensal",
+    "cardsInSpread": "Cartas no jogo",
+    "upgradeForWeekly": "Atualize para Cosmic para leituras semanais e a carta bônus de Conselho Cósmico."
   }
 }
