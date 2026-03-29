@@ -341,18 +341,27 @@ export function DiscoverOverview() {
                 {currentProfile.bio || t("discoverNoBio")}
               </p>
 
-              <div className="mt-6 grid gap-3 sm:grid-cols-3 text-sm">
-                <div className="rounded-[1.3rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] px-4 py-4 text-white">
-                  {t("discoverSun")}:{" "}
-                  {currentProfile.sun_sign ? translateSign(currentProfile.sun_sign, locale) : "?"}
+              <div className="mt-6 grid grid-cols-3 gap-3">
+                <div className="rounded-2xl border border-accent/20 bg-accent/8 p-3 text-center">
+                  <p className="text-lg">☀️</p>
+                  <p className="mt-1 text-[10px] uppercase tracking-widest text-text-dim">{t("discoverSun")}</p>
+                  <p className="mt-1 text-sm font-semibold text-white">
+                    {currentProfile.sun_sign ? translateSign(currentProfile.sun_sign, locale) : "?"}
+                  </p>
                 </div>
-                <div className="rounded-[1.3rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] px-4 py-4 text-white">
-                  {t("discoverMoon")}:{" "}
-                  {currentProfile.moon_sign ? translateSign(currentProfile.moon_sign, locale) : "?"}
+                <div className="rounded-2xl border border-purple/20 bg-purple/8 p-3 text-center">
+                  <p className="text-lg">🌙</p>
+                  <p className="mt-1 text-[10px] uppercase tracking-widest text-text-dim">{t("discoverMoon")}</p>
+                  <p className="mt-1 text-sm font-semibold text-white">
+                    {currentProfile.moon_sign ? translateSign(currentProfile.moon_sign, locale) : "?"}
+                  </p>
                 </div>
-                <div className="rounded-[1.3rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] px-4 py-4 text-white">
-                  {t("discoverRising")}:{" "}
-                  {currentProfile.rising_sign ? translateSign(currentProfile.rising_sign, locale) : "?"}
+                <div className="rounded-2xl border border-border bg-white/[0.04] p-3 text-center">
+                  <p className="text-lg">⬆️</p>
+                  <p className="mt-1 text-[10px] uppercase tracking-widest text-text-dim">{t("discoverRising")}</p>
+                  <p className="mt-1 text-sm font-semibold text-white">
+                    {currentProfile.rising_sign ? translateSign(currentProfile.rising_sign, locale) : "?"}
+                  </p>
                 </div>
               </div>
             </div>

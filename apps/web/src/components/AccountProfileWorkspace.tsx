@@ -748,15 +748,27 @@ export function AccountProfileWorkspace({
         />
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-3 text-sm">
-        <div className="rounded-full border border-border bg-bg/70 px-4 py-2 text-white">
-          {t("discoverSun")}: {profile.sun_sign ? translateSign(profile.sun_sign, locale) : "?"}
+      <div className="mt-6 grid grid-cols-3 gap-3">
+        <div className="rounded-2xl border border-accent/20 bg-accent/8 p-3 text-center">
+          <p className="text-lg">☀️</p>
+          <p className="mt-1 text-[10px] uppercase tracking-widest text-text-dim">{t("discoverSun")}</p>
+          <p className="mt-1 text-sm font-semibold text-white">
+            {profile.sun_sign ? translateSign(profile.sun_sign, locale) : "?"}
+          </p>
         </div>
-        <div className="rounded-full border border-border bg-bg/70 px-4 py-2 text-white">
-          {t("discoverMoon")}: {profile.moon_sign ? translateSign(profile.moon_sign, locale) : "?"}
+        <div className="rounded-2xl border border-purple/20 bg-purple/8 p-3 text-center">
+          <p className="text-lg">🌙</p>
+          <p className="mt-1 text-[10px] uppercase tracking-widest text-text-dim">{t("discoverMoon")}</p>
+          <p className="mt-1 text-sm font-semibold text-white">
+            {profile.moon_sign ? translateSign(profile.moon_sign, locale) : "?"}
+          </p>
         </div>
-        <div className="rounded-full border border-border bg-bg/70 px-4 py-2 text-white">
-          {t("discoverRising")}: {profile.rising_sign ? translateSign(profile.rising_sign, locale) : "?"}
+        <div className="rounded-2xl border border-border bg-white/[0.04] p-3 text-center">
+          <p className="text-lg">⬆️</p>
+          <p className="mt-1 text-[10px] uppercase tracking-widest text-text-dim">{t("discoverRising")}</p>
+          <p className="mt-1 text-sm font-semibold text-white">
+            {profile.rising_sign ? translateSign(profile.rising_sign, locale) : "?"}
+          </p>
         </div>
       </div>
 
