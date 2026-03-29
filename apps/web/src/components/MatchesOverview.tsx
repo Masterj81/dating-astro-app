@@ -22,26 +22,23 @@ type MatchRow = {
 };
 
 function formatRelativeDate(value: string | null, locale: string) {
-  if (!value) {
-    return null;
-  }
-
+  if (!value) return null;
   const date = new Date(value);
   const diffMs = Date.now() - date.getTime();
   const diffMinutes = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMinutes < 1) {
-    return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(0, "minute");
-  }
-  if (diffMinutes < 60) {
-    return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(-diffMinutes, "minute");
-  }
-  if (diffHours < 24) {
-    return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(-diffHours, "hour");
-  }
+  if (diffMinutes < 1) return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(0, "minute");
+  if (diffMinutes < 60) return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(-diffMinutes, "minute");
+  if (diffHours < 24) return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(-diffHours, "hour");
   return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(-diffDays, "day");
+}
+
+function compatColor(score: number) {
+  if (score >= 80) return { bg: "bg-emerald-500/15", border: "border-emerald-400/30", text: "text-emerald-300" };
+  if (score >= 60) return { bg: "bg-amber-500/15", border: "border-amber-400/30", text: "text-amber-300" };
+  return { bg: "bg-red-500/15", border: "border-red-400/30", text: "text-red-300" };
 }
 
 export function MatchesOverview() {
@@ -54,27 +51,12 @@ export function MatchesOverview() {
   const loadMatches = async () => {
     setLoading(true);
     setError(null);
-
     try {
       const supabase = getSupabaseBrowser();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session?.user?.id) {
-        setMatches([]);
-        setLoading(false);
-        return;
-      }
-
-      const { data, error: rpcError } = await supabase.rpc("get_user_matches", {
-        p_user_id: session.user.id,
-      });
-
-      if (rpcError) {
-        throw rpcError;
-      }
-
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) { setMatches([]); setLoading(false); return; }
+      const { data, error: rpcError } = await supabase.rpc("get_user_matches", { p_user_id: session.user.id });
+      if (rpcError) throw rpcError;
       setMatches((data as MatchRow[]) || []);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t("unknownError"));
@@ -83,36 +65,37 @@ export function MatchesOverview() {
     }
   };
 
-  useEffect(() => {
-    loadMatches();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadMatches(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (
-      <div className="rounded-[2rem] border border-border bg-card/90 p-6 text-sm text-text-muted">
-        {t("loading")}
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
       </div>
     );
   }
 
   if (!matches.length) {
     return (
-      <div className="rounded-[2rem] border border-border bg-card/90 p-8">
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-accent/10 text-5xl">
+          💫
+        </div>
         <h2 className="text-2xl font-semibold text-white">{t("matchesEmptyTitle")}</h2>
-        <p className="mt-3 max-w-2xl text-sm leading-7 text-text-muted">
+        <p className="mt-3 max-w-md text-sm leading-7 text-text-muted">
           {t("matchesEmptyBody")}
         </p>
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="mt-8 flex gap-3">
           <Link
             href="/app/discover"
-            className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+            className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
           >
             {t("openDiscover")}
           </Link>
           <button
             type="button"
             onClick={loadMatches}
-            className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
+            className="rounded-full border border-border px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
           >
             {t("refreshMatches")}
           </button>
@@ -121,149 +104,120 @@ export function MatchesOverview() {
     );
   }
 
-  const totalUnread = matches.reduce((sum, match) => sum + (match.unread_count || 0), 0);
+  const totalUnread = matches.reduce((sum, m) => sum + (m.unread_count || 0), 0);
+  const avgCompat = Math.round(matches.reduce((sum, m) => sum + (m.compatibility_overall || 85), 0) / matches.length);
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2.2rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.04))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
-        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-              {t("matchesLabel")}
-            </p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
-              {t("matchesTitle")}
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-text-muted sm:text-base">
-              {t("matchesSubtitle", { count: matches.length })}
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-[1.6rem] border border-[rgba(232,93,117,0.24)] bg-[rgba(232,93,117,0.10)] p-4">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-text-dim">
-                {t("matchesNav")}
-              </p>
-              <p className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
-                {matches.length}
-              </p>
-            </div>
-            <div className="rounded-[1.6rem] border border-border bg-white/[0.04] p-4">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-text-dim">
-                {t("chatNav")}
-              </p>
-              <p className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
-                {totalUnread}
-              </p>
-            </div>
-            <div className="rounded-[1.6rem] border border-border bg-white/[0.04] p-4">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-text-dim">
-                {t("discoverMatch")}
-              </p>
-              <p className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
-                {Math.round(matches.reduce((sum, match) => sum + (match.compatibility_overall || 85), 0) / matches.length)}%
-              </p>
-            </div>
-          </div>
+      {/* Stats strip */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-2xl border border-accent/20 bg-accent/8 p-4 text-center">
+          <p className="text-3xl font-bold text-white">{matches.length}</p>
+          <p className="mt-1 text-xs uppercase tracking-widest text-text-dim">{t("matchesNav")}</p>
         </div>
-      </section>
-
-    <div className="rounded-[2rem] border border-border bg-card/90 p-6 shadow-[0_18px_50px_rgba(0,0,0,0.16)]">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-            {t("matchesLabel")}
-          </p>
-          <h2 className="mt-3 text-2xl font-semibold text-white">{t("matchesTitle")}</h2>
-          <p className="mt-2 text-sm text-text-muted">
-            {t("matchesSubtitle", { count: matches.length })}
-          </p>
+        <div className="rounded-2xl border border-purple/20 bg-purple/8 p-4 text-center">
+          <p className="text-3xl font-bold text-white">{totalUnread}</p>
+          <p className="mt-1 text-xs uppercase tracking-widest text-text-dim">{t("chatNav")}</p>
         </div>
-        <Link
-          href="/app/discover"
-          className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
-        >
-          {t("discoverNav")}
-        </Link>
+        <div className="rounded-2xl border border-border bg-white/[0.04] p-4 text-center">
+          <p className="text-3xl font-bold text-white">{avgCompat}%</p>
+          <p className="mt-1 text-xs uppercase tracking-widest text-text-dim">{t("discoverMatch")}</p>
+        </div>
       </div>
 
-      <div className="mt-6 space-y-4">
+      {/* Match cards - grid layout like an app */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {matches.map((match) => {
           const profileImage = resolveImageSrc(match.matched_user_image);
-          const relativeDate = formatRelativeDate(
-            match.last_message_at || match.matched_at,
-            locale
-          );
+          const relativeDate = formatRelativeDate(match.last_message_at || match.matched_at, locale);
+          const compat = match.compatibility_overall || 85;
+          const colors = compatColor(compat);
 
           return (
             <div
               key={match.match_id}
-              className="grid gap-4 rounded-[1.65rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-4 transition-colors hover:bg-white/[0.06] lg:grid-cols-[auto_1fr_auto]"
+              className="group relative overflow-hidden rounded-2xl border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] transition-all hover:border-white/20 hover:shadow-[0_8px_30px_rgba(232,93,117,0.12)]"
             >
-              <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-bg-secondary">
+              {/* Image header */}
+              <div className="relative h-48 overflow-hidden">
                 <Image
                   src={profileImage}
                   alt={match.matched_user_name || t("unknownUser")}
                   fill
-                  sizes="80px"
+                  sizes="(max-width: 640px) 100vw, 33vw"
                   unoptimized={shouldBypassImageOptimization(profileImage)}
-                  className="object-cover"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-              </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-[#090b13] via-transparent to-transparent" />
 
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h3 className="text-xl font-semibold text-white">
-                    {match.matched_user_name || t("unknownUser")}
-                  </h3>
-                  <span className="rounded-full border border-border px-3 py-1 text-sm text-white">
-                    {match.compatibility_overall || 85}% {t("discoverMatch")}
-                  </span>
-                  {match.unread_count ? (
-                    <span className="rounded-full bg-accent px-3 py-1 text-sm font-semibold text-white">
-                      {t("matchesUnread", { count: match.unread_count })}
-                    </span>
-                  ) : null}
+                {/* Compatibility badge */}
+                <div className={`absolute right-3 top-3 rounded-full border ${colors.border} ${colors.bg} px-3 py-1`}>
+                  <span className={`text-sm font-bold ${colors.text}`}>{compat}%</span>
                 </div>
 
-                <p className="mt-2 text-sm text-text-muted">
-                  {t("discoverSun")}:{" "}
-                  {match.matched_user_sun_sign
-                    ? translateSign(match.matched_user_sun_sign, locale)
-                    : "?"}
-                  {relativeDate ? ` \u2022 ${relativeDate}` : ""}
-                </p>
+                {/* Unread badge */}
+                {match.unread_count ? (
+                  <div className="absolute left-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-bold text-white shadow-lg">
+                    {match.unread_count}
+                  </div>
+                ) : null}
 
-                <p className="mt-3 truncate text-sm text-white/85">
-                  {match.last_message || t("matchesNoMessage")}
-                </p>
+                {/* Name overlay */}
+                <div className="absolute bottom-0 left-0 right-0 px-4 pb-3">
+                  <h3 className="text-lg font-bold text-white drop-shadow-lg">
+                    {match.matched_user_name || t("unknownUser")}
+                  </h3>
+                </div>
               </div>
 
-              <div className="flex flex-col gap-3">
-                <Link
-                  href={`/app/chat/${match.match_id}`}
-                  className="rounded-full bg-accent px-5 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
-                >
-                  {t("matchesOpenChat")}
-                </Link>
-                <Link
-                  href={`/app/profile/${match.matched_user_id}`}
-                  className="rounded-full border border-border px-5 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-card-hover"
-                >
-                  {t("matchesViewProfile")}
-                </Link>
+              {/* Card body */}
+              <div className="space-y-3 p-4">
+                {/* Sign + time */}
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-text-muted">
+                    ☀️ {match.matched_user_sun_sign
+                      ? translateSign(match.matched_user_sun_sign, locale)
+                      : "?"}
+                  </span>
+                  {relativeDate && (
+                    <span className="text-text-dim">{relativeDate}</span>
+                  )}
+                </div>
+
+                {/* Last message preview */}
+                <p className="truncate text-sm text-white/70">
+                  {match.last_message || (
+                    <span className="italic text-text-dim">{t("matchesNoMessage")}</span>
+                  )}
+                </p>
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-1">
+                  <Link
+                    href={`/app/chat/${match.match_id}`}
+                    className="flex-1 rounded-xl bg-accent py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+                  >
+                    💬 {t("matchesOpenChat")}
+                  </Link>
+                  <Link
+                    href={`/app/profile/${match.matched_user_id}`}
+                    className="rounded-xl border border-border px-4 py-2.5 text-sm text-white transition-colors hover:bg-white/[0.06]"
+                    title={t("matchesViewProfile")}
+                  >
+                    👤
+                  </Link>
+                </div>
               </div>
             </div>
           );
         })}
       </div>
 
-      {error ? (
-        <p className="mt-4 rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
+      {error && (
+        <p className="rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
           {error}
         </p>
-      ) : null}
-    </div>
+      )}
     </div>
   );
 }

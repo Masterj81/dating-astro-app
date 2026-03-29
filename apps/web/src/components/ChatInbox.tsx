@@ -22,25 +22,16 @@ type MatchRow = {
 };
 
 function formatRelativeDate(value: string | null, locale: string) {
-  if (!value) {
-    return null;
-  }
-
+  if (!value) return null;
   const date = new Date(value);
   const diffMs = Date.now() - date.getTime();
   const diffMinutes = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMinutes < 1) {
-    return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(0, "minute");
-  }
-  if (diffMinutes < 60) {
-    return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(-diffMinutes, "minute");
-  }
-  if (diffHours < 24) {
-    return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(-diffHours, "hour");
-  }
+  if (diffMinutes < 1) return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(0, "minute");
+  if (diffMinutes < 60) return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(-diffMinutes, "minute");
+  if (diffHours < 24) return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(-diffHours, "hour");
   return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(-diffDays, "day");
 }
 
@@ -54,27 +45,12 @@ export function ChatInbox() {
   const loadMatches = async () => {
     setLoading(true);
     setError(null);
-
     try {
       const supabase = getSupabaseBrowser();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session?.user?.id) {
-        setMatches([]);
-        setLoading(false);
-        return;
-      }
-
-      const { data, error: rpcError } = await supabase.rpc("get_user_matches", {
-        p_user_id: session.user.id,
-      });
-
-      if (rpcError) {
-        throw rpcError;
-      }
-
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) { setMatches([]); setLoading(false); return; }
+      const { data, error: rpcError } = await supabase.rpc("get_user_matches", { p_user_id: session.user.id });
+      if (rpcError) throw rpcError;
       setMatches((data as MatchRow[]) || []);
     } catch (loadFailure) {
       setError(loadFailure instanceof Error ? loadFailure.message : t("unknownError"));
@@ -83,35 +59,36 @@ export function ChatInbox() {
     }
   };
 
-  useEffect(() => {
-    loadMatches();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadMatches(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (
-      <div className="rounded-[2rem] border border-border bg-card/90 p-6 text-sm text-text-muted">
-        {t("loading")}
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
       </div>
     );
   }
 
   if (!matches.length) {
     return (
-      <div className="rounded-[2rem] border border-border bg-card/90 p-8">
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-purple/10 text-5xl">
+          💬
+        </div>
         <h2 className="text-2xl font-semibold text-white">{t("chatInboxEmptyTitle")}</h2>
-        <p className="mt-3 max-w-2xl text-sm leading-7 text-text-muted">
+        <p className="mt-3 max-w-md text-sm leading-7 text-text-muted">
           {t("chatInboxEmptyBody")}
         </p>
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="mt-8 flex gap-3">
           <Link
             href="/app/matches"
-            className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+            className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
           >
             {t("openMatches")}
           </Link>
           <Link
             href="/app/discover"
-            className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
+            className="rounded-full border border-border px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
           >
             {t("discoverNav")}
           </Link>
@@ -120,143 +97,111 @@ export function ChatInbox() {
     );
   }
 
-  const totalUnread = matches.reduce((sum, match) => sum + (match.unread_count || 0), 0);
+  const totalUnread = matches.reduce((sum, m) => sum + (m.unread_count || 0), 0);
+
+  // Sort: unread first, then by last message date
+  const sorted = [...matches].sort((a, b) => {
+    if ((a.unread_count || 0) > 0 && !(b.unread_count || 0)) return -1;
+    if ((b.unread_count || 0) > 0 && !(a.unread_count || 0)) return 1;
+    const aTime = new Date(a.last_message_at || a.matched_at || 0).getTime();
+    const bTime = new Date(b.last_message_at || b.matched_at || 0).getTime();
+    return bTime - aTime;
+  });
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-[2.2rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.04))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
-        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-              {t("chatInboxLabel")}
-            </p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
-              {t("chatInboxTitle")}
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-text-muted sm:text-base">
-              {t("chatInboxSubtitle", { count: matches.length })}
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-[1.6rem] border border-[rgba(232,93,117,0.24)] bg-[rgba(232,93,117,0.10)] p-4">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-text-dim">
-                {t("chatNav")}
-              </p>
-              <p className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
-                {matches.length}
-              </p>
-            </div>
-            <div className="rounded-[1.6rem] border border-border bg-white/[0.04] p-4">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-text-dim">
-                {t("matchesUnread", { count: totalUnread })}
-              </p>
-              <p className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
-                {totalUnread}
-              </p>
-            </div>
-            <div className="rounded-[1.6rem] border border-border bg-white/[0.04] p-4">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-text-dim">
-                {t("matchesNav")}
-              </p>
-              <p className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
-                {matches.length}
-              </p>
-            </div>
-          </div>
+    <div className="space-y-4">
+      {/* Unread indicator */}
+      {totalUnread > 0 && (
+        <div className="flex items-center gap-3 rounded-2xl border border-accent/20 bg-accent/8 px-5 py-3">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">
+            {totalUnread}
+          </span>
+          <span className="text-sm font-medium text-white">
+            {t("matchesUnread", { count: totalUnread })}
+          </span>
         </div>
-      </section>
+      )}
 
-    <div className="rounded-[2rem] border border-border bg-card/90 p-6 shadow-[0_18px_50px_rgba(0,0,0,0.16)]">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-            {t("chatInboxLabel")}
-          </p>
-          <h2 className="mt-3 text-2xl font-semibold text-white">{t("chatInboxTitle")}</h2>
-          <p className="mt-2 text-sm text-text-muted">
-            {t("chatInboxSubtitle", { count: matches.length })}
-          </p>
-        </div>
-        <Link
-          href="/app/matches"
-          className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
-        >
-          {t("matchesNav")}
-        </Link>
-      </div>
-
-      <div className="mt-6 space-y-4">
-        {matches.map((match) => {
+      {/* Chat list — messenger style */}
+      <div className="overflow-hidden rounded-2xl border border-border">
+        {sorted.map((match, index) => {
           const profileImage = resolveImageSrc(match.matched_user_image);
           const relativeDate = formatRelativeDate(match.last_message_at || match.matched_at, locale);
+          const hasUnread = (match.unread_count || 0) > 0;
 
           return (
-            <div
+            <Link
               key={match.match_id}
-              className="grid gap-4 rounded-[1.65rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-4 transition-colors hover:bg-white/[0.06] lg:grid-cols-[auto_1fr_auto]"
+              href={`/app/chat/${match.match_id}`}
+              className={`flex items-center gap-4 px-5 py-4 transition-colors hover:bg-white/[0.06] ${
+                index > 0 ? "border-t border-white/6" : ""
+              } ${hasUnread ? "bg-white/[0.03]" : ""}`}
             >
-              <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-bg-secondary">
-                <Image
-                  src={profileImage}
-                  alt={match.matched_user_name || t("unknownUser")}
-                  fill
-                  sizes="80px"
-                  unoptimized={shouldBypassImageOptimization(profileImage)}
-                  className="object-cover"
-                />
+              {/* Avatar with online-like indicator */}
+              <div className="relative shrink-0">
+                <div className="relative h-14 w-14 overflow-hidden rounded-full bg-bg-secondary ring-2 ring-transparent ring-offset-2 ring-offset-[#090b13]">
+                  <Image
+                    src={profileImage}
+                    alt={match.matched_user_name || t("unknownUser")}
+                    fill
+                    sizes="56px"
+                    unoptimized={shouldBypassImageOptimization(profileImage)}
+                    className="object-cover"
+                  />
+                </div>
+                {hasUnread && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white ring-2 ring-[#090b13]">
+                    {match.unread_count}
+                  </span>
+                )}
               </div>
 
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h3 className="text-xl font-semibold text-white">
+              {/* Message content */}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline justify-between gap-2">
+                  <h3 className={`truncate text-[15px] ${hasUnread ? "font-bold text-white" : "font-medium text-white/90"}`}>
                     {match.matched_user_name || t("unknownUser")}
                   </h3>
-                  {match.unread_count ? (
-                    <span className="rounded-full bg-accent px-3 py-1 text-sm font-semibold text-white">
-                      {t("matchesUnread", { count: match.unread_count })}
+                  {relativeDate && (
+                    <span className={`shrink-0 text-xs ${hasUnread ? "font-semibold text-accent" : "text-text-dim"}`}>
+                      {relativeDate}
                     </span>
-                  ) : null}
+                  )}
                 </div>
-
-                <p className="mt-2 text-sm text-text-muted">
-                  {t("discoverSun")}:{" "}
-                  {match.matched_user_sun_sign
-                    ? translateSign(match.matched_user_sun_sign, locale)
-                    : "?"}
-                  {relativeDate ? ` - ${relativeDate}` : ""}
-                </p>
-
-                <p className="mt-3 truncate text-sm text-white/85">
-                  {match.last_message || t("matchesNoMessage")}
-                </p>
+                <div className="mt-1 flex items-center gap-2">
+                  <p className={`truncate text-sm ${hasUnread ? "font-medium text-white/80" : "text-text-muted"}`}>
+                    {match.last_message || (
+                      <span className="italic">{t("matchesNoMessage")}</span>
+                    )}
+                  </p>
+                </div>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <span className="text-xs text-text-dim">
+                    ☀️ {match.matched_user_sun_sign
+                      ? translateSign(match.matched_user_sun_sign, locale)
+                      : "?"}
+                  </span>
+                  <span className="text-text-dim">·</span>
+                  <span className="text-xs text-text-dim">
+                    {match.compatibility_overall || 85}% {t("discoverMatch")}
+                  </span>
+                </div>
               </div>
 
-              <div className="flex flex-col gap-3">
-                <Link
-                  href={`/app/chat/${match.match_id}`}
-                  className="rounded-full bg-accent px-5 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
-                >
-                  {t("chatOpenThread")}
-                </Link>
-                <Link
-                  href={`/app/profile/${match.matched_user_id}`}
-                  className="rounded-full border border-border px-5 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-card-hover"
-                >
-                  {t("matchesViewProfile")}
-                </Link>
-              </div>
-            </div>
+              {/* Arrow */}
+              <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 text-text-dim" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M6 3l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
           );
         })}
       </div>
 
-      {error ? (
-        <p className="mt-4 rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
+      {error && (
+        <p className="rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
           {error}
         </p>
-      ) : null}
-    </div>
+      )}
     </div>
   );
 }
