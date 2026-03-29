@@ -105,7 +105,7 @@ function TarotScreenContent() {
 
   if (loading) {
     return (
-      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+      <LinearGradient colors={[...SCREEN_GRADIENT]} style={styles.container}>
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#e94560" />
         </View>
@@ -114,7 +114,7 @@ function TarotScreenContent() {
   }
 
   return (
-    <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+    <LinearGradient colors={[...SCREEN_GRADIENT]} style={styles.container}>
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
