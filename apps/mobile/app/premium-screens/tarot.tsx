@@ -31,7 +31,7 @@ import {
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = Math.min((SCREEN_WIDTH - 80) / 3, 120);
 const CARD_HEIGHT = CARD_WIDTH * 1.6;
-const SCREEN_GRADIENT = [...AppTheme.gradients.screen] as const;
+const SCREEN_GRADIENT = AppTheme.gradients.screen;
 
 function TarotScreenContent() {
   const [loading, setLoading] = useState(true);
@@ -105,7 +105,7 @@ function TarotScreenContent() {
 
   if (loading) {
     return (
-      <LinearGradient colors={[...SCREEN_GRADIENT]} style={styles.container}>
+      <LinearGradient colors={[...SCREEN_GRADIENT] as [string, string, ...string[]]} style={styles.container}>
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#e94560" />
         </View>
@@ -114,7 +114,7 @@ function TarotScreenContent() {
   }
 
   return (
-    <LinearGradient colors={[...SCREEN_GRADIENT]} style={styles.container}>
+    <LinearGradient colors={[...SCREEN_GRADIENT] as [string, string, ...string[]]} style={styles.container}>
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
