@@ -19,7 +19,7 @@ import {
 import { modalFeedback, buttonPress, premiumLocked } from '../services/haptics';
 
 export default function PaywallModal() {
-  const { paywallState, dismissPaywall } = usePremium();
+  const { paywallState, dismissPaywall, tier } = usePremium();
   const { t } = useLanguage();
 
   const { visible, feature, recommendedTier } = paywallState;
@@ -33,7 +33,7 @@ export default function PaywallModal() {
       const featureName = feature ? getFeatureDisplayName(feature) : '';
       const tierName = getTierDisplayName(recommendedTier);
       announceForAccessibility(
-        `${t('trialExhausted') || 'Free Preview Used'}. ${featureName} requires ${tierName}. ${getTierPrice(recommendedTier)}`
+        `${t('trialExhausted') || 'Free Preview Used'}. ${featureName} requires ${tierName}.`
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
@@ -42,8 +42,9 @@ export default function PaywallModal() {
   const handleUpgrade = () => {
     buttonPress();
     dismissPaywall();
-    // Navigate to the appropriate premium screen based on recommended tier
-    if (recommendedTier === 'premium_plus') {
+    if (tier === 'free') {
+      router.push('/premium-screens/plans' as any);
+    } else if (recommendedTier === 'premium_plus') {
       router.push('/premium-screens/plus');
     } else {
       router.push('/(tabs)/premium');
@@ -53,7 +54,7 @@ export default function PaywallModal() {
   const handleViewPlans = () => {
     buttonPress();
     dismissPaywall();
-    router.push('/(tabs)/premium');
+    router.push('/premium-screens/plans' as any);
   };
 
   const handleDismiss = () => {
@@ -86,13 +87,6 @@ export default function PaywallModal() {
       return t('cosmicTier') || 'Cosmic';
     }
     return t('celestialTier') || 'Celestial';
-  };
-
-  const getTierPrice = (tier: SubscriptionTier): string => {
-    if (tier === 'premium_plus') {
-      return '$14.99/mo';
-    }
-    return '$9.99/mo';
   };
 
   if (!visible) return null;
@@ -158,18 +152,9 @@ export default function PaywallModal() {
               </View>
             )}
 
-            {/* Price display */}
-            <View
-              style={styles.priceContainer}
-              accessibilityLabel={t('a11y.priceAnnouncement', {
-                price: getTierPrice(recommendedTier).replace('/mo', ''),
-                period: 'month',
-              })}
-            >
-              <Text style={styles.priceLabel}>
-                {getTierDisplayName(recommendedTier)}
-              </Text>
-              <Text style={styles.price}>{getTierPrice(recommendedTier)}</Text>
+            {/* Tier display - no hardcoded price */}
+            <View style={styles.priceContainer}>
+              <Text style={styles.price}>{getTierDisplayName(recommendedTier)}</Text>
             </View>
 
             {/* CTA Button */}
@@ -183,7 +168,7 @@ export default function PaywallModal() {
                 style={styles.ctaGradient}
               >
                 <Text style={styles.ctaText}>
-                  {t('unlockNow') || 'Unlock Full Access'}
+                  {t('startFreeTrial') || 'Start 7-Day Free Trial'}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -307,11 +292,6 @@ const styles = StyleSheet.create({
   priceContainer: {
     alignItems: 'center',
     marginBottom: 20,
-  },
-  priceLabel: {
-    fontSize: 14,
-    color: a11yColors.text.secondary,
-    marginBottom: 4,
   },
   price: {
     fontSize: 28,

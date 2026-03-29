@@ -95,21 +95,23 @@ export function MarketingPricingSection() {
             price={celestialPrice}
             period=""
             features={CELESTIAL_FEATURES.map((k) => prem(k))}
-            cta={prem("upgrade")}
+            cta={prem("startFreeTrial")}
             highlighted
             badge={prem("mostPopular")}
             loading={!loaded}
             onCtaClick={() => router.push(`/${locale}/app/plans`)}
+            trialNote={prem("trialNote")}
           />
           <PricingCard
             name={prem("cosmic")}
             price={cosmicPrice}
             period=""
             features={COSMIC_FEATURES.map((k) => prem(k))}
-            cta={prem("goCosmic")}
+            cta={prem("startFreeTrial")}
             highlighted={false}
             loading={!loaded}
             onCtaClick={() => router.push(`/${locale}/app/plans`)}
+            trialNote={prem("trialNote")}
           />
         </div>
       </div>
@@ -127,6 +129,7 @@ function PricingCard({
   badge,
   loading,
   onCtaClick,
+  trialNote,
 }: {
   name: string;
   price: string;
@@ -137,6 +140,7 @@ function PricingCard({
   badge?: string;
   loading: boolean;
   onCtaClick: () => void;
+  trialNote?: string;
 }) {
   return (
     <div
@@ -184,6 +188,9 @@ function PricingCard({
       >
         {cta}
       </button>
+      {trialNote && (
+        <p className="mt-2 text-center text-xs text-text-dim">{trialNote}</p>
+      )}
     </div>
   );
 }

@@ -67,7 +67,9 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
 
   const handleUnlock = () => {
     const requiredTier = FEATURE_TIERS[feature];
-    if (requiredTier === 'premium_plus') {
+    if (tier === 'free') {
+      router.push('/premium-screens/plans' as any);
+    } else if (requiredTier === 'premium_plus') {
       router.push('/premium-screens/plus');
     } else {
       router.push('/(tabs)/premium');
@@ -163,7 +165,7 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
               style={styles.ctaGradient}
             >
               <Text style={styles.ctaText}>
-                {t('unlockNow') || 'Unlock Full Access'}
+                {t('startFreeTrial') || 'Start 7-Day Free Trial'}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -171,7 +173,7 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
           {/* Secondary link */}
           <TouchableOpacity
             style={styles.secondaryButton}
-            onPress={() => router.push('/(tabs)/premium')}
+            onPress={() => router.push('/premium-screens/plans' as any)}
           >
             <Text style={styles.secondaryText}>
               {t('viewAllPlans') || 'View All Plans'}
