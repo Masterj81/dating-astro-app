@@ -364,6 +364,90 @@ export function DiscoverOverview() {
                   </p>
                 </div>
               </div>
+
+              {/* Compatibility circle + breakdown */}
+              <div className="mt-6 rounded-2xl border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-5">
+                {/* Circle */}
+                <div className="flex flex-col items-center">
+                  <div className="relative flex h-28 w-28 items-center justify-center">
+                    <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+                      <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
+                      <circle
+                        cx="50" cy="50" r="42" fill="none"
+                        stroke={compatibility >= 70 ? "#34d399" : compatibility >= 50 ? "#fbbf24" : "#f87171"}
+                        strokeWidth="6" strokeLinecap="round"
+                        strokeDasharray={`${(compatibility / 100) * 264} 264`}
+                      />
+                    </svg>
+                    <span className="absolute text-3xl font-bold text-white">{compatibility}<span className="text-lg text-text-muted">%</span></span>
+                  </div>
+                  <p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-text-dim">
+                    {t("discoverCompatibility")}
+                  </p>
+                </div>
+
+                {/* Breakdown */}
+                <div className="mt-5 space-y-3">
+                  {/* Emotional — free */}
+                  <div className="flex items-center gap-3 rounded-xl bg-white/[0.04] px-4 py-3">
+                    <span className="text-lg">💗</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">{t("discoverEmotional") || "Emotional"}</p>
+                      <p className="text-xs text-text-dim">
+                        {t("discoverMoon")}: {currentProfile.moon_sign ? translateSign(currentProfile.moon_sign, locale) : "?"}
+                      </p>
+                    </div>
+                    <span className="text-sm font-bold text-accent">
+                      {Math.max(40, Math.min(95, compatibility + (currentProfile.moon_sign === userSunSign ? 15 : -5)))}%
+                    </span>
+                  </div>
+                  {/* Communication — free */}
+                  <div className="flex items-center gap-3 rounded-xl bg-white/[0.04] px-4 py-3">
+                    <span className="text-lg">💬</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">{t("discoverCommunication") || "Communication"}</p>
+                      <p className="text-xs text-text-dim">
+                        {t("discoverSun")}: {currentProfile.sun_sign ? translateSign(currentProfile.sun_sign, locale) : "?"}
+                      </p>
+                    </div>
+                    <span className="text-sm font-bold text-accent">
+                      {Math.max(40, Math.min(95, compatibility + (compatibility > 70 ? 5 : -10)))}%
+                    </span>
+                  </div>
+                  {/* Passion — locked */}
+                  <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] px-4 py-3 opacity-50">
+                    <span className="text-lg">🔥</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">{t("discoverPassion") || "Passion"}</p>
+                    </div>
+                    <span className="text-sm font-bold text-text-dim">???</span>
+                  </div>
+                  {/* Long term — locked */}
+                  <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] px-4 py-3 opacity-50">
+                    <span className="text-lg">🏠</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">{t("discoverLongTerm") || "Long term"}</p>
+                    </div>
+                    <span className="text-sm font-bold text-text-dim">???</span>
+                  </div>
+                  {/* Values — locked */}
+                  <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] px-4 py-3 opacity-50">
+                    <span className="text-lg">💖</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">{t("discoverValues") || "Values"}</p>
+                    </div>
+                    <span className="text-sm font-bold text-text-dim">???</span>
+                  </div>
+                </div>
+
+                {/* Upgrade CTA */}
+                <Link
+                  href="/app/plans"
+                  className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-accent/10 px-4 py-2.5 text-sm font-medium text-accent transition-colors hover:bg-accent/20"
+                >
+                  ✨ {t("discoverUnlockFull") || "Unlock full compatibility"}
+                </Link>
+              </div>
             </div>
 
             <div className="mt-8 flex flex-wrap gap-3">
