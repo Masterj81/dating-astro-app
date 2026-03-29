@@ -264,35 +264,6 @@ export function DiscoverOverview() {
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[2.2rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.04))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className={`rounded-[1.6rem] border p-4 ${compatibilityTone.card}`}>
-            <p className="text-[11px] uppercase tracking-[0.2em] text-text-dim">
-              {t("discoverMatch")}
-            </p>
-            <p className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
-              {compatibility}%
-            </p>
-          </div>
-          <div className="rounded-[1.6rem] border border-border bg-white/[0.04] p-4">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-text-dim">
-              {t("discoverQueue")}
-            </p>
-            <p className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
-              {Math.max(profiles.length - currentIndex - 1, 0)}
-            </p>
-          </div>
-          <div className="rounded-[1.6rem] border border-border bg-white/[0.04] p-4">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-text-dim">
-              {t("discoverCompatibility")}
-            </p>
-            <p className="mt-3 text-lg font-semibold text-white">
-              {currentProfile.sun_sign ? translateSign(currentProfile.sun_sign, locale) : "?"}
-            </p>
-          </div>
-        </div>
-      </section>
-
       <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
       <section className="overflow-hidden rounded-[2rem] border border-border bg-card/90 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
         <div className="grid lg:grid-cols-[0.95fr_1.05fr]">
