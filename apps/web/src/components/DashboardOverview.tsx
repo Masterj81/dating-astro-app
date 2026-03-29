@@ -89,8 +89,8 @@ export function DashboardOverview() {
 
   if (loading) {
     return (
-      <div className="rounded-[2rem] border border-border bg-card/90 p-6 text-sm text-text-muted">
-        {t("loading")}
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
       </div>
     );
   }
@@ -209,111 +209,107 @@ export function DashboardOverview() {
   );
 
   return (
-    <div>
-      <section className="overflow-hidden rounded-[2.2rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.04))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
-        <div className="relative">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_top_left,rgba(232,93,117,0.14),transparent_36%),radial-gradient(circle_at_top_right,rgba(124,108,255,0.12),transparent_34%)]" />
-
-          <div className="relative">
-            <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-              {t("workspace")}
+    <div className="space-y-6">
+      {/* Welcome strip */}
+      {state && (
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-[linear-gradient(135deg,rgba(232,93,117,0.08),rgba(124,108,255,0.08))] px-6 py-4">
+          <div>
+            <h2 className="text-xl font-semibold text-white">
+              {t("dashboardSignedInTitle", { name: state.displayName })}
+            </h2>
+            <p className="mt-1 text-sm text-text-muted">
+              {t("dashboardSignedInBody", { tier: tierLabel ?? "" })}
             </p>
-            <div className="mt-4">
-              <div className="max-w-3xl">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h2 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
-                    {state
-                      ? t("dashboardSignedInTitle", { name: state.displayName })
-                      : t("dashboardSignedOutTitle")}
-                  </h2>
-                  {state && tierLabel ? (
-                    <span className="rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.18em] text-text-muted">
-                      {t("dashboardTierPill", { tier: tierLabel })}
-                    </span>
-                  ) : null}
+          </div>
+          {tierLabel && (
+            <span className="rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.18em] text-text-muted">
+              {t("dashboardTierPill", { tier: tierLabel })}
+            </span>
+          )}
+        </div>
+      )}
+
+      {state ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {signedInCards.map((card) => (
+            <Link
+              key={card.href}
+              href={card.href}
+              className={`group relative overflow-hidden rounded-2xl border p-5 transition-all duration-200 hover:-translate-y-1 hover:border-white/20 hover:shadow-lg ${getCardToneClassName(card)} ${card.span ?? ""}`}
+            >
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.08),transparent_38%)] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+              <div className="relative flex h-full flex-col">
+                <div className="flex items-center gap-3">
+                  {card.icon && (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.06]">
+                      <CardGlyph icon={card.icon} />
+                    </div>
+                  )}
+                  {card.eyebrow && (
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim">
+                      {card.eyebrow}
+                    </p>
+                  )}
                 </div>
-                <p className="mt-3 max-w-2xl text-sm leading-7 text-text-muted">
-                  {state
-                    ? t("dashboardSignedInBody", { tier: tierLabel ?? "" })
-                    : t("dashboardSignedOutBody")}
+                <h3
+                  className={`mt-4 font-semibold text-white ${
+                    card.featured ? "text-2xl tracking-[-0.03em]" : "text-lg"
+                  }`}
+                >
+                  {card.title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-text-muted line-clamp-2">
+                  {card.body}
                 </p>
+                {card.premiumNote && (
+                  <div className="mt-3">
+                    <span className="inline-flex items-center rounded-full border border-white/12 bg-black/20 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white/70">
+                      ✨ {card.premiumNote}
+                    </span>
+                  </div>
+                )}
+                {card.featured && card.icon === "discover" ? discoverPreview : null}
+                <div className="mt-auto pt-4">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-text-dim transition-colors group-hover:text-white">
+                    <span>Open</span>
+                    <svg viewBox="0 0 12 12" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M4 2.5l4 3.5-4 3.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                </div>
               </div>
-            </div>
-
-            <div className="mt-8">
-              {state ? (
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  {signedInCards.map((card) => (
-                    <Link
-                      key={card.href}
-                      href={card.href}
-                      className={`group relative overflow-hidden rounded-[1.8rem] border p-5 transition-all duration-200 hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.08] ${getCardToneClassName(card)} ${card.span ?? ""}`}
-                    >
-                      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.08),transparent_38%)] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
-                      <div className="relative flex h-full flex-col">
-                        {card.eyebrow ? (
-                          <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim">
-                            {card.eyebrow}
-                          </p>
-                        ) : null}
-                        <h3
-                          className={`mt-3 font-semibold text-white ${
-                            card.featured ? "text-[1.9rem] leading-tight tracking-[-0.04em]" : "text-xl"
-                          }`}
-                        >
-                          {card.title}
-                        </h3>
-                        <p
-                          className={`mt-3 max-w-[32rem] text-sm leading-7 text-text-muted ${
-                            card.featured ? "sm:text-base" : ""
-                          }`}
-                        >
-                          {card.body}
-                        </p>
-                        {card.premiumNote ? (
-                          <div className="mt-4">
-                            <span className="inline-flex items-center rounded-full border border-white/12 bg-black/20 px-3 py-1.5 text-[11px] uppercase tracking-[0.2em] text-white/80">
-                              Premium · {card.premiumNote}
-                            </span>
-                          </div>
-                        ) : null}
-                        {card.featured && card.icon === "discover" ? discoverPreview : null}
-                        <div className="mt-auto pt-8">
-                          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-2 text-xs uppercase tracking-[0.18em] text-white/80 transition-colors group-hover:border-white/20 group-hover:text-white">
-                            {card.icon ? <CardGlyph icon={card.icon} /> : null}
-                            <span>Open</span>
-                          </span>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-3">
-                  <Link
-                    href="/auth/login"
-                    className="rounded-full bg-accent px-5 py-3 text-sm font-medium text-white shadow-[0_10px_30px_rgba(232,93,117,0.28)] transition-colors hover:bg-accent-hover"
-                  >
-                    {t("signIn")}
-                  </Link>
-                  <Link
-                    href="/auth/signup"
-                    className="rounded-full border border-border bg-white/[0.04] px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-card-hover"
-                  >
-                    {t("createAccount")}
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            {error ? (
-              <p className="mt-4 rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
-                {error}
-              </p>
-            ) : null}
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card/90 py-16 text-center">
+          <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-accent/10 text-4xl">
+            ✦
+          </div>
+          <h2 className="text-2xl font-semibold text-white">{t("dashboardSignedOutTitle")}</h2>
+          <p className="mt-3 max-w-md text-sm text-text-muted">{t("dashboardSignedOutBody")}</p>
+          <div className="mt-8 flex gap-3">
+            <Link
+              href="/auth/login"
+              className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+            >
+              {t("signIn")}
+            </Link>
+            <Link
+              href="/auth/signup"
+              className="rounded-full border border-border px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
+            >
+              {t("createAccount")}
+            </Link>
           </div>
         </div>
-      </section>
+      )}
+
+      {error && (
+        <p className="rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
