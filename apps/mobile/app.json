@@ -2,7 +2,7 @@
   "expo": {
     "name": "AstroDating",
     "slug": "astro-dating",
-    "version": "1.0.0",
+    "version": "1.4.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "astrodating",
@@ -40,13 +40,47 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.astrodatingapp.mobile",
-      "versionCode": 29,
+      "versionCode": 30,
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO"
       ],
       "blockedPermissions": [
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "astrodatingapp.com",
+              "pathPrefix": "/app"
+            },
+            {
+              "scheme": "https",
+              "host": "astrodatingapp.com",
+              "pathPrefix": "/invite"
+            },
+            {
+              "scheme": "https",
+              "host": "astrodatingapp.com",
+              "pathPrefix": "/download"
+            },
+            {
+              "scheme": "https",
+              "host": "www.astrodatingapp.com",
+              "pathPrefix": "/app"
+            },
+            {
+              "scheme": "https",
+              "host": "www.astrodatingapp.com",
+              "pathPrefix": "/invite"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
       ]
     },
     "web": {
@@ -67,7 +101,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/android-icon-foreground.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#0f0f1a"
