@@ -57,6 +57,13 @@ export default async function CelestialHubPage() {
       badge: t("hubBadge_live"),
       available: true,
     },
+    {
+      href: "/app/premium/celestial/tarot",
+      title: t("tarotReading"),
+      body: t("monthlyTarotSubtitle"),
+      badge: "🃏",
+      available: true,
+    },
   ];
 
   return (

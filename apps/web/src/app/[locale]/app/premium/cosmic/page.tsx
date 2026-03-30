@@ -42,6 +42,12 @@ export default async function CosmicHubPage() {
       body: t("cosmicHubItem_retrograde"),
       badge: t("hubBadge_alerts"),
     },
+    {
+      href: "/app/premium/cosmic/tarot",
+      title: t("tarotReading"),
+      body: t("weeklyTarotSubtitle"),
+      badge: "🃏",
+    },
   ];
 
   return (
