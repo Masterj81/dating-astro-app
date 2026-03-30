@@ -84,6 +84,18 @@ Do NOT include:
 - Important elements in bottom 40px (profile photo overlap)
 ```
 
+### Midjourney v6.1 -- Background Asset
+
+Use this prompt to generate the constellation/nebula background, then composite the phone mockup and text in Figma:
+
+```
+/imagine ultra-wide panoramic deep space background, dark navy blue to
+indigo gradient, delicate constellation lines connecting scattered
+bright stars, faint pink and purple nebula wisps, ethereal celestial
+atmosphere, clean minimalist design, horizontal banner composition
+--ar 82:31 --s 300 --style raw --v 6.1 --no text words letters
+```
+
 ### Mockup Reference
 ```
 [Visual representation]
@@ -180,6 +192,26 @@ Elements:
 - Constellation lines connecting some stars
 ```
 
+### Midjourney v6.1 -- Ad Background (square)
+
+```
+/imagine dark cosmic background, deep navy and indigo tones,
+scattered small bright white stars, faint constellation line
+patterns, subtle pink-purple nebula glow in center, clean and
+minimal, suitable for social media ad background --ar 1:1
+--s 250 --style raw --v 6.1 --no text words letters
+```
+
+### Midjourney v6.1 -- Ad Background (story 9:16)
+
+```
+/imagine vertical dark cosmic background, rich deep navy and
+indigo gradient, scattered tiny white stars, delicate constellation
+lines, soft pink-purple nebula glow radiating from center, clean
+minimal celestial atmosphere --ar 9:16 --s 250 --style raw
+--v 6.1 --no text words letters
+```
+
 ### Ad Creative 2: Compatibility Feature (Carousel)
 
 **Dimensions:** 1080 x 1080 px per card (5 cards)
@@ -265,6 +297,32 @@ Design Notes:
 - Final card has strongest CTA
 ```
 
+### Midjourney v6.1 -- Carousel Card Backgrounds
+
+Generate a consistent set by using the same seed (`--seed 2024`) across all five prompts:
+
+```
+/imagine minimal dark cosmic background, deep indigo, very subtle
+scattered pinpoint stars, warm golden sun glow diffused from top
+center, clean and uncluttered, social media card background --ar 1:1
+--s 200 --style raw --seed 2024 --v 6.1 --no text words letters
+```
+
+```
+/imagine minimal dark cosmic background, deep indigo, very subtle
+scattered pinpoint stars, cool silver crescent moon glow diffused
+from top center, clean and uncluttered, social media card background
+--ar 1:1 --s 200 --style raw --seed 2024 --v 6.1
+--no text words letters
+```
+
+```
+/imagine minimal dark cosmic background, deep indigo, very subtle
+scattered pinpoint stars, soft pink venus glow diffused from top
+center, clean and uncluttered, social media card background --ar 1:1
+--s 200 --style raw --seed 2024 --v 6.1 --no text words letters
+```
+
 ### Ad Creative 3: Zodiac-Specific (Template)
 
 **Dimensions:** 1080 x 1080 px
@@ -309,6 +367,44 @@ Air Signs (Gemini, Libra, Aquarius):
 Water Signs (Cancer, Scorpio, Pisces):
 - Accent: #7E57C2 (deep purple)
 - Gradient: #5C6BC0 to #9575CD
+```
+
+### Midjourney v6.1 -- Zodiac Element Backgrounds
+
+**Fire signs:**
+```
+/imagine dark cosmic background, deep navy black, fiery orange and
+crimson nebula wisps swirling softly in center, scattered bright
+ember-like stars, warm dramatic glow, clean minimal composition,
+social media post background --ar 1:1 --s 250 --style raw --v 6.1
+--no text words letters
+```
+
+**Earth signs:**
+```
+/imagine dark cosmic background, deep navy black, soft emerald green
+and moss-toned nebula wisps in center, tiny crystalline stars
+scattered, organic earthy celestial glow, clean minimal composition,
+social media post background --ar 1:1 --s 250 --style raw --v 6.1
+--no text words letters
+```
+
+**Air signs:**
+```
+/imagine dark cosmic background, deep navy black, ethereal sky blue
+and silver nebula wisps in center, fine scattered bright stars,
+breezy light celestial glow, clean minimal composition, social media
+post background --ar 1:1 --s 250 --style raw --v 6.1
+--no text words letters
+```
+
+**Water signs:**
+```
+/imagine dark cosmic background, deep navy black, rich violet and
+deep indigo nebula wisps in center, scattered shimmering stars like
+light through water, fluid mystical celestial glow, clean minimal
+composition, social media post background --ar 1:1 --s 250
+--style raw --v 6.1 --no text words letters
 ```
 
 ### Ad Creative 4: Story/Reel Format
@@ -405,6 +501,16 @@ Animation Notes:
 - Compatibility number counts up
 ```
 
+### Midjourney v6.1 -- Story/Reel End Card Background
+
+```
+/imagine vertical dark cosmic background, deep navy and purple
+gradient, centered soft radial pink-gold glow, scattered sparkling
+four-pointed stars, elegant celestial atmosphere, premium feel,
+clean and minimal --ar 9:16 --s 300 --style raw --v 6.1
+--no text words letters
+```
+
 ---
 
 ## Social Post Templates
@@ -451,6 +557,16 @@ Design Notes:
 - Subtle constellation pattern in background
 ```
 
+### Midjourney v6.1 -- Horoscope Post Background (4:5)
+
+```
+/imagine dark celestial background, deep indigo to black vertical
+gradient, very subtle constellation line patterns at low opacity,
+scattered dim pinpoint stars, soft diffused purple glow in upper
+third, elegant minimal astronomy aesthetic, portrait composition
+--ar 4:5 --s 200 --style raw --v 6.1 --no text words letters
+```
+
 ### Template 2: Compatibility Post
 
 **Dimensions:** 1080 x 1080 px (square)
@@ -489,6 +605,16 @@ Design Notes:
 - Three key metrics with emoji icons
 - Short quote describing the pairing
 - Background: Split gradient matching element colors
+```
+
+### Midjourney v6.1 -- Compatibility Post Background
+
+```
+/imagine dark cosmic background split vertically, warm fiery
+orange-crimson nebula glow on left side, cool icy blue nebula glow
+on right side, blending softly in center, scattered tiny stars,
+symmetrical composition, social media post background --ar 1:1
+--s 250 --style raw --v 6.1 --no text words letters
 ```
 
 ### Template 3: Engagement/Poll Post
@@ -612,6 +738,16 @@ Design Notes:
 - Results reveal most common moon element in audience
 ```
 
+### Midjourney v6.1 -- Story Poll Background
+
+```
+/imagine vertical dark cosmic background, deep midnight blue, large
+luminous crescent moon softly glowing in upper portion, scattered
+tiny bright stars, dreamy celestial atmosphere, clean minimal
+composition, space for overlay content in lower two-thirds --ar 9:16
+--s 300 --style raw --v 6.1 --no text words letters
+```
+
 ### Story 2: This or That
 
 **Dimensions:** 1080 x 1920 px
@@ -665,6 +801,17 @@ Design Notes:
 │                     │
 │  [AstroDating]      │
 └─────────────────────┘
+```
+
+### Midjourney v6.1 -- Mercury Retrograde Story Background
+
+```
+/imagine vertical dark cosmic background, deep navy and charcoal,
+small glowing planet with orbital rings tilted and reversed, chaotic
+swirling faint nebula trails, scattered dim stars, ominous yet
+beautiful celestial atmosphere, dramatic moody lighting, clean
+composition --ar 9:16 --s 300 --style raw --v 6.1
+--no text words letters
 ```
 
 ---
@@ -797,6 +944,10 @@ Covers to Create:
 ### Photo/Image
 - **Adobe Photoshop** - Complex image editing
 - **Remove.bg** - Background removal
+
+### AI Image Generation
+- **Midjourney v6.1** - Cosmic/celestial backgrounds, nebula textures
+- **Workflow:** Generate background in Midjourney, composite text/mockups in Figma
 
 ### Video
 - **CapCut** - Short-form video editing

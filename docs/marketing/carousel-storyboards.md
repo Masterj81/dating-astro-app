@@ -26,35 +26,35 @@ Link in bio 🌙
 **Text Overlay:** "How to Find Your Cosmic Match ✨" + "Swipe →"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel cover slide, elegant script text space at top, glowing iPhone mockup showing astrology dating app with compatibility percentage, dark cosmic gradient background deep purple to black, scattered glowing stars, pink nebula accents, constellation line patterns, "swipe" arrow indicator bottom right, modern luxury marketing design, clean composition --ar 4:5 --style raw --s 250
+/imagine prompt: overhead shot of a glowing iPhone floating above a polished obsidian surface, screen showing an astrology dating app with a circular compatibility gauge at 94 percent, deep indigo (#1B0A3C) to black gradient background, scattered pinpoint white and gold star lights, soft pink (#FF6B9D) nebula cloud in upper right, thin translucent constellation lines connecting small glass orbs, shallow depth of field with bokeh highlights, right edge has a frosted glass arrow pointing right, clean centered composition, editorial product photography style --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 2 - Step 1
 **Text Overlay:** "Step 1: Enter Your Birth Details" + "Date • Time • Location"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide step 1, floating UI form with glowing input fields for birth date time and location, soft pink glow around form, cosmic purple gradient background, small stars scattered, clock and calendar icons subtle, "birth details" concept, clean modern app UI aesthetic, text space at top --ar 4:5 --style raw --s 250
+/imagine prompt: close-up of a translucent frosted glass UI card floating at slight angle, three horizontal input rows with soft pink (#FF6B9D) glowing borders, a small brass clock icon and a tiny gold globe icon beside the rows, the card casts a faint pink light downward, deep purple (#1B0A3C) gradient background, scattered micro gold light particles drifting upward, shallow depth of field blurring the edges of the card, top third left empty for overlay, clean centered composition --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 3 - Step 2
 **Text Overlay:** "Step 2: We Calculate Your Full Chart" + "Sun • Moon • Rising • Venus • Mars"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide step 2, beautiful natal chart wheel with zodiac symbols glowing, planets positioned around wheel, magical energy lines connecting points, cosmic purple and pink gradient background, astrology chart being calculated visualization, mystical elegant aesthetic, text space at top --ar 4:5 --style raw --s 250
+/imagine prompt: a detailed natal chart wheel made of thin brushed gold metal rings with twelve sections, small glowing gemstone planets positioned around the wheel in ruby red sapphire blue and emerald green, thin translucent gold lines connecting planet positions across the center, the wheel hovers above a dark indigo (#1B0A3C) surface emitting faint purple light from beneath, scattered white light particles floating upward like dust in a spotlight, overhead camera angle looking straight down at the chart, top portion left empty for overlay --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 4 - Step 3
 **Text Overlay:** "Step 3: Match With Compatible Charts" + "See synastry scores before you swipe"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide step 3, two profile cards floating side by side, glowing pink connection lines between them, large "94%" compatibility badge glowing, hearts floating upward, two natal charts merging visualization, cosmic romantic atmosphere, dark purple background with stars, modern dating app aesthetic --ar 4:5 --style raw --s 250
+/imagine prompt: two frosted glass profile cards floating side by side with a two-inch gap between them, thin glowing pink (#FF6B9D) thread-like lines arcing between the cards, a circular gold badge between them showing a high number, small translucent heart-shaped glass pieces drifting upward, two faint natal chart wheels printed on each card in pale gold ink, deep purple (#2D1052) background with soft out-of-focus star bokeh, straight-on camera angle, shallow depth of field --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 5 - CTA
 **Text Overlay:** "Your Cosmic Match is Waiting" + "Download Free ↓"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel final slide call to action, "Download Free" glowing pink button centered, App Store and Google Play badges below, starburst and sparkle effects radiating outward, cosmic celebration atmosphere, dark purple gradient background, confetti stars falling, triumphant romantic energy, space for logo at bottom --ar 4:5 --style raw --s 250
+/imagine prompt: centered glowing rounded rectangle button made of translucent rose-pink (#FF6B9D) glass, soft white light radiating outward from the button in straight rays, two small frosted glass store badges below it side by side, tiny gold and silver star-shaped confetti pieces falling from above with motion blur, deep purple (#1B0A3C) to black gradient background, starburst of fine gold light particles behind the button, straight-on camera angle, large empty space at bottom for branding --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ---
@@ -80,42 +80,42 @@ Drop your Big 3 in the comments! Mine: Sagittarius ☀️ Scorpio 🌙 Libra ⬆
 **Text Overlay:** "Sun vs Moon vs Rising" + "What's the difference? →"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel cover, three celestial bodies in row - golden sun, silver moon, rising horizon with star, each glowing with distinct color, cosmic dark purple background, "vs" text between them, educational astrology content design, elegant modern layout, mystical atmosphere --ar 4:5 --style raw --s 250
+/imagine prompt: three celestial objects in a horizontal row against a deep indigo (#1B0A3C) background, left is a gold metallic sun sphere with short pointed rays, center is a silver crescent moon with cratered surface detail, right is a bright white star hovering above a soft lavender horizon line, each object sitting on its own shallow glass pedestal, thin translucent divider lines between them, fine gold dust particles floating in the air, straight-on camera angle at eye level, large empty space at top for overlay --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 2 - Sun Sign
 **Text Overlay:** "☀️ Your Sun Sign" + "Your core identity" + "Who you are at your center"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, large glowing golden sun centered, warm orange and gold rays emanating outward, cosmic dark background, solar energy visualization, confident powerful energy, zodiac wheel faint in background, space for text overlay at top and bottom, astrology education design --ar 4:5 --style raw --s 250
+/imagine prompt: close-up of a large gold metallic sun sphere centered in frame, surface textured like hammered gold with visible facets, warm amber (#FFB347) and deep gold (#FFD700) light rays extending outward in straight lines, a faint zodiac wheel etched in pale gold visible behind the rays, deep black background, fine floating gold dust particles catching the light, dramatic rim lighting on the sphere, straight-on camera angle, space left at top and bottom for overlay --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 3 - Moon Sign
 **Text Overlay:** "🌙 Your Moon Sign" + "Your emotional self" + "How you feel & what you need"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, large glowing silver crescent moon centered, soft blue and silver light emanating, cosmic dark purple background, gentle waves of emotional energy, stars reflecting like water, nurturing protective atmosphere, space for text overlay, astrology education design --ar 4:5 --style raw --s 250
+/imagine prompt: close-up of a large silver crescent moon with detailed cratered surface, soft cool blue (#B4D7FF) and silver light emanating from the inner curve, reflections rippling below the moon like moonlight on still water, deep navy (#0D0B2E) to purple background, tiny silver light particles drifting downward like slow snow, a faint translucent wave pattern curving beneath the moon, dramatic side lighting, straight-on camera angle, space left at top and bottom for overlay --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 4 - Rising Sign
 **Text Overlay:** "⬆️ Your Rising Sign" + "Your first impression" + "How others see you"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, glowing horizon line with bright star rising above it, pink and purple dawn colors, cosmic dark background transitioning to light at horizon, ascending energy upward arrows subtle, mirror reflection concept, first impression visualization, space for text overlay --ar 4:5 --style raw --s 250
+/imagine prompt: a bright white star with sharp pointed rays rising above a soft gradient horizon line, horizon transitions from deep purple (#1B0A3C) below to rose pink (#FF6B9D) to pale lavender above, thin gold light beams fanning upward from behind the star, a faint reflection of the star on a glassy surface below the horizon, fine light particles rising upward, low camera angle looking up toward the star, cinematic lens flare, space at top for overlay --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 5 - Why It Matters
 **Text Overlay:** "Why This Matters for Dating" + "Sun = Long-term compatibility" + "Moon = Emotional connection" + "Rising = Initial attraction"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, sun moon and rising star aligned vertically, connection lines between them forming triangle, heart shape in center where lines meet, cosmic romantic atmosphere, relationship visualization, dark purple background with pink accents, educational infographic style --ar 4:5 --style raw --s 250
+/imagine prompt: three small celestial objects arranged vertically, gold sun at top silver moon in middle white star at bottom, thin translucent glass lines connecting all three forming a triangle, a small rose-pink (#FF6B9D) glass heart shape at the center where lines intersect, deep indigo (#1B0A3C) background, each object casting a soft glow in its own color, fine light particles along the connecting lines, straight-on camera angle, infographic-style clean spacing between elements --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 6 - CTA
 **Text Overlay:** "Find Someone Who Matches All 3" + "AstroDating - Link in Bio"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel final slide, two people silhouettes with sun moon rising symbols floating above each, glowing connection between their symbols, cosmic romantic atmosphere, "perfect match" energy, dark purple background with stars, call to action design, dating app branding space --ar 4:5 --style raw --s 250
+/imagine prompt: two human silhouettes in profile facing each other, above the left silhouette float a tiny gold sun a silver moon and a white star, above the right silhouette float matching celestial objects, thin glowing pink (#FF6B9D) thread lines connecting each pair across the gap, a soft warm light glowing in the space between the silhouettes, deep purple (#2D1052) background with scattered out-of-focus star bokeh, straight-on camera angle, lower third left empty for branding --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ---
@@ -141,49 +141,49 @@ Tag someone you're cosmically compatible with 👇
 **Text Overlay:** "Most Compatible Zodiac Matches" + "Ranked by synastry score →"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel cover, twelve zodiac symbols arranged in heart shape formation, glowing pink and gold connection lines between some symbols, "most compatible" romantic energy, cosmic dark purple background, scattered stars, modern astrology infographic design, elegant typography space --ar 4:5 --style raw --s 250
+/imagine prompt: twelve small brushed gold zodiac glyphs arranged in a heart formation, thin glowing rose-pink (#FF6B9D) lines connecting select pairs across the heart shape, each glyph sitting on a tiny glass disc, deep indigo (#1B0A3C) background, scattered micro gold light particles drifting between the glyphs, soft warm spotlight from above illuminating the center of the heart, overhead camera angle, top portion empty for overlay --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 2 - Match #1
 **Text Overlay:** "#1: Cancer + Scorpio" + "96% Compatible" + "Deep emotional bond 💕"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, Cancer symbol ♋ and Scorpio symbol ♏ large and glowing, pink heart between them pulsing with light, water element waves flowing around both, "96%" large text glowing gold, #1 badge, emotional deep connection visualization, cosmic blue and purple background --ar 4:5 --style raw --s 250
+/imagine prompt: two large brushed silver zodiac glyphs, Cancer crab symbol on the left and Scorpio scorpion symbol on the right, both hovering above a dark reflective water surface, a glowing rose-pink (#FF6B9D) glass heart pulsing between them, translucent blue (#4A90D9) water ripples radiating outward from the heart, a gold circular badge floating above showing a high score, deep navy (#0D0B2E) background, close-up camera angle at water level, shallow depth of field --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 3 - Match #2
 **Text Overlay:** "#2: Aries + Sagittarius" + "94% Compatible" + "Adventure partners 🔥"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, Aries symbol ♈ and Sagittarius symbol ♐ large and glowing, fire element flames dancing between them, "94%" large text glowing gold, #2 badge, adventurous passionate energy, cosmic orange and red gradient accents, dark background with sparks --ar 4:5 --style raw --s 250
+/imagine prompt: two large brushed copper zodiac glyphs, Aries ram symbol on the left and Sagittarius archer symbol on the right, both surrounded by flickering orange (#FF6B00) and amber flames rendered as translucent ribbon shapes, a gold circular badge floating above, bright orange sparks and embers flying upward between them, deep black background with faint red (#8B0000) glow at bottom, straight-on camera angle, dramatic warm lighting --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 4 - Match #3
 **Text Overlay:** "#3: Taurus + Virgo" + "92% Compatible" + "Built to last 🌿"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, Taurus symbol ♉ and Virgo symbol ♍ large and glowing, earth element with flowers and roots growing between them, "92%" large text glowing gold, #3 badge, stable grounded eternal love energy, cosmic green and brown accents, dark background --ar 4:5 --style raw --s 250
+/imagine prompt: two large brushed bronze zodiac glyphs, Taurus bull symbol on the left and Virgo maiden symbol on the right, delicate dried botanical branches and small white flowers growing between and around them, a gold circular badge floating above, rich forest green (#2D5A27) moss covering the base, deep indigo (#1B0A3C) background, fine gold pollen particles floating in the air, close-up camera angle with shallow depth of field on the botanicals --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 5 - Match #4
 **Text Overlay:** "#4: Gemini + Libra" + "91% Compatible" + "Never-ending conversation 💨"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, Gemini symbol ♊ and Libra symbol ♎ large and glowing, air element with swirling winds and speech bubbles between them, "91%" large text glowing gold, #4 badge, intellectual connection visualization, cosmic light blue accents, dark background --ar 4:5 --style raw --s 250
+/imagine prompt: two large brushed silver zodiac glyphs, Gemini twins symbol on the left and Libra scales symbol on the right, thin translucent white smoke wisps swirling between them in an elegant figure-eight pattern, a gold circular badge floating above, pale blue (#B4D7FF) light glowing from within the smoke, deep indigo (#1B0A3C) background, fine silver light particles caught in the air currents, straight-on camera angle, soft diffused lighting --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 6 - Match #5
 **Text Overlay:** "#5: Leo + Aquarius" + "89% Compatible" + "Opposites attract ⚡"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, Leo symbol ♌ and Aquarius symbol ♒ large and glowing, electric sparks and magnetic pull between them, opposite but attracted energy, "89%" large text glowing gold, #5 badge, fire meets air dramatic connection, cosmic gold and electric blue accents --ar 4:5 --style raw --s 250
+/imagine prompt: two large zodiac glyphs, Leo lion symbol in polished gold on the left and Aquarius water-bearer symbol in polished silver on the right, bright electric blue (#00BFFF) lightning bolts crackling between them, a gold circular badge floating above, the left side glows warm amber and the right side glows cool electric blue creating a split-tone composition, deep black background, fine metallic particles pulled toward center as if magnetized, straight-on camera angle, high contrast dramatic lighting --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 7 - CTA
 **Text Overlay:** "Find Your Score" + "Download AstroDating - Link in Bio"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel final slide, question mark transforming into heart shape, compatibility percentage counter visualization, "Find Your Score" exciting energy, glowing pink call to action button, cosmic celebration atmosphere, dark purple background with confetti stars --ar 4:5 --style raw --s 250
+/imagine prompt: a large translucent glass question mark shape morphing into a heart at its bottom curve, a gold circular gauge with a sweeping needle embedded in the heart, glowing rose-pink (#FF6B9D) frosted glass button below, tiny gold and silver star-shaped confetti pieces falling with motion blur, deep purple (#1B0A3C) to black gradient background, bright white spotlight from above illuminating the glass shape, straight-on camera angle, lower third empty for branding --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ---
@@ -209,7 +209,7 @@ Save this for reference on your next date 📌
 **Text Overlay:** "Red Flags by Zodiac Sign 🚩" + "Swipe to find yours →"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel cover, large red flag waving, zodiac wheel behind it with all 12 symbols, humorous warning sign aesthetic, cosmic dark background with red accents, playful but dramatic energy, modern meme style design, space for text overlay --ar 4:5 --style raw --s 250
+/imagine prompt: a large triangular red (#CC0000) fabric flag on a thin gold pole waving with visible wrinkles and fold shadows, behind it a brushed gold zodiac wheel with twelve engraved glyphs, dramatic side lighting casting the flag shadow across the wheel, deep charcoal (#1A1A2E) background with subtle red glow at edges, fine red fabric threads drifting off the flag edge, low camera angle looking slightly upward, cinematic composition, space at top for overlay --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 2 - Fire Signs
@@ -220,7 +220,7 @@ Save this for reference on your next date 📌
 "♐ Sagittarius: Commitment allergic"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, three zodiac symbols Aries Leo Sagittarius arranged vertically, fire element flames around each, small red flag icons next to each, humorous warning aesthetic, fiery orange and red gradient accents, cosmic dark background, list format design with space for text --ar 4:5 --style raw --s 250
+/imagine prompt: three brushed copper zodiac glyphs for Aries Leo and Sagittarius arranged vertically with even spacing, a small triangular red fabric flag icon beside each glyph, flickering orange (#FF6B00) and amber flames licking upward behind each glyph, deep black background with a warm red-orange (#8B2500) vignette at edges, embers and bright sparks floating upward, straight-on camera angle, left side of frame left open for list-style overlay --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 3 - Earth Signs
@@ -231,7 +231,7 @@ Save this for reference on your next date 📌
 "♑ Capricorn: Married to their job"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, three zodiac symbols Taurus Virgo Capricorn arranged vertically, earth element rocks and roots around each, small red flag icons next to each, grounded but stubborn aesthetic, earthy green and brown accents, cosmic dark background, list format design --ar 4:5 --style raw --s 250
+/imagine prompt: three brushed bronze zodiac glyphs for Taurus Virgo and Capricorn arranged vertically with even spacing, a small triangular red fabric flag icon beside each glyph, rough dark stone slabs and cracked dry earth textures behind each glyph, deep charcoal (#1A1A2E) background with earthy brown (#4A3728) vignette, fine dust particles suspended in the air, straight-on camera angle, left side of frame left open for list-style overlay --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 4 - Air Signs
@@ -242,7 +242,7 @@ Save this for reference on your next date 📌
 "♒ Aquarius: Emotionally unavailable"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, three zodiac symbols Gemini Libra Aquarius arranged vertically, air element swirls and clouds around each, small red flag icons next to each, airy detached aesthetic, light blue and white accents, cosmic dark background, list format design --ar 4:5 --style raw --s 250
+/imagine prompt: three polished silver zodiac glyphs for Gemini Libra and Aquarius arranged vertically with even spacing, a small triangular red fabric flag icon beside each glyph, thin white smoke wisps and translucent cloud shapes swirling behind each glyph, deep charcoal (#1A1A2E) background with cool blue (#2B3A67) vignette, fine ice-crystal particles floating in the air, straight-on camera angle, left side of frame left open for list-style overlay --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 5 - Water Signs
@@ -253,21 +253,21 @@ Save this for reference on your next date 📌
 "♓ Pisces: Lives in a fantasy world"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, three zodiac symbols Cancer Scorpio Pisces arranged vertically, water element waves and droplets around each, small red flag icons next to each, emotional intense aesthetic, deep blue and purple accents, cosmic dark background, list format design --ar 4:5 --style raw --s 250
+/imagine prompt: three brushed silver zodiac glyphs for Cancer Scorpio and Pisces arranged vertically with even spacing, a small triangular red fabric flag icon beside each glyph, translucent blue (#4A90D9) water droplets and ripple rings behind each glyph, deep navy (#0D0B2E) background with deep blue-purple vignette, fine water mist particles suspended in the air, straight-on camera angle, left side of frame left open for list-style overlay --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 6 - Plot Twist
 **Text Overlay:** "Plot twist:" + "We love them anyway 💕" + "Every sign has their shadow side"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, red flag transforming into pink heart, all 12 zodiac symbols in circle formation connected by love, redemption arc visualization, cosmic pink and purple romantic atmosphere, forgiving accepting energy, dark background with glowing accents --ar 4:5 --style raw --s 250
+/imagine prompt: a small red triangular flag dissolving into rose-pink (#FF6B9D) glass heart-shaped pieces mid-transformation, twelve tiny gold zodiac glyphs arranged in a circle below connected by thin glowing pink threads, soft warm pink light radiating from the center of the circle, deep purple (#2D1052) background with soft pink glow, fine gold and pink light particles rising upward, straight-on camera angle, dreamy soft-focus edges --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 7 - CTA
 **Text Overlay:** "Find Someone Who Loves Your Red Flags" + "AstroDating - Link in Bio"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel final slide, two people silhouettes holding small red flags but also holding hands, accepting love despite flaws concept, cosmic romantic atmosphere, humorous but sweet energy, pink heart glowing above them, dark purple background, call to action design --ar 4:5 --style raw --s 250
+/imagine prompt: two dark human silhouettes in profile facing each other, each holding a small red triangular flag in one hand and holding the other person's free hand between them, a soft glowing rose-pink (#FF6B9D) heart shape formed by the light in the gap between their chests, deep purple (#1B0A3C) background with warm pink spotlight from above, fine gold confetti particles falling, straight-on camera angle at eye level, lower third empty for branding --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ---
@@ -293,7 +293,7 @@ Comment your Venus sign below! Don't know it? Our app calculates it for you 👀
 **Text Overlay:** "Your Venus Sign" + "How You Love 💕"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel cover, large glowing Venus planet symbol ♀ centered, soft pink and rose gold colors radiating, romantic hearts floating around, cosmic dark background with pink nebula, "love language" elegant romantic aesthetic, space for text overlay, astrology education design --ar 4:5 --style raw --s 250
+/imagine prompt: a large polished rose-gold Venus symbol (circle with cross below) centered in frame, the surface reflects soft pink light, delicate translucent glass heart shapes orbit slowly around it, warm rose-pink (#FF6B9D) and gold (#FFD700) light rays radiating outward, deep indigo (#1B0A3C) background with a soft pink nebula cloud behind the symbol, fine rose-gold metallic particles floating in the air, straight-on camera angle, top half left empty for overlay --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 2 - Fire Venus
@@ -304,7 +304,7 @@ Comment your Venus sign below! Don't know it? Our app calculates it for you 👀
 "Sag Venus: Adventure is love"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, Venus symbol with fire flames around it, three smaller zodiac symbols Aries Leo Sagittarius below, passionate intense romantic energy, red orange and gold colors, cosmic dark background, bold dramatic love aesthetic, list format with icons --ar 4:5 --style raw --s 250
+/imagine prompt: a polished copper Venus symbol surrounded by tall flickering flames in orange (#FF6B00) amber and deep red, three smaller brushed copper zodiac glyphs for Aries Leo and Sagittarius arranged below it, bright sparks and embers shooting upward, deep black background with warm amber glow at bottom, the metal surfaces reflect the firelight, straight-on camera angle, left side open for list overlay, dramatic warm lighting --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 3 - Earth Venus
@@ -315,7 +315,7 @@ Comment your Venus sign below! Don't know it? Our app calculates it for you 👀
 "Cap Venus: Provides and protects"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, Venus symbol with flowers and earth growing around it, three smaller zodiac symbols Taurus Virgo Capricorn below, sensual stable romantic energy, green gold and brown colors, cosmic dark background, grounded lasting love aesthetic --ar 4:5 --style raw --s 250
+/imagine prompt: a polished bronze Venus symbol with small white flowers and green ivy vines growing around and through it, three smaller brushed bronze zodiac glyphs for Taurus Virgo and Capricorn arranged below, rich dark soil and moss at the base, deep indigo (#1B0A3C) background, warm gold (#DAA520) spotlight from above, fine pollen particles floating in the light beam, straight-on camera angle, left side open for list overlay --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 4 - Air Venus
@@ -326,7 +326,7 @@ Comment your Venus sign below! Don't know it? Our app calculates it for you 👀
 "Aqua Venus: Friendship first"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, Venus symbol with swirling air and conversation bubbles around it, three smaller zodiac symbols Gemini Libra Aquarius below, intellectual communicative romantic energy, light blue and pink colors, cosmic dark background, mental connection love aesthetic --ar 4:5 --style raw --s 250
+/imagine prompt: a polished silver Venus symbol with thin white smoke wisps and translucent cloud shapes swirling around it, three smaller polished silver zodiac glyphs for Gemini Libra and Aquarius arranged below, soft pale blue (#B4D7FF) and pink (#FFB6C1) light glowing from within the smoke, deep indigo (#1B0A3C) background, fine silver particles caught in gentle air currents, straight-on camera angle, left side open for list overlay, soft diffused lighting --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 5 - Water Venus
@@ -337,14 +337,14 @@ Comment your Venus sign below! Don't know it? Our app calculates it for you 👀
 "Pisces Venus: Soulmate seeker"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, Venus symbol with flowing water and waves around it, three smaller zodiac symbols Cancer Scorpio Pisces below, deep emotional romantic energy, blue purple and silver colors, cosmic dark background, intense soul bond love aesthetic --ar 4:5 --style raw --s 250
+/imagine prompt: a polished silver Venus symbol partially submerged in dark translucent water, flowing blue (#4A90D9) and purple (#7B68EE) water ribbons wrapping around it, three smaller brushed silver zodiac glyphs for Cancer Scorpio and Pisces arranged below the waterline, reflections and caustic light patterns on the symbol surface, deep navy (#0D0B2E) background, fine water mist particles and tiny bubbles rising upward, straight-on camera angle at water level, left side open for list overlay --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 6 - CTA
 **Text Overlay:** "Discover Your Venus Sign" + "Match with compatible Venus placements" + "Link in Bio"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel final slide, two Venus symbols connecting with glowing pink line, hearts forming between them, "perfect love match" visualization, cosmic romantic celebration, pink and purple gradient, call to action button design, astrology dating app branding --ar 4:5 --style raw --s 250
+/imagine prompt: two polished rose-gold Venus symbols facing each other with a glowing pink (#FF6B9D) thread line connecting them, small translucent glass hearts forming along the thread like beads, soft warm light radiating from the connection point, deep purple (#2D1052) to indigo gradient background, fine rose-gold particles drifting between the symbols, a frosted glass button shape at the bottom, straight-on camera angle, lower third left empty for branding --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ---
@@ -368,7 +368,7 @@ Save this for reference and tag someone who fits what you're looking for 👇
 **Text Overlay:** "What Each Sign Wants in a Partner" + "Find yours →"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel cover, silhouette couple holding hands, zodiac wheel glowing above them, question marks transforming into hearts, cosmic romantic atmosphere, "what do you want" curious energy, dark purple and pink gradient background, elegant typography space --ar 4:5 --style raw --s 250
+/imagine prompt: two dark human silhouettes holding hands seen from behind, a large brushed gold zodiac wheel glowing above them, small translucent glass question marks drifting upward and transforming into rose-pink glass hearts at the top, deep purple (#2D1052) to pink (#FF6B9D) gradient background, fine gold light particles floating around the wheel, low camera angle looking upward past the silhouettes toward the wheel, cinematic composition, top portion left empty for overlay --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 2 - Fire Signs
@@ -379,7 +379,7 @@ Save this for reference and tag someone who fits what you're looking for 👇
 "♐ Sagittarius: A travel partner"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, three profile silhouettes with Aries Leo Sagittarius symbols above each, fire element aesthetic, what they desire visualization, confident bold energy, orange red gradient accents, cosmic dark background, clean list format design --ar 4:5 --style raw --s 250
+/imagine prompt: three dark human silhouettes arranged vertically with brushed copper zodiac glyphs for Aries Leo and Sagittarius floating above each head, flickering orange (#FF6B00) and amber flame shapes framing each silhouette, deep black background with warm red-orange vignette at edges, bright embers rising upward, straight-on camera angle, left side of frame open for list-style overlay, dramatic warm side lighting --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 3 - Earth Signs
@@ -390,7 +390,7 @@ Save this for reference and tag someone who fits what you're looking for 👇
 "♑ Capricorn: An equal partner in ambition"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, three profile silhouettes with Taurus Virgo Capricorn symbols above each, earth element aesthetic, stability and success visualization, grounded determined energy, green brown gradient accents, cosmic dark background, clean list format design --ar 4:5 --style raw --s 250
+/imagine prompt: three dark human silhouettes arranged vertically with brushed bronze zodiac glyphs for Taurus Virgo and Capricorn floating above each head, rough dark stone textures and small green plant sprouts framing each silhouette, deep charcoal (#1A1A2E) background with earthy brown (#4A3728) vignette, fine dust particles in a warm spotlight, straight-on camera angle, left side of frame open for list-style overlay --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 4 - Air Signs
@@ -401,7 +401,7 @@ Save this for reference and tag someone who fits what you're looking for 👇
 "♒ Aquarius: Unconditional acceptance"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, three profile silhouettes with Gemini Libra Aquarius symbols above each, air element aesthetic, ideas and communication visualization, intellectual free energy, light blue white gradient accents, cosmic dark background, clean list format design --ar 4:5 --style raw --s 250
+/imagine prompt: three dark human silhouettes arranged vertically with polished silver zodiac glyphs for Gemini Libra and Aquarius floating above each head, thin white smoke wisps and translucent cloud shapes swirling around each silhouette, deep charcoal (#1A1A2E) background with cool blue (#2B3A67) vignette, fine ice-crystal particles floating in diffused light, straight-on camera angle, left side of frame open for list-style overlay --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Slide 5 - Water Signs
@@ -412,7 +412,7 @@ Save this for reference and tag someone who fits what you're looking for 👇
 "♓ Pisces: A soulmate connection"
 **Midjourney Prompt:**
 ```
-/imagine prompt: Instagram carousel slide, three profile silhouettes with Cancer Scorpio Pisces symbols above each, water element aesthetic, emotional depth visualization, intuitive sensitive energy, blue purple gradient accents, cosmic dark background, clean list format design --ar 4:5 --style raw --s 250
+/imagine prompt: three dark human silhouettes arranged vertically with brushed silver zodiac glyphs for Cancer Scorpio and Pisces floating above each head, translucent blue (#4A90D9) water ripples and flowing water ribbons surrounding each silhouette, deep navy (#0D0B2E) background with blue-purple vignette, fine water mist particles and tiny floating bubbles, straight-on camera angle, left side of frame open for list-style overlay --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ---

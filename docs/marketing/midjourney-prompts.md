@@ -1,6 +1,6 @@
 # AstroDating Midjourney Prompts
 
-Copy and paste these prompts directly into Midjourney. Adjust `--ar` (aspect ratio) as needed.
+Copy and paste these prompts directly into Midjourney v6.1. Adjust `--ar` (aspect ratio) as needed.
 
 ---
 
@@ -8,7 +8,7 @@ Copy and paste these prompts directly into Midjourney. Adjust `--ar` (aspect rat
 
 Use this at the end of every prompt for consistency:
 ```
-dark cosmic gradient background, deep purple and pink colors, constellation patterns, modern minimalist style, glowing stars, luxury dating app aesthetic --style raw --s 250
+dark cosmic gradient background, deep purple and pink tones, thin constellation wire lines, polished obsidian surface, pinpoint star highlights, rose-gold accent glow --style raw --s 250 --no text words letters watermark
 ```
 
 ---
@@ -16,12 +16,12 @@ dark cosmic gradient background, deep purple and pink colors, constellation patt
 ## Facebook Cover Photo
 
 ```
-/imagine prompt: Facebook cover photo for astrology dating app, dark gradient background from deep purple #0f0f1a to #1a1a2e, scattered glowing stars and constellation lines, iPhone mockup showing compatibility percentage 94%, elegant text "Love Written in the Stars", App Store and Play Store badges, cosmic romantic atmosphere, professional marketing design, clean modern layout --ar 205:78 --style raw --s 250
+/imagine prompt: wide banner, dark gradient background from deep purple #0f0f1a to #1a1a2e, scattered pinpoint stars connected by thin silver wire lines, frosted-glass iPhone 15 Pro mockup displaying a glowing 94% circle gauge, rose-gold ring of zodiac glyphs along the bottom edge, shallow depth of field, soft pink nebula wash behind the phone, cinematic wide shot --ar 205:78 --style raw --s 250 --no text words letters watermark
 ```
 
 **Alternative version:**
 ```
-/imagine prompt: wide banner for dating app, night sky with zodiac constellations glowing softly, two silhouettes looking at stars, pink and purple nebula colors, magical romantic atmosphere, text space on right side, professional social media cover design --ar 205:78 --style raw --s 250
+/imagine prompt: ultra-wide panoramic banner, night sky with twelve zodiac constellations traced in thin gold wire, two silhouettes on a rooftop gazing upward, pink and violet nebula clouds reflected on wet concrete, rim lighting on figures from moonlight, open composition with negative space on the right third --ar 205:78 --style raw --s 250 --no text words letters watermark
 ```
 
 ---
@@ -29,11 +29,11 @@ dark cosmic gradient background, deep purple and pink colors, constellation patt
 ## Profile Picture / App Icon
 
 ```
-/imagine prompt: app icon for astrology dating app, 4-pointed glowing star with small heart in center, gradient background deep purple to pink, soft outer glow, minimalist modern design, centered composition, luxury brand feel --ar 1:1 --style raw --s 250
+/imagine prompt: app icon, four-pointed crystalline star with a small rose-gold heart facet at center, translucent layered petals, deep purple-to-magenta radial gradient background, soft outer bloom, centered composition, polished gem-like reflections --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: circular logo, interlinked letters A and D with star accents, cosmic gradient purple pink, glowing effect, modern minimalist, dating app brand identity --ar 1:1 --style raw --s 250
+/imagine prompt: circular emblem, interlinked metallic rose-gold letters A and D with tiny diamond star accents, set on a dark obsidian disc, subtle purple-to-pink gradient rim light, macro close-up --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ---
@@ -42,22 +42,22 @@ dark cosmic gradient background, deep purple and pink colors, constellation patt
 
 ### Ad 1: App Introduction (Square)
 ```
-/imagine prompt: social media ad for astrology dating app, dark cosmic background with stars, iPhone mockup showing natal birth chart wheel with zodiac symbols, glowing pink accents, text "Your Birth Chart Knows Your Type", row of zodiac symbols at bottom ♈♉♊♋♌♍♎♏♐♑♒♓, pink call-to-action button, professional marketing design --ar 1:1 --style raw --s 250
+/imagine prompt: social media ad, dark cosmic background with scattered pinpoint stars, frosted-glass iPhone mockup displaying a natal chart wheel with gold zodiac glyphs and thin orbital rings, rose-gold accent lines radiating outward, a row of twelve small zodiac symbol coins along the bottom, soft pink spotlight from above --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Ad 2: Compatibility Feature (Square)
 ```
-/imagine prompt: dating app advertisement, two glowing profile circles connected by pink heart, question mark between them, text "Are You Actually Compatible?", dark purple cosmic background, constellation patterns, modern clean design, swipe indicator arrow --ar 1:1 --style raw --s 250
+/imagine prompt: dating app ad, two translucent glass profile circles floating side by side connected by a thin rose-gold thread forming a heart knot, dark purple gradient with faint constellation grid, shallow depth of field, soft volumetric pink light between the circles --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Ad 3: Story/Reel Format (Vertical)
 ```
-/imagine prompt: vertical mobile ad for dating app, dark cosmic gradient, iPhone screen showing birth chart calculation, glowing stars scattered, text "POV: Dating apps finally understand astrology", modern UI design, pink and purple color scheme --ar 9:16 --style raw --s 250
+/imagine prompt: vertical mobile ad, dark cosmic gradient, iPhone screen showing a spinning birth chart with glowing orbital rings and planet markers, scattered holographic star particles drifting upward, pink and purple volumetric light spilling from the screen edges, overhead dramatic lighting --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Ad 4: Social Proof
 ```
-/imagine prompt: testimonial ad design, dark starry background, large glowing "94%" text in pink, two small profile photos in circles, quote marks, five star rating, cosmic romantic atmosphere, professional marketing layout --ar 1:1 --style raw --s 250
+/imagine prompt: dark starry background with soft nebula wash, large glowing rose-gold numbers floating in center surrounded by tiny orbiting stars, two small circular portrait frames with gold rims below, five small gold star shapes in a row, cinematic shallow depth of field --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ---
@@ -66,54 +66,54 @@ dark cosmic gradient background, deep purple and pink colors, constellation patt
 
 ### Fire Signs
 ```
-/imagine prompt: social media post for Aries zodiac sign, large glowing Aries symbol ♈ centered, fiery orange-red and pink gradient, dark cosmic background, scattered stars, bold modern typography space, passionate energy, astrology dating app aesthetic --ar 1:1 --style raw --s 250
+/imagine prompt: Aries zodiac post, large Aries ram glyph ♈ forged in molten gold with orange ember edges, dark obsidian background, sparks and tiny fire particles drifting upward, warm amber rim lighting, cracked lava texture at the base, centered close-up composition --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: social media post for Leo zodiac sign, large glowing Leo symbol ♌ centered, golden and pink gradient glow, dark purple cosmic background, crown subtle element, regal confident energy, scattered stars --ar 1:1 --style raw --s 250
+/imagine prompt: Leo zodiac post, large Leo lion glyph ♌ cast in polished gold with warm honey highlights, dark purple cosmic background, a faint golden crown silhouette behind the glyph, sunburst rays radiating outward, scattered gold dust particles, regal centered composition --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: social media post for Sagittarius zodiac sign, large glowing Sagittarius symbol ♐ centered, fiery orange and purple gradient, dark cosmic background, adventurous free spirit energy, stars and arrow motif --ar 1:1 --style raw --s 250
+/imagine prompt: Sagittarius zodiac post, large Sagittarius archer glyph ♐ in brushed copper with fiery orange streaks, dark cosmic background, a comet tail trailing behind the arrow tip, burnt sienna and violet gradient glow, scattered ember sparks --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Earth Signs
 ```
-/imagine prompt: social media post for Taurus zodiac sign, large glowing Taurus symbol ♉ centered, earthy green and pink gradient, dark cosmic background, stable grounded energy, flowers subtle element, luxury aesthetic --ar 1:1 --style raw --s 250
+/imagine prompt: Taurus zodiac post, large Taurus bull glyph ♉ carved from moss-green jade with rose-gold veining, dark cosmic background, tiny crystalline flowers growing at the base, soft emerald backlight, earthy matte texture, centered composition --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: social media post for Virgo zodiac sign, large glowing Virgo symbol ♍ centered, sage green and purple gradient, dark cosmic background, precise elegant energy, wheat subtle element, clean design --ar 1:1 --style raw --s 250
+/imagine prompt: Virgo zodiac post, large Virgo glyph ♍ etched in frosted sage-green glass with silver leaf inlay, dark cosmic background, delicate wheat stalk silhouettes flanking the symbol, cool mint-white rim lighting, precise geometric framing --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: social media post for Capricorn zodiac sign, large glowing Capricorn symbol ♑ centered, deep green and gold gradient, dark cosmic background, ambitious mountain energy, structured professional aesthetic --ar 1:1 --style raw --s 250
+/imagine prompt: Capricorn zodiac post, large Capricorn sea-goat glyph ♑ hewn from dark granite with gold-flecked edges, deep charcoal cosmic background, jagged mountain ridge silhouette behind, cool slate-blue and gold gradient glow, structured symmetrical layout --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Air Signs
 ```
-/imagine prompt: social media post for Gemini zodiac sign, large glowing Gemini symbol ♊ centered, sky blue and pink gradient, dark cosmic background, dual playful energy, twins motif subtle, airy light feeling --ar 1:1 --style raw --s 250
+/imagine prompt: Gemini zodiac post, large Gemini twins glyph ♊ in polished platinum with sky-blue iridescent highlights, dark cosmic background, mirrored reflections and split-prism light effect, airy wisps of silver fog, cool cyan rim lighting, centered composition --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: social media post for Libra zodiac sign, large glowing Libra symbol ♎ centered, soft pink and blue gradient, dark cosmic background, balanced harmonious energy, scales subtle element, elegant aesthetic --ar 1:1 --style raw --s 250
+/imagine prompt: Libra zodiac post, large Libra scales glyph ♎ in rose-gold with blush-pink pearl finish, dark cosmic background, perfectly balanced floating composition, soft pink and lavender gradient glow, delicate light refractions, symmetrical centered framing --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: social media post for Aquarius zodiac sign, large glowing Aquarius symbol ♒ centered, electric blue and purple gradient, dark cosmic background, innovative unique energy, water waves subtle, futuristic feel --ar 1:1 --style raw --s 250
+/imagine prompt: Aquarius zodiac post, large Aquarius water-bearer glyph ♒ in brushed titanium with electric-blue LED edge glow, dark cosmic background, circuitry-pattern constellations, neon blue and violet streaks, futuristic holographic sheen --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Water Signs
 ```
-/imagine prompt: social media post for Cancer zodiac sign, large glowing Cancer symbol ♋ centered, silver moonlight and pink gradient, dark cosmic background, nurturing emotional energy, moon and waves subtle, protective feeling --ar 1:1 --style raw --s 250
+/imagine prompt: Cancer zodiac post, large Cancer crab glyph ♋ in polished silver with moonstone opalescent sheen, dark cosmic background, a crescent moon hanging directly above, gentle tidal wave curl at the base, cool silver-blue and pearl-white gradient glow, soft diffused moonlight --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: social media post for Scorpio zodiac sign, large glowing Scorpio symbol ♏ centered, deep red and purple gradient, dark cosmic background, intense magnetic energy, mysterious powerful aesthetic --ar 1:1 --style raw --s 250
+/imagine prompt: Scorpio zodiac post, large Scorpio scorpion glyph ♏ forged in crimson obsidian with deep ruby veining, dark cosmic background, black smoke wisps rising from the edges, rich burgundy and dark violet gradient glow, dramatic low-key lighting, intense close-up composition --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: social media post for Pisces zodiac sign, large glowing Pisces symbol ♓ centered, ocean blue and purple gradient, dark cosmic background, dreamy intuitive energy, fish and waves subtle, ethereal feeling --ar 1:1 --style raw --s 250
+/imagine prompt: Pisces zodiac post, large Pisces fish glyph ♓ sculpted in translucent aquamarine glass with iridescent surface, dark cosmic background, gentle underwater caustic light patterns, seafoam green and soft violet gradient, ethereal bokeh orbs floating around --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ---
@@ -121,15 +121,15 @@ dark cosmic gradient background, deep purple and pink colors, constellation patt
 ## Compatibility Posts
 
 ```
-/imagine prompt: zodiac compatibility post, Aries symbol ♈ and Sagittarius symbol ♐ with glowing pink heart between them, "91% Compatible" text, fire element gradient orange red, dark cosmic background, romantic energy, dating app design --ar 1:1 --style raw --s 250
+/imagine prompt: zodiac compatibility post, Aries glyph ♈ in molten gold and Sagittarius glyph ♐ in brushed copper, connected by a glowing rose-gold chain forming a heart shape between them, fire-element gradient of orange and amber, dark cosmic background, warm ember particles drifting upward --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: zodiac compatibility post, Cancer symbol ♋ and Scorpio symbol ♏ with glowing heart between them, "94% Compatible" text, water element gradient blue purple, dark cosmic background, deep emotional connection, dating app design --ar 1:1 --style raw --s 250
+/imagine prompt: zodiac compatibility post, Cancer glyph ♋ in polished silver and Scorpio glyph ♏ in crimson obsidian, connected by a luminous thread forming a heart knot, water-element gradient of deep teal and midnight blue, dark cosmic background, tiny bioluminescent droplets floating --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: zodiac compatibility chart, all 12 zodiac symbols arranged in circle, glowing connection lines between compatible signs, pink and purple gradient connections, dark cosmic background, astrology wheel design --ar 1:1 --style raw --s 250
+/imagine prompt: zodiac compatibility wheel, all twelve zodiac glyphs arranged in a circle on polished obsidian ring, thin rose-gold connection lines between compatible pairs glowing at different intensities, dark cosmic background, top-down overhead view, intricate clockwork detail --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ---
@@ -137,11 +137,11 @@ dark cosmic gradient background, deep purple and pink colors, constellation patt
 ## Daily Horoscope Posts
 
 ```
-/imagine prompt: daily horoscope post template, large sun symbol glowing gold, "Daily Horoscope" elegant text, date placeholder area, dark cosmic gradient background, stars scattered, space for zodiac symbol, modern clean layout, astrology app design --ar 4:5 --style raw --s 250
+/imagine prompt: daily horoscope card, large golden sun disc with layered corona rays in rose-gold foil, dark cosmic gradient background, faint zodiac wheel watermark behind, clean open negative space below for overlay, scattered pinpoint stars, warm directional lighting from above --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: horoscope card design, crescent moon glowing silver, zodiac wheel in background faded, text area for horoscope message, lucky number display, energy bar graphic, dark purple cosmic background, mystical elegant aesthetic --ar 4:5 --style raw --s 250
+/imagine prompt: horoscope card, silver crescent moon with a pearlescent surface reflecting faint zodiac glyphs, dark purple cosmic background, a translucent frosted-glass panel below the moon, tiny orbiting star particles, cool moonlight rim glow, elegant centered composition --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ---
@@ -150,17 +150,17 @@ dark cosmic gradient background, deep purple and pink colors, constellation patt
 
 ### Poll Story
 ```
-/imagine prompt: Instagram story template, "What's your Moon sign?" text at top, four option boxes labeled Fire Earth Air Water with emoji icons, dark cosmic gradient background, glowing stars, interactive poll design, vertical mobile format --ar 9:16 --style raw --s 250
+/imagine prompt: vertical story template, dark cosmic gradient with scattered micro-stars, four frosted-glass rounded rectangles stacked vertically with thin rose-gold borders, small flame ice leaf and water-drop icons beside each box, soft volumetric purple light from top, clean open layout --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 ### This or That Story
 ```
-/imagine prompt: Instagram story template, "This or That" header, split screen design left and right, zodiac themed options, dark purple and pink gradient, cosmic stars background, interactive mobile format --ar 9:16 --style raw --s 250
+/imagine prompt: vertical story template, split-screen divided by a thin glowing rose-gold line down the center, left side tinted violet right side tinted magenta, zodiac constellation patterns on each half, scattered stars, dark cosmic gradient, clean modern framing --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Countdown Story
 ```
-/imagine prompt: Instagram story template, "Mercury Retrograde Incoming" warning text, countdown timer display, cosmic storm clouds purple and pink, alert warning aesthetic, survival tips list area, dark dramatic background --ar 9:16 --style raw --s 250
+/imagine prompt: vertical story template, swirling purple and magenta storm clouds forming a vortex in the upper third, a large translucent countdown clock face with gold hands at center, lightning-bolt accents in electric violet, dark dramatic cosmic background, open space in lower third --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 ---
@@ -168,35 +168,35 @@ dark cosmic gradient background, deep purple and pink colors, constellation patt
 ## Highlight Covers
 
 ```
-/imagine prompt: Instagram highlight cover, glowing sun icon centered, solid dark purple background #1a1a2e, gold outer glow, minimalist modern design, circular format, "Horoscopes" theme --ar 1:1 --style raw --s 250
+/imagine prompt: highlight cover, glowing golden sun disc icon centered on solid dark purple #1a1a2e background, thin gold outer ring glow, flat minimalist design, circular crop --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: Instagram highlight cover, two interlinked hearts icon centered, solid dark purple background, pink outer glow, minimalist modern design, circular format, "Compatibility" theme --ar 1:1 --style raw --s 250
+/imagine prompt: highlight cover, two small interlinked rose-gold heart outlines centered on solid dark purple background, soft pink outer ring glow, flat minimalist design, circular crop --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: Instagram highlight cover, sparkle star icon centered, solid dark purple background, white outer glow, minimalist modern design, circular format, "Tips" theme --ar 1:1 --style raw --s 250
+/imagine prompt: highlight cover, four-pointed diamond sparkle icon in white centered on solid dark purple background, soft white outer ring glow, flat minimalist design, circular crop --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: Instagram highlight cover, zodiac wheel outline icon centered, solid dark purple background, purple outer glow, minimalist modern design, circular format, "Signs" theme --ar 1:1 --style raw --s 250
+/imagine prompt: highlight cover, thin zodiac wheel ring icon in lavender centered on solid dark purple background, soft purple outer ring glow, flat minimalist design, circular crop --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: Instagram highlight cover, smartphone with star icon centered, solid dark purple background, pink outer glow, minimalist modern design, circular format, "App" theme --ar 1:1 --style raw --s 250
+/imagine prompt: highlight cover, small smartphone outline with a star on screen in pink centered on solid dark purple background, soft pink outer ring glow, flat minimalist design, circular crop --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: Instagram highlight cover, two people silhouette icon centered, solid dark purple background, blue outer glow, minimalist modern design, circular format, "Community" theme --ar 1:1 --style raw --s 250
+/imagine prompt: highlight cover, two small person silhouette outlines in blue centered on solid dark purple background, soft blue outer ring glow, flat minimalist design, circular crop --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: Instagram highlight cover, question mark icon centered, solid dark purple background, teal outer glow, minimalist modern design, circular format, "FAQ" theme --ar 1:1 --style raw --s 250
+/imagine prompt: highlight cover, circular question mark icon in teal centered on solid dark purple background, soft teal outer ring glow, flat minimalist design, circular crop --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: Instagram highlight cover, five pointed star icon centered, solid dark purple background, gold outer glow, minimalist modern design, circular format, "Reviews" theme --ar 1:1 --style raw --s 250
+/imagine prompt: highlight cover, five-pointed star icon in gold centered on solid dark purple background, soft gold outer ring glow, flat minimalist design, circular crop --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ---
@@ -204,23 +204,23 @@ dark cosmic gradient background, deep purple and pink colors, constellation patt
 ## App Screenshots (for App Store)
 
 ```
-/imagine prompt: app store screenshot, iPhone 15 Pro mockup, dating app profile card with zodiac symbols and compatibility percentage, dark cosmic UI design, "See Compatibility Before You Swipe" text overlay, professional app marketing --ar 9:19.5 --style raw --s 250
+/imagine prompt: app store screenshot, iPhone 15 Pro with titanium frame, screen showing a dating profile card with zodiac glyph badges and a glowing circular compatibility gauge, dark cosmic UI with rose-gold accent lines, soft purple ambient light on the phone edges --ar 9:19.5 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: app store screenshot, iPhone mockup showing natal chart wheel with planets and zodiac signs, dark purple UI, glowing accents, "Your Complete Birth Chart" text overlay, astrology app design --ar 9:19.5 --style raw --s 250
+/imagine prompt: app store screenshot, iPhone 15 Pro mockup, screen displaying a detailed natal chart wheel with colored planet markers on orbital rings, dark purple UI with thin gold grid lines, soft glow emanating from chart center --ar 9:19.5 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: app store screenshot, iPhone mockup showing match celebration screen, confetti and stars, two profile photos with heart, "It's a Match!" text, 94% compatibility badge, romantic cosmic design --ar 9:19.5 --style raw --s 250
+/imagine prompt: app store screenshot, iPhone 15 Pro mockup, screen showing a match celebration with rose-gold confetti particles and tiny stars falling, two circular portrait frames with a heart icon between them, a glowing 94% badge, dark cosmic UI --ar 9:19.5 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: app store screenshot, iPhone mockup showing daily horoscope screen, personalized message for zodiac sign, moon phase indicator, lucky number display, dark elegant UI design --ar 9:19.5 --style raw --s 250
+/imagine prompt: app store screenshot, iPhone 15 Pro mockup, screen displaying a personalized horoscope card with crescent moon icon, moon phase indicator row, and a small lucky number badge, dark elegant UI with silver accents --ar 9:19.5 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: app store screenshot, iPhone mockup showing chat interface with match, cosmic themed chat bubbles, profile with zodiac badges, dark mode UI, dating app messaging design --ar 9:19.5 --style raw --s 250
+/imagine prompt: app store screenshot, iPhone 15 Pro mockup, screen showing a chat interface with frosted-glass message bubbles, small zodiac glyph badges next to the profile avatar, dark mode UI with soft pink and purple accent colors --ar 9:19.5 --style raw --s 250 --no text words letters watermark
 ```
 
 ---
@@ -228,15 +228,15 @@ dark cosmic gradient background, deep purple and pink colors, constellation patt
 ## Lifestyle/Mood Images
 
 ```
-/imagine prompt: couple silhouette looking at night sky full of stars and constellations, romantic cosmic atmosphere, pink and purple nebula colors, zodiac symbols subtly visible in stars, love written in the stars concept, cinematic photography style --ar 16:9 --style raw --s 250
+/imagine prompt: couple silhouetted on a hilltop looking up at a night sky dense with stars and constellation wire-lines, pink and violet nebula clouds glowing above, zodiac glyphs faintly traced among the stars, warm rim light on shoulders from a low campfire off-frame, cinematic wide shot, shallow depth of field --ar 16:9 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: person holding smartphone showing astrology app, night time rooftop setting, city lights and stars visible, cosmic glow from phone screen, modern romantic dating concept, lifestyle photography --ar 4:5 --style raw --s 250
+/imagine prompt: person holding a smartphone on a rooftop at dusk, screen casting a soft cosmic glow onto their hands and face, city lights bokeh in the background, stars emerging in the twilight sky, warm-to-cool color transition, medium close-up lifestyle photography --ar 4:5 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: hands holding two phones together showing matching compatibility, heart shape between screens, cosmic starry background, pink and purple lighting, connection and dating concept, close-up photography --ar 1:1 --style raw --s 250
+/imagine prompt: close-up of two hands holding phones screen-to-screen, matching zodiac charts visible on the displays, a soft rose-gold glow spilling between the devices, dark background with out-of-focus star bokeh, shallow depth of field, warm skin tones --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ---
@@ -244,11 +244,11 @@ dark cosmic gradient background, deep purple and pink colors, constellation patt
 ## Meme/Humor Templates
 
 ```
-/imagine prompt: split image meme template, left side happy glowing person, right side same person looking skeptical, zodiac signs above each, "When they say they're a [sign]" format, dark cosmic background, humor social media design --ar 1:1 --style raw --s 250
+/imagine prompt: split-image diptych, left panel a person smiling warmly bathed in golden light, right panel the same person raising one eyebrow lit in cool blue, a faint zodiac glyph floating above each panel, dark cosmic background, clean center divider line, flat social media layout --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ```
-/imagine prompt: reaction meme template, person looking at phone with shocked happy expression, cosmic glow from screen, "When you see 94% compatibility" vibe, dark background with stars, relatable social media content --ar 1:1 --style raw --s 250
+/imagine prompt: person looking at phone with wide eyes and a surprised grin, cosmic pink and purple glow spilling from the screen onto their face, dark background with soft out-of-focus stars, medium close-up, candid snapshot feel --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ---
@@ -260,6 +260,7 @@ Add these to every prompt for brand consistency:
 - `--style raw` - More literal interpretation
 - `--s 250` - Moderate stylization
 - `--q 2` - Higher quality (optional, uses more GPU)
+- `--no text words letters watermark` - Prevents unwanted text and logos
 
 ### Aspect Ratios
 - `--ar 1:1` - Square (Instagram feed, Facebook)
@@ -274,6 +275,21 @@ Reference these hex codes in prompts when needed:
 - Cosmic Purple: #1a1a2e
 - Stellar Pink: #E94560
 - Gold Star: #FFD700
+
+### Sign-Specific Color Palette
+Use these material and color pairings per sign:
+- Aries: molten gold, orange embers, amber
+- Taurus: jade green, rose-gold veining, emerald
+- Gemini: platinum, sky-blue iridescence, cyan
+- Cancer: polished silver, moonstone, pearl-white
+- Leo: polished gold, honey highlights, sunburst
+- Virgo: frosted sage glass, silver leaf, mint-white
+- Libra: rose-gold, blush-pink pearl, lavender
+- Scorpio: crimson obsidian, ruby, dark violet
+- Sagittarius: brushed copper, fiery orange, burnt sienna
+- Capricorn: dark granite, gold-fleck, slate-blue
+- Aquarius: brushed titanium, electric-blue LED, neon violet
+- Pisces: translucent aquamarine, iridescent, seafoam green
 
 ### Remix/Variations
 After generating, use:
@@ -310,19 +326,19 @@ Run multiple similar prompts efficiently:
 
 **All 12 zodiac signs:**
 ```
-/imagine prompt: social media post for [SIGN] zodiac sign, large glowing [SYMBOL] symbol centered, [COLOR] gradient, dark cosmic background, astrology dating app aesthetic --ar 1:1 --style raw --s 250
+/imagine prompt: [SIGN] zodiac post, large [SIGN] glyph [SYMBOL] in [MATERIAL], dark cosmic background, [DETAIL], [COLOR] gradient glow, centered composition --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
-Replace [SIGN], [SYMBOL], [COLOR]:
-- Aries, ♈, fiery orange-red
-- Taurus, ♉, earthy green
-- Gemini, ♊, sky blue
-- Cancer, ♋, silver moonlight
-- Leo, ♌, golden
-- Virgo, ♍, sage green
-- Libra, ♎, soft pink
-- Scorpio, ♏, deep red
-- Sagittarius, ♐, fiery orange
-- Capricorn, ♑, deep green
-- Aquarius, ♒, electric blue
-- Pisces, ♓, ocean blue
+Replace [SIGN], [SYMBOL], [MATERIAL], [DETAIL], [COLOR]:
+- Aries, ♈, molten gold with orange ember edges, sparks drifting upward, amber and orange
+- Taurus, ♉, moss-green jade with rose-gold veining, crystalline flowers at base, emerald and pink
+- Gemini, ♊, polished platinum with sky-blue iridescence, split-prism light effect, cyan and silver
+- Cancer, ♋, polished silver with moonstone sheen, crescent moon above, silver-blue and pearl
+- Leo, ♌, polished gold with honey highlights, faint crown silhouette behind, gold and sunburst
+- Virgo, ♍, frosted sage glass with silver leaf inlay, wheat stalk silhouettes, mint-white and sage
+- Libra, ♎, rose-gold with blush-pink pearl finish, balanced floating composition, pink and lavender
+- Scorpio, ♏, crimson obsidian with ruby veining, black smoke wisps rising, burgundy and dark violet
+- Sagittarius, ♐, brushed copper with fiery orange streaks, comet tail behind arrow, burnt sienna and violet
+- Capricorn, ♑, dark granite with gold-flecked edges, mountain ridge silhouette, slate-blue and gold
+- Aquarius, ♒, brushed titanium with electric-blue LED glow, circuitry constellations, neon blue and violet
+- Pisces, ♓, translucent aquamarine glass with iridescence, underwater caustic light, seafoam and soft violet

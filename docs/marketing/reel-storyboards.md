@@ -41,33 +41,33 @@ Complete storyboards with scene breakdowns, timing, text overlays, Midjourney pr
 | 3-6s | Birth info | "Enter your birth time" | Form filling animation |
 | 6-9s | Chart | "Get your full chart calculated" | Chart wheel spinning |
 | 9-12s | Match | "See compatibility before you swipe" | Profile with 94% badge |
-| 12-15s | CTA | "AstroDating - Link in bio ✨" | Logo reveal + sparkles |
+| 12-15s | CTA | "AstroDating - Link in bio" | Logo reveal + sparkles |
 
 ### Midjourney Prompts (for CapCut method)
 
 **Frame 1 - Phone Screen:**
 ```
-/imagine prompt: close up hands holding iPhone, screen showing astrology dating app glowing, dark room setting, cosmic purple light emanating from screen, POV perspective looking down at phone, cinematic lighting, realistic photography style --ar 9:16 --style raw --s 250
+/imagine prompt: POV shot looking down, manicured hands holding iPhone in a dim bedroom, glass screen displaying a purple and gold astrology app interface, soft purple neon light reflecting off the screen onto fingertips, shallow depth of field on the phone, bokeh fairy lights in the dark background --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 2 - Birth Info Form:**
 ```
-/imagine prompt: mobile app UI screen, birth info form with date time location fields, glowing input cursor, cosmic purple dark background, modern clean design, app screenshot style, vertical mobile format --ar 9:16 --style raw --s 250
+/imagine prompt: close-up of a glossy smartphone screen, minimalist dark-mode form UI with three input fields outlined in soft purple neon, a blinking lavender cursor in the top field, frosted-glass card floating above a deep indigo gradient background, subtle star-field particles behind the card --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 3 - Chart Calculation:**
 ```
-/imagine prompt: natal chart wheel spinning with zodiac symbols glowing, cosmic energy particles, planets positioning themselves, magical calculation visualization, dark purple background, vertical format, astrology app screen --ar 9:16 --style raw --s 250
+/imagine prompt: extreme close-up of a circular natal chart wheel rendered in thin gold lines on a black glass surface, twelve zodiac glyphs etched in metallic copper around the rim, small planet icons sliding into position along the wheel spokes, faint holographic refraction arcs between the planets, deep purple ambient glow --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 4 - Match Reveal:**
 ```
-/imagine prompt: dating app profile card with photo placeholder, large glowing "94% Compatible" badge, hearts floating, synastry connection lines, cosmic romantic atmosphere, mobile app UI, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: medium shot of a smartphone screen showing a dating profile card with a silhouette photo placeholder, a large brushed-gold circular badge reading 94 percent overlaid on the card, tiny pink and red heart confetti drifting upward off the screen, translucent synastry connection lines in rose-gold, dark cosmic backdrop with faint nebula clouds --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 5 - Logo Reveal:**
 ```
-/imagine prompt: AstroDating logo reveal, starburst and sparkle explosion, cosmic celebration, pink and purple colors, "link in bio" text space, triumphant energy, dark background, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: wide establishing shot of a starburst explosion of pink and purple light rays radiating from center screen, metallic gold sparks and glitter shards flying outward, faint constellation pattern woven into the light beams, solid black background, cinematic lens flare at center --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Runway ML Prompts
@@ -109,29 +109,29 @@ Natal chart wheel rotating slowly, zodiac symbols illuminating one by one around
 
 | Time | Scene | Text Overlay | Visual |
 |------|-------|--------------|--------|
-| 0-2s | Hook | "How each sign texts back 📱" | Phone with messages |
-| 2-5s | Aries | "♈ Aries: 'omw' (sent 2 hours ago)" | Message bubble |
-| 5-8s | Taurus | "♉ Taurus: typing... for 45 mins" | Typing indicator |
-| 8-11s | Gemini | "♊ Gemini: 47 messages in 30 seconds" | Message flood |
-| 11-14s | Cancer | "♋ Cancer: 'are you mad at me?'" | Worried message |
-| 14-17s | Leo | "♌ Leo: *sends voice memo* (3:47)" | Voice memo bubble |
-| 17-20s | CTA | "Tag yourself 👇 AstroDating" | Logo |
+| 0-2s | Hook | "How each sign texts back" | Phone with messages |
+| 2-5s | Aries | "Aries: 'omw' (sent 2 hours ago)" | Message bubble |
+| 5-8s | Taurus | "Taurus: typing... for 45 mins" | Typing indicator |
+| 8-11s | Gemini | "Gemini: 47 messages in 30 seconds" | Message flood |
+| 11-14s | Cancer | "Cancer: 'are you mad at me?'" | Worried message |
+| 14-17s | Leo | "Leo: *sends voice memo* (3:47)" | Voice memo bubble |
+| 17-20s | CTA | "Tag yourself - AstroDating" | Logo |
 
 ### Midjourney Prompts
 
 **Frame 1 - Hook:**
 ```
-/imagine prompt: smartphone with iMessage conversation open, multiple text bubbles, zodiac symbols floating around phone, cosmic purple background, "texting styles" concept, modern social media content style, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: overhead POV shot of a smartphone lying on a dark marble desk, screen lit up with a cascade of chat bubbles in blue and grey, small translucent zodiac glyphs orbiting the phone like tiny satellites, soft purple backlight spilling across the marble surface --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 2-6 - Message Bubbles:**
 ```
-/imagine prompt: single iMessage text bubble close up, "[INSERT TEXT HERE]" message, zodiac symbol [INSERT SYMBOL] glowing above bubble, cosmic dark purple background, clean minimal design, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: tight close-up of a single rounded chat bubble in iMessage blue floating against a solid dark indigo background, a faintly glowing zodiac glyph hovering just above the bubble like a holographic badge, clean minimal negative space, soft rim light along bubble edge --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 7 - CTA:**
 ```
-/imagine prompt: "Tag yourself" text with finger pointing down emoji, zodiac symbols scattered around, cosmic purple pink background, engaging call to action design, social media style, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: wide shot of twelve small metallic zodiac icons scattered across a velvet dark-purple surface like dropped coins, warm golden spotlight from above picking out each icon, shallow depth of field with foreground icons sharp and background icons softly blurred --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 ### CapCut Assembly
@@ -150,7 +150,7 @@ Natal chart wheel rotating slowly, zodiac symbols illuminating one by one around
 
 **Duration:** 12 seconds
 **Style:** Reaction/relatable
-**Audio:** Dramatic sound → celebration
+**Audio:** Dramatic sound then celebration
 **Goal:** Feature showcase, relatability
 
 ### Script & Timing
@@ -160,29 +160,29 @@ Natal chart wheel rotating slowly, zodiac symbols illuminating one by one around
 | 0-3s | Before | "On other dating apps:" | Boring swiping |
 | 3-4s | Transition | "vs" | Quick flash |
 | 4-8s | After | "On AstroDating:" | See compatibility score |
-| 8-10s | Reaction | "94% Compatible 😍" | Percentage counting up |
+| 8-10s | Reaction | "94% Compatible" | Percentage counting up |
 | 10-12s | CTA | "Try it free - Link in bio" | Hearts explosion |
 
 ### Midjourney Prompts
 
 **Frame 1 - Boring Swipe:**
 ```
-/imagine prompt: hand swiping on generic dating app, boring grey interface, "meh" energy, question marks floating, dull colors, unimpressed mood, phone screen, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: medium close-up of a thumb lazily swiping on a phone with a flat grey dating-app interface, desaturated muted colors, harsh fluorescent overhead light, bored slouching hand posture, dull beige wall in the background, photojournalistic feel --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 2 - VS Transition:**
 ```
-/imagine prompt: dramatic "VS" text graphic, lightning bolt between letters, cosmic energy clash, purple and pink explosion, versus battle screen, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: dramatic center-frame lightning bolt splitting the image in half, left side cold grey and right side vivid purple-pink, electric plasma crackling along the bolt, sparks of copper and gold scattering outward, solid black vignette at edges --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 3 - Compatibility Reveal:**
 ```
-/imagine prompt: dating app profile card glowing, large "94%" number shining gold, compatibility meter filled, hearts and stars exploding outward, cosmic celebration, excited energy, phone screen, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: close-up of a phone screen displaying a large brushed-gold number 94 inside a glowing circular meter that is almost fully filled, tiny holographic hearts and metallic star confetti erupting upward off the glass screen, warm pink and amber rim lighting, dark out-of-focus background --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 4 - Hearts Explosion:**
 ```
-/imagine prompt: explosion of pink hearts and golden stars, cosmic celebration confetti, romantic euphoric energy, "it's a match" celebration screen, dark background with colorful burst, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: wide shot of hundreds of translucent pink glass hearts and golden metallic stars bursting outward from center frame like a firework, iridescent confetti ribbons swirling, deep black background, motion blur on the outermost particles, celebration atmosphere --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Runway ML Prompt
@@ -196,9 +196,9 @@ Dating app interface on phone screen, compatibility percentage counter rapidly c
 1. Frame 1: Slow, slightly desaturated, boring movement
 2. Add "VS" with flash transition
 3. Frame 3-4: Speed ramps, bright colors, high energy
-4. Add counter animation (0→94) using CapCut text
+4. Add counter animation (0 to 94) using CapCut text
 5. Layer sparkle and heart overlays
-6. Audio: Quiet → Dramatic drop → Celebration
+6. Audio: Quiet then Dramatic drop then Celebration
 
 ---
 
@@ -225,44 +225,44 @@ Dating app interface on phone screen, compatibility percentage counter rapidly c
 
 | Time | Text Overlay |
 |------|--------------|
-| 0-3s | "The truth about being a Scorpio ♏" |
+| 0-3s | "The truth about being a Scorpio" |
 | 3-8s | "Your superpower: Reading people instantly" |
 | 8-13s | "Your struggle: Letting people in" |
 | 13-18s | "In love you: Go all in or not at all" |
 | 18-23s | "What you need: Someone who matches your depth" |
-| 23-28s | "Best match: Cancer ♋ Pisces ♓ Virgo ♍" |
+| 23-28s | "Best match: Cancer, Pisces, Virgo" |
 | 28-30s | "Find yours - Link in bio" |
 
 ### Midjourney Prompts (Scorpio Example)
 
 **Frame 1 - Sign Reveal:**
 ```
-/imagine prompt: large glowing Scorpio symbol ♏ emerging from darkness, deep red and purple colors, mysterious intense energy, dramatic reveal, cosmic dark background, powerful aesthetic, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: rack focus pulling a large metallic Scorpio glyph into sharp clarity from a smoky dark void, the glyph cast in brushed dark bronze with crimson edge-lighting, wisps of dark red smoke curling around it, deep black background with faint distant stars --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 2 - Superpower:**
 ```
-/imagine prompt: glowing eyes seeing through darkness, x-ray vision concept, reading minds visualization, mysterious Scorpio energy, purple and red magical aura, psychic power aesthetic, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: extreme close-up of a pair of human eyes lit from below by deep amber light, each iris reflecting a faint astrological chart pattern, dark shadows sculpting the cheekbones, narrow depth of field with eyelashes in crisp focus, dark ruby and plum color palette --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 3 - Challenge:**
 ```
-/imagine prompt: person behind glass wall or barrier, wanting to connect but guarded, emotional protection visualization, vulnerable but hidden, purple moody lighting, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: medium shot of a solitary figure standing behind a frosted glass panel, one palm pressed flat against the glass, warm interior light silhouetting the figure while cool blue light fills the viewer's side, condensation droplets on the glass, moody cinematic split-lighting --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 4 - In Love:**
 ```
-/imagine prompt: intense passionate embrace silhouette, all or nothing energy, deep emotional connection, flames and water mixing, Scorpio love intensity, purple and red romantic atmosphere, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: silhouette of two figures in a tight embrace, backlit by a towering column of intertwined fire and water, orange flames spiraling upward on one side and deep blue water cascading on the other, the two elements merging where the figures meet, dark volcanic rock ground, dramatic low-angle shot --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 5 - What You Need:**
 ```
-/imagine prompt: two silhouettes diving into deep ocean together, depth and trust concept, someone who understands, emotional depth visualization, blue and purple underwater aesthetic, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: wide underwater shot of two divers descending side by side into a deep midnight-blue ocean trench, shafts of pale silver light filtering down from the surface far above, tiny bioluminescent particles drifting around them, deep teal and indigo tones, serene and vast --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 6 - Best Matches:**
 ```
-/imagine prompt: Cancer Pisces Virgo zodiac symbols floating around Scorpio symbol, connection lines glowing between them, compatibility visualization, cosmic romantic energy, purple and pink accents, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: overhead flat-lay shot of four metallic zodiac medallions (Scorpio, Cancer, Pisces, Virgo) arranged on black velvet, thin rose-gold thread connecting each outer medallion to Scorpio at center, soft directional spotlight from upper left, shallow depth of field on the threads --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Create All 12 Signs
@@ -291,12 +291,12 @@ Repeat this format for each zodiac sign with personalized traits.
 
 **Frame 1 - Setup:**
 ```
-/imagine prompt: person looking at phone with amazed expression, cosmic glow reflecting on face, "everything makes sense now" moment, dark background with stars, authentic reaction shot, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: close-up portrait of a young person illuminated by the glow of a phone screen in a dark room, purple and gold light reflecting across their widened eyes and parted lips, expression of sudden realization, shallow depth of field, faint star projections on the ceiling behind them --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 2-4 - Signs Reveal:**
 ```
-/imagine prompt: zodiac symbol [SUN/MOON/RISING] glowing, trait text space beside it, cosmic background matching element colors, clean educational design, personality reveal aesthetic, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: centered metallic zodiac glyph (Sun, Moon, or Rising icon) rendered in polished gold on a dark glass slab, soft colored backlight matching the element (fire-orange for Sun, silver-blue for Moon, rose-pink for Rising), clean negative space around the glyph, studio product-photography lighting --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 ### This is a UGC Template
@@ -318,7 +318,7 @@ Best performed by real person on camera. Use Midjourney for B-roll cutaways.
 | 0-4s | Meet | "When I first saw him on the app..." | Profile card |
 | 4-8s | Check | "I checked our compatibility" | Tapping synastry button |
 | 8-12s | Score | "94%..." | Score reveal animation |
-| 12-16s | Details | "Moon conjunct Venus 💕" | Synastry chart detail |
+| 12-16s | Details | "Moon conjunct Venus" | Synastry chart detail |
 | 16-20s | Now | "3 months later..." | Happy couple imagery |
 | 20-25s | CTA | "Find your person - AstroDating" | Logo + hearts |
 
@@ -326,27 +326,27 @@ Best performed by real person on camera. Use Midjourney for B-roll cutaways.
 
 **Frame 1 - First See:**
 ```
-/imagine prompt: dating app profile card on phone screen, attractive photo placeholder, zodiac badges visible, curious romantic energy, finger hovering to swipe, cosmic purple UI glow, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: over-the-shoulder POV shot of a thumb hovering above a phone screen showing a dating-profile card with a soft-focus portrait placeholder, small zodiac badge icons along the card edge in brushed silver, the screen casting a faint purple glow on the thumb, blurred coffee-shop background with warm bokeh --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 2 - Check Compatibility:**
 ```
-/imagine prompt: finger tapping "Check Compatibility" glowing button, synastry loading animation, anticipation energy, dating app interface, cosmic purple design, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: extreme close-up of a fingertip pressing a glowing translucent purple button on a glass phone screen, circular loading ring spinning around the button in rose-gold, faint holographic chart lines radiating outward from the press point, dark UI background --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 3 - Score Reveal:**
 ```
-/imagine prompt: large "94%" glowing gold on screen, compatibility score celebration, hearts floating upward, amazed reaction energy, dating app success moment, cosmic pink and gold, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: phone screen filling the frame, a large brushed-gold numeral 94 centered inside a luminous circular progress ring, the ring pulsing with warm amber light, small metallic heart confetti floating upward past the screen edges, soft pink haze around the number --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 4 - Synastry Detail:**
 ```
-/imagine prompt: synastry chart showing Moon and Venus aligned, "Moon conjunct Venus" label glowing pink, astrological aspect visualization, romantic cosmic energy, detailed chart view, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: close-up of a dark glass screen displaying two overlapping natal chart wheels in thin silver and gold lines, a glowing pink conjunction point where Moon and Venus icons meet, faint aspect lines in rose-gold radiating from the conjunction, deep indigo background --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 5 - Happy Ending:**
 ```
-/imagine prompt: happy couple silhouette against starry night sky, cosmic romance achieved, constellations forming heart above them, warm romantic pink lighting, love story conclusion, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: wide establishing shot of a couple standing together on a hilltop at blue hour, seen from behind, their silhouettes framed by a vast star-filled sky, the Milky Way arching overhead, faint constellation lines forming a heart shape among the stars, warm pink light on the horizon --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Runway ML Prompt
@@ -361,39 +361,39 @@ Synastry compatibility score counter animating from 0 to 94 percent, golden spar
 
 **Duration:** 15 seconds
 **Style:** PSA/Warning humor
-**Audio:** Alert/alarm sound → calming
+**Audio:** Alert/alarm sound then calming
 **Goal:** Timely content, relatability
 
 ### Script & Timing
 
 | Time | Scene | Text Overlay | Visual |
 |------|-------|--------------|--------|
-| 0-3s | Alert | "⚠️ MERCURY RETROGRADE ALERT ⚠️" | Warning screen |
+| 0-3s | Alert | "MERCURY RETROGRADE ALERT" | Warning screen |
 | 3-6s | Don'ts | "Don't: Text your ex" | X mark animation |
 | 6-9s | Don'ts | "Don't: Start new relationships" | X mark |
 | 9-12s | Do | "Do: Check compatibility first" | Check mark |
-| 12-15s | CTA | "AstroDating warns you 🔮" | App screen |
+| 12-15s | CTA | "AstroDating warns you" | App screen |
 
 ### Midjourney Prompts
 
 **Frame 1 - Warning:**
 ```
-/imagine prompt: dramatic warning alert screen, "MERCURY RETROGRADE" red glowing text, alarm aesthetic, planet Mercury spinning backwards, cosmic chaos energy, danger zone feeling, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: wide shot of the planet Mercury rendered as a cracked metallic sphere spinning backwards against a turbulent dark-red and orange nebula, jagged lightning bolts radiating from the planet, industrial caution-stripe borders framing the top and bottom of the image, dramatic chiaroscuro lighting --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 2-3 - Don'ts:**
 ```
-/imagine prompt: red X mark glowing, forbidden action concept, warning prohibition sign, cosmic dark background, "don't do this" energy, alert design, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: close-up of a large matte-red X mark stamped onto frosted glass, hairline cracks spreading from each arm of the X, deep crimson backlight bleeding through the cracks, dark smoky atmosphere, stark overhead spotlight, foreboding mood --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 4 - Do:**
 ```
-/imagine prompt: green checkmark glowing, approved action concept, smart choice visualization, cosmic purple background, positive guidance energy, helpful design, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: close-up of a large polished emerald-green checkmark on frosted glass, soft green light radiating outward from its surface, clean and calm atmosphere, gentle white rim-light along the edges, dark purple background with faint scattered stars --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 5 - CTA:**
 ```
-/imagine prompt: crystal ball with retrograde alert inside, "we warned you" protective energy, astrology app feature visualization, cosmic purple and teal colors, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: medium shot of a polished smoky-quartz crystal ball sitting on an ornate brass stand, inside the sphere a tiny spinning retrograde-arrow orbit path glows in amber, teal and purple light refracting through the crystal facets, dark mahogany tabletop, moody side-lighting --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 ---
@@ -411,24 +411,24 @@ Quick cuts, 1.5 seconds per sign:
 
 | Time | Sign | Red Flag |
 |------|------|----------|
-| 0-1.5s | ♈ | "Argues for fun" |
-| 1.5-3s | ♉ | "Won't change their mind" |
-| 3-4.5s | ♊ | "Has 2 personalities" |
-| 4.5-6s | ♋ | "Remembers everything" |
-| 6-7.5s | ♌ | "Main character energy" |
-| 7.5-9s | ♍ | "Judges silently" |
-| 9-10.5s | ♎ | "Can't decide anything" |
-| 10.5-12s | ♏ | "Knows your secrets" |
-| 12-13.5s | ♐ | "Flight risk" |
-| 13.5-15s | ♑ | "Workaholic" |
-| 15-16.5s | ♒ | "Emotionally unavailable" |
-| 16.5-18s | ♓ | "Lives in fantasy" |
-| 18-20s | CTA | "But we love them anyway 💕" |
+| 0-1.5s | Aries | "Argues for fun" |
+| 1.5-3s | Taurus | "Won't change their mind" |
+| 3-4.5s | Gemini | "Has 2 personalities" |
+| 4.5-6s | Cancer | "Remembers everything" |
+| 6-7.5s | Leo | "Main character syndrome" |
+| 7.5-9s | Virgo | "Judges silently" |
+| 9-10.5s | Libra | "Can't decide anything" |
+| 10.5-12s | Scorpio | "Knows your secrets" |
+| 12-13.5s | Sagittarius | "Flight risk" |
+| 13.5-15s | Capricorn | "Workaholic" |
+| 15-16.5s | Aquarius | "Emotionally unavailable" |
+| 16.5-18s | Pisces | "Lives in fantasy" |
+| 18-20s | CTA | "But we love them anyway" |
 
 ### Midjourney Prompt Template
 
 ```
-/imagine prompt: [ZODIAC SYMBOL] symbol glowing, small red flag icon, "[RED FLAG TEXT]" space, dark cosmic background with [ELEMENT COLOR] accents, fast-paced social media design, bold clean layout, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: centered [ZODIAC SYMBOL] glyph cast in brushed dark metal, a small triangular red pennant flag pinned beside it, background split between black on left and a deep [ELEMENT COLOR] glow on right, hard single-source side-lighting, bold graphic composition, clean negative space --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 ### CapCut Assembly
@@ -458,34 +458,34 @@ Quick cuts, 1.5 seconds per sign:
 | 5-10s | Sun | "Finding your Sun sign..." | Sun placement appears |
 | 10-15s | Moon | "Locating your Moon..." | Moon placement appears |
 | 15-20s | Rising | "Calculating your Rising..." | Rising appears |
-| 20-25s | Complete | "Your chart is ready ✨" | Full chart reveal |
+| 20-25s | Complete | "Your chart is ready" | Full chart reveal |
 | 25-30s | CTA | "Get yours - AstroDating" | Logo |
 
 ### Midjourney Prompts
 
 **Frame 1 - Loading:**
 ```
-/imagine prompt: natal chart wheel outline, loading animation dots, "calculating" energy, cosmic purple dark background, anticipation building, soft glowing lines appearing, ASMR satisfying aesthetic, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: close-up of a circular natal chart outline drawn in faint lavender wireframe on a black glass tablet screen, three small glowing dots pulsing in sequence at the center like a loading indicator, soft purple ambient light reflecting off the glass surface, dark room, ASMR product-shot aesthetic --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 2 - Sun Placement:**
 ```
-/imagine prompt: natal chart wheel with golden sun icon appearing in position, soft glow spreading, satisfying placement animation moment, cosmic dark background, ASMR satisfying aesthetic, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: close-up of a natal chart wheel on a dark glass screen, a polished golden sun icon clicking into its position on the wheel, a soft warm ripple of amber light spreading outward from the placement point, remaining slots still dim, dark background, satisfying precision aesthetic --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 3 - Moon Placement:**
 ```
-/imagine prompt: natal chart wheel with silver moon icon appearing in position, gentle shimmer, satisfying click into place energy, cosmic dark background, calming ASMR aesthetic, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: close-up of a natal chart wheel on a dark glass screen with the sun already placed in gold, a polished silver crescent moon icon settling into its position, a cool silvery-blue shimmer radiating from the new placement, gentle light reflection on the glass surface, calming aesthetic --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 4 - Rising Placement:**
 ```
-/imagine prompt: natal chart wheel with rising sun horizon icon appearing at ascendant position, soft pink glow, completing the picture, cosmic dark background, satisfying aesthetic, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: close-up of a natal chart wheel on a dark glass screen with sun and moon already placed, a rose-gold horizon line icon sliding into the ascendant position at the left edge of the wheel, soft pink dawn light spreading along that segment, nearly complete chart, satisfying almost-done moment --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 5 - Complete Chart:**
 ```
-/imagine prompt: complete natal chart wheel fully illuminated, all planets and signs glowing, beautiful finished astrology chart, cosmic celebration, satisfying completion energy, golden and purple colors, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: pull-back medium shot of a fully illuminated natal chart wheel on a dark glass tablet, all twelve segments glowing in their elemental colors (red, green, blue, amber), thin golden aspect lines crisscrossing the center, soft holographic sheen across the glass, a faint warm aura around the entire wheel, satisfying completion --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Runway ML Prompt
@@ -511,33 +511,33 @@ Natal chart wheel slowly drawing itself, lines appearing one by one, zodiac symb
 | 4-8s | Matches | "...matches your Moon" | Two moons aligning |
 | 8-12s | Complements | "...complements your Venus" | Venus symbols connecting |
 | 12-16s | Gets | "...gets your Rising" | Rising suns together |
-| 16-20s | CTA | "Find them on AstroDating ✨" | Couple silhouette + logo |
+| 16-20s | CTA | "Find them on AstroDating" | Couple silhouette + logo |
 
 ### Midjourney Prompts
 
 **Frame 1 - Hook:**
 ```
-/imagine prompt: beautiful starry night sky, "find someone who" romantic longing energy, single figure looking up at stars, hopeful emotional atmosphere, cosmic purple and blue, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: wide establishing shot of a lone figure standing in a vast desert under a crystalline star-filled sky, the Milky Way stretching overhead, the figure gazing upward with arms slightly open, warm amber lantern light at their feet contrasting with cool blue starlight, cinematic anamorphic lens flare on the horizon --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 2 - Moons Aligning:**
 ```
-/imagine prompt: two crescent moons moving toward each other, about to align perfectly, emotional connection visualization, silver and purple romantic light, cosmic night sky, "meant to be" energy, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: two luminous crescent moons drifting toward each other across a deep navy sky, their silver crescents about to interlock like puzzle pieces, fine trails of stardust behind each moon, a soft white glow building at the point where they will meet, distant stars pinpricking the background --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 3 - Venus Connection:**
 ```
-/imagine prompt: two Venus symbols ♀ connected by glowing pink thread, love connection visualization, romantic cosmic energy, hearts forming between them, pink and gold colors, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: two polished rose-gold Venus symbols floating face to face, a braided thread of pink light weaving between them, tiny translucent heart-shaped crystals forming along the thread, warm peach and blush gradient background fading to deep plum at the edges, soft studio rim-lighting on the symbols --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 4 - Rising Together:**
 ```
-/imagine prompt: two rising suns on horizon meeting, new beginning together concept, partnership visualization, warm pink and gold dawn colors, hopeful romantic energy, cosmic atmosphere, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: wide panoramic shot of two golden suns rising side by side on a calm ocean horizon, their reflections stretching toward the viewer on glassy water, the sky banded in peach, rose, and lavender, a few high cirrus clouds catching the double sunrise light, hopeful dawn atmosphere --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 5 - Together:**
 ```
-/imagine prompt: couple silhouette holding hands against cosmic starry background, constellations connecting above them, found their person energy, romantic fulfillment, pink and purple cosmic colors, vertical format --ar 9:16 --style raw --s 250
+/imagine prompt: low-angle shot of a couple holding hands in silhouette against a vivid starry sky, constellations drawn in faint gold lines above them forming the shape of a heart, the couple standing on a rocky outcrop, warm pink and purple nebula colors behind the stars, romantic cinematic framing --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 ### Runway ML Prompt
@@ -603,7 +603,7 @@ Two crescent moons slowly drifting toward each other across starry night sky, si
 - Bounce
 
 ### Speed Effects
-- Speed ramp (slow → fast)
+- Speed ramp (slow then fast)
 - Slow motion for emotional
 - Fast cuts for energy
 
@@ -633,13 +633,13 @@ Two crescent moons slowly drifting toward each other across starry night sky, si
 
 ### Example Caption
 ```
-Which sign is this?? 👀
+Which sign is this??
 
-Drop yours in the comments and let's see who relates the most 💀
+Drop yours in the comments and let's see who relates the most
 
-Save this for later 📌
+Save this for later
 
-Find your cosmic match - link in bio ✨
+Find your cosmic match - link in bio
 ```
 
 ---
