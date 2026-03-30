@@ -1145,6 +1145,18 @@
     "weeklyReading": "Lectura Semanal",
     "monthlyReading": "Lectura Mensual",
     "cardsInSpread": "Cartas en el tirada",
-    "upgradeForWeekly": "Actualiza a Cosmic para lecturas semanales y la carta bonus de Consejo Cósmico."
+    "upgradeForWeekly": "Actualiza a Cosmic para lecturas semanales y la carta bonus de Consejo Cósmico.",
+    "inviteFriends": "Invitar amigos",
+    "yourReferralCode": "Tu código de referencia",
+    "referralCodeCopied": "¡Código copiado!",
+    "referralRewardInfo": "¡Tú y tu amigo reciben 1 mes de premium gratis!",
+    "friendsInvited": "amigos invitados",
+    "noReferralsYet": "Comparte tu código para empezar a invitar",
+    "haveACode": "¿Tienes el código de un amigo?",
+    "enterCode": "Ingresa el código",
+    "referralSuccess": "¡Referencia aplicada! 1 mes gratis para ambos.",
+    "referralError": "Código de referencia inválido",
+    "copy": "Copiar",
+    "apply": "Aplicar"
   }
 }

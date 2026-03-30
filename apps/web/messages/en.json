@@ -1148,6 +1148,18 @@
     "weeklyReading": "Weekly Reading",
     "monthlyReading": "Monthly Reading",
     "cardsInSpread": "Cards in spread",
-    "upgradeForWeekly": "Upgrade to Cosmic for weekly readings and the bonus Cosmic Advice card."
+    "upgradeForWeekly": "Upgrade to Cosmic for weekly readings and the bonus Cosmic Advice card.",
+    "inviteFriends": "Invite Friends",
+    "yourReferralCode": "Your referral code",
+    "referralCodeCopied": "Referral code copied!",
+    "referralRewardInfo": "Both you and your friend get 1 month of premium free!",
+    "friendsInvited": "friends invited",
+    "noReferralsYet": "Share your code to start inviting friends",
+    "haveACode": "Have a friend's code?",
+    "enterCode": "Enter code",
+    "referralSuccess": "Referral applied! You both get 1 month free.",
+    "referralError": "Invalid referral code",
+    "copy": "Copy",
+    "apply": "Apply"
   }
 }

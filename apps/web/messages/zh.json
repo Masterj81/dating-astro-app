@@ -1145,6 +1145,18 @@
     "weeklyReading": "每周阅读",
     "monthlyReading": "每月阅读",
     "cardsInSpread": "牌阵中的牌数",
-    "upgradeForWeekly": "升级到Cosmic，获得每周阅读和额外的宇宙建议牌。"
+    "upgradeForWeekly": "升级到Cosmic，获得每周阅读和额外的宇宙建议牌。",
+    "inviteFriends": "邀请朋友",
+    "yourReferralCode": "您的推荐码",
+    "referralCodeCopied": "已复制推荐码！",
+    "referralRewardInfo": "您和您的朋友都可获得1个月免费高级会员！",
+    "friendsInvited": "位朋友已邀请",
+    "noReferralsYet": "分享您的代码开始邀请朋友",
+    "haveACode": "有朋友的代码？",
+    "enterCode": "输入代码",
+    "referralSuccess": "推荐已生效！你们都获得1个月免费。",
+    "referralError": "无效的推荐码",
+    "copy": "复制",
+    "apply": "应用"
   }
 }

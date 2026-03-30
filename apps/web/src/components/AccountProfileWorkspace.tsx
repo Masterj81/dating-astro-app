@@ -322,6 +322,11 @@ export function AccountProfileWorkspace({
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [referralCount, setReferralCount] = useState(0);
+  const [friendCode, setFriendCode] = useState("");
+  const [referralLoading, setReferralLoading] = useState(false);
+  const [referralMessage, setReferralMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const resetMessages = () => {
@@ -373,6 +378,14 @@ export function AccountProfileWorkspace({
         elementFilter: mapPreferredElementsToFilter(nextProfile.preferred_elements),
       });
       setEditingSection(null);
+
+      // Load referral stats
+      const { data: refStats } = await supabase.rpc("get_referral_stats", {
+        p_user_id: session.user.id,
+      });
+      const refRow = Array.isArray(refStats) ? refStats[0] : refStats;
+      setReferralCode(refRow?.referral_code ?? null);
+      setReferralCount(Number(refRow?.total_referrals ?? 0));
     } catch (loadFailure) {
       console.error("[AccountProfileWorkspace] Failed to load profile", loadFailure);
       setError(t("unknownError"));
@@ -1331,6 +1344,105 @@ export function AccountProfileWorkspace({
             <AccountDeletionFlow />
           </div>
         </div>
+        ) : null}
+
+        {/* Referral Section */}
+        {!isSetupMode ? (
+          <div className="mt-6 rounded-[1.5rem] border border-accent/20 bg-[linear-gradient(135deg,rgba(233,69,96,0.06),rgba(124,108,255,0.06))] p-5">
+            <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+              {t("inviteFriends") || "Invite Friends"}
+            </p>
+            <h3 className="mt-2 text-lg font-semibold text-white">
+              {t("referralRewardInfo") || "Both you and your friend get 1 month of premium free!"}
+            </h3>
+
+            {/* Code display */}
+            <div className="mt-4 flex items-center gap-3">
+              <div className="flex-1 rounded-xl border border-border bg-bg/70 px-4 py-3">
+                <p className="text-[10px] uppercase tracking-widest text-text-dim">
+                  {t("yourReferralCode") || "Your referral code"}
+                </p>
+                <p className="mt-1 text-2xl font-bold tracking-[0.2em] text-white">
+                  {referralCode || "..."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (referralCode) {
+                    navigator.clipboard.writeText(referralCode);
+                    setReferralMessage({ type: "success", text: t("referralCodeCopied") || "Copied!" });
+                    setTimeout(() => setReferralMessage(null), 3000);
+                  }
+                }}
+                className="rounded-xl border border-accent/30 bg-accent/10 px-5 py-4 text-sm font-semibold text-accent transition-colors hover:bg-accent/20"
+              >
+                {t("copy") || "Copy"}
+              </button>
+            </div>
+
+            <p className="mt-3 text-xs text-text-dim">
+              {referralCount > 0
+                ? `${referralCount} ${t("friendsInvited") || "friends invited"}`
+                : t("noReferralsYet") || "Share your code to start inviting friends"}
+            </p>
+
+            {/* Enter friend's code */}
+            <div className="mt-5 border-t border-white/8 pt-5">
+              <p className="text-sm font-medium text-text-muted">
+                {t("haveACode") || "Have a friend's code?"}
+              </p>
+              <div className="mt-2 flex gap-2">
+                <input
+                  type="text"
+                  value={friendCode}
+                  onChange={(event) => setFriendCode(event.target.value.toUpperCase())}
+                  placeholder={t("enterCode") || "Enter code"}
+                  maxLength={12}
+                  className="flex-1 rounded-xl border border-border bg-bg/70 px-4 py-3 text-sm uppercase tracking-widest text-white outline-none placeholder:text-text-dim focus:border-accent"
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+                <button
+                  type="button"
+                  disabled={!friendCode.trim() || referralLoading}
+                  onClick={async () => {
+                    setReferralLoading(true);
+                    setReferralMessage(null);
+                    try {
+                      const supabase = getSupabaseBrowser();
+                      const { data, error: fnError } = await supabase.functions.invoke("claim-referral", {
+                        body: { code: friendCode.trim().toUpperCase() },
+                      });
+                      if (fnError || !data?.success) {
+                        setReferralMessage({ type: "error", text: data?.error || fnError?.message || t("referralError") || "Invalid referral code" });
+                      } else {
+                        setFriendCode("");
+                        setReferralMessage({ type: "success", text: data.reward || t("referralSuccess") || "Referral applied!" });
+                      }
+                    } catch {
+                      setReferralMessage({ type: "error", text: t("referralError") || "Invalid referral code" });
+                    } finally {
+                      setReferralLoading(false);
+                    }
+                  }}
+                  className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {referralLoading ? "..." : t("apply") || "Apply"}
+                </button>
+              </div>
+              {referralMessage ? (
+                <p className={`mt-3 rounded-xl px-4 py-2 text-sm ${
+                  referralMessage.type === "success"
+                    ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+                    : "border border-accent/30 bg-accent/10 text-[#ffd0d7]"
+                }`}>
+                  {referralMessage.text}
+                </p>
+              ) : null}
+            </div>
+          </div>
         ) : null}
 
         {!isSetupMode ? <BillingSettingsPanel /> : null}

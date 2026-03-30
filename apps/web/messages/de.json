@@ -1128,6 +1128,18 @@
     "weeklyReading": "Wöchentliche Lesung",
     "monthlyReading": "Monatliche Lesung",
     "cardsInSpread": "Karten im Spread",
-    "upgradeForWeekly": "Upgrade auf Cosmic für wöchentliche Lesungen und die Bonus-Karte Kosmischer Rat."
+    "upgradeForWeekly": "Upgrade auf Cosmic für wöchentliche Lesungen und die Bonus-Karte Kosmischer Rat.",
+    "inviteFriends": "Freunde einladen",
+    "yourReferralCode": "Dein Empfehlungscode",
+    "referralCodeCopied": "Code kopiert!",
+    "referralRewardInfo": "Du und dein Freund erhalten 1 Monat Premium gratis!",
+    "friendsInvited": "Freunde eingeladen",
+    "noReferralsYet": "Teile deinen Code, um Freunde einzuladen",
+    "haveACode": "Hast du den Code eines Freundes?",
+    "enterCode": "Code eingeben",
+    "referralSuccess": "Empfehlung angewendet! 1 Monat gratis für beide.",
+    "referralError": "Ungültiger Empfehlungscode",
+    "copy": "Kopieren",
+    "apply": "Anwenden"
   }
 }

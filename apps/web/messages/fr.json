@@ -1145,6 +1145,18 @@
     "weeklyReading": "Lecture Hebdomadaire",
     "monthlyReading": "Lecture Mensuelle",
     "cardsInSpread": "Cartes dans le tirage",
-    "upgradeForWeekly": "Passez à Cosmic pour des lectures hebdomadaires et la carte bonus Conseil Cosmique."
+    "upgradeForWeekly": "Passez à Cosmic pour des lectures hebdomadaires et la carte bonus Conseil Cosmique.",
+    "inviteFriends": "Inviter des amis",
+    "yourReferralCode": "Votre code de parrainage",
+    "referralCodeCopied": "Code copié !",
+    "referralRewardInfo": "Vous et votre ami recevez 1 mois de premium gratuit !",
+    "friendsInvited": "amis invités",
+    "noReferralsYet": "Partagez votre code pour commencer à inviter",
+    "haveACode": "Vous avez le code d'un ami ?",
+    "enterCode": "Entrer le code",
+    "referralSuccess": "Parrainage appliqué ! 1 mois gratuit pour vous deux.",
+    "referralError": "Code de parrainage invalide",
+    "copy": "Copier",
+    "apply": "Appliquer"
   }
 }

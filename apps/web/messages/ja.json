@@ -1145,6 +1145,18 @@
     "weeklyReading": "週間リーディング",
     "monthlyReading": "月間リーディング",
     "cardsInSpread": "スプレッドのカード数",
-    "upgradeForWeekly": "Cosmicにアップグレードして、週間リーディングとボーナスの宇宙のアドバイスカードを入手。"
+    "upgradeForWeekly": "Cosmicにアップグレードして、週間リーディングとボーナスの宇宙のアドバイスカードを入手。",
+    "inviteFriends": "友達を招待",
+    "yourReferralCode": "あなたの紹介コード",
+    "referralCodeCopied": "コードをコピーしました！",
+    "referralRewardInfo": "あなたとお友達に1ヶ月のプレミアムが無料！",
+    "friendsInvited": "人の友達を招待",
+    "noReferralsYet": "コードを共有して招待を始めましょう",
+    "haveACode": "友達のコードをお持ちですか？",
+    "enterCode": "コードを入力",
+    "referralSuccess": "紹介が適用されました！お二人とも1ヶ月無料。",
+    "referralError": "無効な紹介コード",
+    "copy": "コピー",
+    "apply": "適用"
   }
 }

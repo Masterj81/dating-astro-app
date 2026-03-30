@@ -1145,6 +1145,18 @@
     "weeklyReading": "قراءة أسبوعية",
     "monthlyReading": "قراءة شهرية",
     "cardsInSpread": "البطاقات في الانتشار",
-    "upgradeForWeekly": "قم بالترقية إلى Cosmic للحصول على قراءات أسبوعية وبطاقة النصيحة الكونية الإضافية."
+    "upgradeForWeekly": "قم بالترقية إلى Cosmic للحصول على قراءات أسبوعية وبطاقة النصيحة الكونية الإضافية.",
+    "inviteFriends": "دعوة الأصدقاء",
+    "yourReferralCode": "رمز الإحالة الخاص بك",
+    "referralCodeCopied": "تم نسخ الرمز!",
+    "referralRewardInfo": "أنت وصديقك تحصلان على شهر مجاني من الاشتراك المميز!",
+    "friendsInvited": "أصدقاء تمت دعوتهم",
+    "noReferralsYet": "شارك رمزك لبدء الدعوة",
+    "haveACode": "لديك رمز من صديق؟",
+    "enterCode": "أدخل الرمز",
+    "referralSuccess": "تم تطبيق الإحالة! شهر مجاني لكلاكما.",
+    "referralError": "رمز إحالة غير صالح",
+    "copy": "نسخ",
+    "apply": "تطبيق"
   }
 }
