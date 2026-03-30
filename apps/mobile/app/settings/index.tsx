@@ -9,11 +9,14 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
+import { getReferralStats, claimReferralCode, shareReferralCode } from '../../services/referral';
 import { useAuth } from '../_layout';
 
 type NotificationSettings = {
@@ -28,6 +31,10 @@ type NotificationSettings = {
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
   const { t } = useLanguage();
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [referralCount, setReferralCount] = useState(0);
+  const [friendCode, setFriendCode] = useState('');
+  const [referralLoading, setReferralLoading] = useState(false);
   const [loadingPrefs, setLoadingPrefs] = useState(true);
   const [notifications, setNotifications] = useState<NotificationSettings>({
     newMatches: true,
@@ -41,14 +48,15 @@ export default function SettingsScreen() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('notification_preferences')
-        .eq('id', user.id)
-        .single();
-      if (data?.notification_preferences) {
-        setNotifications(prev => ({ ...prev, ...data.notification_preferences }));
+      const [prefsResult, referralResult] = await Promise.all([
+        supabase.from('profiles').select('notification_preferences').eq('id', user.id).single(),
+        getReferralStats(user.id),
+      ]);
+      if (prefsResult.data?.notification_preferences) {
+        setNotifications(prev => ({ ...prev, ...prefsResult.data.notification_preferences }));
       }
+      setReferralCode(referralResult.code);
+      setReferralCount(referralResult.totalReferrals);
       setLoadingPrefs(false);
     })();
   }, [user]);
@@ -185,6 +193,81 @@ export default function SettingsScreen() {
             </View>
             <Text style={styles.rowArrow}>→</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Referral Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('inviteFriends') || 'Invite Friends'}</Text>
+
+          {/* Your code */}
+          <View style={styles.referralCard}>
+            <Text style={styles.referralLabel}>{t('yourReferralCode') || 'Your referral code'}</Text>
+            <View style={styles.referralCodeRow}>
+              <Text style={styles.referralCodeText}>{referralCode || '...'}</Text>
+              <TouchableOpacity
+                style={styles.referralCopyButton}
+                onPress={() => {
+                  if (referralCode) {
+                    Clipboard.setStringAsync(referralCode);
+                    Alert.alert(t('copied') || 'Copied!', t('referralCodeCopied') || 'Referral code copied to clipboard');
+                  }
+                }}
+              >
+                <Text style={styles.referralCopyText}>{t('copy') || 'Copy'}</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.referralReward}>{t('referralRewardInfo') || 'Both you and your friend get 1 month of premium free!'}</Text>
+            <Text style={styles.referralStats}>
+              {t('referralCount', { count: referralCount }) || `${referralCount} friends invited`}
+            </Text>
+          </View>
+
+          {/* Share button */}
+          <TouchableOpacity
+            style={styles.referralShareButton}
+            onPress={() => referralCode && shareReferralCode(referralCode, t)}
+          >
+            <Text style={styles.referralShareIcon}>📤</Text>
+            <Text style={styles.referralShareText}>{t('shareReferralCode') || 'Share your code'}</Text>
+          </TouchableOpacity>
+
+          {/* Enter friend's code */}
+          <View style={styles.referralInputRow}>
+            <View style={styles.referralInputWrapper}>
+              <Text style={styles.referralInputLabel}>{t('haveACode') || 'Have a friend\'s code?'}</Text>
+              <View style={styles.referralInputContainer}>
+                <TextInput
+                  style={styles.referralInput}
+                  placeholder={t('enterCode') || 'Enter code'}
+                  placeholderTextColor="#666"
+                  value={friendCode}
+                  onChangeText={(text) => setFriendCode(text.toUpperCase())}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  maxLength={12}
+                />
+                <TouchableOpacity
+                  style={[styles.referralApplyButton, (!friendCode.trim() || referralLoading) && styles.referralApplyDisabled]}
+                  disabled={!friendCode.trim() || referralLoading}
+                  onPress={async () => {
+                    setReferralLoading(true);
+                    const result = await claimReferralCode(friendCode);
+                    setReferralLoading(false);
+                    if (result.success) {
+                      setFriendCode('');
+                      Alert.alert('🎉', result.reward || t('referralSuccess') || 'Referral applied! You both get 1 month free.');
+                    } else {
+                      Alert.alert(t('error') || 'Error', result.error || t('referralError') || 'Invalid referral code');
+                    }
+                  }}
+                >
+                  <Text style={styles.referralApplyText}>
+                    {referralLoading ? '...' : t('apply') || 'Apply'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         </View>
 
         {/* Notifications Section */}
@@ -467,5 +550,110 @@ const styles = StyleSheet.create({
   versionSubtext: {
     fontSize: 12,
     color: '#555',
+  },
+  referralCard: {
+    backgroundColor: 'rgba(233, 69, 96, 0.08)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(233, 69, 96, 0.2)',
+    padding: 16,
+    marginBottom: 12,
+  },
+  referralLabel: {
+    fontSize: 12,
+    color: '#999',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  referralCodeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  referralCodeText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    letterSpacing: 3,
+  },
+  referralCopyButton: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  referralCopyText: {
+    fontSize: 13,
+    color: '#e94560',
+    fontWeight: '600',
+  },
+  referralReward: {
+    fontSize: 13,
+    color: '#ccc',
+    lineHeight: 20,
+    marginBottom: 6,
+  },
+  referralStats: {
+    fontSize: 12,
+    color: '#888',
+  },
+  referralShareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#e94560',
+    borderRadius: 14,
+    paddingVertical: 14,
+    marginBottom: 12,
+    gap: 8,
+  },
+  referralShareIcon: {
+    fontSize: 16,
+  },
+  referralShareText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  referralInputRow: {
+    marginTop: 4,
+  },
+  referralInputWrapper: {},
+  referralInputLabel: {
+    fontSize: 13,
+    color: '#999',
+    marginBottom: 8,
+  },
+  referralInputContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  referralInput: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#fff',
+    letterSpacing: 2,
+  },
+  referralApplyButton: {
+    backgroundColor: '#e94560',
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+  },
+  referralApplyDisabled: {
+    opacity: 0.4,
+  },
+  referralApplyText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
 });
