@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { SITE } from "@/lib/constants";
 
 export default function DownloadPage() {
@@ -31,9 +32,9 @@ export default function DownloadPage() {
             Google Play
           </a>
           {" · "}
-          <a href="/app" className="text-accent underline">
+          <Link href="/app" className="text-accent underline">
             Web App
-          </a>
+          </Link>
         </p>
       </div>
     </div>
