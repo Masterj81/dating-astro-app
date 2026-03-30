@@ -1157,6 +1157,7 @@
     "referralSuccess": "紹介が適用されました！お二人とも1ヶ月無料。",
     "referralError": "無効な紹介コード",
     "copy": "コピー",
-    "apply": "適用"
+    "apply": "適用",
+    "shareCompatibility": "共有"
   }
 }

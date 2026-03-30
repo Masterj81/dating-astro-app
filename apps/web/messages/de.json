@@ -1140,6 +1140,7 @@
     "referralSuccess": "Empfehlung angewendet! 1 Monat gratis für beide.",
     "referralError": "Ungültiger Empfehlungscode",
     "copy": "Kopieren",
-    "apply": "Anwenden"
+    "apply": "Anwenden",
+    "shareCompatibility": "Teilen"
   }
 }

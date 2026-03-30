@@ -1157,6 +1157,7 @@
     "referralSuccess": "Parrainage appliqué ! 1 mois gratuit pour vous deux.",
     "referralError": "Code de parrainage invalide",
     "copy": "Copier",
-    "apply": "Appliquer"
+    "apply": "Appliquer",
+    "shareCompatibility": "Partager"
   }
 }

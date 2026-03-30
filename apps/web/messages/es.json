@@ -1157,6 +1157,7 @@
     "referralSuccess": "¡Referencia aplicada! 1 mes gratis para ambos.",
     "referralError": "Código de referencia inválido",
     "copy": "Copiar",
-    "apply": "Aplicar"
+    "apply": "Aplicar",
+    "shareCompatibility": "Compartir"
   }
 }

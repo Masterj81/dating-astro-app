@@ -1160,6 +1160,7 @@
     "referralSuccess": "Referral applied! You both get 1 month free.",
     "referralError": "Invalid referral code",
     "copy": "Copy",
-    "apply": "Apply"
+    "apply": "Apply",
+    "shareCompatibility": "Share"
   }
 }

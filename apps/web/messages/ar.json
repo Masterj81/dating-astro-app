@@ -1157,6 +1157,7 @@
     "referralSuccess": "تم تطبيق الإحالة! شهر مجاني لكلاكما.",
     "referralError": "رمز إحالة غير صالح",
     "copy": "نسخ",
-    "apply": "تطبيق"
+    "apply": "تطبيق",
+    "shareCompatibility": "مشاركة"
   }
 }
