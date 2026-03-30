@@ -386,6 +386,9 @@ verify_jwt = false
 [functions.backfill-revenuecat]
 verify_jwt = false
 
+[functions.claim-referral]
+verify_jwt = false
+
 [functions.claim-promo-code]
 verify_jwt = false
 
