@@ -442,6 +442,22 @@ export function DiscoverOverview() {
               <button
                 type="button"
                 onClick={() => {
+                  if (!currentProfile) return;
+                  const sign = currentProfile.sun_sign || "someone";
+                  const text = `I'm ${compatibility}% compatible with a ${sign} on AstroDating! Find your cosmic match 🪐\nhttps://astrodatingapp.com`;
+                  if (navigator.share) {
+                    navigator.share({ text, title: "AstroDating Compatibility" }).catch(() => {});
+                  } else {
+                    navigator.clipboard.writeText(text);
+                  }
+                }}
+                className="rounded-full border border-white/20 bg-white/[0.06] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/[0.1]"
+              >
+                📤 {t("shareCompatibility") || "Share"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
                   setReportFeedback(null);
                   setReportOpen((current) => !current);
                 }}

@@ -9,6 +9,7 @@ import {
   Image,
   PanResponder,
   Platform,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -23,10 +24,12 @@ import ReAnimated, {
 } from 'react-native-reanimated';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import VoiceIntroPlayer from '../../components/VoiceIntroPlayer';
+import PlanetGlyph from '../../components/ui/PlanetGlyph';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { calculateQuickCompatibility } from '../../services/astrologyService';
 import { supabase } from '../../services/supabase';
 import { throttleAction } from '../../utils/rateLimit';
+import { resolveProfileImage } from '../../utils/profileImages';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   useReduceMotion,
@@ -43,11 +46,13 @@ import {
   buttonPress,
   refreshTrigger,
 } from '../../services/haptics';
+import { AppTheme } from '../../constants/theme';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = Math.min(width - 40, 400);
 const CARD_HEIGHT = Math.min(CARD_WIDTH * 1.2, 500);
 const SWIPE_THRESHOLD = 100;
+const SCREEN_GRADIENT = [...AppTheme.gradients.screen] as const;
 
 type Profile = {
   id: string;
@@ -57,7 +62,9 @@ type Profile = {
   moon_sign: string;
   rising_sign: string;
   bio: string;
-  image_url: string;
+  image_url?: string | null;
+  photos?: Array<string | null>;
+  images?: Array<string | null>;
   is_verified?: boolean;
   has_voice_intro?: boolean;
   voice_intro_url?: string;
@@ -212,6 +219,7 @@ export default function DiscoverScreen() {
   };
 
   const currentProfile = profiles[currentIndex];
+  const currentProfileImage = resolveProfileImage(currentProfile);
 
   const getCompatibility = (profileSign: string): number => {
     // Use the user's actual sun sign from their profile
@@ -332,6 +340,20 @@ export default function DiscoverScreen() {
     }
   };
 
+  const handleShare = async () => {
+    if (!currentProfile) return;
+    buttonPress();
+    const sign = currentProfile.sun_sign || 'someone';
+    const score = getCompatibility(sign);
+    const message = Platform.select({
+      android: `I'm ${score}% compatible with a ${sign} on AstroDating! Find your cosmic match 🪐\nhttps://play.google.com/store/apps/details?id=com.astrodatingapp.mobile`,
+      default: `I'm ${score}% compatible with a ${sign} on AstroDating! Find your cosmic match 🪐\nhttps://astrodatingapp.com`,
+    });
+    try {
+      await Share.share({ message, title: 'AstroDating Compatibility' });
+    } catch { /* user cancelled */ }
+  };
+
   const handlePass = () => {
     buttonPress();
     setDragX(-150);
@@ -385,7 +407,7 @@ export default function DiscoverScreen() {
 
   return (
     <WebTabWrapper>
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+    <LinearGradient colors={[...SCREEN_GRADIENT]} style={styles.container}>
       <Animated.View style={{ transform: [{ scale: cardScale }], opacity: cardOpacity }}>
         <View {...panResponder.panHandlers}>
           <ReAnimated.View
@@ -401,7 +423,7 @@ export default function DiscoverScreen() {
             accessibilityRole="adjustable"
           >
           <Image
-            source={{ uri: currentProfile.image_url }}
+            source={{ uri: currentProfileImage }}
             style={styles.cardImage}
             resizeMode="cover"
             {...getImageA11yProps(t('a11y.profileImage', { name: currentProfile.name }))}
@@ -501,6 +523,15 @@ export default function DiscoverScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
+          style={[styles.actionButton, styles.shareButton]}
+          onPress={handleShare}
+          activeOpacity={0.7}
+          {...getButtonA11yProps(t('shareCompatibility') || 'Share compatibility')}
+        >
+          <Text style={styles.shareEmoji}>📤</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={[styles.actionButton, styles.superButton]}
           onPress={handleViewChart}
           activeOpacity={0.7}
@@ -551,7 +582,9 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
     backgroundColor: a11yColors.background.primary,
-    shadowColor: '#e94560',
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
+    shadowColor: AppTheme.colors.coral,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
@@ -578,13 +611,13 @@ const styles = StyleSheet.create({
   },
   likeOverlay: {
     right: 20,
-    borderColor: '#4ade80',
+    borderColor: AppTheme.colors.success,
     backgroundColor: 'rgba(74, 222, 128, 0.4)',
     transform: [{ rotate: '15deg' }],
   },
   nopeOverlay: {
     left: 20,
-    borderColor: '#ef4444',
+    borderColor: AppTheme.colors.danger,
     backgroundColor: 'rgba(239, 68, 68, 0.4)',
     transform: [{ rotate: '-15deg' }],
   },
@@ -593,27 +626,27 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   likeText: {
-    color: '#4ade80',
+    color: AppTheme.colors.success,
   },
   nopeText: {
-    color: '#ef4444',
+    color: AppTheme.colors.danger,
   },
   compatibilityBadge: {
     position: 'absolute',
     top: 16,
     right: 16,
-    backgroundColor: '#e94560',
+    backgroundColor: AppTheme.colors.coral,
     borderRadius: 16,
     paddingVertical: 10,
     paddingHorizontal: 14,
     alignItems: 'center',
-    shadowColor: '#e94560',
+    shadowColor: AppTheme.colors.coral,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
     shadowRadius: 8,
   },
   compatibilityNumber: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 22,
     fontWeight: 'bold',
   },
@@ -650,7 +683,9 @@ const styles = StyleSheet.create({
   signPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: AppTheme.colors.panelStrong,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
     borderRadius: 20,
     paddingVertical: 6,
     paddingHorizontal: 12,
@@ -660,12 +695,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   signText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 13,
     fontWeight: '600',
   },
   bio: {
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: AppTheme.colors.textSecondary,
     fontSize: 15,
     lineHeight: 22,
   },
@@ -673,7 +708,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   viewChartText: {
-    color: '#e94560',
+    color: AppTheme.colors.coral,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -694,22 +729,31 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   passButton: {
-    backgroundColor: 'rgba(30, 30, 45, 0.9)',
+    backgroundColor: AppTheme.colors.panelStrong,
     borderWidth: 2,
     borderColor: a11yColors.text.muted,
     shadowColor: a11yColors.text.muted,
   },
-  superButton: {
-    backgroundColor: 'rgba(30, 30, 45, 0.9)',
+  shareButton: {
+    backgroundColor: AppTheme.colors.panelStrong,
     borderWidth: 2,
-    borderColor: '#9b59b6',
-    shadowColor: '#9b59b6',
+    borderColor: 'rgba(255,255,255,0.3)',
+    shadowColor: 'rgba(255,255,255,0.2)',
+  },
+  shareEmoji: {
+    fontSize: 22,
+  },
+  superButton: {
+    backgroundColor: AppTheme.colors.panelStrong,
+    borderWidth: 2,
+    borderColor: AppTheme.colors.cosmic,
+    shadowColor: AppTheme.colors.cosmic,
   },
   likeButton: {
-    backgroundColor: 'rgba(30, 30, 45, 0.9)',
+    backgroundColor: AppTheme.colors.panelStrong,
     borderWidth: 2,
-    borderColor: '#e94560',
-    shadowColor: '#e94560',
+    borderColor: AppTheme.colors.coral,
+    shadowColor: AppTheme.colors.coral,
   },
   passEmoji: {
     fontSize: 28,
@@ -717,11 +761,11 @@ const styles = StyleSheet.create({
   },
   superEmoji: {
     fontSize: 28,
-    color: '#9b59b6',
+    color: AppTheme.colors.cosmic,
   },
   likeEmoji: {
     fontSize: 28,
-    color: '#e94560',
+    color: AppTheme.colors.coral,
   },
   counter: {
     marginTop: 16,
