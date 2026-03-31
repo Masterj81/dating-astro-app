@@ -1159,6 +1159,16 @@
     "referralError": "无效的推荐码",
     "copy": "复制",
     "apply": "应用",
-    "shareCompatibility": "分享"
+    "shareCompatibility": "分享",
+    "installTitle": "安装 AstroDating",
+    "installSubtitle": "添加到主屏幕以获得最佳体验",
+    "installButton": "安装",
+    "installHow": "如何操作？",
+    "installIOSTitle": "在iPhone上安装",
+    "installIOSStep1": "点击分享按钮",
+    "installIOSStep1Detail": "Safari底部带箭头的方块图标",
+    "installIOSStep2": "向下滚动并点击「添加到主屏幕」",
+    "installIOSStep3": "AstroDating将像原生应用一样出现在您的主屏幕上！",
+    "gotIt": "知道了"
   }
 }

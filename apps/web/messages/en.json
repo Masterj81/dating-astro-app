@@ -1162,6 +1162,16 @@
     "referralError": "Invalid referral code",
     "copy": "Copy",
     "apply": "Apply",
-    "shareCompatibility": "Share"
+    "shareCompatibility": "Share",
+    "installTitle": "Install AstroDating",
+    "installSubtitle": "Add to your home screen for the best experience",
+    "installButton": "Install",
+    "installHow": "How?",
+    "installIOSTitle": "Install on iPhone",
+    "installIOSStep1": "Tap the Share button",
+    "installIOSStep1Detail": "The square with an arrow at the bottom of Safari",
+    "installIOSStep2": "Scroll down and tap \"Add to Home Screen\"",
+    "installIOSStep3": "AstroDating will appear on your home screen like a native app!",
+    "gotIt": "Got it"
   }
 }

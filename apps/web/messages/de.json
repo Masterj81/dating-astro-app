@@ -1142,6 +1142,16 @@
     "referralError": "Ungültiger Empfehlungscode",
     "copy": "Kopieren",
     "apply": "Anwenden",
-    "shareCompatibility": "Teilen"
+    "shareCompatibility": "Teilen",
+    "installTitle": "AstroDating installieren",
+    "installSubtitle": "Zum Startbildschirm hinzufügen für das beste Erlebnis",
+    "installButton": "Installieren",
+    "installHow": "Wie?",
+    "installIOSTitle": "Auf iPhone installieren",
+    "installIOSStep1": "Tippe auf den Teilen-Button",
+    "installIOSStep1Detail": "Das Quadrat mit Pfeil unten in Safari",
+    "installIOSStep2": "Scrolle nach unten und tippe auf \"Zum Home-Bildschirm\"",
+    "installIOSStep3": "AstroDating erscheint auf deinem Startbildschirm wie eine native App!",
+    "gotIt": "Verstanden"
   }
 }

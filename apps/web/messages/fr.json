@@ -1159,6 +1159,16 @@
     "referralError": "Code de parrainage invalide",
     "copy": "Copier",
     "apply": "Appliquer",
-    "shareCompatibility": "Partager"
+    "shareCompatibility": "Partager",
+    "installTitle": "Installer AstroDating",
+    "installSubtitle": "Ajoutez à votre écran d'accueil pour la meilleure expérience",
+    "installButton": "Installer",
+    "installHow": "Comment ?",
+    "installIOSTitle": "Installer sur iPhone",
+    "installIOSStep1": "Appuyez sur le bouton Partager",
+    "installIOSStep1Detail": "Le carré avec une flèche en bas de Safari",
+    "installIOSStep2": "Faites défiler et appuyez sur « Sur l'écran d'accueil »",
+    "installIOSStep3": "AstroDating apparaîtra sur votre écran d'accueil comme une app native !",
+    "gotIt": "Compris"
   }
 }

@@ -1159,6 +1159,16 @@
     "referralError": "無効な紹介コード",
     "copy": "コピー",
     "apply": "適用",
-    "shareCompatibility": "共有"
+    "shareCompatibility": "共有",
+    "installTitle": "AstroDatingをインストール",
+    "installSubtitle": "ホーム画面に追加して最高の体験を",
+    "installButton": "インストール",
+    "installHow": "方法は？",
+    "installIOSTitle": "iPhoneにインストール",
+    "installIOSStep1": "共有ボタンをタップ",
+    "installIOSStep1Detail": "Safariの下部にある矢印付きの四角",
+    "installIOSStep2": "下にスクロールして「ホーム画面に追加」をタップ",
+    "installIOSStep3": "AstroDatingがネイティブアプリのようにホーム画面に表示されます！",
+    "gotIt": "了解"
   }
 }

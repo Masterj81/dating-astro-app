@@ -1159,6 +1159,16 @@
     "referralError": "رمز إحالة غير صالح",
     "copy": "نسخ",
     "apply": "تطبيق",
-    "shareCompatibility": "مشاركة"
+    "shareCompatibility": "مشاركة",
+    "installTitle": "تثبيت AstroDating",
+    "installSubtitle": "أضف إلى شاشتك الرئيسية للحصول على أفضل تجربة",
+    "installButton": "تثبيت",
+    "installHow": "كيف؟",
+    "installIOSTitle": "التثبيت على iPhone",
+    "installIOSStep1": "اضغط على زر المشاركة",
+    "installIOSStep1Detail": "المربع مع السهم في أسفل Safari",
+    "installIOSStep2": "مرر لأسفل واضغط على \"إضافة إلى الشاشة الرئيسية\"",
+    "installIOSStep3": "سيظهر AstroDating على شاشتك الرئيسية كتطبيق أصلي!",
+    "gotIt": "فهمت"
   }
 }

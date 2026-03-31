@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 type AppShellProps = {
   children: ReactNode;
@@ -315,6 +316,11 @@ export function AppShell({
             )}
           </div>
         )}
+
+        {/* Install prompt */}
+        <div className="px-4 pt-4 sm:px-6 lg:px-8">
+          <InstallPrompt />
+        </div>
 
         {/* Content */}
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">

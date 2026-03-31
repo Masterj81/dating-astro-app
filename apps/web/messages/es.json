@@ -1159,6 +1159,16 @@
     "referralError": "Código de referencia inválido",
     "copy": "Copiar",
     "apply": "Aplicar",
-    "shareCompatibility": "Compartir"
+    "shareCompatibility": "Compartir",
+    "installTitle": "Instalar AstroDating",
+    "installSubtitle": "Agrega a tu pantalla de inicio para la mejor experiencia",
+    "installButton": "Instalar",
+    "installHow": "¿Cómo?",
+    "installIOSTitle": "Instalar en iPhone",
+    "installIOSStep1": "Toca el botón Compartir",
+    "installIOSStep1Detail": "El cuadrado con flecha en la parte inferior de Safari",
+    "installIOSStep2": "Desplázate y toca \"Agregar a pantalla de inicio\"",
+    "installIOSStep3": "¡AstroDating aparecerá en tu pantalla como una app nativa!",
+    "gotIt": "Entendido"
   }
 }
