@@ -67,24 +67,35 @@ export async function signInWithProvider(provider: 'google' | 'facebook') {
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
 
     if (result.type === 'success' && result.url) {
-      // Extract tokens from the callback URL
       const url = new URL(result.url);
-      // Supabase returns tokens as hash fragments
-      const hashParams = new URLSearchParams(url.hash.substring(1));
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
 
       // Check for error in callback
+      const hashParams = new URLSearchParams(url.hash.substring(1));
       const errorParam = hashParams.get('error') || url.searchParams.get('error');
       const errorDesc = hashParams.get('error_description') || url.searchParams.get('error_description');
       if (errorParam) {
         const callbackError = new Error(errorDesc || errorParam);
         safeCaptureException(callbackError, {
-          extra: { provider, errorParam, errorDesc, context: 'signInWithProvider.callback' }
+          extra: { provider, errorParam, context: 'signInWithProvider.callback' }
         });
         return { error: callbackError };
       }
 
+      // Prefer PKCE code exchange (more secure — tokens never in URL)
+      const code = url.searchParams.get('code');
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError) {
+          safeCaptureException(exchangeError, {
+            extra: { provider, context: 'signInWithProvider.exchangeCode' }
+          });
+        }
+        return { error: exchangeError };
+      }
+
+      // Fallback: implicit flow tokens in hash (less secure)
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
       if (accessToken && refreshToken) {
         const { error: sessionError } = await supabase.auth.setSession({
           access_token: accessToken,
@@ -98,21 +109,9 @@ export async function signInWithProvider(provider: 'google' | 'facebook') {
         return { error: sessionError };
       }
 
-      // Try query params as fallback (some flows use code exchange)
-      const code = url.searchParams.get('code');
-      if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-        if (exchangeError) {
-          safeCaptureException(exchangeError, {
-            extra: { provider, context: 'signInWithProvider.exchangeCode' }
-          });
-        }
-        return { error: exchangeError };
-      }
-
       const noTokenError = new Error('No tokens found in callback');
       safeCaptureException(noTokenError, {
-        extra: { provider, callbackUrl: result.url, context: 'signInWithProvider.noTokens' }
+        extra: { provider, context: 'signInWithProvider.noTokens' }
       });
       return { error: noTokenError };
     }
@@ -171,31 +170,33 @@ async function signInWithAppleWeb() {
     if (result.type === 'success' && result.url) {
       const url = new URL(result.url);
       const hashParams = new URLSearchParams(url.hash.substring(1));
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
 
       const errorParam = hashParams.get('error') || url.searchParams.get('error');
       const errorDesc = hashParams.get('error_description') || url.searchParams.get('error_description');
       if (errorParam) {
         const callbackError = new Error(errorDesc || errorParam);
         safeCaptureException(callbackError, {
-          extra: { provider: 'apple', errorParam, errorDesc, context: 'signInWithAppleWeb.callback' }
+          extra: { provider: 'apple', errorParam, context: 'signInWithAppleWeb.callback' }
         });
         return { error: callbackError };
       }
 
+      // Prefer PKCE code exchange
+      const code = url.searchParams.get('code');
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        return { error: exchangeError };
+      }
+
+      // Fallback: implicit flow
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
       if (accessToken && refreshToken) {
         const { error: sessionError } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         });
         return { error: sessionError };
-      }
-
-      const code = url.searchParams.get('code');
-      if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-        return { error: exchangeError };
       }
 
       return { error: new Error('No tokens found in callback') };

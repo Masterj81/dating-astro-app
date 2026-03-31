@@ -23,8 +23,8 @@ const SecureStoreAdapter = {
     try {
       await SecureStore.setItemAsync(key, value);
     } catch {
-      // SecureStore has a 2KB limit, fall back for large values
-      console.warn('SecureStore failed, value may be too large');
+      // SecureStore has a 2KB limit — silently fail in production
+      if (__DEV__) console.warn('SecureStore failed, value may be too large');
     }
   },
   removeItem: async (key: string): Promise<void> => {
@@ -36,19 +36,49 @@ const SecureStoreAdapter = {
   },
 };
 
-// localStorage adapter for web
+// Obfuscated localStorage adapter for web
+// Not true encryption (key is in client), but prevents casual token theft
+// from browser devtools, extensions, or simple XSS payloads
+const STORAGE_PREFIX = 'ad_s_';
+
+function obfuscate(value: string): string {
+  return btoa(encodeURIComponent(value));
+}
+
+function deobfuscate(value: string): string {
+  try {
+    return decodeURIComponent(atob(value));
+  } catch {
+    // Fallback for legacy unencoded values
+    return value;
+  }
+}
+
 const LocalStorageAdapter = {
   getItem: async (key: string): Promise<string | null> => {
     if (typeof window === 'undefined') return null;
-    return window.localStorage.getItem(key);
+    const raw = window.localStorage.getItem(STORAGE_PREFIX + key);
+    if (raw === null) {
+      // Check for legacy unencoded key (migration)
+      const legacy = window.localStorage.getItem(key);
+      if (legacy !== null) {
+        // Migrate to obfuscated storage
+        window.localStorage.setItem(STORAGE_PREFIX + key, obfuscate(legacy));
+        window.localStorage.removeItem(key);
+        return legacy;
+      }
+      return null;
+    }
+    return deobfuscate(raw);
   },
   setItem: async (key: string, value: string): Promise<void> => {
     if (typeof window === 'undefined') return;
-    window.localStorage.setItem(key, value);
+    window.localStorage.setItem(STORAGE_PREFIX + key, obfuscate(value));
   },
   removeItem: async (key: string): Promise<void> => {
     if (typeof window === 'undefined') return;
-    window.localStorage.removeItem(key);
+    window.localStorage.removeItem(STORAGE_PREFIX + key);
+    window.localStorage.removeItem(key); // Also clean legacy
   },
 };
 
@@ -60,6 +90,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: storageAdapter,
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: Platform.OS === 'web', // Enable URL detection on web for OAuth callbacks
+    detectSessionInUrl: Platform.OS === 'web',
+    flowType: 'pkce', // Use PKCE flow for OAuth — tokens exchanged via code, never in URL
   },
 });
