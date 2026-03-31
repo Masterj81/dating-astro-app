@@ -177,6 +177,7 @@ interface SavedPost {
   aiScore: number;
   createdAt: string;
   status: "draft" | "approved" | "posted" | "failed";
+  imagePath?: string;
   blotato?: {
     postId?: string;
     platforms: string[];
@@ -313,6 +314,36 @@ async function cmdList() {
   }
 }
 
+async function cmdImage(postId?: number) {
+  if (!process.env.GEMINI_API_KEY) {
+    console.error("Error: Set GEMINI_API_KEY environment variable");
+    process.exit(1);
+  }
+
+  const posts = loadPosts();
+  const target = postId
+    ? posts.find((p) => p.id === postId)
+    : posts.filter((p) => p.status === "approved" && !p.imagePath).pop();
+
+  if (!target) {
+    console.error("No approved post without image found.");
+    process.exit(1);
+  }
+
+  console.log(`\n🎨 Generating image for post #${target.id}: "${target.text.slice(0, 50)}..."\n`);
+
+  const { generateImage } = await import("./.pi/extensions/image-generator.js");
+  const result = await generateImage(target.text);
+
+  if (result.success && result.filePath) {
+    target.imagePath = result.filePath;
+    savePosts(posts);
+    console.log(`✅ Image saved: ${result.filePath}`);
+  } else {
+    console.error(`❌ Failed: ${result.error}`);
+  }
+}
+
 async function cmdGenerateAndPost(topic: string) {
   const saved = await cmdGenerate(topic);
   if (saved) {
@@ -351,6 +382,10 @@ async function main() {
       await cmdGenerateAndPost(arg);
       break;
 
+    case "image":
+      await cmdImage(arg ? parseInt(arg) : undefined);
+      break;
+
     default:
       // Legacy: treat first arg as topic for backward compat
       if (command) {
@@ -362,6 +397,7 @@ AstroDating Marketing Agent
 Commands:
   npm run agent -- generate "<topic>"   Generate a post
   npm run agent -- post [id]            Publish to Blotato (latest approved or by ID)
+  npm run agent -- image [id]           Generate image for a post (Gemini)
   npm run agent -- auto "<topic>"       Generate + publish in one step
   npm run agent -- list                 Show all posts
 `);

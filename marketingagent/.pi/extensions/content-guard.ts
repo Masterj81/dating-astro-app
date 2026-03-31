@@ -67,20 +67,28 @@ export function guardContent(text: string): GuardResult {
   // Check similarity to recent posts
   if (existsSync(POSTS_FILE)) {
     try {
-      const posts = JSON.parse(readFileSync(POSTS_FILE, "utf-8"));
-      const recent = posts.slice(-10);
+      const data = readFileSync(POSTS_FILE, "utf-8");
+      const posts = JSON.parse(data);
+      
+      if (Array.isArray(posts)) {
+        const recent = posts.slice(-10);
 
-      for (const post of recent) {
-        if (typeof post.text === "string") {
-          const similarity = calculateSimilarity(text.toLowerCase(), post.text.toLowerCase());
-          if (similarity > 0.7) {
-            reasons.push(`Too similar to recent post #${post.id} (${Math.round(similarity * 100)}% match)`);
-            break;
+        for (const post of recent) {
+          // Handle both old format (post.post) and new format (post.text)
+          const postContent = typeof post.post === "string" ? post.post : 
+                             typeof post.text === "string" ? post.text : null;
+          
+          if (postContent) {
+            const similarity = calculateSimilarity(text.toLowerCase(), postContent.toLowerCase());
+            if (similarity > 0.7) {
+              reasons.push(`Too similar to recent post (${Math.round(similarity * 100)}% match)`);
+              break;
+            }
           }
         }
       }
     } catch {
-      // Ignore parse errors
+      // Ignore parse errors - content still passes guard
     }
   }
 
