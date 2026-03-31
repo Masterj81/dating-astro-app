@@ -98,12 +98,37 @@ async function main() {
   }
 
   const scheduledFor = parseDateTime(dateArg);
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  // Upload image if available
+  let imageUrl: string | null = null;
+  if (post.imagePath && existsSync(post.imagePath)) {
+    console.log(`\n📷 Uploading image: ${post.imagePath}`);
+    const imageBuffer = readFileSync(post.imagePath);
+    const fileName = `marketing/${Date.now()}-${post.imagePath.split(/[/\\]/).pop()}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(fileName, imageBuffer, {
+        contentType: "image/png",
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error(`   ⚠️ Image upload failed: ${uploadError.message}`);
+    } else {
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(fileName);
+      imageUrl = urlData.publicUrl;
+      console.log(`   ✅ Image uploaded: ${imageUrl}`);
+    }
+  }
+
   console.log(`\n⏰ Scheduling post #${post.id} for server-side publishing`);
   console.log(`   Text: "${post.text.slice(0, 60)}..."`);
   console.log(`   Scheduled: ${scheduledFor.toLocaleString()}`);
-  console.log(`   Platforms: Facebook, Instagram\n`);
-
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  console.log(`   Platforms: Facebook, Instagram`);
+  if (imageUrl) console.log(`   Image: ✅ attached`);
+  console.log();
 
   const { data, error } = await supabase
     .from("marketing_posts")
@@ -114,6 +139,7 @@ async function main() {
       platforms: ["facebook", "instagram"],
       status: "scheduled",
       scheduled_for: scheduledFor.toISOString(),
+      image_url: imageUrl,
     })
     .select("id")
     .single();
