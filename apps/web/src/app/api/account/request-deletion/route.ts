@@ -1,10 +1,26 @@
 import { NextResponse } from "next/server";
-import { createHash, randomInt } from "crypto";
+import { createHash } from "crypto";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getResend, EMAIL_FROM } from "@/lib/resend";
 
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_MAX = 3;
+const RATE_LIMIT_WINDOW_MS = 3600000; // 1 hour
+
 export async function POST(request: Request) {
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const now = Date.now();
+    const entry = rateLimitMap.get(ip);
+    if (entry && entry.resetAt > now && entry.count >= RATE_LIMIT_MAX) {
+      return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
+    }
+    if (!entry || entry.resetAt <= now) {
+      rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    } else {
+      entry.count++;
+    }
+
     const { email, userId } = await request.json();
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -32,7 +48,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    const code = randomInt(100000, 999999).toString();
+    const { randomBytes } = await import("crypto");
+    const code = randomBytes(4).toString("hex").toUpperCase(); // 8 hex chars = 4 billion combinations
     const codeHash = createHash("sha256").update(code).digest("hex");
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 

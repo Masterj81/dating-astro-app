@@ -206,6 +206,20 @@ export function DiscoverOverview() {
       setReportSubmitting(true);
       setReportFeedback(null);
 
+      const VALID_REPORT_REASONS = [
+        "inappropriate_photos", "harassment", "spam", "fake_profile", "underage", "other",
+      ] as const;
+
+      if (!VALID_REPORT_REASONS.includes(reportReason as typeof VALID_REPORT_REASONS[number])) {
+        setReportFeedback(t("reportError"));
+        return;
+      }
+
+      if (reportDescription.length > 500) {
+        setReportFeedback(t("reportError"));
+        return;
+      }
+
       const supabase = getSupabaseBrowser();
       const { error: reportError } = await supabase.from("reports").insert({
         reporter_id: userId,

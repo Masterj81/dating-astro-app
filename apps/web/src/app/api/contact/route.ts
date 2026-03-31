@@ -1,6 +1,22 @@
 import { NextResponse } from "next/server";
 import { getResend, EMAIL_FROM } from "@/lib/resend";
 
+const VALID_CATEGORIES = [
+  "General Question", "Account Issue", "Billing & Subscription",
+  "Bug Report", "Safety Concern", "Feature Request", "Other",
+];
+
+function htmlEscape(text: string): string {
+  const map: Record<string, string> = {
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;',
+  };
+  return String(text).replace(/[&<>"']/g, (c) => map[c] || c);
+}
+
+function sanitizeHeader(text: string): string {
+  return String(text).replace(/[\r\n]/g, '').slice(0, 200);
+}
+
 function renderEmailShell({
   eyebrow,
   title,
@@ -58,31 +74,44 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
       return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
     }
 
+    if (!VALID_CATEGORIES.includes(category)) {
+      return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+    }
+
+    if (String(message).length > 5000) {
+      return NextResponse.json({ error: "Message too long" }, { status: 400 });
+    }
+
     const resend = getResend();
-    const messageHtml = String(message).replace(/\n/g, "<br/>");
+    const safeName = htmlEscape(name);
+    const safeEmail = htmlEscape(email);
+    const safeCategory = htmlEscape(category);
+    const safeMessage = htmlEscape(message).replace(/\n/g, "<br/>");
+    const subjectName = sanitizeHeader(name);
+    const subjectCategory = sanitizeHeader(category);
 
     await resend.emails.send({
       from: EMAIL_FROM,
       to: "support@astrodatingapp.com",
       replyTo: email,
-      subject: `[${category}] Contact form from ${name}`,
+      subject: `[${subjectCategory}] Contact form from ${subjectName}`,
       html: renderEmailShell({
         eyebrow: "Support inbox",
-        title: `New ${category} message`,
-        intro: `A new support request was submitted by ${name}.`,
+        title: `New ${safeCategory} message`,
+        intro: `A new support request was submitted by ${safeName}.`,
         body: `
-          <p style="margin:0 0 12px;"><strong>Name:</strong> ${name}</p>
-          <p style="margin:0 0 12px;"><strong>Email:</strong> ${email}</p>
-          <p style="margin:0 0 12px;"><strong>Category:</strong> ${category}</p>
+          <p style="margin:0 0 12px;"><strong>Name:</strong> ${safeName}</p>
+          <p style="margin:0 0 12px;"><strong>Email:</strong> ${safeEmail}</p>
+          <p style="margin:0 0 12px;"><strong>Category:</strong> ${safeCategory}</p>
           <div style="margin-top:18px;padding:18px 20px;border-radius:22px;background:linear-gradient(135deg,rgba(236,72,153,0.22),rgba(99,102,241,0.14));border:1px solid rgba(255,255,255,0.08);color:#eef2ff;">
             <div style="font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.72);margin-bottom:8px;">
               Message
             </div>
-            <div>${messageHtml}</div>
+            <div>${safeMessage}</div>
           </div>
         `,
       }),
@@ -96,14 +125,14 @@ export async function POST(request: Request) {
       html: renderEmailShell({
         eyebrow: "Support",
         title: "We received your message",
-        intro: `Hi ${name}, thanks for reaching out. We've received your message and will get back to you within 24 hours.`,
+        intro: `Hi ${safeName}, thanks for reaching out. We&#x27;ve received your message and will get back to you within 24 hours.`,
         body: `
-          <p style="margin:0 0 12px;"><strong>Category:</strong> ${category}</p>
+          <p style="margin:0 0 12px;"><strong>Category:</strong> ${safeCategory}</p>
           <div style="margin-top:18px;padding:18px 20px;border-radius:22px;background:linear-gradient(135deg,rgba(236,72,153,0.22),rgba(99,102,241,0.14));border:1px solid rgba(255,255,255,0.08);color:#eef2ff;">
             <div style="font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.72);margin-bottom:8px;">
               Your message
             </div>
-            <div>${messageHtml}</div>
+            <div>${safeMessage}</div>
           </div>
           <p style="margin:18px 0 0;">
             If you need to add more detail, just reply to this email.

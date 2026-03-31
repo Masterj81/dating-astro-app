@@ -439,7 +439,24 @@ export function AccountProfileWorkspace({
   const handlePhotoSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
 
-    if (!file || !profile?.id) return;
+    const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+    if (!file) return;
+
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setError(t("invalidFileType") || "Only JPEG, PNG, and WebP images are allowed");
+      setUploadingPhoto(false);
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      setError(t("fileTooLarge") || "File must be smaller than 5MB");
+      setUploadingPhoto(false);
+      return;
+    }
+
+    if (!profile?.id) return;
 
     try {
       setUploadingPhoto(true);

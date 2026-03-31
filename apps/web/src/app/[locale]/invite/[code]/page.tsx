@@ -9,6 +9,29 @@ export default async function InvitePage({ params }: InvitePageProps) {
   const { code } = await params;
   const upperCode = code.toUpperCase();
 
+  const VALID_CODE_REGEX = /^[A-Z0-9]{4,12}$/;
+  if (!VALID_CODE_REGEX.test(upperCode)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="w-full max-w-md text-center">
+          <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-accent/15 text-5xl">
+            ⚠️
+          </div>
+          <h1 className="text-3xl font-bold text-white">Invalid referral code</h1>
+          <p className="mt-3 text-lg text-text-muted">
+            The referral code in this link doesn&apos;t look right. Please check the link and try again.
+          </p>
+          <Link
+            href="/"
+            className="mt-8 inline-flex items-center justify-center rounded-full bg-accent px-6 py-4 text-base font-semibold text-white transition-colors hover:bg-accent-hover"
+          >
+            Go to homepage
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md text-center">

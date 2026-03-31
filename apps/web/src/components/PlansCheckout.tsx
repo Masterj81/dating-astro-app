@@ -75,7 +75,7 @@ export function PlansCheckout() {
 
         setSessionState(nextSessionState);
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : t("unknownError"));
+        setError(t("unknownError"));
       } finally {
         setLoading(false);
       }
@@ -109,7 +109,7 @@ export function PlansCheckout() {
         return;
       }
 
-      setError(checkoutError instanceof Error ? checkoutError.message : t("checkoutError"));
+      setError(t("checkoutError"));
     }
   };
 
