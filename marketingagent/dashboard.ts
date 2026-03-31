@@ -1,3 +1,5 @@
+import "dotenv/config";
+
 /**
  * Marketing Dashboard — Review, approve, schedule, and publish posts.
  *
