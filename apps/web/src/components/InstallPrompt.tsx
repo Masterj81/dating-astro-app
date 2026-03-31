@@ -20,7 +20,7 @@ export function InstallPrompt() {
     // Check if already installed as PWA
     const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone === true;
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true;
     setIsStandalone(standalone);
 
     // Check if dismissed before
@@ -30,7 +30,7 @@ export function InstallPrompt() {
 
     // Detect iOS
     const ua = navigator.userAgent;
-    const ios = /iphone|ipad|ipod/i.test(ua) && !(window as any).MSStream;
+    const ios = /iphone|ipad|ipod/i.test(ua);
     setIsIOS(ios);
 
     // Listen for beforeinstallprompt (Android/Desktop Chrome)
