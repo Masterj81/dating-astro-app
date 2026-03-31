@@ -42,7 +42,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
   }
 
   if (!Device.isDevice) {
-    console.warn('Push notifications require a physical device');
+    if (__DEV__) console.warn('Push notifications require a physical device');
     return null;
   }
 
@@ -57,7 +57,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
   }
 
   if (finalStatus !== 'granted') {
-    console.warn('Push notification permission not granted');
+    if (__DEV__) console.warn('Push notification permission not granted');
     return null;
   }
 
@@ -78,7 +78,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     });
     return response.data;
   } catch (error) {
-    console.warn('Failed to get push token:', error);
+    if (__DEV__) console.warn('Failed to get push token:', error);
     return null;
   }
 }
@@ -91,7 +91,7 @@ export async function savePushToken(userId: string, token: string): Promise<bool
     .eq('id', userId);
 
   if (error) {
-    console.warn('Failed to save push token:', error.message);
+    if (__DEV__) console.warn('Failed to save push token:', error.message);
     return false;
   }
   return true;
@@ -113,7 +113,7 @@ export async function clearPushToken(userId: string): Promise<void> {
     .eq('id', userId);
 
   if (error) {
-    console.warn('Failed to clear push token:', error.message);
+    if (__DEV__) console.warn('Failed to clear push token:', error.message);
   }
 }
 

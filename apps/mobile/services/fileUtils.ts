@@ -20,6 +20,35 @@ const MIME_MAP: Record<string, string> = {
   aac: 'audio/aac', ogg: 'audio/ogg',
 };
 
+// Magic number signatures for file type validation
+const MAGIC_NUMBERS: Array<{ bytes: number[]; mime: string }> = [
+  { bytes: [0xFF, 0xD8, 0xFF], mime: 'image/jpeg' },
+  { bytes: [0x89, 0x50, 0x4E, 0x47], mime: 'image/png' },
+  { bytes: [0x52, 0x49, 0x46, 0x46], mime: 'image/webp' }, // RIFF header (WebP)
+  { bytes: [0x47, 0x49, 0x46], mime: 'image/gif' },
+  { bytes: [0x00, 0x00, 0x00], mime: 'video/mp4' }, // ftyp box (approx)
+];
+
+const ALLOWED_UPLOAD_MIMES = new Set([
+  'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif',
+  'video/mp4', 'video/quicktime',
+  'audio/mp4', 'audio/mpeg',
+]);
+
+export function validateFileSignature(data: ArrayBuffer): string | null {
+  const header = new Uint8Array(data.slice(0, 8));
+  for (const { bytes, mime } of MAGIC_NUMBERS) {
+    if (bytes.every((b, i) => header[i] === b)) {
+      return mime;
+    }
+  }
+  return null;
+}
+
+export function isAllowedMime(mime: string): boolean {
+  return ALLOWED_UPLOAD_MIMES.has(mime);
+}
+
 export function getMimeFromUri(uri: string, blobType?: string): string {
   // Priority to blob type if valid
   if (blobType && blobType !== 'application/octet-stream') {

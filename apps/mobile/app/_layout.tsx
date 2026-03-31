@@ -11,6 +11,7 @@ import { PremiumProvider } from '../contexts/PremiumContext';
 import PaywallModal from '../components/PaywallModal';
 import { registerAndSavePushToken, clearPushToken, startPushTokenRefresh } from '../services/notifications';
 import { initializePurchases } from '../services/purchases';
+import { getAuthCallbackRedirectUri } from '../services/authRedirect';
 import { supabase } from '../services/supabase';
 import { syncWidgetWithProfile } from '../services/widgetService';
 import { registerServiceWorker, setupInstallPrompt } from '../services/pwa';
@@ -29,6 +30,12 @@ if (__DEV__ && Platform.OS !== 'web') {
 
 // Only initialize Sentry on native platforms
 if (Platform.OS !== 'web') {
+  const sentryIntegrations: any[] = [Sentry.feedbackIntegration()];
+
+  if (Platform.OS !== 'android') {
+    sentryIntegrations.unshift(Sentry.mobileReplayIntegration());
+  }
+
   Sentry.init({
     dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
 
@@ -38,10 +45,10 @@ if (Platform.OS !== 'web') {
     // Enable Logs
     enableLogs: true,
 
-    // Configure Session Replay
-    replaysSessionSampleRate: 0.1,
-    replaysOnErrorSampleRate: 1,
-    integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+    // Disable mobile replay on Android to avoid PixelCopy-related ANRs.
+    replaysSessionSampleRate: Platform.OS === 'android' ? 0 : 0.1,
+    replaysOnErrorSampleRate: Platform.OS === 'android' ? 0 : 1,
+    integrations: sentryIntegrations,
 
     // Only enable in production
     enabled: !__DEV__,
@@ -120,7 +127,7 @@ function RootLayout() {
     await fetchProfile(user.id);
   };
 
-  const ensureProfileExists = async (userId: string, name?: string) => {
+  const ensureProfileExists = async (userId: string, name?: string, gender?: string) => {
     const QUERY_TIMEOUT_MS = 8000;
 
     const createTimeout = (message: string) =>
@@ -151,6 +158,7 @@ function RootLayout() {
         const insertPromise = supabase.from('profiles').insert({
           id: userId,
           name: name || 'User',
+          gender: gender || null,
         });
 
         const { error: insertError } = await Promise.race([
@@ -236,7 +244,11 @@ function RootLayout() {
                     currentUser.user_metadata?.name ||
                     currentUser.email?.split('@')[0] ||
                     'User';
-                  await ensureProfileExists(currentUser.id, displayName);
+                  const profileGender =
+                    typeof currentUser.user_metadata?.gender === 'string'
+                      ? currentUser.user_metadata.gender
+                      : undefined;
+                  await ensureProfileExists(currentUser.id, displayName, profileGender);
                 }
                 await fetchProfile(currentUser.id);
               })(),
@@ -269,12 +281,34 @@ function RootLayout() {
     };
   }, []);
 
-  // Handle deep links for password reset
+  // Handle deep links with validation
   useEffect(() => {
+    const ALLOWED_DEEP_LINK_HOSTS = ['astrodatingapp.com', 'www.astrodatingapp.com', 'localhost'];
+    const ALLOWED_DEEP_LINK_PATHS = ['/auth/', '/app/', '/invite/', '/download'];
+
     const handleUrl = (event: { url: string }) => {
-      const url = event.url;
-      if (url.includes('reset-password') || url.includes('type=recovery')) {
-        // Supabase will fire PASSWORD_RECOVERY event automatically
+      try {
+        const parsed = new URL(event.url);
+
+        // Validate scheme
+        if (parsed.protocol !== 'https:' && parsed.protocol !== 'astrodating:') {
+          return;
+        }
+
+        // Validate host for https links
+        if (parsed.protocol === 'https:' && !ALLOWED_DEEP_LINK_HOSTS.includes(parsed.hostname)) {
+          return;
+        }
+
+        // Validate path prefix
+        const pathAllowed = ALLOWED_DEEP_LINK_PATHS.some((prefix) => parsed.pathname.startsWith(prefix));
+        if (!pathAllowed && !event.url.includes('type=recovery')) {
+          return;
+        }
+
+        // Password recovery handled by Supabase auth state change
+      } catch {
+        // Invalid URL — ignore silently
       }
     };
 
@@ -282,10 +316,19 @@ function RootLayout() {
     return () => sub.remove();
   }, []);
 
-  // Set Sentry user context on auth changes
+  // Set Sentry user context on auth changes (hashed ID for privacy)
   useEffect(() => {
     if (user) {
-      safeSentry.setUser({ id: user.id });
+      // Hash user ID to prevent PII leakage to Sentry
+      const hashId = (id: string) => {
+        let hash = 0;
+        for (let i = 0; i < id.length; i++) {
+          hash = ((hash << 5) - hash) + id.charCodeAt(i);
+          hash |= 0;
+        }
+        return 'u_' + Math.abs(hash).toString(36);
+      };
+      safeSentry.setUser({ id: hashId(user.id) });
     } else {
       safeSentry.setUser(null);
     }
@@ -337,11 +380,29 @@ function RootLayout() {
     }
   }, []);
 
-  const signUp = async (email: string, password: string, name: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+  const signUp = async (
+    email: string,
+    password: string,
+    name: string
+  ) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name, full_name: name },
+        emailRedirectTo: getAuthCallbackRedirectUri(),
+      },
+    });
 
-    if (!error && data.user) {
-      await supabase.from('profiles').insert({ id: data.user.id, name });
+    // Try to create profile if we have a session (auto-confirm enabled)
+    if (!error && data.user && data.session) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({ id: data.user.id, name });
+
+      if (profileError) {
+        console.warn('Profile creation failed, will retry on first sign-in:', profileError.message);
+      }
     }
 
     return { error };
