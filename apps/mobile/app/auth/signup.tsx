@@ -13,17 +13,22 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import AppleIcon from '../../components/AppleIcon';
+import AuthBrandMark from '../../components/AuthBrandMark';
+import { AppTheme } from '../../constants/theme';
 import { showAlert } from '../../utils/alert';
 import LanguageSelector from '../../components/LanguageSelector';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { validateEmail, validateName, validatePassword } from '../../utils/validation';
 import { useAuth } from '../_layout';
+import { checkRateLimit, recordAttempt, resetRateLimit, formatRetryMessage } from '../../utils/rateLimiter';
 
 export default function SignupScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
   const { signUp, signInWithGoogle, signInWithApple, signInWithFacebook } = useAuth();
@@ -33,7 +38,6 @@ export default function SignupScreen() {
   const fadeAnim = useState(new Animated.Value(0))[0];
   const slideAnim = useState(new Animated.Value(30))[0];
   const scaleAnim = useState(new Animated.Value(0.8))[0];
-
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -80,19 +84,27 @@ export default function SignupScreen() {
       return;
     }
 
+    const limit = checkRateLimit('signup', { maxAttempts: 3, windowMs: 60000, lockoutMs: 600000 });
+    if (!limit.allowed) {
+      showAlert(t('error'), formatRetryMessage(limit.retryAfterMs));
+      return;
+    }
+
     setLoading(true);
+    recordAttempt('signup');
     const { error } = await signUp(email, password, name);
     setLoading(false);
 
     if (error) {
-      showAlert(t('error'), error.message);
+      showAlert(t('error'), t('signupError') || 'Unable to create account. Please try again.');
     } else {
       // Show success message and navigate to verify email
       showAlert(
         t('accountCreated') || 'Account Created',
-        t('checkEmailVerification') || 'Please check your email to verify your account.',
-        [{ text: 'OK', onPress: () => router.replace('/auth/verify-email') }]
+        t('checkEmailVerification') || 'Please check your email to verify your account.'
       );
+      // Navigate after alert (works on both web and native)
+      router.replace('/auth/verify-email');
     }
   };
 
@@ -118,7 +130,7 @@ export default function SignupScreen() {
 
   return (
     <LinearGradient
-      colors={['#0f0f1a', '#1a1a2e', '#16213e']}
+      colors={[...AppTheme.gradients.screen]}
       style={styles.container}
     >
       {/* Language Selector */}
@@ -142,7 +154,7 @@ export default function SignupScreen() {
                 }
               ]}
             >
-              <Text style={styles.logoText}>✦</Text>
+              <AuthBrandMark />
               <Text style={styles.title}>{t('joinTheCosmos')}</Text>
               <Text style={styles.subtitle}>{t('createCelestialProfile')}</Text>
             </Animated.View>
@@ -197,14 +209,26 @@ export default function SignupScreen() {
 
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>{t('password')}</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="••••••••"
-                  placeholderTextColor="#666"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                />
+                <View style={styles.passwordRow}>
+                  <TextInput
+                    style={[styles.input, styles.passwordInput]}
+                    placeholder="********"
+                    placeholderTextColor="#666"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                  />
+                  <TouchableOpacity
+                    style={styles.passwordToggle}
+                    onPress={() => setShowPassword(prev => !prev)}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color="#f3d7dd"
+                    />
+                  </TouchableOpacity>
+                </View>
                 <Text style={styles.hint}>{t('passwordHintStrong')}</Text>
               </View>
 
@@ -321,21 +345,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20
   },
-  logoText: {
-    fontSize: 64,
-    color: '#e94560',
-    marginBottom: 16,
-  },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
+    ...AppTheme.type.title,
+    color: AppTheme.colors.textPrimary,
     marginBottom: 8,
     letterSpacing: 1,
   },
   subtitle: {
     fontSize: 16,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
     fontStyle: 'italic'
   },
   zodiacContainer: {
@@ -357,7 +375,7 @@ const styles = StyleSheet.create({
     marginBottom: 20
   },
   label: {
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     fontSize: 14,
     marginBottom: 8,
     textTransform: 'uppercase',
@@ -366,20 +384,105 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 12,
+    borderColor: AppTheme.colors.border,
+    borderRadius: AppTheme.radius.md,
     padding: 16,
     fontSize: 16,
-    color: '#fff'
+    color: AppTheme.colors.textPrimary
+  },
+  pickerRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  pickerWrapper: {
+    flex: 1,
+    backgroundColor: '#f6f1ea',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  pickerWrapperSmall: {
+    flex: 0.7,
+    backgroundColor: '#f6f1ea',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  picker: {
+    color: '#1c1a24',
+    backgroundColor: 'transparent',
+    ...(Platform.OS === 'web' && {
+      height: 50,
+      paddingHorizontal: 12,
+      border: 'none',
+      cursor: 'pointer',
+      backgroundColor: '#f6f1ea',
+      color: '#1c1a24',
+      fontSize: 14,
+      width: '100%',
+      borderRadius: 12,
+    }),
+  } as any,
+  pickerItem: {
+    color: '#1c1a24',
+  },
+  pickerItemPlaceholder: {
+    color: '#7f6f77',
+  },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  passwordInput: {
+    flex: 1,
+  },
+  passwordToggle: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(233, 69, 96, 0.18)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   hint: {
-    color: '#666',
+    color: AppTheme.colors.textMuted,
     fontSize: 12,
     marginTop: 6,
   },
+  preferenceOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  preferenceOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    alignItems: 'center',
+  },
+  preferenceOptionActive: {
+    backgroundColor: 'rgba(233, 69, 96, 0.16)',
+    borderColor: 'rgba(233, 69, 96, 0.55)',
+  },
+  preferenceOptionText: {
+    color: '#d3d0da',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  preferenceOptionTextActive: {
+    color: '#fff4f6',
+  },
   button: {
     marginTop: 8,
-    borderRadius: 12,
+    borderRadius: AppTheme.radius.md,
     overflow: 'hidden',
   },
   buttonGradient: {
@@ -387,7 +490,7 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   buttonText: {
-    color: '#fff',
+    color: AppTheme.colors.textOnAccent,
     fontSize: 18,
     fontWeight: '600'
   },
@@ -402,7 +505,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
   },
   dividerText: {
-    color: '#666',
+    color: AppTheme.colors.textMuted,
     fontSize: 13,
     marginHorizontal: 16,
   },
@@ -414,15 +517,15 @@ const styles = StyleSheet.create({
   socialButton: {
     width: 56,
     height: 56,
-    borderRadius: 16,
+    borderRadius: AppTheme.radius.md,
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: AppTheme.colors.borderStrong,
     justifyContent: 'center',
     alignItems: 'center',
   },
   socialButtonText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 22,
     fontWeight: '600',
   },
@@ -432,7 +535,7 @@ const styles = StyleSheet.create({
     marginTop: 24
   },
   footerText: {
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
     fontSize: 14
   },
   linkText: {

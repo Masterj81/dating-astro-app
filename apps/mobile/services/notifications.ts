@@ -74,7 +74,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
   // Get Expo push token
   try {
     const response = await Notifications.getExpoPushTokenAsync({
-      projectId: '4b9ba994-e045-4aad-b3be-edee8bc22e2b',
+      projectId: process.env.EXPO_PUBLIC_PROJECT_ID || '4b9ba994-e045-4aad-b3be-edee8bc22e2b',
     });
     return response.data;
   } catch (error) {

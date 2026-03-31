@@ -17,6 +17,7 @@ import * as Clipboard from 'expo-clipboard';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
 import { getReferralStats, claimReferralCode, shareReferralCode } from '../../services/referral';
+import { checkRateLimit, recordAttempt, resetRateLimit, formatRetryMessage } from '../../utils/rateLimiter';
 import { useAuth } from '../_layout';
 
 type NotificationSettings = {
@@ -250,10 +251,17 @@ export default function SettingsScreen() {
                   style={[styles.referralApplyButton, (!friendCode.trim() || referralLoading) && styles.referralApplyDisabled]}
                   disabled={!friendCode.trim() || referralLoading}
                   onPress={async () => {
+                    const limit = checkRateLimit('referral-claim', { maxAttempts: 3, windowMs: 60000, lockoutMs: 300000 });
+                    if (!limit.allowed) {
+                      Alert.alert(t('error') || 'Error', formatRetryMessage(limit.retryAfterMs));
+                      return;
+                    }
                     setReferralLoading(true);
+                    recordAttempt('referral-claim');
                     const result = await claimReferralCode(friendCode);
                     setReferralLoading(false);
                     if (result.success) {
+                      resetRateLimit('referral-claim');
                       setFriendCode('');
                       Alert.alert('🎉', result.reward || t('referralSuccess') || 'Referral applied! You both get 1 month free.');
                     } else {

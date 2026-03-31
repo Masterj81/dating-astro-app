@@ -13,12 +13,16 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import AppleIcon from '../../components/AppleIcon';
+import AuthBrandMark from '../../components/AuthBrandMark';
+import { AppTheme } from '../../constants/theme';
 import { showAlert } from '../../utils/alert';
 import LanguageSelector from '../../components/LanguageSelector';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { validateEmail } from '../../utils/validation';
 import { useAuth } from '../_layout';
+import { checkRateLimit, recordAttempt, resetRateLimit, formatRetryMessage } from '../../utils/rateLimiter';
 import {
   useReduceMotion,
   getButtonA11yProps,
@@ -30,6 +34,7 @@ import { buttonPress, errorNotification } from '../../services/haptics';
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
   const { signIn, signInWithGoogle, signInWithApple, signInWithFacebook } = useAuth();
@@ -88,15 +93,24 @@ export default function LoginScreen() {
       return;
     }
 
+    const limit = checkRateLimit('login', { maxAttempts: 5, windowMs: 60000, lockoutMs: 300000 });
+    if (!limit.allowed) {
+      errorNotification();
+      showAlert(t('error'), formatRetryMessage(limit.retryAfterMs));
+      return;
+    }
+
     buttonPress();
     setLoading(true);
+    recordAttempt('login');
     const { error } = await signIn(email, password);
     setLoading(false);
 
     if (error) {
       errorNotification();
-      showAlert(t('error'), error.message);
+      showAlert(t('error'), t('invalidCredentials') || 'Invalid email or password');
     } else {
+      resetRateLimit('login');
       router.replace('/');
     }
   };
@@ -126,7 +140,7 @@ export default function LoginScreen() {
 
   return (
     <LinearGradient
-      colors={['#0f0f1a', '#1a1a2e', '#16213e']}
+      colors={[...AppTheme.gradients.screen]}
       style={styles.container}
     >
       {/* Language Selector */}
@@ -151,7 +165,7 @@ export default function LoginScreen() {
               ]}
               accessibilityRole="header"
             >
-              <Text style={styles.logoText} accessibilityLabel="">✦</Text>
+              <AuthBrandMark />
               <Text style={styles.title}>{t('appName')}</Text>
               <Text style={styles.subtitle}>{t('findYourCosmicMatch')}</Text>
             </Animated.View>
@@ -201,21 +215,34 @@ export default function LoginScreen() {
 
               <View style={styles.inputContainer}>
                 <Text style={styles.label} nativeID="passwordLabel">{t('password')}</Text>
-                <TextInput
-                  ref={passwordInputRef}
-                  style={styles.input}
-                  placeholder="••••••••"
-                  placeholderTextColor={a11yColors.text.muted}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoComplete="password"
-                  textContentType="password"
-                  returnKeyType="done"
-                  onSubmitEditing={handleLogin}
-                  {...getTextInputA11yProps(t('a11y.passwordInput'), t('a11y.requiredField'))}
-                  accessibilityLabelledBy="passwordLabel"
-                />
+                <View style={styles.passwordRow}>
+                  <TextInput
+                    ref={passwordInputRef}
+                    style={[styles.input, styles.passwordInput]}
+                    placeholder="********"
+                    placeholderTextColor={a11yColors.text.muted}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoComplete="password"
+                    textContentType="password"
+                    returnKeyType="done"
+                    onSubmitEditing={handleLogin}
+                    {...getTextInputA11yProps(t('a11y.passwordInput'), t('a11y.requiredField'))}
+                    accessibilityLabelledBy="passwordLabel"
+                  />
+                  <TouchableOpacity
+                    style={styles.passwordToggle}
+                    onPress={() => setShowPassword(prev => !prev)}
+                    {...getButtonA11yProps(showPassword ? t('hidePassword') : t('showPassword'))}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color="#f3d7dd"
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <TouchableOpacity
@@ -362,17 +389,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20
   },
-  logoText: {
-    fontSize: 64,
-    color: '#e94560',
-    marginBottom: 16,
-    textShadowColor: 'rgba(233, 69, 96, 0.5)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 20,
-  },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    ...AppTheme.type.display,
     color: a11yColors.text.primary,
     marginBottom: 8,
     letterSpacing: 1,
@@ -410,11 +428,29 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 12,
+    borderColor: AppTheme.colors.border,
+    borderRadius: AppTheme.radius.md,
     padding: 16,
     fontSize: 16,
     color: a11yColors.text.primary
+  },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  passwordInput: {
+    flex: 1,
+  },
+  passwordToggle: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(233, 69, 96, 0.18)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   forgotPasswordContainer: {
     alignSelf: 'flex-end',
@@ -426,7 +462,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   button: {
-    borderRadius: 12,
+    borderRadius: AppTheme.radius.md,
     overflow: 'hidden',
     shadowColor: '#e94560',
     shadowOffset: { width: 0, height: 4 },
@@ -466,10 +502,10 @@ const styles = StyleSheet.create({
   socialButton: {
     width: 56,
     height: 56,
-    borderRadius: 16,
+    borderRadius: AppTheme.radius.md,
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: AppTheme.colors.borderStrong,
     justifyContent: 'center',
     alignItems: 'center',
   },
