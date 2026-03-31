@@ -8,7 +8,8 @@
     "generate": "tsx agent.ts generate",
     "post": "tsx agent.ts post",
     "list": "tsx agent.ts list",
-    "dashboard": "tsx dashboard.ts"
+    "dashboard": "tsx dashboard.ts",
+    "evolve": "tsx evolve.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
