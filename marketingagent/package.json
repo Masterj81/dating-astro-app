@@ -1,0 +1,19 @@
+{
+  "name": "marketingagent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "agent": "tsx agent.ts",
+    "generate": "tsx agent.ts generate",
+    "post": "tsx agent.ts post",
+    "list": "tsx agent.ts list"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}
