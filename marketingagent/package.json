@@ -9,10 +9,12 @@
     "post": "tsx agent.ts post",
     "list": "tsx agent.ts list",
     "dashboard": "tsx dashboard.ts",
-    "evolve": "tsx evolve.ts"
+    "evolve": "tsx evolve.ts",
+    "schedule-server": "tsx schedule-server.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
+    "@supabase/supabase-js": "^2.101.1",
     "dotenv": "^17.3.1"
   },
   "devDependencies": {

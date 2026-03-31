@@ -396,6 +396,10 @@ verify_jwt = false
 [functions.send-daily-horoscope]
 verify_jwt = false
 
+# Scheduled marketing posts publisher (auth via shared secret, not JWT)
+[functions.publish-scheduled-posts]
+verify_jwt = false
+
 # Scheduled email processor (auth via shared secret header, not JWT)
 [functions.send-scheduled-emails]
 verify_jwt = false
