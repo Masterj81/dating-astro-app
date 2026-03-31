@@ -23,7 +23,8 @@
     "tagline": "Écrit dans les étoiles",
     "description": "Trouvez votre âme sœur cosmique. AstroDating utilise l'astrologie authentique — thèmes astraux, synastrie et transits planétaires — pour vous connecter avec des personnes véritablement compatibles.",
     "appStore": "App Store",
-    "playStore": "Google Play"
+    "playStore": "Google Play",
+    "webApp": "Ouvrir l'appli web"
   },
   "features": {
     "title": "Fonctionnalités",

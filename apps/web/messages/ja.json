@@ -23,7 +23,8 @@
     "tagline": "星に記された運命",
     "description": "宇宙が導く運命の相手を見つけましょう。AstroDatingは、出生図、シナストリー、惑星トランジットといった本格的な占星術を活用し、真に相性の合う人とあなたをつなぎます。",
     "appStore": "App Store",
-    "playStore": "Google Play"
+    "playStore": "Google Play",
+    "webApp": "Webアプリを開く"
   },
   "features": {
     "title": "機能",

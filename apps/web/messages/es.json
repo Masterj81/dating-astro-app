@@ -23,7 +23,8 @@
     "tagline": "Escrito en las estrellas",
     "description": "Encuentra tu pareja cósmica. AstroDating utiliza astrología real — cartas astrales, sinastría y tránsitos planetarios — para conectarte con personas verdaderamente compatibles.",
     "appStore": "App Store",
-    "playStore": "Google Play"
+    "playStore": "Google Play",
+    "webApp": "Abrir app web"
   },
   "features": {
     "title": "Funciones",

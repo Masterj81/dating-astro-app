@@ -23,7 +23,8 @@
     "tagline": "مكتوب في النجوم",
     "description": "اعثر على توأم روحك الفلكي. يستخدم AstroDating علم التنجيم الحقيقي — خرائط الميلاد، التوافق الفلكي، وعبور الكواكب — لربطك بأشخاص متوافقين معك حقًا.",
     "appStore": "App Store",
-    "playStore": "Google Play"
+    "playStore": "Google Play",
+    "webApp": "فتح تطبيق الويب"
   },
   "features": {
     "title": "المزايا",

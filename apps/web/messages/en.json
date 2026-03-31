@@ -23,7 +23,8 @@
     "tagline": "Written in the Stars",
     "description": "Find your cosmic match. AstroDating uses real astrology — birth charts, synastry, and planetary transits — to connect you with truly compatible people.",
     "appStore": "App Store",
-    "playStore": "Google Play"
+    "playStore": "Google Play",
+    "webApp": "Open Web App"
   },
   "features": {
     "title": "Features",

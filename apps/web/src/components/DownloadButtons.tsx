@@ -1,5 +1,6 @@
 import { useTranslations } from "next-intl";
 import { SITE } from "@/lib/constants";
+import { Link } from "@/i18n/navigation";
 
 // Set to true when App Store version is approved
 const SHOW_APP_STORE = false;
@@ -34,6 +35,16 @@ export function DownloadButtons({ size = "md" }: { size?: "sm" | "md" }) {
         </svg>
         {t("playStore")}
       </a>
+      <Link
+        href="/app"
+        className={`inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 text-white font-medium backdrop-blur-sm transition-all hover:bg-white/20 ${padding}`}
+      >
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="3" width="18" height="18" rx="3" />
+          <path d="M8 12h8M12 8v8" strokeLinecap="round" />
+        </svg>
+        {t("webApp")}
+      </Link>
     </div>
   );
 }

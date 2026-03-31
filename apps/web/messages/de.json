@@ -23,7 +23,8 @@
     "tagline": "In den Sternen geschrieben",
     "description": "Finde dein kosmisches Match. AstroDating nutzt echte Astrologie — Geburtshoroskope, Synastrie und Planetentransite — um dich mit wirklich kompatiblen Menschen zu verbinden.",
     "appStore": "App Store",
-    "playStore": "Google Play"
+    "playStore": "Google Play",
+    "webApp": "Web-App öffnen"
   },
   "features": {
     "title": "Funktionen",

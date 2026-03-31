@@ -23,7 +23,8 @@
     "tagline": "Escrito nas Estrelas",
     "description": "Encontre sua alma gêmea cósmica. O AstroDating usa astrologia real — mapa astral, sinastria e trânsitos planetários — para conectar você a pessoas verdadeiramente compatíveis.",
     "appStore": "App Store",
-    "playStore": "Google Play"
+    "playStore": "Google Play",
+    "webApp": "Abrir app web"
   },
   "features": {
     "title": "Recursos",
