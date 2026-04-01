@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showAlert } from '../../utils/alert';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { calculateNatalChart } from '../../services/astrology';
@@ -97,6 +98,7 @@ export default function BirthInfoScreen() {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const { user, refreshProfile } = useAuth();
+  const insets = useSafeAreaInsets();
   const { t } = useLanguage();
 
   // Load existing birth data on mount
@@ -276,7 +278,7 @@ export default function BirthInfoScreen() {
         style={styles.keyboardView}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 32 }]}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.content}>
