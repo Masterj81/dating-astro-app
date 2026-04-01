@@ -131,7 +131,7 @@ export function AuthCard({ mode }: AuthCardProps) {
     const { error: oauthError } = await getSupabaseBrowser().auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/${locale}/app`,
+        redirectTo: `${window.location.origin}/${locale}/auth/callback`,
       },
     });
 
