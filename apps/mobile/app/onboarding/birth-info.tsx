@@ -18,6 +18,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { calculateNatalChart } from '../../services/astrology';
 import { geocodeCity } from '../../services/geocoding';
 import { supabase } from '../../services/supabase';
+import { AppTheme } from '../../constants/theme';
 import { useAuth } from '../_layout';
 
 // Generate arrays for dropdowns
@@ -57,6 +58,33 @@ const MINUTES = Array.from({ length: 60 }, (_, i) => ({
   value: String(i).padStart(2, '0'),
 }));
 
+type ShowMeOption = 'men' | 'women' | 'everyone';
+
+const SHOW_ME_OPTIONS: ShowMeOption[] = ['men', 'women', 'everyone'];
+
+const mapLookingForToShowMe = (lookingFor?: string[] | null): ShowMeOption => {
+  const normalized = (lookingFor || []).map((value) => value.toLowerCase());
+  if (normalized.length === 1 && normalized[0] === 'male') {
+    return 'men';
+  }
+  if (normalized.length === 1 && normalized[0] === 'female') {
+    return 'women';
+  }
+  return 'everyone';
+};
+
+const mapShowMeToLookingFor = (showMe: ShowMeOption) => {
+  if (showMe === 'men') {
+    return ['male'];
+  }
+  if (showMe === 'women') {
+    return ['female'];
+  }
+  return ['male', 'female', 'non-binary', 'other'];
+};
+
+const pickerMode = Platform.OS === 'android' ? 'dialog' : undefined;
+
 export default function BirthInfoScreen() {
   const [birthMonth, setBirthMonth] = useState('');
   const [birthDay, setBirthDay] = useState('');
@@ -64,6 +92,8 @@ export default function BirthInfoScreen() {
   const [birthHour, setBirthHour] = useState('');
   const [birthMinute, setBirthMinute] = useState('');
   const [birthCity, setBirthCity] = useState('');
+  const [gender, setGender] = useState('');
+  const [showMe, setShowMe] = useState<ShowMeOption>('everyone');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const { user, refreshProfile } = useAuth();
@@ -80,7 +110,7 @@ export default function BirthInfoScreen() {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('birth_date, birth_time, birth_city')
+          .select('birth_date, birth_time, birth_city, looking_for, gender')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -98,6 +128,12 @@ export default function BirthInfoScreen() {
           }
           if (data.birth_city) {
             setBirthCity(data.birth_city);
+          }
+          if (data.looking_for) {
+            setShowMe(mapLookingForToShowMe(data.looking_for));
+          }
+          if (data.gender) {
+            setGender(data.gender);
           }
         }
       } catch (_err) {
@@ -131,6 +167,11 @@ export default function BirthInfoScreen() {
 
     if (!birthMonth || !birthDay || !birthYear) {
       showAlert(t('error'), t('enterBirthDate'));
+      return;
+    }
+
+    if (!gender) {
+      showAlert(t('error'), t('selectGenderError'));
       return;
     }
 
@@ -182,6 +223,8 @@ export default function BirthInfoScreen() {
           birth_date: formattedDate,
           birth_time: birthTime,
           birth_city: birthCity || null,
+          gender,
+          looking_for: mapShowMeToLookingFor(showMe),
           birth_latitude: cityCoords.latitude,
           birth_longitude: cityCoords.longitude,
           sun_sign: chart.sun.sign,
@@ -215,7 +258,7 @@ export default function BirthInfoScreen() {
   if (initialLoading) {
     return (
       <LinearGradient
-        colors={['#0f0f1a', '#1a1a2e', '#16213e']}
+        colors={[...AppTheme.gradients.screen]}
         style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}
       >
         <ActivityIndicator size="large" color="#e94560" />
@@ -225,7 +268,7 @@ export default function BirthInfoScreen() {
 
   return (
     <LinearGradient
-      colors={['#0f0f1a', '#1a1a2e', '#16213e']}
+      colors={[...AppTheme.gradients.screen]}
       style={styles.container}
     >
       <KeyboardAvoidingView
@@ -249,47 +292,61 @@ export default function BirthInfoScreen() {
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>{t('birthDateRequired')}</Text>
                 <View style={styles.pickerRow}>
-                  <View style={styles.pickerWrapper}>
-                    <Picker
-                      selectedValue={birthMonth}
-                      onValueChange={setBirthMonth}
-                      style={styles.picker}
-                      dropdownIconColor="#e94560"
-                      itemStyle={styles.pickerItem}
-                    >
-                      <Picker.Item label={t('month')} value="" style={styles.pickerItemPlaceholder} />
-                      {MONTHS.map((m) => (
-                        <Picker.Item key={m.value} label={m.label} value={m.value} style={styles.pickerItem} />
-                      ))}
-                    </Picker>
+                  <View style={styles.pickerFieldLarge}>
+                    <Text style={styles.pickerFieldLabel}>{t('month')}</Text>
+                    <View style={styles.pickerWrapper}>
+                      <Picker
+                        selectedValue={birthMonth}
+                        onValueChange={setBirthMonth}
+                        mode={pickerMode}
+                        style={styles.picker}
+                        dropdownIconColor="#e94560"
+                        itemStyle={styles.pickerItem}
+                      >
+                        <Picker.Item label={t('month')} value="" style={styles.pickerItemPlaceholder} />
+                        {MONTHS.map((m) => (
+                          <Picker.Item key={m.value} label={m.label} value={m.value} style={styles.pickerItem} />
+                        ))}
+                      </Picker>
+                    </View>
                   </View>
-                  <View style={styles.pickerWrapperSmall}>
-                    <Picker
-                      selectedValue={birthDay}
-                      onValueChange={setBirthDay}
-                      style={styles.picker}
-                      dropdownIconColor="#e94560"
-                      itemStyle={styles.pickerItem}
-                    >
-                      <Picker.Item label={t('day')} value="" style={styles.pickerItemPlaceholder} />
-                      {DAYS.map((d) => (
-                        <Picker.Item key={d.value} label={d.label} value={d.value} style={styles.pickerItem} />
-                      ))}
-                    </Picker>
+                  <View style={styles.pickerFieldSmall}>
+                    <Text style={styles.pickerFieldLabel}>{t('day')}</Text>
+                    <View style={styles.pickerWrapperSmall}>
+                      <Picker
+                        selectedValue={birthDay}
+                        onValueChange={setBirthDay}
+                        mode={pickerMode}
+                        style={styles.picker}
+                        dropdownIconColor="#e94560"
+                        itemStyle={styles.pickerItem}
+                      >
+                        <Picker.Item label={t('day')} value="" style={styles.pickerItemPlaceholder} />
+                        {DAYS.map((d) => (
+                          <Picker.Item key={d.value} label={d.label} value={d.value} style={styles.pickerItem} />
+                        ))}
+                      </Picker>
+                    </View>
                   </View>
-                  <View style={styles.pickerWrapper}>
-                    <Picker
-                      selectedValue={birthYear}
-                      onValueChange={setBirthYear}
-                      style={styles.picker}
-                      dropdownIconColor="#e94560"
-                      itemStyle={styles.pickerItem}
-                    >
-                      <Picker.Item label={t('year')} value="" style={styles.pickerItemPlaceholder} />
-                      {YEARS.map((y) => (
-                        <Picker.Item key={y.value} label={y.label} value={y.value} style={styles.pickerItem} />
-                      ))}
-                    </Picker>
+                </View>
+                <View style={styles.pickerRow}>
+                  <View style={styles.pickerFieldLarge}>
+                    <Text style={styles.pickerFieldLabel}>{t('year')}</Text>
+                    <View style={styles.pickerWrapper}>
+                      <Picker
+                        selectedValue={birthYear}
+                        onValueChange={setBirthYear}
+                        mode={pickerMode}
+                        style={styles.picker}
+                        dropdownIconColor="#e94560"
+                        itemStyle={styles.pickerItem}
+                      >
+                        <Picker.Item label={t('year')} value="" style={styles.pickerItemPlaceholder} />
+                        {YEARS.map((y) => (
+                          <Picker.Item key={y.value} label={y.label} value={y.value} style={styles.pickerItem} />
+                        ))}
+                      </Picker>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -301,6 +358,7 @@ export default function BirthInfoScreen() {
                     <Picker
                       selectedValue={birthHour}
                       onValueChange={setBirthHour}
+                      mode={pickerMode}
                       style={styles.picker}
                       dropdownIconColor="#e94560"
                       itemStyle={styles.pickerItem}
@@ -315,6 +373,7 @@ export default function BirthInfoScreen() {
                     <Picker
                       selectedValue={birthMinute}
                       onValueChange={setBirthMinute}
+                      mode={pickerMode}
                       style={styles.picker}
                       dropdownIconColor="#e94560"
                       itemStyle={styles.pickerItem}
@@ -344,6 +403,62 @@ export default function BirthInfoScreen() {
                 <Text style={styles.hint}>
                   Include country if city name is common (e.g., {'"'}Springfield, IL, USA{'"'})
                 </Text>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>{t('genderLabel')}</Text>
+                <View style={styles.genderOptions}>
+                  {[
+                    { value: 'male', label: t('genderOption_male') },
+                    { value: 'female', label: t('genderOption_female') },
+                    { value: 'non-binary', label: t('genderOption_nonBinary') },
+                    { value: 'other', label: t('genderOption_other') },
+                  ].map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.genderOption,
+                        gender === option.value && styles.preferenceOptionActive,
+                      ]}
+                      onPress={() => setGender(option.value)}
+                    >
+                      <Text
+                        style={[
+                          styles.genderOptionText,
+                          gender === option.value && styles.preferenceOptionTextActive,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>{t('datingPreference')}</Text>
+                <Text style={styles.preferenceHint}>{t('datingPreferenceHint')}</Text>
+                <View style={styles.preferenceOptions}>
+                  {SHOW_ME_OPTIONS.map((option) => (
+                    <TouchableOpacity
+                      key={option}
+                      style={[
+                        styles.preferenceOption,
+                        showMe === option && styles.preferenceOptionActive,
+                      ]}
+                      onPress={() => setShowMe(option)}
+                    >
+                      <Text
+                        style={[
+                          styles.preferenceOptionText,
+                          showMe === option && styles.preferenceOptionTextActive,
+                        ]}
+                      >
+                        {t(option)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
 
               <View style={styles.infoBox}>
@@ -429,7 +544,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
     paddingHorizontal: 16,
@@ -438,21 +553,26 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     alignSelf: 'center',
+    padding: 20,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
   },
   inputContainer: {
     marginBottom: 20,
   },
   label: {
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
     fontSize: 14,
     marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   input: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.16)',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
@@ -461,46 +581,118 @@ const styles = StyleSheet.create({
   pickerRow: {
     flexDirection: 'row',
     gap: 8,
+    marginBottom: 8,
+  },
+  pickerFieldLarge: {
+    flex: 1,
+  },
+  pickerFieldSmall: {
+    flex: 0.82,
+  },
+  pickerFieldLabel: {
+    color: AppTheme.colors.textMuted,
+    fontSize: 11,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   pickerWrapper: {
     flex: 1,
-    backgroundColor: Platform.OS === 'web' ? '#2d2d44' : 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#f6f1ea',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.35)',
     borderRadius: 12,
     overflow: 'hidden',
   },
   pickerWrapperSmall: {
-    flex: 0.6,
-    backgroundColor: Platform.OS === 'web' ? '#2d2d44' : 'rgba(255, 255, 255, 0.08)',
+    flex: 0.82,
+    backgroundColor: '#f6f1ea',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.35)',
     borderRadius: 12,
     overflow: 'hidden',
   },
   picker: {
-    color: Platform.OS === 'web' ? '#000' : '#fff',
+    color: '#1c1a24',
     backgroundColor: 'transparent',
+    ...(Platform.OS === 'android' && {
+      minHeight: 54,
+    }),
     ...(Platform.OS === 'web' && {
       height: 50,
       paddingHorizontal: 12,
       border: 'none',
       cursor: 'pointer',
-      backgroundColor: '#fff',
-      color: '#000',
+      backgroundColor: '#f6f1ea',
+      color: '#1c1a24',
       fontSize: 14,
       width: '100%',
       borderRadius: 12,
     }),
   } as any,
   pickerItem: {
-    color: '#000',
+    color: '#1c1a24',
   },
   pickerItemPlaceholder: {
-    color: '#666',
+    color: '#7f6f77',
+  },
+  preferenceHint: {
+    color: AppTheme.colors.textSecondary,
+    fontSize: 13,
+    marginBottom: 12,
+  },
+  preferenceOptions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  genderOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  preferenceOption: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  genderOption: {
+    minWidth: '47%',
+    flexGrow: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  preferenceOptionActive: {
+    backgroundColor: 'rgba(233, 69, 96, 0.16)',
+    borderColor: 'rgba(233, 69, 96, 0.55)',
+  },
+  preferenceOptionText: {
+    color: '#d3d0da',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  genderOptionText: {
+    color: '#d3d0da',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  preferenceOptionTextActive: {
+    color: '#fff4f6',
   },
   hint: {
-    color: '#666',
+    color: AppTheme.colors.textMuted,
     fontSize: 12,
     marginTop: 6,
     fontStyle: 'italic',
@@ -519,7 +711,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     flex: 1,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
     fontSize: 13,
     lineHeight: 18,
   },
@@ -542,7 +734,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   skipText: {
-    color: '#666',
+    color: AppTheme.colors.textMuted,
     fontSize: 14,
     textDecorationLine: 'underline',
   },
