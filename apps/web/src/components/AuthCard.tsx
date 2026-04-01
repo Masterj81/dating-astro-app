@@ -131,7 +131,7 @@ export function AuthCard({ mode }: AuthCardProps) {
     const { error: oauthError } = await getSupabaseBrowser().auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `https://app.astrodatingapp.com/${locale}/auth/callback`,
+        redirectTo: `https://app.astrodatingapp.com/${locale}/app`,
       },
     });
 

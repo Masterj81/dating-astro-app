@@ -13,32 +13,24 @@ export default function AuthCallbackPage() {
     const handleCallback = async () => {
       const supabase = getSupabaseBrowser();
 
-      // Check for code in URL (PKCE flow)
-      const url = new URL(window.location.href);
-      const code = url.searchParams.get("code");
+      // detectSessionInUrl handles hash fragments automatically
+      // Wait a moment for Supabase to process
+      await new Promise((r) => setTimeout(r, 1000));
 
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) {
-          console.error("Auth callback error:", error.message);
-          router.replace(`/${locale}/auth/login`);
-          return;
-        }
-      }
-
-      // Check for hash fragment tokens (implicit flow fallback)
-      const hash = window.location.hash;
-      if (hash && hash.includes("access_token")) {
-        // Supabase client auto-detects hash tokens via detectSessionInUrl
-        await new Promise((r) => setTimeout(r, 500));
-      }
-
-      // Verify session exists
       const { data: { session } } = await supabase.auth.getSession();
+
       if (session) {
         router.replace(`/${locale}/app`);
       } else {
-        router.replace(`/${locale}/auth/login`);
+        // Retry once after a longer wait
+        await new Promise((r) => setTimeout(r, 2000));
+        const { data: { session: retrySession } } = await supabase.auth.getSession();
+
+        if (retrySession) {
+          router.replace(`/${locale}/app`);
+        } else {
+          router.replace(`/${locale}/auth/login`);
+        }
       }
     };
 
