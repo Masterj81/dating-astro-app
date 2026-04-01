@@ -83,7 +83,7 @@ const mapShowMeToLookingFor = (showMe: ShowMeOption) => {
   return ['male', 'female', 'non-binary', 'other'];
 };
 
-const pickerMode = Platform.OS === 'android' ? 'dialog' : undefined;
+const pickerMode = undefined; // Let each platform use its default picker mode
 
 export default function BirthInfoScreen() {
   const [birthMonth, setBirthMonth] = useState('');
