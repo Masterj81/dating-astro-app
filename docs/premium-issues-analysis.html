@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analyse des Problèmes Premium - AstroDating</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: #fff;
+    }
+
+    h1 {
+      color: #1a1a2e;
+      border-bottom: 3px solid #e94560;
+      padding-bottom: 15px;
+      margin-bottom: 30px;
+      font-size: 28px;
+    }
+
+    h2 {
+      color: #e94560;
+      margin-top: 40px;
+      margin-bottom: 20px;
+      font-size: 22px;
+      border-left: 4px solid #e94560;
+      padding-left: 15px;
+    }
+
+    h3 {
+      color: #16213e;
+      margin-top: 25px;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+
+    h4 {
+      color: #444;
+      margin-top: 20px;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+
+    p {
+      margin-bottom: 15px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 12px 8px;
+      text-align: left;
+    }
+
+    th {
+      background: #1a1a2e;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+
+    tr:hover {
+      background: #f1f1f1;
+    }
+
+    code {
+      background: #f4f4f4;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 13px;
+      color: #e94560;
+    }
+
+    pre {
+      background: #1a1a2e;
+      color: #f8f8f2;
+      padding: 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 15px 0;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+    }
+
+    .keyword { color: #ff79c6; }
+    .string { color: #f1fa8c; }
+    .comment { color: #6272a4; }
+    .function { color: #50fa7b; }
+
+    ul, ol {
+      margin: 15px 0 15px 25px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge-success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .badge-warning {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .badge-danger {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .badge-info {
+      background: #d1ecf1;
+      color: #0c5460;
+    }
+
+    .alert {
+      padding: 15px 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+
+    .alert-info {
+      background: #e7f3ff;
+      border-left: 4px solid #0066cc;
+    }
+
+    .alert-warning {
+      background: #fff8e6;
+      border-left: 4px solid #ffc107;
+    }
+
+    .alert-danger {
+      background: #ffe6e6;
+      border-left: 4px solid #dc3545;
+    }
+
+    .section {
+      page-break-inside: avoid;
+      margin-bottom: 40px;
+    }
+
+    .header-info {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+    }
+
+    .header-info p {
+      margin: 5px 0;
+      font-size: 14px;
+    }
+
+    .summary-box {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #fff;
+      padding: 25px;
+      border-radius: 12px;
+      margin: 30px 0;
+    }
+
+    .summary-box h3 {
+      color: #e94560;
+      margin-top: 0;
+    }
+
+    .summary-box table {
+      background: rgba(255,255,255,0.1);
+    }
+
+    .summary-box th {
+      background: rgba(233, 69, 96, 0.8);
+    }
+
+    .summary-box td {
+      border-color: rgba(255,255,255,0.2);
+      color: #fff;
+    }
+
+    .summary-box tr:nth-child(even) {
+      background: rgba(255,255,255,0.05);
+    }
+
+    .summary-box tr:hover {
+      background: rgba(255,255,255,0.1);
+    }
+
+    @media print {
+      body {
+        padding: 20px;
+      }
+
+      pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+
+      .section {
+        page-break-inside: avoid;
+      }
+
+      h2 {
+        page-break-after: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Analyse des Problemes Premium - AstroDating</h1>
+
+  <div class="header-info">
+    <p><strong>Projet:</strong> AstroDating Mobile App</p>
+    <p><strong>Date:</strong> 11 Mars 2026</p>
+    <p><strong>Version:</strong> Analyse v1.0</p>
+    <p><strong>Fichiers concernes:</strong> premium.tsx, plus.tsx, LanguageContext.tsx, i18n.ts</p>
+  </div>
+
+  <!-- SECTION 1 -->
+  <div class="section">
+    <h2>1. Audit : Traductions Premium</h2>
+
+    <h3>Verification des cles utilisees vs fr.json</h3>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Cle dans premium.tsx</th>
+          <th>Ligne</th>
+          <th>Existe</th>
+          <th>Valeur FR</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>unlockCosmos</code></td>
+          <td>84, 133</td>
+          <td><span class="badge badge-success">L.412</span></td>
+          <td>"Debloquez le Cosmos"</td>
+        </tr>
+        <tr>
+          <td><code>premiumRequired</code></td>
+          <td>87, 135</td>
+          <td><span class="badge badge-success">L.414</span></td>
+          <td>"Accedez aux themes natals..."</td>
+        </tr>
+        <tr>
+          <td><code>fullNatalChart</code></td>
+          <td>29, 100, 142</td>
+          <td><span class="badge badge-success">L.98</span></td>
+          <td>"Theme Natal Complet"</td>
+        </tr>
+        <tr>
+          <td><code>advancedSynastry</code></td>
+          <td>29, 100, 142</td>
+          <td><span class="badge badge-success">L.100</span></td>
+          <td>"Synastrie Avancee"</td>
+        </tr>
+        <tr>
+          <td><code>dailyHoroscope</code></td>
+          <td>31, 100, 142</td>
+          <td><span class="badge badge-success">L.292</span></td>
+          <td>"Horoscope Quotidien"</td>
+        </tr>
+        <tr>
+          <td><code>luckyDays</code></td>
+          <td>32, 100, 142</td>
+          <td><span class="badge badge-success">L.441</span></td>
+          <td>"Calculateur de Jours Chanceux"</td>
+        </tr>
+        <tr>
+          <td><code>viewPlans</code></td>
+          <td>117, 157</td>
+          <td><span class="badge badge-success">L.413</span></td>
+          <td>"Voir les offres"</td>
+        </tr>
+        <tr>
+          <td><code>startingAt</code></td>
+          <td>122, 161</td>
+          <td><span class="badge badge-success">L.415</span></td>
+          <td>"A partir de 9,99 $/mois"</td>
+        </tr>
+        <tr>
+          <td><code>cosmicHub</code></td>
+          <td>178, 304</td>
+          <td><span class="badge badge-success">L.416</span></td>
+          <td>"Espace Cosmique"</td>
+        </tr>
+        <tr>
+          <td><code>cosmicMember</code></td>
+          <td>181, 306</td>
+          <td><span class="badge badge-success">L.417</span></td>
+          <td>"Membre Cosmique"</td>
+        </tr>
+        <tr>
+          <td><code>celestialMember</code></td>
+          <td>181, 306</td>
+          <td><span class="badge badge-success">L.418</span></td>
+          <td>"Membre Celeste"</td>
+        </tr>
+        <tr>
+          <td><code>celestialFeatures</code></td>
+          <td>188, 312</td>
+          <td><span class="badge badge-success">L.408</span></td>
+          <td>"Fonctionnalites Celestes"</td>
+        </tr>
+        <tr>
+          <td><code>cosmicFeatures</code></td>
+          <td>221, 327</td>
+          <td><span class="badge badge-success">L.409</span></td>
+          <td>"Fonctionnalites Cosmiques"</td>
+        </tr>
+        <tr>
+          <td><code>upgradeToCosmic</code></td>
+          <td>280, 355</td>
+          <td><span class="badge badge-success">L.419</span></td>
+          <td>"Passer a Cosmique"</td>
+        </tr>
+        <tr>
+          <td><code>unlockAllFeatures</code></td>
+          <td>283, 357</td>
+          <td><span class="badge badge-success">L.421</span></td>
+          <td>"Debloquez horoscopes quotidiens..."</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="alert alert-info">
+      <strong>Resultat :</strong> Toutes les cles existent dans fr.json. Le probleme n'est pas un decalage de cles.
+    </div>
+
+    <h3>Diagnostic probable</h3>
+    <ol>
+      <li><strong>Locale non initialisee au premier rendu</strong> - <code>initializeLanguage()</code> est asynchrone</li>
+      <li><strong>Composant ne re-rend pas apres changement de locale</strong></li>
+      <li><strong>Build embarquant une ancienne version des locales</strong></li>
+    </ol>
+
+    <h3>Fix propose avec debug</h3>
+    <pre><code><span class="comment">// apps/mobile/app/(tabs)/premium.tsx - ligne 56</span>
+<span class="comment">// AVANT</span>
+<span class="keyword">const</span> { t } = useLanguage();
+
+<span class="comment">// APRES (avec debug temporaire)</span>
+<span class="keyword">const</span> { t, language, isLoading } = useLanguage();
+
+<span class="comment">// Ajouter apres ligne 59</span>
+useEffect(() => {
+  console.<span class="function">log</span>(<span class="string">'[Premium] Debug locale:'</span>, {
+    language,
+    isLoading,
+    sampleTranslations: {
+      cosmicHub: <span class="function">t</span>(<span class="string">'cosmicHub'</span>),
+      viewPlans: <span class="function">t</span>(<span class="string">'viewPlans'</span>),
+      unlockCosmos: <span class="function">t</span>(<span class="string">'unlockCosmos'</span>),
+    }
+  });
+}, [language, isLoading]);</code></pre>
+
+    <h3>Point critique dans LanguageContext</h3>
+    <p>Dans <code>LanguageContext.tsx:21</code> :</p>
+    <pre><code><span class="keyword">const</span> [language, setLanguageState] = useState(getCurrentLanguage());</code></pre>
+    <p><code>getCurrentLanguage()</code> retourne <code>'en'</code> initialement (ligne 33 de i18n.ts), car <code>initializeLanguage()</code> n'a pas encore ete appelee.</p>
+
+    <div class="alert alert-warning">
+      <strong>Probleme identifie :</strong> Le composant premium.tsx peut se rendre avant que initializeLanguage() ne charge la langue sauvegardee.
+    </div>
+
+    <h3>Fix structurel pour LanguageContext.tsx</h3>
+    <pre><code><span class="comment">// apps/mobile/contexts/LanguageContext.tsx</span>
+
+<span class="keyword">export const</span> useLanguage = () => {
+  <span class="keyword">const</span> context = useContext(LanguageContext);
+
+  <span class="comment">// Lire version pour forcer re-render quand langue change</span>
+  <span class="keyword">const</span> { version } = context;
+
+  <span class="keyword">const</span> t: TranslateFunction = (key, options) => {
+    <span class="keyword">return</span> i18n.<span class="function">t</span>(key, options);
+  };
+
+  <span class="keyword">return</span> {
+    language: context.language,
+    setLanguage: context.setLanguage,
+    isLoading: context.isLoading,
+    version, <span class="comment">// Exposer pour dependance</span>
+    t
+  };
+};</code></pre>
+  </div>
+
+  <!-- SECTION 2 -->
+  <div class="section">
+    <h2>2. Audit : Selection Plan Celeste</h2>
+
+    <h3>Etat actuel du flux</h3>
+    <div class="alert alert-danger">
+      <p><strong>User libre</strong> &rarr; Clique "View Plans" &rarr; <code>/premium-screens/plus</code> &rarr; Voit UNIQUEMENT Cosmic</p>
+      <p style="margin-bottom: 0;"><em>Pas d'option Celeste disponible</em></p>
+    </div>
+
+    <h3>Flux propose (Option A - recommandee)</h3>
+    <div class="alert alert-info">
+      <p><strong>User libre</strong> &rarr; Clique "View Plans" &rarr; <code>/premium-screens/plans</code> &rarr; Voit Celeste + Cosmic</p>
+      <p style="margin-bottom: 0;">&rarr; Choisit un plan &rarr; Achat direct</p>
+    </div>
+
+    <h3>Solution : Creer plans.tsx</h3>
+    <p>Un nouvel ecran qui affiche les deux plans cote a cote avec selection interactive.</p>
+
+    <h4>Structure du composant</h4>
+    <pre><code><span class="comment">// apps/mobile/app/premium-screens/plans.tsx</span>
+
+<span class="comment">// Configuration des packages RevenueCat</span>
+<span class="keyword">const</span> PACKAGE_CONFIG = {
+  celestial: {
+    identifiers: [<span class="string">'$rc_monthly'</span>, <span class="string">'premium_monthly'</span>, <span class="string">'celestial_monthly'</span>],
+    entitlement: <span class="string">'premium'</span>,
+  },
+  cosmic: {
+    identifiers: [<span class="string">'premium_plus_monthly'</span>, <span class="string">'cosmic_monthly'</span>, <span class="string">'$rc_annual'</span>],
+    entitlement: <span class="string">'premium_plus'</span>,
+  },
+};
+
+<span class="keyword">export default function</span> <span class="function">PlansScreen</span>() {
+  <span class="keyword">const</span> [selectedPlan, setSelectedPlan] = useState&lt;PlanTier&gt;(<span class="string">'celestial'</span>);
+  <span class="keyword">const</span> { t, language } = useLanguage();
+
+  <span class="comment">// ... logique de chargement et achat</span>
+
+  <span class="keyword">return</span> (
+    &lt;View&gt;
+      <span class="comment">{/* Card Celeste */}</span>
+      &lt;TouchableOpacity
+        onPress={() => setSelectedPlan(<span class="string">'celestial'</span>)}
+      &gt;
+        &lt;Text&gt;{t(<span class="string">'celestialTier'</span>)} - $9.99/mois&lt;/Text&gt;
+      &lt;/TouchableOpacity&gt;
+
+      <span class="comment">{/* Card Cosmic */}</span>
+      &lt;TouchableOpacity
+        onPress={() => setSelectedPlan(<span class="string">'cosmic'</span>)}
+      &gt;
+        &lt;Text&gt;{t(<span class="string">'cosmicTier'</span>)} - $14.99/mois&lt;/Text&gt;
+      &lt;/TouchableOpacity&gt;
+
+      <span class="comment">{/* Bouton achat */}</span>
+      &lt;Button onPress={() => handlePurchase(selectedPlan)} /&gt;
+    &lt;/View&gt;
+  );
+}</code></pre>
+
+    <h4>Modifications dans premium.tsx</h4>
+    <pre><code><span class="comment">// Ligne 106 (web paywall button)</span>
+<span class="comment">// AVANT</span>
+onClick={() => router.push(<span class="string">'/premium-screens/plus'</span>)}
+<span class="comment">// APRES</span>
+onClick={() => router.push(<span class="string">'/premium-screens/plans'</span>)}
+
+<span class="comment">// Ligne 149 (native paywall button)</span>
+<span class="comment">// AVANT</span>
+onPress={() => router.push(<span class="string">'/premium-screens/plus'</span>)}
+<span class="comment">// APRES</span>
+onPress={() => router.push(<span class="string">'/premium-screens/plans'</span>)}
+
+<span class="comment">// Ligne 265 et 351 (upgrade banner Celestial → Cosmic)</span>
+<span class="comment">// GARDER '/premium-screens/plus' car specifique a l'upgrade</span></code></pre>
+  </div>
+
+  <!-- SECTION 3 -->
+  <div class="section">
+    <h2>3. Audit : Package Matching RevenueCat</h2>
+
+    <h3>Code actuel (plus.tsx:38-53)</h3>
+    <pre><code><span class="keyword">const</span> plusPkg = packages.<span class="function">find</span>(
+  (pkg) =>
+    pkg.identifier.<span class="function">includes</span>(<span class="string">'premium_plus'</span>) ||
+    pkg.identifier.<span class="function">includes</span>(<span class="string">'plus'</span>) ||
+    pkg.product.identifier.<span class="function">includes</span>(<span class="string">'premium_plus'</span>)
+);</code></pre>
+
+    <h3>Problemes identifies</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Probleme</th>
+          <th>Impact</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td><code>includes('plus')</code> trop vague</td>
+          <td>Peut matcher des packages non desires</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>Aucun logging</td>
+          <td>Impossible de debugger</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>IDs RevenueCat par defaut (<code>$rc_monthly</code>)</td>
+          <td>Ne contiennent ni "plus" ni "premium_plus"</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Fix propose pour plus.tsx</h3>
+    <pre><code><span class="comment">// Configuration en haut du fichier</span>
+<span class="keyword">const</span> COSMIC_PACKAGE_CONFIG = {
+  packageIdentifiers: [
+    <span class="string">'premium_plus_monthly'</span>,
+    <span class="string">'cosmic_monthly'</span>,
+    <span class="string">'$rc_monthly'</span>,
+  ],
+  productIdentifiers: [
+    <span class="string">'com.astrodating.cosmic.monthly'</span>,
+    <span class="string">'com.astrodating.premium_plus'</span>,
+  ],
+};
+
+<span class="comment">// Remplacer loadPackages</span>
+<span class="keyword">const</span> <span class="function">loadPackages</span> = <span class="keyword">async</span> () => {
+  <span class="keyword">try</span> {
+    <span class="keyword">const</span> packages = <span class="keyword">await</span> <span class="function">getOfferings</span>();
+
+    <span class="comment">// DEBUG: Logger tous les packages</span>
+    <span class="keyword">if</span> (__DEV__) {
+      console.<span class="function">log</span>(<span class="string">'[Plus] All RevenueCat packages:'</span>);
+      packages.<span class="function">forEach</span>((pkg, i) => {
+        console.<span class="function">log</span>(<span class="string">`  [${i}] identifier: "${pkg.identifier}"`</span>);
+        console.<span class="function">log</span>(<span class="string">`      product: "${pkg.product.identifier}"`</span>);
+        console.<span class="function">log</span>(<span class="string">`      price: ${pkg.product.priceString}`</span>);
+      });
+    }
+
+    <span class="keyword">let</span> plusPkg;
+
+    <span class="comment">// 1. Chercher par package identifier exact</span>
+    <span class="keyword">for</span> (<span class="keyword">const</span> id <span class="keyword">of</span> COSMIC_PACKAGE_CONFIG.packageIdentifiers) {
+      plusPkg = packages.<span class="function">find</span>(pkg => pkg.identifier === id);
+      <span class="keyword">if</span> (plusPkg) {
+        console.<span class="function">log</span>(<span class="string">'[Plus] Found by package ID:'</span>, id);
+        <span class="keyword">break</span>;
+      }
+    }
+
+    <span class="comment">// 2. Fallback: product identifier</span>
+    <span class="keyword">if</span> (!plusPkg) {
+      <span class="keyword">for</span> (<span class="keyword">const</span> id <span class="keyword">of</span> COSMIC_PACKAGE_CONFIG.productIdentifiers) {
+        plusPkg = packages.<span class="function">find</span>(pkg => pkg.product.identifier === id);
+        <span class="keyword">if</span> (plusPkg) <span class="keyword">break</span>;
+      }
+    }
+
+    <span class="keyword">if</span> (plusPkg) {
+      <span class="function">setPremiumPlusPackage</span>(plusPkg);
+    } <span class="keyword">else</span> {
+      console.<span class="function">warn</span>(<span class="string">'[Plus] No Cosmic package found!'</span>);
+    }
+  } <span class="keyword">catch</span> (error) {
+    console.<span class="function">error</span>(<span class="string">'[Plus] Failed:'</span>, error);
+  }
+};</code></pre>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="summary-box">
+    <h3>Resume des fichiers a modifier</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Priorite</th>
+          <th>Fichier</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-danger">1</span></td>
+          <td>premium.tsx</td>
+          <td>Ajouter <code>language</code> + log debug</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-danger">1</span></td>
+          <td>LanguageContext.tsx</td>
+          <td>Exposer <code>version</code> dans useLanguage()</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-warning">2</span></td>
+          <td><strong>CREER</strong> plans.tsx</td>
+          <td>Nouvel ecran selection Celeste/Cosmic</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-warning">2</span></td>
+          <td>premium.tsx L.106, 149</td>
+          <td>Changer route vers /premium-screens/plans</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-info">3</span></td>
+          <td>plus.tsx</td>
+          <td>Refactor loadPackages() avec IDs explicites + logs</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h3>Cles de traduction a ajouter</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Cle</th>
+          <th>EN</th>
+          <th>FR</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>choosePlan</code></td>
+          <td>Choose Your Plan</td>
+          <td>Choisissez Votre Forfait</td>
+        </tr>
+        <tr>
+          <td><code>celestialActivated</code></td>
+          <td>Celestial plan activated!</td>
+          <td>Forfait Celeste active !</td>
+        </tr>
+        <tr>
+          <td><code>cosmicActivated</code></td>
+          <td>Cosmic plan activated!</td>
+          <td>Forfait Cosmique active !</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="margin-top: 60px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #888; font-size: 12px;">
+    <p>Document genere le 11 Mars 2026</p>
+    <p>AstroDating - Analyse Technique</p>
+  </div>
+
+</body>
+</html>
