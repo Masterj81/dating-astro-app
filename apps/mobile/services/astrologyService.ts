@@ -234,6 +234,16 @@ export function getZodiacEmoji(sign: string): string {
  * Calculate quick compatibility score based on sun signs only
  * Useful for instant feedback before full synastry
  */
+const MODALITIES: Record<string, string> = {
+  aries: 'cardinal', cancer: 'cardinal', libra: 'cardinal', capricorn: 'cardinal',
+  taurus: 'fixed', leo: 'fixed', scorpio: 'fixed', aquarius: 'fixed',
+  gemini: 'mutable', virgo: 'mutable', sagittarius: 'mutable', pisces: 'mutable',
+};
+
+export function getModality(sign: string): string {
+  return MODALITIES[sign.toLowerCase()] || 'cardinal';
+}
+
 export function calculateQuickCompatibility(sign1: string, sign2: string): number {
   const elements: Record<string, string> = {
     aries: 'fire', leo: 'fire', sagittarius: 'fire',
@@ -245,19 +255,30 @@ export function calculateQuickCompatibility(sign1: string, sign2: string): numbe
   const el1 = elements[sign1.toLowerCase()];
   const el2 = elements[sign2.toLowerCase()];
 
-  // Same element = high compatibility
-  if (el1 === el2) return 85;
+  // Base score from element compatibility
+  let score: number;
+  if (el1 === el2) {
+    score = 85;
+  } else {
+    const compatible: Record<string, string> = {
+      fire: 'air', air: 'fire', earth: 'water', water: 'earth',
+    };
+    score = compatible[el1] === el2 ? 75 : 55;
+  }
 
-  // Compatible elements
-  const compatible: Record<string, string> = {
-    fire: 'air',
-    air: 'fire',
-    earth: 'water',
-    water: 'earth',
-  };
+  // Modality bonus
+  const mod1 = MODALITIES[sign1.toLowerCase()];
+  const mod2 = MODALITIES[sign2.toLowerCase()];
+  if (mod1 && mod2) {
+    if (mod1 === mod2) {
+      score += 5; // Same pace — they understand each other
+    } else if (
+      (mod1 === 'cardinal' && mod2 === 'mutable') ||
+      (mod1 === 'mutable' && mod2 === 'cardinal')
+    ) {
+      score += 3; // Complementary — one initiates, the other adapts
+    }
+  }
 
-  if (compatible[el1] === el2) return 75;
-
-  // Neutral/challenging
-  return 55;
+  return Math.min(score, 100);
 }

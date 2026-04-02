@@ -257,7 +257,28 @@ function calculateCompatibility(chart1: any, chart2: any): {
   }
 
   const ratio = totalWeight > 0 ? weightedScore / totalWeight : 0
-  const overall = Math.max(0, Math.min(100, Math.round(50 + ratio * 40)))
+  let overall = Math.max(0, Math.min(100, Math.round(50 + ratio * 40)))
+
+  // Mutual reception bonus: Planet A in Planet B's ruling sign and vice versa
+  const RULERS: Record<string, string[]> = {
+    sun: ['leo'], moon: ['cancer'], mercury: ['gemini', 'virgo'],
+    venus: ['taurus', 'libra'], mars: ['aries'], jupiter: ['sagittarius'], saturn: ['capricorn'],
+  }
+  const getSign = (chart: any, key: string): string => {
+    if (key === 'sun' || key === 'moon' || key === 'rising') return chart[key]?.sign?.toLowerCase() || ''
+    return chart.planets?.[key]?.sign?.toLowerCase() || ''
+  }
+  for (const [planetA, ruledByA] of Object.entries(RULERS)) {
+    for (const [planetB, ruledByB] of Object.entries(RULERS)) {
+      if (planetA === planetB) continue
+      const signA_in_chart2 = getSign(chart2, planetA)
+      const signB_in_chart1 = getSign(chart1, planetB)
+      if (ruledByA.includes(signB_in_chart1) && ruledByB.includes(signA_in_chart2)) {
+        overall = Math.min(100, overall + 10)
+        break
+      }
+    }
+  }
 
   // Category scores
   const catScores: Record<string, { total: number; count: number }> = {
@@ -295,11 +316,25 @@ function calculateCompatibility(chart1: any, chart2: any): {
     return c.count > 0 ? Math.round(c.total / c.count) : 55
   }
 
+  // Dignity bonus for passion: Venus/Mars in ruling sign boosts, detriment reduces
+  const DETRIMENT: Record<string, string[]> = {
+    venus: ['aries', 'scorpio'], mars: ['taurus', 'libra'],
+  }
+  let passionBonus = 0
+  for (const chart of [chart1, chart2]) {
+    const venusSign = getSign(chart, 'venus')
+    const marsSign = getSign(chart, 'mars')
+    if (RULERS.venus.includes(venusSign)) passionBonus += 4
+    else if (DETRIMENT.venus.includes(venusSign)) passionBonus -= 3
+    if (RULERS.mars.includes(marsSign)) passionBonus += 4
+    else if (DETRIMENT.mars.includes(marsSign)) passionBonus -= 3
+  }
+
   return {
     overall,
     emotional: avg('emotional'),
     communication: avg('communication'),
-    passion: avg('passion'),
+    passion: Math.max(0, Math.min(100, avg('passion') + passionBonus)),
     longTerm: avg('longTerm'),
     values: avg('values'),
     growth: avg('growth'),

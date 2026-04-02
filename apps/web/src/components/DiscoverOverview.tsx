@@ -42,23 +42,34 @@ const COMPATIBLE: Record<string, string> = {
   water: "earth",
 };
 
+const MODALITIES: Record<string, string> = {
+  aries: "cardinal", cancer: "cardinal", libra: "cardinal", capricorn: "cardinal",
+  taurus: "fixed", leo: "fixed", scorpio: "fixed", aquarius: "fixed",
+  gemini: "mutable", virgo: "mutable", sagittarius: "mutable", pisces: "mutable",
+};
+
 function calculateQuickCompatibility(sign1?: string | null, sign2?: string | null) {
-  if (!sign1 || !sign2) {
-    return 55;
-  }
+  if (!sign1 || !sign2) return 55;
 
   const el1 = ELEMENTS[sign1.toLowerCase()];
   const el2 = ELEMENTS[sign2.toLowerCase()];
+  if (!el1 || !el2) return 55;
 
-  if (!el1 || !el2) {
-    return 55;
-  }
-
+  let score: number;
   if (el1 === el2) {
-    return 85;
+    score = 85;
+  } else {
+    score = COMPATIBLE[el1] === el2 ? 75 : 55;
   }
 
-  return COMPATIBLE[el1] === el2 ? 75 : 55;
+  const mod1 = MODALITIES[sign1.toLowerCase()];
+  const mod2 = MODALITIES[sign2.toLowerCase()];
+  if (mod1 && mod2) {
+    if (mod1 === mod2) score += 5;
+    else if ((mod1 === "cardinal" && mod2 === "mutable") || (mod1 === "mutable" && mod2 === "cardinal")) score += 3;
+  }
+
+  return Math.min(score, 100);
 }
 
 function getCompatibilityTone(score: number) {
