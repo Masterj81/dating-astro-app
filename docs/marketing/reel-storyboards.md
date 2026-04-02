@@ -667,3 +667,392 @@ Find your cosmic match - link in bio
 - [ ] Choose cover frame
 - [ ] Schedule for optimal time
 - [ ] Share to Stories after posting
+
+---
+
+## Reel 11: Your Venus Sign Explains Everything About Your Love Life
+
+**Duration:** 25 seconds
+**Style:** Educational + relatable
+**Audio:** Chill lo-fi beat or trending educational sound
+**Goal:** Saves, shares, educational value
+
+### Script & Timing
+
+| Time | Scene | Text Overlay | Midjourney Prompt |
+|------|-------|--------------|-------------------|
+| 0-3s | Hook | "Your Venus sign explains EVERYTHING about your love life" | Venus planet glowing in pink and gold against deep indigo cosmos |
+| 3-8s | Fire Venus | "Fire Venus (Aries, Leo, Sag): You love the chase. Passion over everything." | Copper Venus glyph engulfed in stylized flames |
+| 8-13s | Earth Venus | "Earth Venus (Taurus, Virgo, Cap): Acts of service. Quality time. Loyalty." | Jade Venus glyph resting on dark moss and succulents |
+| 13-18s | Air Venus | "Air Venus (Gemini, Libra, Aquarius): Needs mental stimulation. Words are everything." | Translucent glass Venus glyph floating in blue and silver smoke |
+| 18-23s | Water Venus | "Water Venus (Cancer, Scorpio, Pisces): Feels EVERYTHING. Loves deeply or not at all." | Luminous Venus glyph submerged in dark crystal-clear water |
+| 23-25s | CTA | "Find your Venus sign on AstroDating - Link in bio" | Starburst of intertwined elemental energies around golden Venus symbol |
+
+### Midjourney Prompts
+
+**Frame 1 - Hook (Venus Planet):**
+```
+/imagine prompt: wide shot of the planet Venus glowing in iridescent pink and gold against a deep indigo cosmos, thin orbital rings made of tiny rose petals circling the planet, soft lens flare at the planet's edge, dark star-field background with faint constellation lines --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 2 - Fire Venus:**
+```
+/imagine prompt: close-up of a polished copper Venus glyph engulfed in stylized flames, the fire shifting from deep orange at the base to bright gold at the tips, embers and sparks drifting upward, dark volcanic rock surface beneath, dramatic uplighting --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 3 - Earth Venus:**
+```
+/imagine prompt: a Venus glyph carved from rich green jade resting on a bed of dark moss and small succulents, warm golden hour sunlight filtering through from the left, dewdrops on the leaves catching the light, earthy natural tones, macro product-shot aesthetic --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 4 - Air Venus:**
+```
+/imagine prompt: a translucent glass Venus glyph suspended in mid-air, surrounded by swirling wisps of pale blue and silver smoke, tiny holographic letter fragments orbiting the symbol like electrons, cool cyan and lavender lighting, airy weightless atmosphere --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 5 - Water Venus:**
+```
+/imagine prompt: a luminous Venus glyph submerged in dark crystal-clear water, silver moonlight refracting through gentle ripples above, tiny bioluminescent particles drifting past, deep navy and teal tones, the glyph glowing softly from within in pale rose --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 6 - CTA:**
+```
+/imagine prompt: center-frame starburst of intertwined pink fire, green vines, blue smoke, and dark water spiraling outward from a golden Venus symbol at the core, cosmic black background with faint constellation patterns, celebration energy, cinematic lens flare --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+### CapCut Assembly
+
+1. Import 6 Midjourney frames
+2. Set Frame 1 (Hook) to 3 seconds, Frames 2-5 (elements) to 5 seconds each, Frame 6 (CTA) to 2 seconds
+3. Transitions: Smooth fade between each element (0.3s)
+4. Effects:
+   - Frame 1: Slow zoom in on Venus
+   - Frame 2: Subtle flame flicker overlay, warm color grade
+   - Frame 3: Gentle parallax pan right
+   - Frame 4: Soft floating/drift motion, light leak overlay
+   - Frame 5: Slow ripple distortion overlay
+   - Frame 6: Scale pop + sparkle particle overlay
+5. Text: Use "Slide up" animation for each element label, bold font with pink/purple glow
+6. Add lo-fi or trending educational audio
+7. Export 1080x1920
+
+### Suggested Audio
+- Lo-fi chill beat (educational vibe)
+- "Aesthetic explanation" trending sound
+- Soft piano with subtle bass
+
+---
+
+## Reel 12: Rating Zodiac Couples Out of 10
+
+**Duration:** 20 seconds
+**Style:** Fast-paced ranking format
+**Audio:** Upbeat trending beat with dramatic pauses
+**Goal:** Comments, debate, shares
+
+### Script & Timing
+
+| Time | Scene | Text Overlay | Midjourney Prompt |
+|------|-------|--------------|-------------------|
+| 0-2s | Hook | "Rating zodiac couples out of 10" | Overhead shot of zodiac medallions arranged in pairs on black velvet |
+| 2-5s | Pair 1 | "Scorpio + Pisces: 10/10 - soulmate energy" | Scorpio and Pisces medallions on black silk with rose-gold heart thread |
+| 5-8s | Pair 2 | "Leo + Sagittarius: 9/10 - pure fire" | Leo and Sagittarius golden medallions hovering above glowing embers |
+| 8-11s | Pair 3 | "Taurus + Cancer: 8/10 - comfort couple" | Rose quartz Taurus and Cancer medallions on cashmere blanket |
+| 11-14s | Pair 4 | "Gemini + Aquarius: 7/10 - chaotic good" | Chrome Gemini and Aquarius medallions in electric lightning swirl |
+| 14-17s | Pair 5 | "Aries + Aries: 6/10 - will they survive?" | Two red metal Aries glyphs charging head-on with impact sparks |
+| 17-20s | CTA | "Fight me in the comments - AstroDating" | All twelve zodiac glyphs scattered like chess pieces on dark marble |
+
+### Midjourney Prompts
+
+**Frame 1 - Hook:**
+```
+/imagine prompt: overhead shot of twelve small metallic zodiac medallions arranged in pairs on black velvet, a tiny golden scorecard propped between each pair, warm directional spotlight from above, shallow depth of field --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 2 - Scorpio + Pisces (10/10):**
+```
+/imagine prompt: two medallions with Scorpio and Pisces glyphs in dark silver resting side by side on black silk, a thin rose-gold thread woven between them forming a heart shape, deep purple and teal backlighting, intimate macro shot --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 3 - Leo + Sagittarius (9/10):**
+```
+/imagine prompt: two blazing golden medallions with Leo and Sagittarius glyphs hovering above a bed of glowing embers, twin trails of sparks spiraling upward between them, warm amber and orange tones, dynamic low-angle shot --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 4 - Taurus + Cancer (8/10):**
+```
+/imagine prompt: two medallions with Taurus and Cancer glyphs carved from warm rose quartz nestled together on a soft cashmere blanket, gentle candlelight casting long soft shadows, cozy intimate atmosphere, shallow depth of field --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 5 - Gemini + Aquarius (7/10):**
+```
+/imagine prompt: two medallions with Gemini and Aquarius glyphs in polished chrome floating in a swirl of electric blue and violet lightning bolts, tiny holographic data particles orbiting both symbols, futuristic cyber aesthetic, dark background --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 6 - Aries + Aries (6/10):**
+```
+/imagine prompt: two identical Aries ram glyphs in brushed red metal charging toward each other head-on, small impact sparks frozen at the collision point, dramatic split-lighting with crimson on left and orange on right, intense energy --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 7 - CTA:**
+```
+/imagine prompt: wide shot of all twelve zodiac glyphs scattered like chess pieces across a dark marble board, some standing and some toppled, warm golden spotlight from above, dramatic overhead angle, debate battlefield aesthetic --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+### CapCut Assembly
+
+1. Import 7 Midjourney frames
+2. Set Frame 1 (Hook) to 2 seconds, Frames 2-6 (pairs) to 3 seconds each, Frame 7 (CTA) to 3 seconds
+3. Transitions: Quick slide-left transitions (0.15s) for fast-paced energy
+4. Effects:
+   - Each pair frame: Scale pop on entry with slight shake
+   - Add large score number overlay (10/10, 9/10, etc.) with "Pop" animation
+   - Frame 6 (Aries vs Aries): Add screen shake effect
+   - Frame 7: Slow zoom out
+5. Text: Bold white font with colored glow matching element (red for fire, blue for water, etc.)
+6. Add "ding" sound effect on high scores, "buzzer" on lower scores
+7. Use upbeat trending audio as base track
+8. Export 1080x1920
+
+### Suggested Audio
+- Fast-paced trending beat (ranking/tier list format)
+- Dramatic pause sound on each reveal
+- "Oh no" or reaction sounds layered in
+
+---
+
+## Reel 13: How Each Sign Acts When They Catch Feelings
+
+**Duration:** 25 seconds
+**Style:** Relatable humor, quick cuts
+**Audio:** Trending funny/relatable sound
+**Goal:** Tags, comments, shares, relatability
+
+### Script & Timing
+
+| Time | Scene | Text Overlay | Midjourney Prompt |
+|------|-------|--------------|-------------------|
+| 0-2s | Hook | "How each sign acts when they catch feelings" | Row of twelve zodiac glyphs on dark indigo shelf with pink neon heart above |
+| 2-5s | Aries | "Aries: Texts you immediately. No games." | Hands furiously typing on phone, Aries glyph glowing red, motion blur |
+| 5-8s | Taurus | "Taurus: Starts cooking for you" | Overhead of rustic kitchen counter with meal, golden Taurus pendant |
+| 8-11s | Gemini | "Gemini: Overthinks EVERYTHING" | Split-screen diptych, same figure in two poses, Gemini glyph between them |
+| 11-14s | Cancer | "Cancer: Writes you a love letter" | Hand writing on parchment with rose-gold pen, Cancer wax seal |
+| 14-17s | Leo | "Leo: Tells literally everyone" | Figure on rooftop at golden hour, Leo glyph projected on clouds |
+| 17-20s | Scorpio | "Scorpio: Pretends they don't have feelings" | Hooded figure against shadowy wall, Scorpio glyph glowing over heart |
+| 20-23s | Mix | "Virgo: Pros and cons list / Libra: Asks 12 friends / Sag: Panics / Cap: Schedules a date / Aquarius: Writes a thesis / Pisces: Planned the wedding" | Six vignettes in grid layout with zodiac glyphs and symbolic objects |
+| 23-25s | CTA | "Tag yourself - AstroDating" | Flat-lay of all twelve medallions on dark purple velvet |
+
+### Midjourney Prompts
+
+**Frame 1 - Hook:**
+```
+/imagine prompt: a row of twelve zodiac glyphs in brushed metal lined up on a dark indigo shelf, each glyph casting a long dramatic shadow, a single pink neon heart floating above the row pulsing gently, moody dark room with purple ambient light --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 2 - Aries (Texts Immediately):**
+```
+/imagine prompt: close-up of hands furiously typing on a phone screen in a dark room, the screen casting warm white light on the fingers, tiny Aries glyph badge glowing red in the corner, motion blur on the thumbs suggesting speed, urgent energy --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 3 - Taurus (Cooks for You):**
+```
+/imagine prompt: overhead shot of a rustic wooden kitchen counter with a freshly prepared meal on ceramic plates, a small golden Taurus glyph pendant lying beside a folded linen napkin, warm candlelight, steam rising from the food, cozy intimate aesthetic --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 4 - Gemini (Overthinks):**
+```
+/imagine prompt: split-screen diptych of the same figure sitting in two poses on opposite sides of a dark room, one side lit in cool blue and the other in warm amber, a Gemini glyph hovering between them connected by tangled silver thought-threads, anxious contemplative mood --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 5 - Cancer (Love Letter):**
+```
+/imagine prompt: close-up of a hand writing on cream parchment paper with a metallic rose-gold pen, soft warm lamplight illuminating the page, a small Cancer glyph wax seal and dried flowers resting beside the paper, romantic vintage aesthetic, shallow depth of field --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 6 - Leo (Tells Everyone):**
+```
+/imagine prompt: wide shot of a figure standing on a rooftop at golden hour with arms spread wide, city skyline in the background, a large Leo glyph projected in golden light onto the clouds above like a bat-signal, dramatic confident energy, warm amber tones --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 7 - Scorpio (Pretends They Don't):**
+```
+/imagine prompt: medium shot of a figure in a dark hoodie leaning against a shadowy wall, face half-hidden, arms crossed, a faint Scorpio glyph glowing dark red beneath the fabric over the heart, cool blue and deep crimson split-lighting, guarded mysterious mood --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 8 - Rapid Montage (Remaining 6 Signs):**
+```
+/imagine prompt: six small vignettes arranged in a two-by-three grid on a dark cosmic gradient background, each cell containing a zodiac glyph in brushed metal paired with a symbolic object (clipboard, group chat phone, running shoes, calendar, notebook, wedding ring), clean dividing lines in faint purple, compact editorial layout --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 9 - CTA:**
+```
+/imagine prompt: flat-lay of all twelve zodiac medallions scattered on dark purple velvet, a single pink spotlight illuminating the center, golden sparkle particles drifting upward, clean elegant composition --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+### CapCut Assembly
+
+1. Import 9 Midjourney frames
+2. Timing: Frame 1 (Hook) 2s, Frames 2-7 (individual signs) 3s each, Frame 8 (rapid montage) 3s, Frame 9 (CTA) 2s
+3. Transitions: Quick hard cuts (0.1s) for punchy comedic timing
+4. Effects:
+   - Frame 2 (Aries): Slight speed-up effect, screen shake
+   - Frame 3 (Taurus): Warm color grade, slow zoom in
+   - Frame 4 (Gemini): Glitch/flicker transition between the two sides
+   - Frame 5 (Cancer): Soft vignette, gentle pan down
+   - Frame 6 (Leo): Dramatic zoom out reveal
+   - Frame 7 (Scorpio): Dark vignette, subtle pulse
+   - Frame 8 (Montage): Rapid flash cuts between each mini-vignette (0.5s each)
+5. Text: "Pop" animation for each sign name, white bold with element-colored glow
+6. Add comedic sound effects: typing sounds for Aries, sizzle for Taurus, record scratch for Scorpio
+7. Use trending funny/relatable audio as base
+8. Export 1080x1920
+
+### Suggested Audio
+- Trending relatable/funny sound
+- "She" by Tyler the Creator (sped up) or similar trending clip
+- Comedic timing beat with pauses
+
+---
+
+## Reel 14: POV You Finally Check Your Birth Chart Compatibility
+
+**Duration:** 15 seconds
+**Style:** Reaction/POV, screen recording aesthetic
+**Audio:** Dramatic build-up then celebration drop
+**Goal:** App showcase, FOMO, downloads
+
+### Script & Timing
+
+| Time | Scene | Text Overlay | Midjourney Prompt |
+|------|-------|--------------|-------------------|
+| 0-3s | Setup | "POV: You finally check your birth chart compatibility" | POV phone in hands, dark-mode astrology app with purple "Check Compatibility" button |
+| 3-6s | Input | "Entering your birth time... 2:47 AM" | Close-up of time-picker wheel in dark mode with purple accents |
+| 6-9s | Loading | "Calculating..." | Circular loading animation of orbiting zodiac symbols with golden trails |
+| 9-12s | Reveal | "94% Compatible" | Massive brushed-gold 94 inside glowing circular meter, confetti erupting |
+| 12-15s | Reaction + CTA | "AstroDating - Link in bio" | Person jumping from couch in celebration, phone held high glowing purple and gold |
+
+### Midjourney Prompts
+
+**Frame 1 - Setup (POV Phone):**
+```
+/imagine prompt: POV shot looking down at a phone held in two hands, the screen showing a dark-mode app interface with a large glowing purple button in the center, cozy dim bedroom with warm fairy light bokeh in the background, soft purple neon reflecting off the phone glass and thumbs, nervous anticipation energy --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 2 - Birth Time Input:**
+```
+/imagine prompt: extreme close-up of a phone screen showing a time-picker scroll wheel interface in dark mode with purple accent highlight lines, a fingertip resting on the wheel mid-scroll, soft purple glow reflecting on the fingertip, clean minimal UI aesthetic, dark background --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 3 - Loading Animation:**
+```
+/imagine prompt: close-up of a phone screen displaying a circular loading animation made of tiny orbiting zodiac glyphs leaving faint golden comet trails as they spin, a thin progress bar filling in rose-gold beneath the circle, deep indigo to black gradient UI background, anticipation atmosphere --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 4 - 94% Reveal:**
+```
+/imagine prompt: phone screen filling the entire frame showing a massive brushed-gold number 94 centered inside a fully-filled luminous circular progress meter, pink and gold metallic confetti particles erupting upward past the screen edges, warm amber celebration glow, subtle holographic sheen on the glass --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 5 - Celebration Reaction:**
+```
+/imagine prompt: wide shot of a person mid-jump in a cozy living room, phone held triumphantly overhead with the screen glowing purple and gold, fairy lights strung along the wall behind them, motion blur on the figure conveying excitement, warm amber and pink room lighting, joyful celebratory energy --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+### CapCut Assembly
+
+1. Import 5 Midjourney frames
+2. Set each frame to 3 seconds
+3. Apply screen-recording style overlay: add subtle phone frame border, finger tap animations
+4. Transitions:
+   - Frame 1 to 2: Tap/press transition
+   - Frame 2 to 3: Slide up
+   - Frame 3 to 4: Flash/burst reveal
+   - Frame 4 to 5: Zoom out with shake
+5. Effects:
+   - Frame 1-2: Slight handheld camera wobble for authenticity
+   - Frame 3: Pulsing glow on loading circle
+   - Frame 4: Screen shake on number reveal, confetti overlay, speed ramp (slow then fast)
+   - Frame 5: Heart and sparkle particle overlays
+6. Audio timing: Quiet ambient (0-6s), suspenseful build (6-9s), dramatic bass drop on reveal (9s), celebration music (9-15s)
+7. Text: "Typewriter" animation for POV text, "Pop" for the 94% number
+8. Export 1080x1920
+
+### Suggested Audio
+- Dramatic orchestral build then bass drop
+- "Oh my god" reaction trending sound
+- Celebration/confetti cannon sound effect at the reveal
+
+---
+
+## Reel 15: The Most Underrated Zodiac Pairings
+
+**Duration:** 20 seconds
+**Style:** Educational hot take
+**Audio:** Trending "hot take" or chill beat
+**Goal:** Debate, comments, saves, educational shares
+
+### Script & Timing
+
+| Time | Scene | Text Overlay | Midjourney Prompt |
+|------|-------|--------------|-------------------|
+| 0-3s | Hook | "The most UNDERRATED zodiac pairings nobody talks about" | Treasure chest cracked open on dark cosmic surface, golden light spilling out |
+| 3-7s | Pair 1 | "Capricorn + Pisces: The dreamer and the builder. They balance each other perfectly." | Iron Capricorn and pearl Pisces medallions on perfectly level brass balance scale |
+| 7-11s | Pair 2 | "Virgo + Scorpio: Quiet intensity. They understand each other without words." | Emerald Virgo and ruby Scorpio medallions face to face on black mirror |
+| 11-15s | Pair 3 | "Aries + Libra: Opposites that can't stay away from each other." | Red Aries and pink Libra medallions connected by magnetic rose-gold energy arc |
+| 15-18s | Pair 4 | "Taurus + Cancer: The safest love you'll ever feel." | Bronze Taurus and silver Cancer medallions nestled in velvet-lined jewelry box |
+| 18-20s | CTA | "These pairings are slept on - AstroDating, link in bio" | All twelve zodiac medallions in circle, golden threads connecting the four featured pairs |
+
+### Midjourney Prompts
+
+**Frame 1 - Hook (Treasure Chest):**
+```
+/imagine prompt: wide shot of a treasure chest cracked open on a dark cosmic surface, faint zodiac constellation lines etched into the lid, warm golden light spilling out from inside, pink and purple nebula clouds drifting in the background, discovery moment aesthetic --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 2 - Capricorn + Pisces:**
+```
+/imagine prompt: two medallions in contrasting metals, dark iron Capricorn glyph and luminous pearl-white Pisces glyph, resting on opposite ends of a brass balance scale that is perfectly level, the scale sitting on a dark marble pedestal, soft pink and silver dual backlighting, harmonious equilibrium aesthetic --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 3 - Virgo + Scorpio:**
+```
+/imagine prompt: two medallions with emerald-toned Virgo glyph and dark ruby Scorpio glyph placed face to face on a black mirror surface, their reflections merging into a single combined form in the mirror, deep green and crimson lighting from opposite sides meeting in the middle, intense intimate mood --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 4 - Aries + Libra:**
+```
+/imagine prompt: two medallions with fiery red Aries glyph and pastel pink Libra glyph connected by a taut magnetic arc of electric rose-gold energy, the medallions pulling toward each other across dark space, small sparks crackling along the energy arc, dynamic tension and attraction, dramatic side-lighting --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 5 - Taurus + Cancer:**
+```
+/imagine prompt: two medallions with warm bronze Taurus glyph and soft silver Cancer glyph nestled together inside a velvet-lined jewelry box, soft golden candlelight illuminating them from above, a tiny dried lavender sprig resting beside the pair, intimate safe cozy atmosphere, macro close-up --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+**Frame 6 - CTA:**
+```
+/imagine prompt: wide overhead shot of all twelve zodiac medallions arranged in a circle on dark indigo velvet, thin golden threads connecting four specific pairs across the circle, the connected pairs glowing brighter than the rest, soft purple ambient light, elegant editorial flat-lay --ar 9:16 --style raw --s 250 --no text words letters watermark
+```
+
+### CapCut Assembly
+
+1. Import 6 Midjourney frames
+2. Set Frame 1 (Hook) to 3 seconds, Frames 2-5 (pairs) to 4 seconds each, Frame 6 (CTA) to 2 seconds (total: 21s, trim as needed)
+3. Transitions: Smooth zoom-fade between pairs (0.3s)
+4. Effects:
+   - Frame 1: Slow zoom into the chest opening, golden light leak overlay
+   - Frame 2 (Cap + Pisces): Gentle scale balance sway motion
+   - Frame 3 (Virgo + Scorpio): Slow push-in, dark vignette
+   - Frame 4 (Aries + Libra): Subtle pulse/throb on the energy arc, slight screen shake
+   - Frame 5 (Taurus + Cancer): Warm soft-focus glow, slow zoom in
+   - Frame 6: Zoom out reveal, sparkle overlay on connected threads
+5. Text: "Slide up" for pairing names, smaller "Fade in" for descriptions beneath
+6. Color grade: Deep indigo to black gradient, pink and purple accent highlights throughout
+7. Add subtle "whoosh" on each pair transition, soft chime on CTA
+8. Use trending hot-take or chill educational audio as base
+9. Export 1080x1920
+
+### Suggested Audio
+- Chill trending beat with subtle bass (educational hot take vibe)
+- "Let me put you on" trending sound
+- Soft lo-fi with dramatic pauses for each reveal
