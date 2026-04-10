@@ -1,19 +1,8 @@
 import { useTranslations } from "next-intl";
-import dynamic from "next/dynamic";
 import { StarField } from "@/components/StarField";
 import { FeatureCard } from "@/components/FeatureCard";
 import { DownloadButtons } from "@/components/DownloadButtons";
-
-// Lazy-load the pricing section — it's well below the fold and is a "use client"
-// component that fetches /api/billing/prices. Deferring it shrinks the initial
-// JS bundle and lets the hero/features paint without waiting for this chunk.
-const MarketingPricingSection = dynamic(
-  () =>
-    import("@/components/MarketingPricingSection").then((m) => ({
-      default: m.MarketingPricingSection,
-    })),
-  { ssr: false },
-);
+import { MarketingPricingSection } from "@/components/MarketingPricingSection";
 
 const FEATURE_KEYS = [
   { key: "birthChart", icon: "🪐" },
