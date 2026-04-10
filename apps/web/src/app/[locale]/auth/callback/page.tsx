@@ -30,9 +30,28 @@ export default function AuthCallbackPage() {
           }
         }
 
-        // detectSessionInUrl handles hash fragments automatically
-        // Wait a moment for Supabase to process
-        await new Promise((r) => setTimeout(r, 1000));
+        // For implicit flow: check if there are tokens in the URL hash
+        // and exchange them for a session
+        if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const accessToken = hashParams.get("access_token");
+          const refreshToken = hashParams.get("refresh_token");
+          if (accessToken) {
+            await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || "",
+            });
+          }
+        }
+
+        // Also handle code exchange flow (PKCE)
+        if (typeof window !== "undefined") {
+          const urlParams = new URLSearchParams(window.location.search);
+          const code = urlParams.get("code");
+          if (code) {
+            await supabase.auth.exchangeCodeForSession(code);
+          }
+        }
 
         const { data: { session } } = await supabase.auth.getSession();
 
