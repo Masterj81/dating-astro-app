@@ -18,7 +18,7 @@ export function getSupabaseBrowser() {
       {
         auth: {
           flowType: "implicit",
-          detectSessionInUrl: true,
+          detectSessionInUrl: false,
         },
       }
     );

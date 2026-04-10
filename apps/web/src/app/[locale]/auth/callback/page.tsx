@@ -30,26 +30,43 @@ export default function AuthCallbackPage() {
           }
         }
 
-        // For implicit flow: check if there are tokens in the URL hash
-        // and exchange them for a session
+        let sessionEstablished = false;
+
+        // For implicit flow: parse tokens from the URL hash
         if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
           const hashParams = new URLSearchParams(window.location.hash.substring(1));
           const accessToken = hashParams.get("access_token");
           const refreshToken = hashParams.get("refresh_token");
           if (accessToken) {
-            await supabase.auth.setSession({
+            const { error: setSessionError } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken || "",
             });
+            if (setSessionError) {
+              console.error("[AuthCallback] setSession error:", setSessionError);
+              setErrorMessage(setSessionError.message);
+              setStatus("error");
+              return;
+            }
+            sessionEstablished = true;
+            // Clean the hash from URL to prevent re-processing
+            window.history.replaceState(null, "", window.location.pathname + window.location.search);
           }
         }
 
-        // Also handle code exchange flow (PKCE)
-        if (typeof window !== "undefined") {
+        // For PKCE flow: exchange code for session
+        if (!sessionEstablished && typeof window !== "undefined") {
           const urlParams = new URLSearchParams(window.location.search);
           const code = urlParams.get("code");
           if (code) {
-            await supabase.auth.exchangeCodeForSession(code);
+            const { error: codeError } = await supabase.auth.exchangeCodeForSession(code);
+            if (codeError) {
+              console.error("[AuthCallback] exchangeCode error:", codeError);
+              setErrorMessage(codeError.message);
+              setStatus("error");
+              return;
+            }
+            sessionEstablished = true;
           }
         }
 
