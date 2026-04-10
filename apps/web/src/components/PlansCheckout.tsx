@@ -95,7 +95,7 @@ export function PlansCheckout() {
         }
 
         setSessionState(nextSessionState);
-      } catch (loadError) {
+      } catch (_loadError) {
         setError(t("unknownError"));
       } finally {
         setLoading(false);
