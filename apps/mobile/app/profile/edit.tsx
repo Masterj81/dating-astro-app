@@ -109,7 +109,54 @@ export default function EditProfileScreen() {
     }
 
     if (result.uri) {
-      uploadImage(result.uri, index);
+      const uri = result.uri;
+
+      // Check for HEIC images on iOS — these can be very large and may not
+      // be supported by all downstream consumers.  expo-image-manipulator is
+      // not currently installed, so we resize via the manipulator when
+      // available and warn the user otherwise.
+      const isHeic = /\.heic$/i.test(uri);
+
+      if (isHeic && Platform.OS === 'ios') {
+        try {
+          // Dynamically import expo-image-manipulator if available
+          const manipulator = require('expo-image-manipulator');
+          const actions: any[] = [];
+
+          // Resize so the longest side is at most 1920px
+          if (result.width && result.height) {
+            const longest = Math.max(result.width, result.height);
+            if (longest > 1920) {
+              const ratio = 1920 / longest;
+              actions.push({ resize: { width: Math.round(result.width * ratio), height: Math.round(result.height * ratio) } });
+            }
+          } else {
+            // Width/height unknown — resize conservatively
+            actions.push({ resize: { width: 1920 } });
+          }
+
+          const manipulated = await manipulator.manipulateAsync(
+            uri,
+            actions,
+            { compress: 0.8, format: manipulator.SaveFormat.JPEG }
+          );
+          uploadImage(manipulated.uri, index);
+          return;
+        } catch {
+          // expo-image-manipulator not installed — warn the user
+          Alert.alert(
+            t('heicWarningTitle') || 'HEIC Image Detected',
+            t('heicWarningMessage') || 'Your photo is in HEIC format which may be very large. For best results, please select a JPEG or PNG image.',
+            [
+              { text: t('cancel'), style: 'cancel' },
+              { text: t('uploadAnyway') || 'Upload Anyway', onPress: () => uploadImage(uri, index) },
+            ]
+          );
+          return;
+        }
+      }
+
+      uploadImage(uri, index);
     }
   };
 
@@ -145,7 +192,14 @@ export default function EditProfileScreen() {
       setPhotos(newPhotos.filter(Boolean));
     } catch (error: any) {
       console.error('Image upload failed:', error);
-      Alert.alert(t('error'), t('uploadFailed') || t('somethingWrong'));
+      if (error?.message === 'FILE_TOO_LARGE') {
+        Alert.alert(
+          t('error'),
+          t('fileTooLarge') || 'This file is too large. Please select an image under 10 MB.'
+        );
+      } else {
+        Alert.alert(t('error'), t('uploadFailed') || t('somethingWrong'));
+      }
     } finally {
       setUploadingIndex(null);
     }

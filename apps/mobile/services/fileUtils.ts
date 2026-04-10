@@ -94,10 +94,16 @@ async function blobToArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
   });
 }
 
+/** Maximum upload file size in bytes (10 MB). */
+export const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024;
+
 export async function readFileAsArrayBuffer(uri: string): Promise<FileReadResult> {
   if (Platform.OS === 'web') {
     const response = await fetch(uri);
     const blob = await response.blob();
+    if (blob.size > MAX_UPLOAD_SIZE_BYTES) {
+      throw new Error('FILE_TOO_LARGE');
+    }
     const data = await blobToArrayBuffer(blob);
     return { data, mimeType: getMimeFromUri(uri, blob.type) };
   }
@@ -108,9 +114,15 @@ export async function readFileAsArrayBuffer(uri: string): Promise<FileReadResult
   try {
     const response = await fetch(uri);
     const blob = await response.blob();
+    if (blob.size > MAX_UPLOAD_SIZE_BYTES) {
+      throw new Error('FILE_TOO_LARGE');
+    }
     const data = await blobToArrayBuffer(blob);
     return { data, mimeType: getMimeFromUri(uri, blob.type) };
   } catch (fetchError) {
+    if (fetchError instanceof Error && fetchError.message === 'FILE_TOO_LARGE') {
+      throw fetchError;
+    }
     console.warn('fetch() failed for URI, trying FileSystem fallback:', uri);
   }
 
@@ -118,6 +130,13 @@ export async function readFileAsArrayBuffer(uri: string): Promise<FileReadResult
   try {
     cacheUri = `${FileSystem.cacheDirectory}upload_temp_${Date.now()}`;
     await FileSystem.copyAsync({ from: uri, to: cacheUri });
+
+    // Check file size before reading into memory
+    const fileInfo = await FileSystem.getInfoAsync(cacheUri);
+    if (fileInfo.exists && 'size' in fileInfo && typeof fileInfo.size === 'number' && fileInfo.size > MAX_UPLOAD_SIZE_BYTES) {
+      throw new Error('FILE_TOO_LARGE');
+    }
+
     const base64 = await FileSystem.readAsStringAsync(cacheUri, {
       encoding: FileSystem.EncodingType.Base64,
     });

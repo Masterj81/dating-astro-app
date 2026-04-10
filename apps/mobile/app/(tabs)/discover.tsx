@@ -31,6 +31,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { calculateQuickCompatibility } from '../../services/astrologyService';
 import { supabase } from '../../services/supabase';
 import { throttleAction } from '../../utils/rateLimit';
+import { withRetry } from '../../utils/retry';
 import { resolveProfileImage, DEFAULT_PROFILE_IMAGE } from '../../utils/profileImages';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -223,39 +224,38 @@ export default function DiscoverScreen() {
     setDeckExhausted(false);
 
     try {
-      // Try to use the RPC function for filtered profiles first
-      if (user) {
-        const { data: rpcData, error: rpcError } = await supabase
-          .rpc('get_discoverable_profiles', { p_user_id: user.id, p_limit: 50 });
+      const fetchedProfiles = await withRetry(async () => {
+        // Try to use the RPC function for filtered profiles first
+        if (user) {
+          const { data: rpcData, error: rpcError } = await supabase
+            .rpc('get_discoverable_profiles', { p_user_id: user.id, p_limit: 50 });
 
-        if (!rpcError && rpcData && rpcData.length > 0) {
-          setProfiles(rpcData || []);
-          setCurrentIndex(0);
-          setLoading(false);
-          return;
+          if (!rpcError && rpcData && rpcData.length > 0) {
+            return rpcData;
+          }
         }
-      }
 
-      // Fallback to direct table query
-      let query = supabase
-        .from('discoverable_profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+        // Fallback to direct table query
+        let query = supabase
+          .from('discoverable_profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-      // Exclude current user's profile
-      if (user) {
-        query = query.neq('id', user.id);
-      }
+        // Exclude current user's profile
+        if (user) {
+          query = query.neq('id', user.id);
+        }
 
-      const { data, error } = await query;
+        const { data, error } = await query;
 
-      if (error) {
-        setLoadError(t('loadProfilesFailed') || 'Could not load profiles. Check your connection and try again.');
-        setLoading(false);
-        return;
-      }
+        if (error) {
+          throw error;
+        }
 
-      setProfiles(data || []);
+        return data || [];
+      });
+
+      setProfiles(fetchedProfiles);
       setCurrentIndex(0);
     } catch (err) {
       console.error('Error loading profiles:', err);

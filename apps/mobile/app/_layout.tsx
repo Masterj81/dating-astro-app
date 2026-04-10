@@ -4,7 +4,7 @@ import * as Linking from 'expo-linking';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { LogBox, Platform } from 'react-native';
+import { Alert, LogBox, Platform } from 'react-native';
 import { AuthContext } from '../contexts/AuthContext';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { PremiumProvider } from '../contexts/PremiumContext';
@@ -220,7 +220,28 @@ function RootLayout() {
         setLoading(false); // Proceed to login screen on error
       });
 
+    // Track whether sign-out was initiated by the user
+    let userInitiatedSignOut = false;
+    const originalSignOut = supabase.auth.signOut.bind(supabase.auth);
+    supabase.auth.signOut = async (...args: Parameters<typeof originalSignOut>) => {
+      userInitiatedSignOut = true;
+      return originalSignOut(...args);
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Handle unexpected sign-out (e.g. expired token that could not be refreshed)
+      if (event === 'SIGNED_OUT' && !userInitiatedSignOut) {
+        Alert.alert(
+          'Session Expired',
+          'Your session has expired. Please log in again.',
+          [{ text: 'OK' }]
+        );
+      }
+      // Reset the flag after handling
+      if (event === 'SIGNED_OUT') {
+        userInitiatedSignOut = false;
+      }
+
       // Update state synchronously first to ensure UI updates
       setSession(session);
       const currentUser = session?.user ?? null;

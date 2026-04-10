@@ -16,7 +16,7 @@ const cspDirectives = [
   // Next.js injects inline scripts for hydration that change every build,
   // so 'unsafe-inline' is the practical choice until Next.js supports nonces
   // natively in the App Router).
-  `script-src 'self' 'unsafe-inline' 'unsafe-eval'`,
+  `script-src 'self' 'unsafe-inline'`,
   // Styles: self + inline (Next.js / CSS-in-JS)
   `style-src 'self' 'unsafe-inline'`,
   // Images: self + Supabase storage + Google profile pictures + data URIs + blobs

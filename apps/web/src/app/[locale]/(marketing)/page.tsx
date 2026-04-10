@@ -22,6 +22,21 @@ const SOCIAL_PROOF = [
   { stat: "4.8", labelKey: "proofRating" },
 ] as const;
 
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "AstroDating",
+  "description": "Astrology-based dating app",
+  "applicationCategory": "DatingApplication",
+  "url": "https://astrodatingapp.com",
+  "operatingSystem": "iOS, Android",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD",
+  },
+};
+
 export default function LandingPage({
   params: _params,
 }: {
@@ -36,6 +51,10 @@ export default function LandingPage({
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+      />
       {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-b from-bg via-bg-secondary to-bg-tertiary py-28 sm:py-36">
         <StarField />

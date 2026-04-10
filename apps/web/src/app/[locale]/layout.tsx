@@ -19,6 +19,17 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "hero" });
 
+  const canonicalUrl =
+    locale === routing.defaultLocale
+      ? SITE.url
+      : `${SITE.url}/${locale}`;
+
+  const languages: Record<string, string> = {};
+  for (const loc of routing.locales) {
+    languages[loc] =
+      loc === routing.defaultLocale ? SITE.url : `${SITE.url}/${loc}`;
+  }
+
   return {
     title: {
       default: `${SITE.name} — ${t("tagline")}`,
@@ -26,6 +37,10 @@ export async function generateMetadata({
     },
     description: t("description"),
     metadataBase: new URL(SITE.url),
+    alternates: {
+      canonical: canonicalUrl,
+      languages,
+    },
     openGraph: {
       title: `${SITE.name} — ${t("tagline")}`,
       description: t("description"),

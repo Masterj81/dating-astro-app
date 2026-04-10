@@ -169,6 +169,10 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
 
           debugLog('[Premium] RevenueCat initialized, attaching listener');
 
+          // Remove any previously attached listener before adding a new one
+          listenerRef.current?.remove();
+          listenerRef.current = null;
+
           // RevenueCat returns EmitterSubscription, but types may be incomplete
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const subscription = (Purchases as any).addCustomerInfoUpdateListener(
@@ -186,9 +190,8 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
               debugLog(`[Premium] RevenueCat signal: expectedTier=${expectedTier}`);
 
               const confirmedTier = await checkSubscriptionTierWithRetry(userId, expectedTier);
-              if (!cancelled) {
-                setTier(confirmedTier);
-              }
+              if (cancelled) return;
+              setTier(confirmedTier);
             }
           );
           listenerRef.current = subscription;

@@ -66,7 +66,8 @@ export default function ChatListScreen() {
       .from('matches')
       .select('*')
       .or(`user1_id.eq.${user?.id},user2_id.eq.${user?.id}`)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
 
     if (matchError) {
       console.error('Error loading conversations:', matchError);
@@ -156,6 +157,11 @@ export default function ChatListScreen() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const subscribeToNewMessages = () => {
+    const debouncedReload = () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => loadConversations(), 800);
+    };
+
     const subscription = supabase
       .channel('chat-list-messages')
       .on(
@@ -165,10 +171,16 @@ export default function ChatListScreen() {
           schema: 'public',
           table: 'messages',
         },
-        () => {
-          if (debounceRef.current) clearTimeout(debounceRef.current);
-          debounceRef.current = setTimeout(() => loadConversations(), 800);
-        }
+        debouncedReload
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+        },
+        debouncedReload
       )
       .subscribe();
 

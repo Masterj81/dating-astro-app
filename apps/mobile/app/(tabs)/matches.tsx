@@ -243,7 +243,8 @@ export default function MatchesScreen() {
       .select('*')
       // Use optional chaining safely in the string interpolation
       .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
 
     if (error) {
       console.error('Error loading matches:', error);

@@ -1,8 +1,9 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  AppState,
   FlatList,
   Image,
   KeyboardAvoidingView,
@@ -20,6 +21,7 @@ import { supabase } from '../../services/supabase';
 import { formatMessageTime } from '../../utils/dateFormatting';
 import { DEFAULT_PROFILE_IMAGE, resolveProfileImage } from '../../utils/profileImages';
 import { throttleAction } from '../../utils/rateLimit';
+import { withRetry } from '../../utils/retry';
 import { useAuth } from '../../contexts/AuthContext';
 
 type Message = {
@@ -58,6 +60,20 @@ export default function ChatScreen() {
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
 
+  const markMessagesAsRead = useCallback(async () => {
+    if (!matchId || !user) return;
+    try {
+      await supabase
+        .from('messages')
+        .update({ read: true })
+        .eq('match_id', matchId)
+        .neq('sender_id', user.id)
+        .eq('read', false);
+    } catch (err) {
+      console.error('Error marking messages as read:', err);
+    }
+  }, [matchId, user]);
+
   useEffect(() => {
     if (matchId && user) {
       loadMatchInfo();
@@ -67,6 +83,16 @@ export default function ChatScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, [matchId, user]);
+
+  // Mark messages as read when screen comes into focus (e.g. returning from background)
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        markMessagesAsRead();
+      }
+    });
+    return () => subscription.remove();
+  }, [markMessagesAsRead]);
 
   const loadMatchInfo = async () => {
     try {
@@ -117,6 +143,8 @@ export default function ChatScreen() {
         console.error('Error loading messages:', error);
       } else {
         setMessages(data || []);
+        // Mark incoming messages as read after loading
+        markMessagesAsRead();
       }
     } catch (err) {
       console.error('Error loading messages:', err);
@@ -137,7 +165,15 @@ export default function ChatScreen() {
           filter: `match_id=eq.${matchId}`,
         },
         (payload) => {
-          setMessages((prev) => [...prev, payload.new as Message]);
+          const newMsg = payload.new as Message;
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === newMsg.id)) return prev;
+            return [...prev, newMsg];
+          });
+          // Mark as read if the message is from the other user
+          if (newMsg.sender_id !== user?.id) {
+            markMessagesAsRead();
+          }
         }
       )
       .subscribe();
@@ -156,15 +192,17 @@ export default function ChatScreen() {
     setNewMessage('');
 
     try {
-      const { error } = await supabase.from('messages').insert({
-        match_id: matchId,
-        sender_id: user.id,
-        content: messageContent,
-      });
+      await withRetry(async () => {
+        const { error } = await supabase.from('messages').insert({
+          match_id: matchId,
+          sender_id: user.id,
+          content: messageContent,
+        });
 
-      if (error) {
-        setNewMessage(messageContent);
-      }
+        if (error) {
+          throw error;
+        }
+      });
     } catch (err) {
       console.error('Error sending message:', err);
       setNewMessage(messageContent);
