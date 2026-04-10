@@ -1,5 +1,9 @@
 import { supabase } from './supabase';
 
+// Simple in-memory cache for birth chart API calls to avoid redundant network requests
+const birthChartCache = new Map<string, { data: BirthChart; timestamp: number }>();
+const CHART_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export interface BirthChart {
   sun: {
     longitude: number;
@@ -60,6 +64,13 @@ export async function calculateBirthChart(
   latitude?: number,
   longitude?: number
 ): Promise<BirthChart> {
+  // Check cache to avoid redundant edge function calls
+  const cacheKey = `${birthDate}|${birthTime || ''}|${birthCity || ''}|${latitude || ''}|${longitude || ''}`;
+  const cached = birthChartCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CHART_CACHE_TTL) {
+    return cached.data;
+  }
+
   const { data, error } = await supabase.functions.invoke('calculate-chart', {
     body: {
       action: 'calculate_chart',
@@ -79,7 +90,9 @@ export async function calculateBirthChart(
     throw new Error(data.error || 'Unknown error calculating birth chart');
   }
 
-  return data.data as BirthChart;
+  const chart = data.data as BirthChart;
+  birthChartCache.set(cacheKey, { data: chart, timestamp: Date.now() });
+  return chart;
 }
 
 /**
@@ -136,7 +149,9 @@ export async function getSunSign(birthDate: string): Promise<SunSign> {
  * Less accurate but immediate
  */
 export function calculateSunSignLocal(birthDate: string): string {
+  if (!birthDate || typeof birthDate !== 'string') return 'unknown';
   const [year, month, day] = birthDate.split('-').map(Number);
+  if (!month || !day || isNaN(month) || isNaN(day)) return 'unknown';
 
   // Simplified sun sign calculation based on date ranges
   const signs = [
@@ -171,6 +186,7 @@ export function calculateSunSignLocal(birthDate: string): string {
  * Get element for a zodiac sign
  */
 export function getElement(sign: string): 'fire' | 'earth' | 'air' | 'water' {
+  if (!sign || typeof sign !== 'string') return 'fire';
   const elements: Record<string, 'fire' | 'earth' | 'air' | 'water'> = {
     aries: 'fire',
     leo: 'fire',
@@ -192,6 +208,7 @@ export function getElement(sign: string): 'fire' | 'earth' | 'air' | 'water' {
  * Get modality for a zodiac sign
  */
 export function getModality(sign: string): 'cardinal' | 'fixed' | 'mutable' {
+  if (!sign || typeof sign !== 'string') return 'cardinal';
   const modalities: Record<string, 'cardinal' | 'fixed' | 'mutable'> = {
     aries: 'cardinal',
     cancer: 'cardinal',
@@ -213,6 +230,7 @@ export function getModality(sign: string): 'cardinal' | 'fixed' | 'mutable' {
  * Get zodiac emoji
  */
 export function getZodiacEmoji(sign: string): string {
+  if (!sign || typeof sign !== 'string') return '⭐';
   const emojis: Record<string, string> = {
     aries: '♈',
     taurus: '♉',
@@ -234,17 +252,12 @@ export function getZodiacEmoji(sign: string): string {
  * Calculate quick compatibility score based on sun signs only
  * Useful for instant feedback before full synastry
  */
-const MODALITIES: Record<string, string> = {
-  aries: 'cardinal', cancer: 'cardinal', libra: 'cardinal', capricorn: 'cardinal',
-  taurus: 'fixed', leo: 'fixed', scorpio: 'fixed', aquarius: 'fixed',
-  gemini: 'mutable', virgo: 'mutable', sagittarius: 'mutable', pisces: 'mutable',
-};
-
-export function getModality(sign: string): string {
-  return MODALITIES[sign.toLowerCase()] || 'cardinal';
-}
-
 export function calculateQuickCompatibility(sign1: string, sign2: string): number {
+  // Guard against null/undefined signs
+  if (!sign1 || !sign2 || typeof sign1 !== 'string' || typeof sign2 !== 'string') {
+    return 65; // Neutral fallback score
+  }
+
   const elements: Record<string, string> = {
     aries: 'fire', leo: 'fire', sagittarius: 'fire',
     taurus: 'earth', virgo: 'earth', capricorn: 'earth',
@@ -267,6 +280,11 @@ export function calculateQuickCompatibility(sign1: string, sign2: string): numbe
   }
 
   // Modality bonus
+  const MODALITIES: Record<string, string> = {
+    aries: 'cardinal', cancer: 'cardinal', libra: 'cardinal', capricorn: 'cardinal',
+    taurus: 'fixed', leo: 'fixed', scorpio: 'fixed', aquarius: 'fixed',
+    gemini: 'mutable', virgo: 'mutable', sagittarius: 'mutable', pisces: 'mutable',
+  };
   const mod1 = MODALITIES[sign1.toLowerCase()];
   const mod2 = MODALITIES[sign2.toLowerCase()];
   if (mod1 && mod2) {

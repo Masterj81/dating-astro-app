@@ -1,4 +1,3 @@
-// @ts-expect-error -- legacy subpath re-exports cacheDirectory & EncodingType at runtime
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { Platform } from 'react-native';

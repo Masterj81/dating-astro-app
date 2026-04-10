@@ -1,0 +1,90 @@
+<svg width="1024" height="500" viewBox="0 0 1024 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="92" y1="46" x2="913" y2="457" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0D1020"/>
+      <stop offset="0.55" stop-color="#171A2D"/>
+      <stop offset="1" stop-color="#11152A"/>
+    </linearGradient>
+    <radialGradient id="glowLeft" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(154 76) rotate(39.0448) scale(221.994 132.515)">
+      <stop stop-color="#F55978" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#F55978" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowRight" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(846 74) rotate(141.605) scale(202.748 127.632)">
+      <stop stop-color="#A07DFF" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#A07DFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="wordmark" x1="197" y1="266" x2="502" y2="266" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7F4EE"/>
+      <stop offset="0.52" stop-color="#F28BA2"/>
+      <stop offset="1" stop-color="#B996FF"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="white" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="white" stop-opacity="0.02"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="500" rx="0" fill="#0B0D18"/>
+  <rect width="1024" height="500" fill="url(#glowLeft)"/>
+  <rect width="1024" height="500" fill="url(#glowRight)"/>
+
+  <rect x="32" y="24" width="960" height="452" rx="34" fill="url(#bg)"/>
+  <rect x="32.5" y="24.5" width="959" height="451" rx="33.5" stroke="white" stroke-opacity="0.08"/>
+
+  <g opacity="0.6" fill="white">
+    <circle cx="111" cy="82" r="1.5"/>
+    <circle cx="173" cy="136" r="1"/>
+    <circle cx="265" cy="89" r="1.5"/>
+    <circle cx="349" cy="118" r="1"/>
+    <circle cx="682" cy="83" r="1.5"/>
+    <circle cx="758" cy="138" r="1"/>
+    <circle cx="892" cy="108" r="1.5"/>
+    <circle cx="830" cy="370" r="1"/>
+    <circle cx="705" cy="409" r="1.5"/>
+    <circle cx="278" cy="390" r="1"/>
+    <circle cx="167" cy="346" r="1.5"/>
+  </g>
+
+  <g transform="translate(82 58)">
+    <rect x="0" y="0" width="520" height="102" rx="51" fill="#F55978" fill-opacity="0.08"/>
+    <rect x="0.5" y="0.5" width="519" height="101" rx="50.5" stroke="#F55978" stroke-opacity="0.22"/>
+    <text x="34" y="42" fill="#F6A0B0" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="0.28em">ASTROLOGY DATING</text>
+    <text x="34" y="77" fill="#F7F4EE" fill-opacity="0.74" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="500">Real birth charts. Real synastry. Real compatibility.</text>
+  </g>
+
+  <g transform="translate(82 188)">
+    <text x="0" y="78" fill="url(#wordmark)" font-family="Segoe UI, Arial, sans-serif" font-size="76" font-weight="800" letter-spacing="-0.05em">AstroDating</text>
+    <text x="2" y="137" fill="#F7F4EE" fill-opacity="0.76" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="500">
+      Find your cosmic match through astrology,
+    </text>
+    <text x="2" y="178" fill="#F7F4EE" fill-opacity="0.76" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="500">
+      synastry, and real birth-chart chemistry.
+    </text>
+  </g>
+
+  <g transform="translate(702 98)">
+    <rect x="0" y="0" width="226" height="226" rx="34" fill="url(#panel)"/>
+    <rect x="0.5" y="0.5" width="225" height="225" rx="33.5" stroke="white" stroke-opacity="0.08"/>
+
+    <g transform="translate(49 49)">
+      <rect width="128" height="128" rx="24" fill="#111424"/>
+      <path
+        d="M64 98C40 82 24 66 24 48C24 36 33 28 44 28C53 28 60 33 64 40C68 33 75 28 84 28C95 28 104 36 104 48C104 66 88 82 64 98Z"
+        stroke="#E94560"
+        stroke-width="2.5"
+        stroke-opacity="0.42"
+        fill="none"
+      />
+      <path
+        d="M64 26L74.3 51.7H104L80 69.1L89.4 97L64 80.2L38.6 97L48 69.1L24 51.7H53.7L64 26Z"
+        fill="#F7F4EE"
+      />
+    </g>
+  </g>
+
+  <g transform="translate(699 350)">
+    <rect x="0" y="0" width="232" height="64" rx="32" fill="#FFFFFF" fill-opacity="0.04"/>
+    <rect x="0.5" y="0.5" width="231" height="63" rx="31.5" stroke="white" stroke-opacity="0.07"/>
+    <text x="116" y="39" text-anchor="middle" fill="#F7F4EE" fill-opacity="0.58" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="0.22em">ASTRODATINGAPP.COM</text>
+  </g>
+</svg>

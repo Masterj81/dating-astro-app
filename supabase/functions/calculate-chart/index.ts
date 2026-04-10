@@ -341,22 +341,152 @@ function calculateCompatibility(chart1: any, chart2: any): {
   }
 }
 
+// --- Rate limiting ---
+
+const RATE_LIMIT_WINDOW_MS = 60_000 // 1 minute
+const RATE_LIMIT_MAX = 30
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+
+// Cleanup stale entries every 5 minutes
+setInterval(() => {
+  const now = Date.now()
+  for (const [key, entry] of rateLimitMap) {
+    if (now > entry.resetAt) rateLimitMap.delete(key)
+  }
+}, 5 * 60_000)
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(ip)
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
+    return false
+  }
+  entry.count++
+  return entry.count > RATE_LIMIT_MAX
+}
+
+// --- Input validation helpers ---
+
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
+const TIME_REGEX = /^\d{1,2}:\d{2}$/
+
+function validateInputs(action: string, params: Record<string, any>): string | null {
+  if (action === 'calculate_chart' || action === 'get_sun_sign') {
+    const { birthDate } = params
+    if (!birthDate || typeof birthDate !== 'string' || !DATE_REGEX.test(birthDate)) {
+      return 'Invalid birthDate format (expected YYYY-MM-DD)'
+    }
+    const [y, m, d] = birthDate.split('-').map(Number)
+    if (m < 1 || m > 12 || d < 1 || d > 31 || y < 1 || y > 9999) {
+      return 'Invalid birthDate values'
+    }
+  }
+
+  if (action === 'calculate_chart') {
+    const { birthTime, birthCity, latitude, longitude } = params
+
+    if (birthTime !== undefined && birthTime !== null && birthTime !== '') {
+      if (typeof birthTime !== 'string' || !TIME_REGEX.test(birthTime)) {
+        return 'Invalid birthTime format (expected HH:MM)'
+      }
+      const [h, min] = birthTime.split(':').map(Number)
+      if (h < 0 || h > 23 || min < 0 || min > 59) {
+        return 'Invalid birthTime values'
+      }
+    }
+
+    if (birthCity !== undefined && birthCity !== null) {
+      if (typeof birthCity !== 'string' || birthCity.length > 200) {
+        return 'birthCity must be a string of at most 200 characters'
+      }
+    }
+
+    if (latitude !== undefined && latitude !== null) {
+      const lat = Number(latitude)
+      if (isNaN(lat) || lat < -90 || lat > 90) {
+        return 'latitude must be between -90 and 90'
+      }
+    }
+
+    if (longitude !== undefined && longitude !== null) {
+      const lng = Number(longitude)
+      if (isNaN(lng) || lng < -180 || lng > 180) {
+        return 'longitude must be between -180 and 180'
+      }
+    }
+  }
+
+  return null
+}
+
 // --- Server handler ---
 
+const ALLOWED_ORIGINS = [
+  'https://www.astrodatingapp.com',
+  'https://astrodatingapp.com',
+  'https://app.astrodatingapp.com',
+  'http://localhost:3000',
+  'http://localhost:8081',
+  'http://localhost:19006',
+]
+
+function getAllowedOrigin(origin: string | null): string {
+  if (origin && ALLOWED_ORIGINS.includes(origin)) return origin
+  // Allow Supabase relay calls (no origin header) and native mobile calls
+  return ''
+}
+
 serve(async (req) => {
+  const origin = req.headers.get('origin')
+  const allowedOrigin = getAllowedOrigin(origin)
+
   // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': allowedOrigin,
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
       },
     })
   }
 
+  // Rate limiting by IP
+  const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || req.headers.get('cf-connecting-ip')
+    || 'unknown'
+  if (isRateLimited(clientIp)) {
+    return new Response(
+      JSON.stringify({ success: false, error: 'Too many requests, please try again later' }),
+      {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': allowedOrigin,
+          'Retry-After': '60',
+        },
+      }
+    )
+  }
+
   try {
     const { action, ...params } = await req.json()
+
+    // Validate inputs
+    const validationError = validateInputs(action, params)
+    if (validationError) {
+      return new Response(
+        JSON.stringify({ success: false, error: validationError }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': allowedOrigin,
+          },
+        }
+      )
+    }
 
     let result: any
 
@@ -454,7 +584,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ success: true, data: result }), {
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': allowedOrigin,
       },
     })
   } catch (error) {
@@ -464,7 +594,7 @@ serve(async (req) => {
         status: 400,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Origin': allowedOrigin,
         },
       }
     )

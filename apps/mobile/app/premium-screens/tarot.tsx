@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PremiumGate from '../../components/PremiumGate';
-import { AppTheme } from '../../constants/theme';
+import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { usePremium } from '../../contexts/PremiumContext';
@@ -31,7 +31,6 @@ import {
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = Math.min((SCREEN_WIDTH - 80) / 3, 120);
 const CARD_HEIGHT = CARD_WIDTH * 1.6;
-const SCREEN_GRADIENT = AppTheme.gradients.screen;
 
 function TarotScreenContent() {
   const [loading, setLoading] = useState(true);
@@ -105,7 +104,7 @@ function TarotScreenContent() {
 
   if (loading) {
     return (
-      <LinearGradient colors={[...SCREEN_GRADIENT] as [string, string, ...string[]]} style={styles.container}>
+      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#e94560" />
         </View>
@@ -114,7 +113,7 @@ function TarotScreenContent() {
   }
 
   return (
-    <LinearGradient colors={[...SCREEN_GRADIENT] as [string, string, ...string[]]} style={styles.container}>
+    <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
@@ -301,10 +300,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: AppTheme.colors.panelStrong,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,

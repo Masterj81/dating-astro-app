@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PremiumGate from '../../components/PremiumGate';
+import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -34,13 +35,15 @@ type CategoryDays = {
 
 function LuckyDaysScreenContent() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [sunSign, setSunSign] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('love');
   const { user } = useAuth();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
 
-  const today = new Date();
+  // Stable date ref -- avoid creating new Date on every render
+  const today = useRef(new Date()).current;
   const currentDay = today.getDate();
 
   const getMonthName = (monthIndex: number): string => {
@@ -68,15 +71,20 @@ function LuckyDaysScreenContent() {
       return;
     }
     setLoading(true);
+    setError(null);
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('sun_sign')
+        .eq('id', user.id)
+        .maybeSingle();
 
-    const { data } = await supabase
-      .from('profiles')
-      .select('sun_sign')
-      .eq('id', user.id)
-      .single();
-
-    if (data?.sun_sign) {
-      setSunSign(data.sun_sign);
+      if (data?.sun_sign) {
+        setSunSign(data.sun_sign);
+      }
+    } catch (err) {
+      console.error('Error loading user sign:', err);
+      setError(t('loadingError') || 'Could not load lucky days. Please try again.');
     }
     setLoading(false);
   };
@@ -204,8 +212,30 @@ function LuckyDaysScreenContent() {
 
   if (loading) {
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-        <ActivityIndicator size="large" color="#e94560" />
+      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={AppTheme.colors.coral} />
+          <Text style={{ color: AppTheme.colors.textMuted, marginTop: 12, fontSize: 14 }}>
+            {t('calculatingLuck') || 'Calculating your lucky days...'}
+          </Text>
+        </View>
+      </LinearGradient>
+    );
+  }
+
+  if (error) {
+    return (
+      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+          <Text style={{ fontSize: 48, marginBottom: 16 }}>{'🍀'}</Text>
+          <Text style={{ color: AppTheme.colors.textSecondary, fontSize: 16, textAlign: 'center', marginBottom: 20 }}>{error}</Text>
+          <TouchableOpacity
+            onPress={loadUserSign}
+            style={{ backgroundColor: AppTheme.colors.coral, paddingVertical: 14, paddingHorizontal: 28, borderRadius: 14, minHeight: 48 }}
+          >
+            <Text style={{ color: AppTheme.colors.textOnAccent, fontWeight: '600', fontSize: 16 }}>{t('tryAgain') || 'Try Again'}</Text>
+          </TouchableOpacity>
+        </View>
       </LinearGradient>
     );
   }
@@ -407,7 +437,12 @@ function LuckyDaysScreenContent() {
   );
 
   return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+    <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+<ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
+        showsVerticalScrollIndicator={false}
+      >
       {/* Header - Fixed at top */}
       <View style={[styles.header, { paddingTop: 40 + topInset }]}>
         <TouchableOpacity style={[styles.backButton, { top: 30 + topInset }]} onPress={() => router.back()}>
@@ -417,11 +452,7 @@ function LuckyDaysScreenContent() {
         <Text style={styles.subtitle}>{currentMonth}</Text>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
-        showsVerticalScrollIndicator={false}
-      >
+      
         {renderContent()}
       </ScrollView>
     </LinearGradient>
@@ -457,21 +488,21 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 50,
     left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: AppTheme.colors.panelStrong,
     justifyContent: 'center',
     alignItems: 'center',
   },
   backText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 24,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 4,
   },
   subtitle: {

@@ -447,10 +447,31 @@ export function AccountSetupForm() {
     }
   };
 
+  const completionSteps = useMemo(() => {
+    const steps = [
+      { key: "name", done: !!form.name.trim() },
+      { key: "gender", done: !!form.gender },
+      { key: "birthDate", done: !!form.birthDate },
+      { key: "birthTime", done: !!form.birthTime },
+      { key: "birthCity", done: !!form.birthCity.trim() },
+      { key: "elements", done: form.elementFilter.length > 0 },
+    ];
+    return steps;
+  }, [form]);
+
+  const completionPercent = useMemo(() => {
+    const done = completionSteps.filter((s) => s.done).length;
+    return Math.round((done / completionSteps.length) * 100);
+  }, [completionSteps]);
+
   if (loading) {
     return (
-      <div className="rounded-[2rem] border border-border bg-card/90 p-6 text-sm text-text-muted">
-        {t("loading")}
+      <div className="rounded-[2rem] border border-border bg-card/90 p-10 text-center">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-accent/20 bg-accent/8">
+          <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+        </div>
+        <p className="mt-5 text-sm font-medium text-white">{t("setupLoading")}</p>
+        <p className="mt-2 text-xs text-text-dim">{t("setupLoadingBody")}</p>
       </div>
     );
   }
@@ -467,6 +488,41 @@ export function AccountSetupForm() {
         <p className="mt-3 text-sm leading-7 text-text-muted">
           {t("setupWorkspaceSubtitle")}
         </p>
+
+        {/* Progress bar with motivational microcopy */}
+        <div className="mt-5">
+          <div className="flex items-center justify-between text-xs text-text-dim">
+            <span id="setup-progress-label">{t("setupProgress")}</span>
+            <span className={completionPercent === 100 ? "font-semibold text-emerald-400" : ""}>
+              {completionPercent}%
+            </span>
+          </div>
+          <div
+            className="mt-2 h-2 overflow-hidden rounded-full bg-white/8"
+            role="progressbar"
+            aria-valuenow={completionPercent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-labelledby="setup-progress-label"
+          >
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                completionPercent === 100
+                  ? "bg-gradient-to-r from-emerald-500 to-emerald-400"
+                  : "bg-gradient-to-r from-accent to-purple"
+              }`}
+              style={{ width: `${completionPercent}%` }}
+            />
+          </div>
+          {/* Dynamic motivation text based on the current incomplete step */}
+          <p className="mt-2 text-xs text-text-muted">
+            {completionPercent === 100
+              ? t("setupAllDone")
+              : completionSteps.filter((s) => !s.done).length === 1
+                ? t("setupAlmostThere")
+                : t(`setupStepMotivation_${completionSteps.find((s) => !s.done)?.key || "name"}`)}
+          </p>
+        </div>
       </div>
 
       <div className="mt-8 space-y-6">
@@ -636,6 +692,17 @@ export function AccountSetupForm() {
           </label>
 
           <p className="mt-3 text-xs leading-6 text-text-dim">{t("profileBirthSectionHint")}</p>
+
+          {/* Birth time importance nudge */}
+          {!form.birthTime && form.birthDate && (
+            <div className="mt-3 flex items-start gap-3 rounded-xl border border-[rgba(250,204,21,0.18)] bg-[rgba(250,204,21,0.06)] px-4 py-3">
+              <span className="mt-0.5 text-sm">💡</span>
+              <div>
+                <p className="text-xs font-medium text-[#fde68a]">{t("setupWhyBirthTime")}</p>
+                <p className="mt-1 text-[11px] leading-5 text-text-muted">{t("setupWhyBirthTimeBody")}</p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="rounded-[1.5rem] border border-border bg-bg/70 p-5">
@@ -649,7 +716,7 @@ export function AccountSetupForm() {
 
           <div className="mt-5">
             <p className="mb-3 text-sm font-medium text-text-muted">{t("profilePreferencesShowMe")}</p>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3" role="group" aria-label={t("profilePreferencesShowMe")}>
               {([
                 ["men", t("profileShowMe_men")],
                 ["women", t("profileShowMe_women")],
@@ -658,6 +725,7 @@ export function AccountSetupForm() {
                 <button
                   key={value}
                   type="button"
+                  aria-pressed={form.showMe === value}
                   onClick={() =>
                     setForm((current) => ({
                       ...current,
@@ -737,7 +805,7 @@ export function AccountSetupForm() {
 
           <div className="mt-5">
             <p className="mb-3 text-sm font-medium text-text-muted">{t("profilePreferencesElements")}</p>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3" role="group" aria-label={t("profilePreferencesElements")}>
               {ELEMENT_OPTIONS.map((element) => {
                 const label = t(`profileElement_${element.key}`);
                 const normalizedKey = element.key.charAt(0).toUpperCase() + element.key.slice(1);
@@ -747,6 +815,7 @@ export function AccountSetupForm() {
                   <button
                     key={element.key}
                     type="button"
+                    aria-pressed={isActive}
                     onClick={() =>
                       setForm((current) => ({
                         ...current,
@@ -771,25 +840,38 @@ export function AccountSetupForm() {
       </div>
 
       {success ? (
-        <p className="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+        <p role="status" className="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
           {success}
         </p>
       ) : null}
 
       {error ? (
-        <p className="mt-6 rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
+        <p role="alert" className="mt-6 rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
           {error}
         </p>
       ) : null}
 
-      <div className="mt-6 flex justify-end">
+      <div className="mt-6 flex items-center justify-between gap-4">
+        <p className="text-xs text-text-dim">
+          {completionPercent < 100 ? t("setupIncompleteHint") : t("setupReadyHint")}
+        </p>
         <button
           type="button"
           onClick={handleSubmit}
           disabled={saving}
-          className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
+          className="flex shrink-0 items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {saving ? t("loading") : t("openDiscover")}
+          {saving ? (
+            <>
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              {t("setupCalculating")}
+            </>
+          ) : (
+            <>
+              {t("openDiscover")}
+              <span className="text-base">&#8594;</span>
+            </>
+          )}
         </button>
       </div>
     </section>

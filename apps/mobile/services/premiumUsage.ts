@@ -45,6 +45,10 @@ export async function getFeatureUsageToday(
   featureKey: FeatureKey
 ): Promise<number> {
   try {
+    // Guard: RLS should enforce this, but verify on the client too
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || user.id !== userId) return 0;
+
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
 
     const { data, error } = await supabase
@@ -53,10 +57,9 @@ export async function getFeatureUsageToday(
       .eq('user_id', userId)
       .eq('feature_key', featureKey)
       .eq('usage_date', today)
-      .single();
+      .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') {
-      // PGRST116 is "no rows returned" - that's fine, means 0 usage
+    if (error) {
       return 0;
     }
 
@@ -72,6 +75,12 @@ export async function incrementFeatureUsage(
   featureKey: FeatureKey
 ): Promise<{ success: boolean; viewCount: number }> {
   try {
+    // Guard: the RPC is SECURITY DEFINER and accepts any user_id
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || user.id !== userId) {
+      return { success: false, viewCount: 0 };
+    }
+
     const today = new Date().toISOString().split('T')[0];
 
     // Try to use RPC function first (more efficient)
@@ -126,6 +135,10 @@ export async function getTodayUsage(
   userId: string
 ): Promise<Record<FeatureKey, number>> {
   try {
+    // Guard: only allow querying own usage
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || user.id !== userId) return {} as Record<FeatureKey, number>;
+
     const today = new Date().toISOString().split('T')[0];
 
     const { data, error } = await supabase

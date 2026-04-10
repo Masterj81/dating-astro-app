@@ -135,7 +135,7 @@ export function ContactForm() {
         />
       </div>
 
-      {status === "error" && <p className="text-sm text-accent">{errorMsg}</p>}
+      {status === "error" && <p role="alert" className="text-sm text-accent">{errorMsg}</p>}
 
       <button
         type="submit"

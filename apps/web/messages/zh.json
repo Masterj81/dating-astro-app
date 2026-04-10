@@ -24,7 +24,8 @@
     "description": "找到你的星象伴侣。AstroDating 运用真实占星术——星盘、合盘分析和行星过境——为你匹配真正相合的人。",
     "appStore": "App Store",
     "playStore": "Google Play",
-    "webApp": "打开网页应用"
+    "webApp": "打开网页应用",
+    "badge": "Real Astrology. Real Connections."
   },
   "features": {
     "title": "功能特色",
@@ -40,7 +41,8 @@
     "transits": "行星过境提醒",
     "transitsDesc": "当行星过境影响你的爱情运势时，及时收到通知。金星逆行？我们会提醒你。",
     "superLikes": "超级喜欢",
-    "superLikesDesc": "脱颖而出。发送超级喜欢，向对方表达你的特别兴趣。"
+    "superLikesDesc": "脱颖而出。发送超级喜欢，向对方表达你的特别兴趣。",
+    "badge": "What Makes Us Different"
   },
   "howItWorks": {
     "title": "使用方式",
@@ -50,7 +52,8 @@
     "step2Title": "发现匹配对象",
     "step2Desc": "浏览按真实占星兼容度排名的个人资料。查看每个匹配对象的详细合盘分析。",
     "step3Title": "建立联系和聊天",
-    "step3Desc": "与拥有星象默契的人匹配。开始对话，看看星辰会将你们引向何方。"
+    "step3Desc": "与拥有星象默契的人匹配。开始对话，看看星辰会将你们引向何方。",
+    "badge": "Simple Start"
   },
   "premium": {
     "title": "选择你的方案",
@@ -85,7 +88,16 @@
     "featureTransitAlerts": "行星过境提醒",
     "featurePriority": "发现页优先展示",
     "featureReadReceipts": "已读回执",
-    "featureBoost": "每周资料加速曝光"
+    "featureBoost": "每周资料加速曝光",
+    "badge": "Premium Plans",
+    "savePercent": "省 {percent}%",
+    "startFreeTrialCelestial": "免费试用 Celestial 7天",
+    "startFreeTrialCosmic": "免费试用 Cosmic 7天",
+    "toggleMonthly": "月付",
+    "toggleYearly": "年付",
+    "trustCancel": "随时取消，无需理由",
+    "trustSecure": "通过 Stripe 安全支付",
+    "trustTrial": "所有付费方案均享7天免费试用"
   },
   "cta": {
     "title": "准备好找到你的星象伴侣了吗？",
@@ -355,7 +367,6 @@
     "message": "消息",
     "messagePlaceholder": "我们能为您做什么？",
     "fillAllFields": "请填写所有字段。",
-    "mustBe18": "你必须年满18岁。",
     "messageSent": "消息已发送",
     "messageSentDesc": "感谢您的留言！我们将在 24 小时内回复您。请查收确认邮件。",
     "sendAnother": "发送另一条消息",
@@ -365,7 +376,8 @@
     "catBug": "问题反馈",
     "catSafety": "安全问题",
     "catFeature": "功能建议",
-    "catOther": "其他"
+    "catOther": "其他",
+    "loading": "加载中..."
   },
   "accountDelete": {
     "title": "账户删除",
@@ -385,7 +397,9 @@
     "deleting": "正在删除账户...",
     "doneTitle": "账户已删除",
     "doneDesc": "您的账户及所有关联数据已被永久删除。您将很快收到确认邮件。",
-    "doneNote": "很遗憾看到您离开。如果您改变主意，随时可以创建新账户。"
+    "doneNote": "很遗憾看到您离开。如果您改变主意，随时可以创建新账户。",
+    "loading": "加载中...",
+    "goBack": "返回"
   },
   "language": {
     "label": "Language",
@@ -1169,6 +1183,90 @@
     "installIOSStep1Detail": "Safari底部带箭头的方块图标",
     "installIOSStep2": "向下滚动并点击「添加到主屏幕」",
     "installIOSStep3": "AstroDating将像原生应用一样出现在您的主屏幕上！",
-    "gotIt": "知道了"
+    "gotIt": "知道了",
+    "passwordWeak": "Weak password",
+    "passwordFair": "Fair password",
+    "passwordGood": "Good password",
+    "passwordStrong": "Strong password",
+    "callbackSigning": "Aligning the stars...",
+    "callbackWait": "Completing your sign-in. This only takes a moment.",
+    "callbackErrorTitle": "Something went wrong",
+    "callbackErrorBody": "We could not complete the sign-in. This can happen when a session expires or a link is used twice. Try signing in again.",
+    "discoverLoadingTitle": "Scanning the cosmos...",
+    "discoverLoadingBody": "Finding profiles that align with your birth chart. This only takes a moment.",
+    "setupProgress": "Setup progress",
+    "setupLoading": "Preparing your cosmic workspace...",
+    "setupLoadingBody": "Loading your profile details. This only takes a moment.",
+    "setupCalculating": "Calculating birth chart...",
+    "setupIncompleteHint": "Complete all fields to unlock discovery.",
+    "setupReadyHint": "Your profile is ready. Let the stars guide you.",
+    "mustBe18": "您必须年满18周岁。",
+    "billedMonthly": "按月计费",
+    "billedYearly": "按年计费",
+    "billingErrorHint": "请尝试刷新页面。如果问题持续，请联系客服。",
+    "billingLoading": "正在加载账单详情…",
+    "checkoutErrorConfig": "此方案暂时不可用。请尝试其他方案或联系客服。",
+    "checkoutErrorHint": "如果问题反复出现，请尝试刷新页面或清除浏览器缓存。",
+    "checkoutExpired": "您的支付会话已过期。请选择一个方案开始新的会话。",
+    "checkoutSuccessBodyCelebration": "您的高级功能正在激活中。开始探索您的升级体验吧——宇宙还有更多精彩等着您。",
+    "checkoutSuccessTitleCelebration": "一切就绪！星辰已对齐。",
+    "currentPlanBadge": "当前方案",
+    "monthlyEquivalent": "仅 {price} / 月",
+    "openingPortal": "正在打开账单管理页…",
+    "planFeature5SuperLikes": "每日5次超级喜欢",
+    "planFeatureAdvancedFilters": "高级探索筛选",
+    "planFeatureBoost": "每周资料加强",
+    "planFeatureEverythingCelestial": "Celestial 的所有功能，还有：",
+    "planFeatureFullChart": "完整的出生星盘及详细解读",
+    "planFeatureMonthlyYearlyHoroscopes": "月度和年度星座运势预测",
+    "planFeaturePriority": "探索中的优先展示",
+    "planFeatureReadReceipts": "对话已读回执",
+    "planFeatureSeeWhoLiked": "查看谁喜欢了你",
+    "planFeatureSynastry": "详细的合盘相性报告",
+    "planFeatureTransitAlerts": "实时行星过境提醒",
+    "planFeatureUnlimitedLikes": "每天无限喜欢",
+    "planFeatureUnlimitedSuperLikes": "无限超级喜欢",
+    "planFeatureWeeklyHoroscopes": "每周星座运势与指导",
+    "plansFaqNote": "7天试用期内不会向您的银行卡收费。您可以随时在账单设置中取消。所有方案均在首次收费后14天内提供全额退款保障。",
+    "plansLoading": "正在加载可用方案…",
+    "portalHint": "更新支付方式、查看发票或取消方案。",
+    "redirectingToCheckout": "正在跳转到安全支付页…",
+    "startTrialCta": "开始7天免费试用",
+    "successBillingNote": "您可以随时在设置 > 账单中管理订阅、更新支付方式和查看发票。",
+    "successCtaPrimary": "开始探索匹配",
+    "successNextSteps": "下一步",
+    "successStepDiscover": "探索相性匹配的资料",
+    "successStepPremium": "体验高级功能",
+    "successStepProfile": "完善你的资料",
+    "toggleMonthly": "月付",
+    "toggleYearly": "年付",
+    "trustCancelAnytime": "随时取消",
+    "trustSecureCheckout": "安全支付",
+    "trustTrialReminder": "7天免费试用",
+    "upgradePlan": "升级方案",
+    "openCard": "打开",
+    "shareCompatibilityTitle": "AstroDating 匹配度"
+  },
+  "socialProof": {
+    "proofDownloads": "Downloads",
+    "proofCharts": "Charts calculated",
+    "proofRating": "App Store rating"
+  },
+  "invite": {
+    "invalidCode": "无效的推荐码",
+    "invalidCodeDesc": "此链接中的推荐码似乎不正确。请检查链接后重试。",
+    "goToHomepage": "返回首页",
+    "youveBeenInvited": "你被邀请了！",
+    "joinReward": "加入 AstroDating，你们都将获得<strong>1个月免费高级会员</strong>。",
+    "yourReferralCode": "你的推荐码",
+    "enterCodeAfterSignup": "注册后输入此码领取奖励",
+    "downloadGooglePlay": "在 Google Play 下载",
+    "signUpWeb": "在网页注册",
+    "howItWorks": "如何操作",
+    "step1": "下载 AstroDating 或在网页注册",
+    "step2": "创建你的资料并输入出生信息",
+    "step3": "前往设置 > 邀请朋友，输入代码 <strong>{code}</strong>",
+    "step4": "你和你的朋友都将获得 1 个月免费高级会员！",
+    "footer": "AstroDating — 爱情写在星空中"
   }
 }

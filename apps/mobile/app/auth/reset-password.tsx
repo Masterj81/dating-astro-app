@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { showAlert } from '../../utils/alert';
+import { AppTheme } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
 import { validatePassword } from '../../utils/validation';
@@ -51,21 +52,26 @@ export default function ResetPasswordScreen() {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password });
-    setLoading(false);
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
 
-    if (error) {
-      showAlert(t('error'), error.message);
-    } else {
-      showAlert(t('passwordUpdated'), t('passwordUpdatedDesc'), [
-        { text: t('ok'), onPress: () => router.replace('/auth/login') },
-      ]);
+      if (error) {
+        showAlert(t('error'), t('passwordResetError') || 'Could not update your password. Please try again.');
+      } else {
+        showAlert(t('passwordUpdated'), t('passwordUpdatedDesc'), [
+          { text: t('ok'), onPress: () => router.replace('/auth/login') },
+        ]);
+      }
+    } catch (err) {
+      console.error('Password reset error:', err);
+      showAlert(t('error'), t('somethingWrong') || 'Something went wrong. Please try again.');
     }
+    setLoading(false);
   };
 
   return (
     <LinearGradient
-      colors={['#0f0f1a', '#1a1a2e', '#16213e']}
+      colors={[...AppTheme.gradients.screen]}
       style={styles.container}
     >
       <KeyboardAvoidingView
@@ -75,7 +81,7 @@ export default function ResetPasswordScreen() {
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
           <Text style={styles.icon}>🔐</Text>
           <Text style={styles.title}>{t('resetPassword')}</Text>
-          <Text style={styles.subtitle}>{t('enterYourEmail')}</Text>
+          <Text style={styles.subtitle}>{t('enterNewPassword') || 'Enter your new password below.'}</Text>
 
           <View style={styles.form}>
             <View style={styles.inputContainer}>
@@ -148,17 +154,15 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
+    ...AppTheme.type.title,
+    color: AppTheme.colors.textPrimary,
     textAlign: 'center',
     marginBottom: 12,
   },
   subtitle: {
-    fontSize: 15,
-    color: '#888',
+    ...AppTheme.type.body,
+    color: AppTheme.colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
     marginBottom: 32,
   },
   form: {
@@ -170,7 +174,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   label: {
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     fontSize: 14,
     marginBottom: 8,
     textTransform: 'uppercase',
@@ -179,20 +183,20 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 12,
+    borderColor: AppTheme.colors.border,
+    borderRadius: AppTheme.radius.md,
     padding: 16,
     fontSize: 16,
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   hint: {
-    color: '#666',
+    color: AppTheme.colors.textMuted,
     fontSize: 12,
     marginTop: 6,
   },
   button: {
     marginTop: 8,
-    borderRadius: 12,
+    borderRadius: AppTheme.radius.md,
     overflow: 'hidden',
   },
   buttonGradient: {
@@ -200,7 +204,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonText: {
-    color: '#fff',
+    color: AppTheme.colors.textOnAccent,
     fontSize: 18,
     fontWeight: '600',
   },

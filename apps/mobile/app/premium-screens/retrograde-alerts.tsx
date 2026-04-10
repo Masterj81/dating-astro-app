@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PremiumGate from '../../components/PremiumGate';
+import PlanetGlyph from '../../components/ui/PlanetGlyph';
+import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 type RetrogradeEvent = {
@@ -166,7 +168,7 @@ function RetrogradeAlertsScreenContent() {
               activeOpacity={0.8}
             >
               <View style={styles.retroHeader}>
-                <Text style={styles.retroEmoji}>{retro.emoji}</Text>
+                <PlanetGlyph symbol={retro.emoji} size={30} textStyle={styles.retroEmoji} />
                 <View style={styles.retroInfo}>
                   <Text style={styles.retroPlanet}>{retro.planet}</Text>
                   <Text style={styles.retroDates}>{retro.startDate} - {retro.endDate}</Text>
@@ -232,7 +234,7 @@ function RetrogradeAlertsScreenContent() {
           <View style={styles.alertsCard}>
             {alerts.map((alert, index) => (
               <View key={alert.id} style={[styles.alertRow, index < alerts.length - 1 && styles.alertBorder]}>
-                <Text style={styles.alertEmoji}>{alert.emoji}</Text>
+                <PlanetGlyph symbol={alert.emoji} size={24} textStyle={styles.alertEmoji} />
                 <Text style={styles.alertLabel}>{alert.label}</Text>
                 <Switch
                   value={alert.enabled}
@@ -264,7 +266,12 @@ function RetrogradeAlertsScreenContent() {
   );
 
   return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+    <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+<ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
+        showsVerticalScrollIndicator={false}
+      >
       {/* Header - Fixed at top */}
       <View style={[styles.header, { paddingTop: 40 + topInset }]}>
         <TouchableOpacity style={[styles.backButton, { top: 30 + topInset }]} onPress={() => router.back()}>
@@ -274,11 +281,7 @@ function RetrogradeAlertsScreenContent() {
         <Text style={styles.subtitle}>{t('retrogradeSubtitle')}</Text>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
-        showsVerticalScrollIndicator={false}
-      >
+      
         {renderContent()}
       </ScrollView>
     </LinearGradient>
@@ -314,33 +317,33 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 50,
     left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: AppTheme.colors.panelStrong,
     justifyContent: 'center',
     alignItems: 'center',
   },
   backText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 24,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
     textAlign: 'center',
   },
   statusOverview: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginHorizontal: 20,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
@@ -357,11 +360,11 @@ const styles = StyleSheet.create({
   statusCount: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   statusLabel: {
     fontSize: 12,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
   },
   section: {
     paddingHorizontal: 20,
@@ -370,11 +373,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 16,
   },
   retroCard: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
@@ -393,11 +396,11 @@ const styles = StyleSheet.create({
   retroPlanet: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   retroDates: {
     fontSize: 13,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
   },
   statusBadge: {
     flexDirection: 'row',
@@ -433,7 +436,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
+    borderTopColor: AppTheme.colors.border,
   },
   effectsSection: {
     marginBottom: 16,
@@ -441,7 +444,7 @@ const styles = StyleSheet.create({
   effectsTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 8,
   },
   effectRow: {
@@ -449,13 +452,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   effectBullet: {
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
     marginRight: 8,
   },
   effectText: {
     flex: 1,
     fontSize: 13,
-    color: '#aaa',
+    color: AppTheme.colors.textSecondary,
     lineHeight: 18,
   },
   doSection: {
@@ -472,7 +475,7 @@ const styles = StyleSheet.create({
   },
   doText: {
     fontSize: 13,
-    color: '#aaa',
+    color: AppTheme.colors.textSecondary,
     marginBottom: 4,
     lineHeight: 18,
   },
@@ -495,12 +498,12 @@ const styles = StyleSheet.create({
   },
   expandHint: {
     fontSize: 12,
-    color: '#666',
+    color: AppTheme.colors.textMuted,
     textAlign: 'center',
     marginTop: 12,
   },
   alertsCard: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
     borderRadius: 16,
     overflow: 'hidden',
   },
@@ -511,7 +514,7 @@ const styles = StyleSheet.create({
   },
   alertBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: AppTheme.colors.border,
   },
   alertEmoji: {
     fontSize: 20,
@@ -520,16 +523,16 @@ const styles = StyleSheet.create({
   alertLabel: {
     flex: 1,
     fontSize: 15,
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   alertHint: {
     fontSize: 12,
-    color: '#666',
+    color: AppTheme.colors.textMuted,
     textAlign: 'center',
     marginTop: 12,
   },
   survivalCard: {
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(124, 108, 255, 0.14)',
     marginHorizontal: 20,
     borderRadius: 16,
     padding: 16,
@@ -538,12 +541,12 @@ const styles = StyleSheet.create({
   survivalTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#9333ea',
+    color: AppTheme.colors.cosmic,
     marginBottom: 12,
   },
   survivalText: {
     fontSize: 13,
-    color: '#ccc',
+    color: AppTheme.colors.textSecondary,
     lineHeight: 20,
     marginBottom: 8,
   },
@@ -551,7 +554,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(147, 51, 234, 0.2)',
+    backgroundColor: 'rgba(124, 108, 255, 0.16)',
     marginHorizontal: 60,
     paddingVertical: 10,
     paddingHorizontal: 20,
@@ -563,7 +566,7 @@ const styles = StyleSheet.create({
   },
   premiumText: {
     fontSize: 12,
-    color: '#9333ea',
+    color: AppTheme.colors.cosmic,
     fontWeight: '600',
   },
 });

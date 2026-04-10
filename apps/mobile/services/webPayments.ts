@@ -32,7 +32,8 @@ export function isWebPlatform(): boolean {
  */
 export async function createCheckoutSession(
   plan: WebSubscriptionPlan,
-  userId: string
+  userId: string,
+  promoCode?: string
 ): Promise<{ url: string } | { error: string }> {
   if (!isWebPlatform()) {
     return { error: 'Web payments only available on web platform' };
@@ -53,6 +54,7 @@ export async function createCheckoutSession(
         priceId,
         userId,
         couponId,
+        promoCode: promoCode?.trim() || undefined,
         successUrl: `${window.location.origin}/premium/success`,
         cancelUrl: `${window.location.origin}/premium`,
       },
@@ -73,9 +75,10 @@ export async function createCheckoutSession(
  */
 export async function redirectToCheckout(
   plan: WebSubscriptionPlan,
-  userId: string
+  userId: string,
+  promoCode?: string
 ): Promise<void> {
-  const result = await createCheckoutSession(plan, userId);
+  const result = await createCheckoutSession(plan, userId, promoCode);
 
   if ('error' in result) {
     throw new Error(result.error);
@@ -138,10 +141,18 @@ export async function getWebSubscriptionStatus(
 }> {
   debugLog('Checking web subscription for user:', userId);
 
+  // Guard: only allow querying current user's subscription
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || user.id !== userId) {
+    debugLog('getWebSubscriptionStatus: userId mismatch, returning free');
+    return { tier: 'free', expiresAt: null, cancelAtPeriodEnd: false };
+  }
+
   const { data, error } = await supabase
     .from('subscriptions')
     .select('tier, status, expires_at, cancel_at_period_end')
     .eq('user_id', userId)
+    .eq('source', 'stripe')
     .maybeSingle();
 
   debugLog('Subscription query result:', { data, error });

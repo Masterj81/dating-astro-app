@@ -37,7 +37,7 @@ export function Header() {
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden items-center gap-6 md:flex">
+        <nav className="hidden items-center gap-6 md:flex" aria-label="Main navigation">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.key}
@@ -52,16 +52,21 @@ export function Header() {
           <div className="relative">
             <button
               onClick={() => setLangOpen(!langOpen)}
+              aria-expanded={langOpen}
+              aria-haspopup="listbox"
+              aria-label={tLang("label")}
               className="flex items-center gap-1 text-sm text-text-muted transition-colors hover:text-white"
             >
               {tLang(locale)}
-              <span className={`text-xs transition-transform ${langOpen ? "rotate-180" : ""}`}>▼</span>
+              <span className={`text-xs transition-transform ${langOpen ? "rotate-180" : ""}`} aria-hidden="true">▼</span>
             </button>
             {langOpen && (
-              <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-border bg-bg-secondary py-1 shadow-xl">
+              <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-border bg-bg-secondary py-1 shadow-xl" role="listbox" aria-label={tLang("label")}>
                 {routing.locales.map((loc) => (
                   <button
                     key={loc}
+                    role="option"
+                    aria-selected={loc === locale}
                     onClick={() => switchLocale(loc)}
                     className={`block w-full px-3 py-1.5 text-left text-sm transition-colors hover:bg-card-hover ${
                       loc === locale ? "text-accent" : "text-text-muted"
@@ -76,7 +81,7 @@ export function Header() {
 
           <Link
             href="/#download"
-            className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+            className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition-all hover:bg-accent-hover hover:shadow-[0_0_16px_rgba(232,93,117,0.35)]"
           >
             {tCommon("download")}
           </Link>
@@ -85,8 +90,10 @@ export function Header() {
         {/* Mobile hamburger */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="flex flex-col gap-1.5 md:hidden"
+          className="flex flex-col gap-1.5 p-2 md:hidden"
           aria-label="Toggle menu"
+          aria-expanded={menuOpen}
+          aria-controls="mobile-menu"
         >
           <span className={`block h-0.5 w-6 bg-white transition-transform ${menuOpen ? "translate-y-2 rotate-45" : ""}`} />
           <span className={`block h-0.5 w-6 bg-white transition-opacity ${menuOpen ? "opacity-0" : ""}`} />
@@ -96,7 +103,7 @@ export function Header() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <nav className="border-t border-border bg-bg px-4 py-4 md:hidden">
+        <nav id="mobile-menu" className="border-t border-border bg-bg px-4 py-4 md:hidden" aria-label="Mobile navigation">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.key}

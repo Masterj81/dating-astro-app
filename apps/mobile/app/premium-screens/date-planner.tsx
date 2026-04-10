@@ -165,6 +165,7 @@ function DatePlannerContent() {
   const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [dateScores, setDateScores] = useState<DateScore[]>([]);
   const [selectedDate, setSelectedDate] = useState<DateScore | null>(null);
   const [matchName, setMatchName] = useState<string | null>(null);
@@ -187,7 +188,7 @@ function DatePlannerContent() {
         .from('profiles')
         .select('birth_date, birth_time, birth_latitude, birth_longitude')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       let userChart: BirthChart | undefined;
       if (userProfile?.birth_date) {
@@ -222,7 +223,7 @@ function DatePlannerContent() {
           .from('profiles')
           .select('name, birth_date, birth_time, birth_latitude, birth_longitude')
           .eq('id', matchId)
-          .single();
+          .maybeSingle();
 
         if (matchProfile) {
           setMatchName(matchProfile.name);
@@ -262,8 +263,9 @@ function DatePlannerContent() {
       if (topDates.length > 0) {
         setSelectedDate(topDates[0]);
       }
-    } catch (error) {
-      console.error('Error loading date planner data:', error);
+    } catch (err) {
+      console.error('Error loading date planner data:', err);
+      setError(t('loadingError') || 'Could not calculate date scores. Please try again.');
     }
 
     setLoading(false);
@@ -280,7 +282,24 @@ function DatePlannerContent() {
       <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#e94560" />
-          <Text style={styles.loadingText}>{t('calculatingDates')}</Text>
+          <Text style={styles.loadingText}>{t('calculatingDates') || 'Calculating ideal dates...'}</Text>
+        </View>
+      </LinearGradient>
+    );
+  }
+
+  if (error) {
+    return (
+      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={{ fontSize: 48, marginBottom: 16 }}>{'📅'}</Text>
+          <Text style={{ color: '#ccc', fontSize: 16, textAlign: 'center', marginBottom: 20, paddingHorizontal: 32 }}>{error}</Text>
+          <TouchableOpacity
+            onPress={loadData}
+            style={{ backgroundColor: '#e94560', paddingVertical: 14, paddingHorizontal: 28, borderRadius: 14, minHeight: 48 }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>{t('tryAgain') || 'Try Again'}</Text>
+          </TouchableOpacity>
         </View>
       </LinearGradient>
     );
@@ -372,6 +391,11 @@ function DatePlannerContent() {
 
   return (
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+<ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
+        showsVerticalScrollIndicator={false}
+      >
       {/* Header - Fixed at top */}
       <View style={[styles.header, { paddingTop: 30 + topInset }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -387,11 +411,7 @@ function DatePlannerContent() {
         </View>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
-        showsVerticalScrollIndicator={false}
-      >
+      
         {renderContent()}
       </ScrollView>
     </LinearGradient>
@@ -443,9 +463,9 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
     alignItems: 'center',

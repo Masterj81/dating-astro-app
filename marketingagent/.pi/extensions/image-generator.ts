@@ -1,13 +1,14 @@
 /**
  * Image Generator Extension
  *
- * Generates social media images using Pollinations.ai (free, no API key).
- * Simply constructs a URL with the prompt and downloads the result.
+ * Generates social media images using Google Gemini API (primary)
+ * with Pollinations.ai as fallback (free, no API key).
  *
  * Workflow:
  * 1. Takes a post text and generates a matching visual prompt
- * 2. Downloads the image from Pollinations
- * 3. Saves locally for Blotato upload
+ * 2. If GEMINI_API_KEY is set, uses Gemini 2.5 Flash image generation
+ * 3. Otherwise, falls back to Pollinations.ai URL-based generation
+ * 4. Saves locally for Blotato upload
  */
 
 import { writeFileSync, mkdirSync, existsSync } from "fs";
@@ -24,7 +25,95 @@ export interface ImageResult {
 const BRAND_STYLE = `dark cosmic gradient background from deep indigo to black, subtle constellation line patterns connecting small glowing dots, soft pink and purple ambient light, modern minimalist style, luxury aesthetic, no text no words no letters no watermark`;
 
 /**
+ * Generate an image using Google Gemini API.
+ */
+async function generateWithGemini(
+  prompt: string,
+  width: number,
+  height: number,
+): Promise<ImageResult> {
+  const { GoogleGenAI } = await import("@google/generative-ai");
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+
+  const aspectRatio = width === height ? "1:1" : "9:16";
+
+  const fullPrompt = `Generate an image: ${prompt}`;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash-image",
+    contents: fullPrompt,
+    config: {
+      responseModalities: ["TEXT", "IMAGE"],
+      imageConfig: {
+        aspectRatio,
+      },
+    },
+  });
+
+  const candidates = response.candidates;
+  if (!candidates || candidates.length === 0) {
+    return { success: false, error: "Gemini returned no candidates" };
+  }
+
+  const parts = candidates[0].content?.parts;
+  if (!parts) {
+    return { success: false, error: "Gemini returned no content parts" };
+  }
+
+  for (const part of parts) {
+    if (part.inlineData) {
+      const imageBuffer = Buffer.from(part.inlineData.data!, "base64");
+
+      if (imageBuffer.length < 1000) {
+        return { success: false, error: "Gemini image too small, generation may have failed" };
+      }
+
+      const fileName = `post-${Date.now()}.png`;
+      const filePath = join(IMAGES_DIR, fileName);
+      writeFileSync(filePath, imageBuffer);
+
+      return { success: true, filePath };
+    }
+  }
+
+  return { success: false, error: "Gemini response contained no image data" };
+}
+
+/**
+ * Generate an image using Pollinations.ai (free, no API key).
+ */
+async function generateWithPollinations(
+  prompt: string,
+  width: number,
+  height: number,
+): Promise<ImageResult> {
+  const encodedPrompt = encodeURIComponent(prompt);
+  const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true&seed=${Date.now()}`;
+
+  console.log(`   🌐 Downloading from Pollinations (fallback)...`);
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    return { success: false, error: `Pollinations ${response.status}: ${response.statusText}` };
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+
+  if (buffer.length < 1000) {
+    return { success: false, error: "Image too small, generation may have failed" };
+  }
+
+  const fileName = `post-${Date.now()}.png`;
+  const filePath = join(IMAGES_DIR, fileName);
+  writeFileSync(filePath, buffer);
+
+  return { success: true, filePath };
+}
+
+/**
  * Generate a social media image based on post content.
+ * Uses Gemini API if GEMINI_API_KEY is set, otherwise falls back to Pollinations.ai.
  */
 export async function generateImage(
   postText: string,
@@ -48,30 +137,27 @@ export async function generateImage(
     BRAND_STYLE,
   ].filter(Boolean).join(", ");
 
-  const encodedPrompt = encodeURIComponent(prompt);
-  const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true&seed=${Date.now()}`;
+  const useGemini = !!process.env.GEMINI_API_KEY;
 
   try {
-    console.log(`   🌐 Downloading from Pollinations...`);
-
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      return { success: false, error: `Pollinations ${response.status}: ${response.statusText}` };
+    if (useGemini) {
+      console.log(`   🤖 Generating with Gemini...`);
+      return await generateWithGemini(prompt, width, height);
+    } else {
+      console.log(`   ⚠️  GEMINI_API_KEY not set, using Pollinations fallback`);
+      return await generateWithPollinations(prompt, width, height);
     }
-
-    const buffer = Buffer.from(await response.arrayBuffer());
-
-    if (buffer.length < 1000) {
-      return { success: false, error: "Image too small, generation may have failed" };
-    }
-
-    const fileName = `post-${Date.now()}.png`;
-    const filePath = join(IMAGES_DIR, fileName);
-    writeFileSync(filePath, buffer);
-
-    return { success: true, filePath };
   } catch (err) {
+    // If Gemini fails, try Pollinations as fallback
+    if (useGemini) {
+      console.log(`   ⚠️  Gemini failed: ${(err as Error).message}`);
+      console.log(`   🌐 Falling back to Pollinations...`);
+      try {
+        return await generateWithPollinations(prompt, width, height);
+      } catch (fallbackErr) {
+        return { success: false, error: `Both Gemini and Pollinations failed. Gemini: ${(err as Error).message}, Pollinations: ${(fallbackErr as Error).message}` };
+      }
+    }
     return { success: false, error: (err as Error).message };
   }
 }

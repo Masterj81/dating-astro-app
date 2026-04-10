@@ -1,6 +1,7 @@
 import "dotenv/config";
 import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync, writeFileSync, existsSync } from "fs";
+import { ensurePublicUrl } from "./upload-image.js";
 
 // ── Config ──────────────────────────────────────────────────────────
 const BANNED_WORDS = [
@@ -13,10 +14,24 @@ const BANNED_WORDS = [
   "harness", "empower", "streamline", "cutting edge",
 ];
 
+const TOPICS = [
+  "Zodiac compatibility — which signs match and why",
+  "Birth chart education — Sun vs Moon vs Rising, Venus in love",
+  "Dating tips through an astrology lens",
+  "Sign-specific humor and relatable content",
+  "App features — compatibility scores, tarot, horoscopes",
+  "Seasonal astrology — retrogrades, eclipses, sign seasons",
+  "Zodiac truth — sign-specific personality traits, superpowers, and real struggles",
+  "Sign love styles — how each sign loves, what they need in a partner, dating patterns",
+  "Best cosmic matches — which signs work best together and why",
+  "Tarot and card readings — daily pulls, love spreads, what the cards say about your love life",
+  "Planetary placements and transits — Mercury retrograde survival, Venus in signs, Mars energy, moon phases and dating",
+];
+
 const MAX_RETRIES = 5;
 const POSTS_FILE = "posts.json";
 const MEMORY_FILE = "memory.json";
-const BLOTATO_API_URL = "https://api.blotato.com/v1/posts";
+const BLOTATO_API_URL = "https://backend.blotato.com/v2/posts";
 
 // ── AI-language scorer ──────────────────────────────────────────────
 interface ScoreResult {
@@ -108,6 +123,9 @@ async function generatePost(
 
 Write ONE short, punchy social media post (max 280 chars) about: "${topic}"
 
+Content themes we cover:
+${TOPICS.map((t) => `- ${t}`).join("\n")}
+
 Rules:
 - Sound like a real human, not a corporation or AI
 - Casual, witty tone — think Twitter/X energy
@@ -139,34 +157,85 @@ interface BlotaToResult {
 async function postToBlotato(
   text: string,
   platforms: string[] = ["facebook", "instagram"],
+  imageUrl?: string,
 ): Promise<BlotaToResult> {
   const apiKey = process.env.BLOTATO_API_KEY;
   if (!apiKey) {
     return { success: false, error: "BLOTATO_API_KEY not set" };
   }
 
-  try {
-    const response = await fetch(BLOTATO_API_URL, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        content: text,
-        platforms,
-      }),
-    });
+  const fbPageId = process.env.BLOTATO_FB_PAGE_ID;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      return { success: false, error: `Blotato API ${response.status}: ${errorText}` };
+  // Upload local images to Supabase Storage so Blotato gets a public URL
+  imageUrl = await ensurePublicUrl(imageUrl);
+
+  try {
+    const results: { platform: string; success: boolean; postId?: string; error?: string }[] = [];
+
+    for (const platform of platforms) {
+      const accountId = platform === 'instagram'
+        ? process.env.BLOTATO_IG_ACCOUNT_ID
+        : process.env.BLOTATO_FB_ACCOUNT_ID;
+      if (!accountId) {
+        results.push({ platform, success: false, error: `BLOTATO_${platform === 'instagram' ? 'IG' : 'FB'}_ACCOUNT_ID not set` });
+        continue;
+      }
+
+      // Instagram requires an image — skip if text-only
+      if (platform === 'instagram' && !imageUrl) {
+        results.push({ platform, success: false, error: 'Instagram requires an image — skipped' });
+        continue;
+      }
+
+      const target: Record<string, string> = { targetType: platform };
+      if (platform === "facebook") {
+        if (!fbPageId) {
+          results.push({ platform, success: false, error: "BLOTATO_FB_PAGE_ID not set — required for Facebook posts" });
+          continue;
+        }
+        target.pageId = fbPageId;
+      }
+
+      const response = await fetch(BLOTATO_API_URL, {
+        method: "POST",
+        headers: {
+          "blotato-api-key": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          post: {
+            accountId,
+            content: { text, mediaUrls: imageUrl ? [imageUrl] : [], platform },
+            target,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        results.push({ platform, success: false, error: `Blotato API ${response.status}: ${errorText}` });
+        continue;
+      }
+
+      const data = await response.json();
+      results.push({ platform, success: true, postId: data.postSubmissionId || data.id || data.postId || "unknown" });
     }
 
-    const data = await response.json();
-    return { success: true, postId: data.id || data.postId || "unknown" };
+    const allFailed = results.every((r) => !r.success);
+    const firstSuccess = results.find((r) => r.success);
+    const errors = results.filter((r) => !r.success).map((r) => `${r.platform}: ${r.error}`);
+
+    if (allFailed) {
+      return { success: false, error: `All platforms failed — ${errors.join("; ")}` };
+    }
+
+    return {
+      success: true,
+      postId: firstSuccess?.postId,
+      ...(errors.length > 0 ? { error: `Partial failure — ${errors.join("; ")}` } : {}),
+    };
   } catch (err) {
-    return { success: false, error: (err as Error).message };
+    return { success: false, error: `Network error posting to Blotato: ${(err as Error).message}` };
   }
 }
 
@@ -271,7 +340,7 @@ async function cmdPost(postId?: number) {
 
   console.log(`\n📤 Publishing post #${target.id}: "${target.text}"\n`);
 
-  const result = await postToBlotato(target.text);
+  const result = await postToBlotato(target.text, ["facebook", "instagram"], target.imagePath);
 
   if (result.success) {
     target.status = "posted";
@@ -317,8 +386,7 @@ async function cmdList() {
 
 async function cmdImage(postId?: number) {
   if (!process.env.GEMINI_API_KEY) {
-    console.error("Error: Set GEMINI_API_KEY environment variable");
-    process.exit(1);
+    console.log("⚠️  GEMINI_API_KEY not set — will use Pollinations.ai fallback");
   }
 
   const posts = loadPosts();

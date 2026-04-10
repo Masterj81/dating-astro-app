@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,17 +16,19 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import VoiceIntroRecorder from '../../components/VoiceIntroRecorder';
+import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { readFileAsArrayBuffer, getExtFromMime } from '../../services/fileUtils';
 import { pickImage as pickImageCrossPlatform } from '../../services/imagePicker';
 import { supabase } from '../../services/supabase';
 import { validateBio, validateName } from '../../utils/validation';
-import { useAuth } from '../_layout';
+import { useAuth } from '../../contexts/AuthContext';
 
 type UserProfile = {
   id: string;
   name: string;
   bio: string;
+  gender?: string | null;
   photos: string[];
   age?: number;
   occupation?: string;
@@ -42,6 +44,7 @@ export default function EditProfileScreen() {
   const [_profile, setProfile] = useState<UserProfile | null>(null);
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
+  const [gender, setGender] = useState('');
   const [occupation, setOccupation] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [voiceIntroUrl, setVoiceIntroUrl] = useState<string | null>(null);
@@ -49,6 +52,8 @@ export default function EditProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const initialDataRef = useRef<{ name: string; bio: string; gender: string; occupation: string; photos: string[] } | null>(null);
   const { user } = useAuth();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
@@ -78,6 +83,7 @@ export default function EditProfileScreen() {
       setProfile(data);
       setName(data.name || '');
       setBio(data.bio || '');
+      setGender(data.gender || '');
       setOccupation(data.occupation || '');
       setPhotos(data.photos || []);
       setVoiceIntroUrl(data.voice_intro_url || null);
@@ -86,10 +92,10 @@ export default function EditProfileScreen() {
     setLoading(false);
   };
 
-  const handleVoiceIntroUpdate = (hasIntro: boolean, url?: string) => {
+  const handleVoiceIntroUpdate = useCallback((hasIntro: boolean, url?: string) => {
     setHasVoiceIntro(hasIntro);
     setVoiceIntroUrl(url || null);
-  };
+  }, []);
 
   const pickImage = async (index: number) => {
     const result = await pickImageCrossPlatform({
@@ -185,6 +191,7 @@ export default function EditProfileScreen() {
       .update({
         name: name.trim(),
         bio: bioResult.sanitized,
+        gender: gender || null,
         occupation: occupation.trim(),
         photos,
         updated_at: new Date().toISOString(),
@@ -202,16 +209,63 @@ export default function EditProfileScreen() {
     }
   };
 
+  const completeness = useMemo(() => {
+    const fields = [
+      !!name.trim(),
+      !!bio.trim(),
+      photos.length > 0,
+      !!gender,
+      !!occupation.trim(),
+    ];
+    const filled = fields.filter(Boolean).length;
+    return Math.round((filled / fields.length) * 100);
+  }, [name, bio, photos.length, gender, occupation]);
+
+  const handleBack = () => {
+    if (isDirty) {
+      Alert.alert(
+        t('unsavedChanges') || 'Unsaved Changes',
+        t('unsavedChangesMessage') || 'You have unsaved changes. Are you sure you want to go back?',
+        [
+          { text: t('cancel'), style: 'cancel' },
+          { text: t('discard') || 'Discard', style: 'destructive', onPress: () => router.back() },
+        ]
+      );
+    } else {
+      router.back();
+    }
+  };
+
   if (loading) {
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-        <ActivityIndicator size="large" color="#e94560" />
+      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+        <ActivityIndicator size="large" color={AppTheme.colors.coral} style={{ marginTop: 100 }} />
       </LinearGradient>
     );
   }
 
   const renderContent = () => (
     <View>
+      {/* Profile Completeness */}
+      {completeness < 100 && (
+        <View style={styles.completenessCard}>
+          <View style={styles.completenessHeader}>
+            <Text style={styles.completenessTitle}>
+              {t('profileCompleteness') || 'Profile Completeness'}
+            </Text>
+            <Text style={styles.completenessScore}>{completeness}%</Text>
+          </View>
+          <View style={styles.completenessBar}>
+            <View style={[styles.completenessBarFill, { width: `${completeness}%` }]} />
+          </View>
+          <Text style={styles.completenessHint}>
+            {completeness < 60
+              ? (t('completeProfileLow') || 'Add more details to attract better matches')
+              : (t('completeProfileHigh') || 'Almost there! Just a few more details.')}
+          </Text>
+        </View>
+      )}
+
       {/* Photos Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t('photos') || 'Photos'}</Text>
@@ -242,7 +296,7 @@ export default function EditProfileScreen() {
                       )}
                     </>
                   ) : uploadingIndex === index ? (
-                    <ActivityIndicator color="#e94560" />
+                    <ActivityIndicator color={AppTheme.colors.coral} />
                   ) : (
                     <>
                       <Text style={styles.addPhotoIcon}>+</Text>
@@ -274,7 +328,7 @@ export default function EditProfileScreen() {
               <TextInput
                 style={styles.textInput}
                 value={name}
-                onChangeText={setName}
+                onChangeText={(text) => { setName(text); setIsDirty(true); }}
                 placeholder={t('yourName')}
                 placeholderTextColor="#666"
                 maxLength={50}
@@ -282,11 +336,41 @@ export default function EditProfileScreen() {
             </View>
 
             <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>{t('genderLabel')}</Text>
+              <View style={styles.preferenceOptions}>
+                {[
+                  { value: 'male', label: t('genderOption_male') },
+                  { value: 'female', label: t('genderOption_female') },
+                  { value: 'non-binary', label: t('genderOption_nonBinary') },
+                  { value: 'other', label: t('genderOption_other') },
+                ].map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.preferenceOption,
+                      gender === option.value && styles.preferenceOptionActive,
+                    ]}
+                    onPress={() => { setGender(option.value); setIsDirty(true); }}
+                  >
+                    <Text
+                      style={[
+                        styles.preferenceOptionText,
+                        gender === option.value && styles.preferenceOptionTextActive,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>{t('occupation') || 'Occupation'}</Text>
               <TextInput
                 style={styles.textInput}
                 value={occupation}
-                onChangeText={setOccupation}
+                onChangeText={(text) => { setOccupation(text); setIsDirty(true); }}
                 placeholder={t('occupationPlaceholder') || 'What do you do?'}
                 placeholderTextColor="#666"
                 maxLength={100}
@@ -303,7 +387,7 @@ export default function EditProfileScreen() {
             <TextInput
               style={[styles.textInput, styles.bioInput]}
               value={bio}
-              onChangeText={setBio}
+              onChangeText={(text) => { setBio(text); setIsDirty(true); }}
               placeholder={t('bioPlaceholder') || 'Tell others about yourself...'}
               placeholderTextColor="#666"
               multiline
@@ -341,17 +425,25 @@ export default function EditProfileScreen() {
   );
 
   return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+    <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: 30 + topInset }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backText}>←</Text>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={handleBack}
+          accessibilityRole="button"
+          accessibilityLabel={t('goBack') || 'Go back'}
+        >
+          <Text style={styles.backText}>{'\u2190'}</Text>
         </TouchableOpacity>
         <Text style={styles.title}>{t('editProfile') || 'Edit Profile'}</Text>
         <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+          style={[styles.saveButton, (saving || !isDirty) && styles.saveButtonDisabled]}
           onPress={handleSave}
-          disabled={saving}
+          disabled={saving || !isDirty}
+          accessibilityRole="button"
+          accessibilityLabel={t('save') || 'Save'}
+          accessibilityState={{ disabled: saving || !isDirty }}
         >
           {saving ? (
             <ActivityIndicator size="small" color="#fff" />
@@ -411,35 +503,37 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: AppTheme.colors.panel,
     justifyContent: 'center',
     alignItems: 'center',
   },
   backText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 24,
   },
   title: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   saveButton: {
-    backgroundColor: '#e94560',
+    backgroundColor: AppTheme.colors.coral,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 20,
+    borderRadius: AppTheme.radius.pill,
     minWidth: 70,
+    minHeight: 44,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   saveButtonDisabled: {
-    opacity: 0.7,
+    opacity: 0.5,
   },
   saveText: {
-    color: '#fff',
+    color: AppTheme.colors.textOnAccent,
     fontWeight: '600',
     fontSize: 14,
   },
@@ -455,17 +549,17 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 8,
   },
   sectionSubtitle: {
     fontSize: 14,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     marginBottom: 16,
   },
   charCount: {
     fontSize: 12,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     marginBottom: 8,
   },
   photosGrid: {
@@ -476,17 +570,17 @@ const styles = StyleSheet.create({
   photoSlot: {
     width: '31%',
     aspectRatio: 0.75,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: AppTheme.radius.md,
+    backgroundColor: AppTheme.colors.glass,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: AppTheme.colors.border,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
   },
   mainPhotoSlot: {
-    borderColor: '#e94560',
+    borderColor: AppTheme.colors.coral,
     borderStyle: 'solid',
   },
   photoImage: {
@@ -498,56 +592,85 @@ const styles = StyleSheet.create({
     top: 8,
     right: 8,
     backgroundColor: 'rgba(0,0,0,0.6)',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
   photoAction: {
-    color: '#fff',
-    fontSize: 12,
+    color: AppTheme.colors.textOnAccent,
+    fontSize: 14,
     fontWeight: 'bold',
   },
   mainBadge: {
     position: 'absolute',
     bottom: 8,
     left: 8,
-    backgroundColor: '#e94560',
+    backgroundColor: AppTheme.colors.coral,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
   },
   mainBadgeText: {
-    color: '#fff',
+    color: AppTheme.colors.textOnAccent,
     fontSize: 10,
     fontWeight: '600',
   },
   addPhotoIcon: {
     fontSize: 32,
-    color: '#666',
+    color: AppTheme.colors.textMuted,
     marginBottom: 4,
   },
   addPhotoText: {
     fontSize: 12,
-    color: '#666',
+    color: AppTheme.colors.textMuted,
   },
   inputGroup: {
     marginBottom: 16,
   },
+  preferenceOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  preferenceOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: AppTheme.radius.md,
+    backgroundColor: AppTheme.colors.glass,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
+    alignItems: 'center',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  preferenceOptionActive: {
+    backgroundColor: 'rgba(232, 93, 117, 0.16)',
+    borderColor: 'rgba(232, 93, 117, 0.55)',
+  },
+  preferenceOptionText: {
+    color: AppTheme.colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  preferenceOptionTextActive: {
+    color: AppTheme.colors.textPrimary,
+  },
   inputLabel: {
     fontSize: 14,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     marginBottom: 8,
   },
   textInput: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 12,
+    backgroundColor: AppTheme.colors.glass,
+    borderRadius: AppTheme.radius.md,
     padding: 16,
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: AppTheme.colors.border,
+    minHeight: 48,
   },
   bioInput: {
     minHeight: 120,
@@ -555,21 +678,62 @@ const styles = StyleSheet.create({
   },
   bioHint: {
     fontSize: 13,
-    color: '#666',
+    color: AppTheme.colors.textMuted,
     lineHeight: 18,
   },
   tipsCard: {
     marginHorizontal: 20,
-    backgroundColor: 'rgba(233, 69, 96, 0.1)',
-    borderRadius: 16,
+    backgroundColor: 'rgba(232, 93, 117, 0.08)',
+    borderRadius: AppTheme.radius.lg,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(233, 69, 96, 0.2)',
+    borderColor: 'rgba(232, 93, 117, 0.2)',
+  },
+  completenessCard: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    backgroundColor: 'rgba(124, 108, 255, 0.08)',
+    borderRadius: AppTheme.radius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(124, 108, 255, 0.2)',
+  },
+  completenessHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  completenessTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: AppTheme.colors.textPrimary,
+  },
+  completenessScore: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: AppTheme.colors.cosmic,
+  },
+  completenessBar: {
+    height: 6,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+  completenessBarFill: {
+    height: '100%',
+    backgroundColor: AppTheme.colors.cosmic,
+    borderRadius: 3,
+  },
+  completenessHint: {
+    fontSize: 13,
+    color: AppTheme.colors.textMuted,
   },
   tipsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#e94560',
+    color: AppTheme.colors.coral,
     marginBottom: 12,
   },
   tipRow: {
@@ -584,7 +748,7 @@ const styles = StyleSheet.create({
   tipText: {
     flex: 1,
     fontSize: 14,
-    color: '#ccc',
+    color: AppTheme.colors.textSecondary,
     lineHeight: 20,
   },
 });

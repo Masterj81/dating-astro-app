@@ -68,8 +68,8 @@ export function InstallPrompt() {
   return (
     <>
       {/* Install banner */}
-      <div className="flex items-center gap-3 rounded-2xl border border-accent/20 bg-accent/8 px-4 py-3">
-        <span className="text-2xl">📲</span>
+      <div className="flex items-center gap-3 rounded-2xl border border-accent/20 bg-accent/8 px-4 py-3" role="region" aria-label={t("installTitle") || "Install AstroDating"}>
+        <span className="text-2xl" aria-hidden="true">📲</span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-white">
             {t("installTitle") || "Install AstroDating"}
@@ -99,27 +99,29 @@ export function InstallPrompt() {
           <button
             type="button"
             onClick={handleDismiss}
+            aria-label="Dismiss"
             className="rounded-full border border-white/10 px-3 py-2 text-xs text-text-dim transition-colors hover:bg-white/[0.06]"
           >
-            ✕
+            <span aria-hidden="true">✕</span>
           </button>
         </div>
       </div>
 
       {/* iOS install guide modal */}
       {showIOSGuide && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center" role="dialog" aria-modal="true" aria-labelledby="ios-install-title">
           <div className="w-full max-w-sm rounded-t-3xl border border-white/10 bg-[#111624] p-6 sm:rounded-3xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">
+              <h3 id="ios-install-title" className="text-lg font-semibold text-white">
                 {t("installIOSTitle") || "Install on iPhone"}
               </h3>
               <button
                 type="button"
                 onClick={() => setShowIOSGuide(false)}
+                aria-label="Close"
                 className="text-text-dim hover:text-white"
               >
-                ✕
+                <span aria-hidden="true">✕</span>
               </button>
             </div>
 

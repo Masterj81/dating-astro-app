@@ -13,9 +13,12 @@ import {
   View,
 } from 'react-native';
 import { showAlert } from '../../utils/alert';
+import { AppTheme } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { getResetPasswordRedirectUri } from '../../services/authRedirect';
 import { supabase } from '../../services/supabase';
 import { validateEmail } from '../../utils/validation';
+import { checkRateLimit, recordAttempt, formatRetryMessage } from '../../utils/rateLimiter';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
@@ -44,25 +47,37 @@ export default function ForgotPasswordScreen() {
       return;
     }
 
-    setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'astrodating://auth/reset-password',
-    });
-    setLoading(false);
-
-    if (error) {
-      showAlert(t('error'), error.message);
-    } else {
-      router.replace({
-        pathname: '/auth/password-reset-sent',
-        params: { email },
-      });
+    const limit = checkRateLimit('password-reset', { maxAttempts: 3, windowMs: 60000, lockoutMs: 300000 });
+    if (!limit.allowed) {
+      showAlert(t('error'), formatRetryMessage(limit.retryAfterMs));
+      return;
     }
+
+    setLoading(true);
+    recordAttempt('password-reset');
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: getResetPasswordRedirectUri(),
+      });
+
+      if (error) {
+        showAlert(t('error'), error.message);
+      } else {
+        router.replace({
+          pathname: '/auth/password-reset-sent',
+          params: { email },
+        });
+      }
+    } catch (err) {
+      console.error('Password reset error:', err);
+      showAlert(t('error'), t('somethingWrong') || 'Something went wrong. Please try again.');
+    }
+    setLoading(false);
   };
 
   return (
     <LinearGradient
-      colors={['#0f0f1a', '#1a1a2e', '#16213e']}
+      colors={[...AppTheme.gradients.screen]}
       style={styles.container}
     >
       <KeyboardAvoidingView
@@ -138,17 +153,15 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
+    ...AppTheme.type.title,
+    color: AppTheme.colors.textPrimary,
     textAlign: 'center',
     marginBottom: 12,
   },
   subtitle: {
-    fontSize: 15,
-    color: '#888',
+    ...AppTheme.type.body,
+    color: AppTheme.colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
     marginBottom: 32,
   },
   inputContainer: {
@@ -158,7 +171,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   label: {
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     fontSize: 14,
     marginBottom: 8,
     textTransform: 'uppercase',
@@ -167,14 +180,14 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 12,
+    borderColor: AppTheme.colors.border,
+    borderRadius: AppTheme.radius.md,
     padding: 16,
     fontSize: 16,
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   button: {
-    borderRadius: 12,
+    borderRadius: AppTheme.radius.md,
     overflow: 'hidden',
     maxWidth: 400,
     width: '100%',
@@ -185,7 +198,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonText: {
-    color: '#fff',
+    color: AppTheme.colors.textOnAccent,
     fontSize: 18,
     fontWeight: '600',
   },
@@ -194,7 +207,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backText: {
-    color: '#666',
+    color: AppTheme.colors.textMuted,
     fontSize: 14,
     textDecorationLine: 'underline',
   },

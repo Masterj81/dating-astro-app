@@ -405,7 +405,7 @@ export function ChatThread({ matchId }: ChatThreadProps) {
             </div>
           </div>
 
-          <div className="mt-6 flex-1 space-y-3 overflow-y-auto rounded-[1.5rem] border border-border bg-bg/40 p-4 pr-3">
+          <div role="log" aria-live="polite" aria-label={t("chatNav")} className="mt-6 flex-1 space-y-3 overflow-y-auto rounded-[1.5rem] border border-border bg-bg/40 p-4 pr-3">
             {messages.length ? (
               messages.map((message) => {
                 const isMine = message.sender_id === userId;
@@ -444,7 +444,9 @@ export function ChatThread({ matchId }: ChatThreadProps) {
 
           <div className="mt-6">
             <div className="flex gap-3">
+              <label htmlFor="chat-composer" className="sr-only">{t("chatPlaceholder")}</label>
               <textarea
+                id="chat-composer"
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={handleComposerKeyDown}
@@ -465,7 +467,7 @@ export function ChatThread({ matchId }: ChatThreadProps) {
           </div>
 
           {error ? (
-            <p className="mt-4 rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
+            <p role="alert" className="mt-4 rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
               {error}
             </p>
           ) : null}

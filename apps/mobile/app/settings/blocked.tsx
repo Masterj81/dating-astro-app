@@ -11,9 +11,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
-import { useAuth } from '../_layout';
+import { formatShortDate } from '../../utils/dateFormatting';
+import { useAuth } from '../../contexts/AuthContext';
 
 type BlockedUser = {
   id: string;
@@ -27,6 +30,7 @@ export default function BlockedUsersScreen() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { t } = useLanguage();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     loadBlockedUsers();
@@ -40,33 +44,36 @@ export default function BlockedUsersScreen() {
     }
     setLoading(true);
 
-    // In real app, fetch from blocked_users table
-    // For now, simulating empty list
-    const { data, error } = await supabase
-      .from('blocked_users')
-      .select('blocked_user_id, created_at')
-      .eq('user_id', user.id);
+    try {
+      const { data, error } = await supabase
+        .from('blocked_users')
+        .select('blocked_user_id, created_at')
+        .eq('user_id', user.id);
 
-    if (!error && data && data.length > 0) {
-      // Fetch profiles of blocked users
-      const blockedIds = data.map(d => d.blocked_user_id);
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, name, photos')
-        .in('id', blockedIds);
+      if (!error && data && data.length > 0) {
+        // Fetch profiles of blocked users
+        const blockedIds = data.map(d => d.blocked_user_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, name, photos')
+          .in('id', blockedIds);
 
-      if (profiles) {
-        const blockedWithProfiles = data.map(d => {
-          const profile = profiles.find(p => p.id === d.blocked_user_id);
-          return {
-            id: d.blocked_user_id,
-            name: profile?.name || 'Unknown',
-            image_url: profile?.photos?.[0] || '',
-            blocked_at: d.created_at,
-          };
-        });
-        setBlockedUsers(blockedWithProfiles);
+        if (profiles) {
+          const blockedWithProfiles = data.map(d => {
+            const profile = profiles.find(p => p.id === d.blocked_user_id);
+            return {
+              id: d.blocked_user_id,
+              name: profile?.name || t('unknown') || 'Unknown',
+              image_url: profile?.photos?.[0] || '',
+              blocked_at: d.created_at,
+            };
+          });
+          setBlockedUsers(blockedWithProfiles);
+        }
       }
+    } catch (err) {
+      console.error('Error loading blocked users:', err);
+      Alert.alert(t('error') || 'Error', t('somethingWrong') || 'Something went wrong. Please try again.');
     }
 
     setLoading(false);
@@ -81,14 +88,20 @@ export default function BlockedUsersScreen() {
         {
           text: t('unblock') || 'Unblock',
           onPress: async () => {
-            const { error } = await supabase
-              .from('blocked_users')
-              .delete()
-              .eq('user_id', user?.id)
-              .eq('blocked_user_id', userId);
+            try {
+              const { error } = await supabase
+                .from('blocked_users')
+                .delete()
+                .eq('user_id', user?.id)
+                .eq('blocked_user_id', userId);
 
-            if (!error) {
-              setBlockedUsers(prev => prev.filter(u => u.id !== userId));
+              if (!error) {
+                setBlockedUsers(prev => prev.filter(u => u.id !== userId));
+              } else {
+                Alert.alert(t('error') || 'Error', t('somethingWrong') || 'Could not unblock user. Please try again.');
+              }
+            } catch {
+              Alert.alert(t('error') || 'Error', t('somethingWrong') || 'Could not unblock user. Please try again.');
             }
           },
         },
@@ -96,14 +109,7 @@ export default function BlockedUsersScreen() {
     );
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
+  const formatDate = formatShortDate;
 
   const renderBlockedUser = ({ item }: { item: BlockedUser }) => (
     <View style={styles.userCard}>
@@ -130,45 +136,56 @@ export default function BlockedUsersScreen() {
   );
 
   return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+    <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backText}>←</Text>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel={t('goBack') || 'Go back'}
+        >
+          <Text style={styles.backText}>{'\u2190'}</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>{t('blockedUsers') || 'Blocked Users'}</Text>
+        <Text style={styles.title} accessibilityRole="header">{t('blockedUsers') || 'Blocked Users'}</Text>
         <View style={styles.placeholder} />
       </View>
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#e94560" />
+          <ActivityIndicator size="large" color={AppTheme.colors.coral} />
         </View>
       ) : blockedUsers.length > 0 ? (
         <FlatList
           data={blockedUsers}
           keyExtractor={(item) => item.id}
           renderItem={renderBlockedUser}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: 100 + insets.bottom }]}
           showsVerticalScrollIndicator={false}
+          ListFooterComponent={
+            <View style={styles.infoCard}>
+              <Text style={styles.infoIcon}>{'\u{2139}\u{FE0F}'}</Text>
+              <Text style={styles.infoText}>
+                {t('blockInfo') || 'Blocked users cannot see your profile, send you messages, or match with you.'}
+              </Text>
+            </View>
+          }
         />
       ) : (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>🚫</Text>
+          <Text style={styles.emptyEmoji}>{'\u{1F6AB}'}</Text>
           <Text style={styles.emptyTitle}>{t('noBlockedUsers') || 'No Blocked Users'}</Text>
           <Text style={styles.emptySubtitle}>
             {t('noBlockedUsersText') || "You haven't blocked anyone yet. When you block someone, they'll appear here."}
           </Text>
+          <View style={[styles.infoCard, { marginTop: 24 }]}>
+            <Text style={styles.infoIcon}>{'\u{2139}\u{FE0F}'}</Text>
+            <Text style={styles.infoText}>
+              {t('blockInfo') || 'Blocked users cannot see your profile, send you messages, or match with you.'}
+            </Text>
+          </View>
         </View>
       )}
-
-      {/* Info Card */}
-      <View style={styles.infoCard}>
-        <Text style={styles.infoIcon}>ℹ️</Text>
-        <Text style={styles.infoText}>
-          {t('blockInfo') || 'Blocked users cannot see your profile, send you messages, or match with you.'}
-        </Text>
-      </View>
     </LinearGradient>
   );
 }
@@ -186,24 +203,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: AppTheme.colors.panel,
     justifyContent: 'center',
     alignItems: 'center',
   },
   backText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 24,
   },
   title: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   placeholder: {
-    width: 40,
+    width: 44,
   },
   loadingContainer: {
     flex: 1,
@@ -217,9 +234,9 @@ const styles = StyleSheet.create({
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.glass,
     padding: 16,
-    borderRadius: 16,
+    borderRadius: AppTheme.radius.lg,
     marginBottom: 12,
   },
   avatar: {
@@ -229,14 +246,14 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   avatarPlaceholder: {
-    backgroundColor: 'rgba(233, 69, 96, 0.2)',
+    backgroundColor: 'rgba(232, 93, 117, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#e94560',
+    color: AppTheme.colors.coral,
   },
   userInfo: {
     flex: 1,
@@ -244,21 +261,23 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 4,
   },
   blockedDate: {
     fontSize: 13,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
   },
   unblockButton: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: AppTheme.colors.panel,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: AppTheme.radius.pill,
+    minHeight: 36,
+    justifyContent: 'center',
   },
   unblockText: {
-    color: '#e94560',
+    color: AppTheme.colors.coral,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -275,23 +294,23 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 15,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     textAlign: 'center',
     lineHeight: 22,
   },
   infoCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.glass,
     marginHorizontal: 20,
     marginBottom: 30,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: AppTheme.radius.md,
     gap: 12,
   },
   infoIcon: {
@@ -300,7 +319,7 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     lineHeight: 18,
   },
 });

@@ -1,20 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PremiumGate from '../../components/PremiumGate';
+import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
+import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
-import { useAuth } from '../../contexts/AuthContext';
 
 type WeekForecast = {
   week: number;
@@ -34,156 +27,166 @@ type MonthlyAspect = {
 
 function MonthlyHoroscopeScreenContent() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [sunSign, setSunSign] = useState<string | null>(null);
   const { user } = useAuth();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
+  // Stable date ref -- avoid creating new Date on every render
+  const today = useRef(new Date()).current;
 
-  const today = new Date();
-
-  const getMonthName = (monthIndex: number): string => {
+  const getMonthName = (monthIndex: number) => {
     const months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
     return t(months[monthIndex]) || months[monthIndex];
   };
 
-  const getOrdinal = (day: number): string => {
-    return t('dayOrdinal', { day }) || `${day}th`;
-  };
-
+  const getOrdinal = (day: number) => t('dayOrdinal', { day }) || `${day}th`;
   const monthName = `${getMonthName(today.getMonth())} ${today.getFullYear()}`;
 
   useEffect(() => {
     loadUserSign();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadUserSign = async () => {
     if (!user) {
       setLoading(false);
       return;
     }
+
     setLoading(true);
+    setError(null);
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('sun_sign')
+        .eq('id', user.id)
+        .maybeSingle();
 
-    const { data } = await supabase
-      .from('profiles')
-      .select('sun_sign')
-      .eq('id', user.id)
-      .single();
-
-    if (data?.sun_sign) {
-      setSunSign(data.sun_sign);
+      if (data?.sun_sign) {
+        setSunSign(data.sun_sign);
+      }
+    } catch (err) {
+      console.error('Error loading user sign:', err);
+      setError(t('loadingError') || 'Could not load your monthly horoscope. Please try again.');
     }
+
     setLoading(false);
   };
 
-  const getWeeklyForecasts = (): WeekForecast[] => {
-    return [
-      {
-        week: 1,
-        dates: '1-7',
-        theme: t('weekTheme1'),
-        energy: 4,
-        advice: t('weekAdvice1'),
-      },
-      {
-        week: 2,
-        dates: '8-14',
-        theme: t('weekTheme2'),
-        energy: 5,
-        advice: t('weekAdvice2'),
-      },
-      {
-        week: 3,
-        dates: '15-21',
-        theme: t('weekTheme3'),
-        energy: 3,
-        advice: t('weekAdvice3'),
-      },
-      {
-        week: 4,
-        dates: '22-28/31',
-        theme: t('weekTheme4'),
-        energy: 4,
-        advice: t('weekAdvice4'),
-      },
-    ];
-  };
+  const getWeeklyForecasts = (): WeekForecast[] => [
+    { week: 1, dates: '1-7', theme: t('weekTheme1'), energy: 4, advice: t('weekAdvice1') },
+    { week: 2, dates: '8-14', theme: t('weekTheme2'), energy: 5, advice: t('weekAdvice2') },
+    { week: 3, dates: '15-21', theme: t('weekTheme3'), energy: 3, advice: t('weekAdvice3') },
+    { week: 4, dates: '22-28/31', theme: t('weekTheme4'), energy: 4, advice: t('weekAdvice4') },
+  ];
 
-  const getMonthlyAspects = (): MonthlyAspect[] => {
-    return [
-      {
-        date: getOrdinal(5),
-        event: t('venusEntersTaurus'),
-        emoji: '💕',
-        impact: 'positive',
-        description: t('venusEntersDesc'),
-      },
-      {
-        date: getOrdinal(12),
-        event: t('fullMoonEvent'),
-        emoji: '🌕',
-        impact: 'neutral',
-        description: t('fullMoonDesc'),
-      },
-      {
-        date: getOrdinal(18),
-        event: t('mercuryRetrograde'),
-        emoji: '☿️',
-        impact: 'challenging',
-        description: t('mercuryRetroDesc'),
-      },
-      {
-        date: getOrdinal(26),
-        event: t('newMoonEvent'),
-        emoji: '🌑',
-        impact: 'positive',
-        description: t('newMoonDesc'),
-      },
-    ];
-  };
+  const getMonthlyAspects = (): MonthlyAspect[] => [
+    {
+      date: getOrdinal(5),
+      event: t('venusEntersTaurus'),
+      emoji: '💕',
+      impact: 'positive',
+      description: t('venusEntersDesc'),
+    },
+    {
+      date: getOrdinal(12),
+      event: t('fullMoonEvent'),
+      emoji: '🌕',
+      impact: 'neutral',
+      description: t('fullMoonDesc'),
+    },
+    {
+      date: getOrdinal(18),
+      event: t('mercuryRetrograde'),
+      emoji: '☿️',
+      impact: 'challenging',
+      description: t('mercuryRetroDesc'),
+    },
+    {
+      date: getOrdinal(26),
+      event: t('newMoonEvent'),
+      emoji: '🌑',
+      impact: 'positive',
+      description: t('newMoonDesc'),
+    },
+  ];
 
-  const getImpactColor = (impact: string): string => {
+  const getImpactColor = (impact: MonthlyAspect['impact']) => {
     switch (impact) {
-      case 'positive': return '#4ade80';
-      case 'challenging': return '#f87171';
-      default: return '#fbbf24';
+      case 'positive':
+        return AppTheme.colors.success;
+      case 'challenging':
+        return AppTheme.colors.danger;
+      default:
+        return AppTheme.colors.warning;
     }
   };
 
-  const renderEnergyBars = (energy: number) => {
-    return (
-      <View style={styles.energyBars}>
-        {[1, 2, 3, 4, 5].map((i) => (
-          <View
-            key={i}
-            style={[
-              styles.energyBar,
-              { backgroundColor: i <= energy ? '#9333ea' : 'rgba(255,255,255,0.1)' },
-            ]}
-          />
-        ))}
-      </View>
-    );
-  };
+  const renderEnergyBars = (energy: number) => (
+    <View style={styles.energyBars}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <View
+          key={i}
+          style={[
+            styles.energyBar,
+            { backgroundColor: i <= energy ? AppTheme.colors.cosmic : AppTheme.colors.border },
+          ]}
+        />
+      ))}
+    </View>
+  );
 
   if (loading) {
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-        <ActivityIndicator size="large" color="#e94560" />
+      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={AppTheme.colors.coral} />
+          <Text style={{ color: AppTheme.colors.textMuted, marginTop: 12, fontSize: 14 }}>
+            {t('loadingHoroscope') || 'Consulting the cosmos...'}
+          </Text>
+        </View>
+      </LinearGradient>
+    );
+  }
+
+  if (error) {
+    return (
+      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+          <Text style={{ fontSize: 48, marginBottom: 16 }}>{'📅'}</Text>
+          <Text style={{ color: AppTheme.colors.textSecondary, fontSize: 16, textAlign: 'center', marginBottom: 20 }}>{error}</Text>
+          <TouchableOpacity
+            onPress={loadUserSign}
+            style={{ backgroundColor: AppTheme.colors.coral, paddingVertical: 14, paddingHorizontal: 28, borderRadius: 14, minHeight: 48 }}
+          >
+            <Text style={{ color: AppTheme.colors.textOnAccent, fontWeight: '600', fontSize: 16 }}>{t('tryAgain') || 'Try Again'}</Text>
+          </TouchableOpacity>
+        </View>
       </LinearGradient>
     );
   }
 
   const weeklyForecasts = getWeeklyForecasts();
   const monthlyAspects = getMonthlyAspects();
-
-  // Fallbacks for web where SafeAreaProvider may not work
   const topInset = insets?.top ?? 0;
   const bottomInset = insets?.bottom ?? 0;
 
-  const renderContent = () => (
-    <View>
-      {/* Sign Card */}
+  return (
+    <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
+        showsVerticalScrollIndicator={false}
+      >
+      <View style={[styles.header, { paddingTop: 40 + topInset }]}>
+        <TouchableOpacity style={[styles.backButton, { top: 30 + topInset }]} onPress={() => router.back()}>
+          <Text style={styles.backText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>{t('monthlyHoroscope')}</Text>
+        <Text style={styles.date}>{monthName}</Text>
+      </View>
+
+
         <View style={styles.signCard}>
           <Text style={styles.signEmoji}>📅</Text>
           <View style={styles.signInfo}>
@@ -192,7 +195,6 @@ function MonthlyHoroscopeScreenContent() {
           </View>
         </View>
 
-        {/* Monthly Overview */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('monthlyOverview')}</Text>
           <View style={styles.overviewCard}>
@@ -202,34 +204,31 @@ function MonthlyHoroscopeScreenContent() {
           </View>
         </View>
 
-        {/* Key Themes */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('keyThemes')}</Text>
           <View style={styles.themesRow}>
-            <View style={styles.themeTag}>
-              <Text style={styles.themeEmoji}>💫</Text>
-              <Text style={styles.themeText}>{t('themeTransformation')}</Text>
-            </View>
-            <View style={styles.themeTag}>
-              <Text style={styles.themeEmoji}>💕</Text>
-              <Text style={styles.themeText}>{t('themeRelationships')}</Text>
-            </View>
-            <View style={styles.themeTag}>
-              <Text style={styles.themeEmoji}>📈</Text>
-              <Text style={styles.themeText}>{t('themeGrowth')}</Text>
-            </View>
+            {[
+              { emoji: '💫', label: t('themeTransformation') },
+              { emoji: '💕', label: t('themeRelationships') },
+              { emoji: '📈', label: t('themeGrowth') },
+            ].map((theme) => (
+              <View key={theme.label} style={styles.themeTag}>
+                <Text style={styles.themeEmoji}>{theme.emoji}</Text>
+                <Text style={styles.themeText}>{theme.label}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
-        {/* Weekly Breakdown */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('weekByWeek')}</Text>
-
-          {weeklyForecasts.map((week, index) => (
-            <View key={index} style={styles.weekCard}>
+          {weeklyForecasts.map((week) => (
+            <View key={week.week} style={styles.weekCard}>
               <View style={styles.weekHeader}>
                 <View style={styles.weekBadge}>
-                  <Text style={styles.weekNumber}>{t('week')} {week.week}</Text>
+                  <Text style={styles.weekNumber}>
+                    {t('week')} {week.week}
+                  </Text>
                 </View>
                 <Text style={styles.weekDates}>{week.dates}</Text>
                 {renderEnergyBars(week.energy)}
@@ -240,17 +239,13 @@ function MonthlyHoroscopeScreenContent() {
           ))}
         </View>
 
-        {/* Important Dates */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('importantDates')}</Text>
-
-          {monthlyAspects.map((aspect, index) => (
-            <View key={index} style={styles.aspectCard}>
+          {monthlyAspects.map((aspect) => (
+            <View key={aspect.date} style={styles.aspectCard}>
               <View style={styles.aspectHeader}>
                 <View style={[styles.aspectDateBadge, { borderColor: getImpactColor(aspect.impact) }]}>
-                  <Text style={[styles.aspectDate, { color: getImpactColor(aspect.impact) }]}>
-                    {aspect.date}
-                  </Text>
+                  <Text style={[styles.aspectDate, { color: getImpactColor(aspect.impact) }]}>{aspect.date}</Text>
                 </View>
                 <Text style={styles.aspectEmoji}>{aspect.emoji}</Text>
                 <Text style={styles.aspectEvent}>{aspect.event}</Text>
@@ -260,81 +255,45 @@ function MonthlyHoroscopeScreenContent() {
           ))}
         </View>
 
-        {/* Monthly Ratings */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('monthlyRatings')}</Text>
-
           <View style={styles.ratingsGrid}>
-            <View style={styles.ratingItem}>
-              <Text style={styles.ratingEmoji}>💕</Text>
-              <Text style={styles.ratingLabel}>{t('loveRomance')}</Text>
-              <Text style={styles.ratingStars}>★★★★☆</Text>
-            </View>
-            <View style={styles.ratingItem}>
-              <Text style={styles.ratingEmoji}>💼</Text>
-              <Text style={styles.ratingLabel}>{t('careerMoney')}</Text>
-              <Text style={styles.ratingStars}>★★★★★</Text>
-            </View>
-            <View style={styles.ratingItem}>
-              <Text style={styles.ratingEmoji}>🧘</Text>
-              <Text style={styles.ratingLabel}>{t('healthWellness')}</Text>
-              <Text style={styles.ratingStars}>★★★☆☆</Text>
-            </View>
-            <View style={styles.ratingItem}>
-              <Text style={styles.ratingEmoji}>🍀</Text>
-              <Text style={styles.ratingLabel}>{t('luck')}</Text>
-              <Text style={styles.ratingStars}>★★★★☆</Text>
-            </View>
+            {[
+              { emoji: '💕', label: t('loveRomance'), stars: '★★★★☆' },
+              { emoji: '💼', label: t('careerMoney'), stars: '★★★★★' },
+              { emoji: '🧘', label: t('healthWellness'), stars: '★★★☆☆' },
+              { emoji: '🍀', label: t('luck'), stars: '★★★★☆' },
+            ].map((rating) => (
+              <View key={rating.label} style={styles.ratingItem}>
+                <Text style={styles.ratingEmoji}>{rating.emoji}</Text>
+                <Text style={styles.ratingLabel}>{rating.label}</Text>
+                <Text style={styles.ratingStars}>{rating.stars}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
-        {/* Best Days */}
         <View style={styles.bestDaysCard}>
           <Text style={styles.bestDaysTitle}>{t('bestDaysThisMonth')}</Text>
           <View style={styles.bestDaysRow}>
-            <View style={styles.bestDay}>
-              <Text style={styles.bestDayEmoji}>💕</Text>
-              <Text style={styles.bestDayLabel}>{t('forLove')}</Text>
-              <Text style={styles.bestDayValue}>14, 21, 28</Text>
-            </View>
-            <View style={styles.bestDay}>
-              <Text style={styles.bestDayEmoji}>💼</Text>
-              <Text style={styles.bestDayLabel}>{t('forCareer')}</Text>
-              <Text style={styles.bestDayValue}>3, 10, 24</Text>
-            </View>
-            <View style={styles.bestDay}>
-              <Text style={styles.bestDayEmoji}>✨</Text>
-              <Text style={styles.bestDayLabel}>{t('forManifestation')}</Text>
-              <Text style={styles.bestDayValue}>5, 19, 26</Text>
-            </View>
+            {[
+              { emoji: '💕', label: t('forLove'), value: '14, 21, 28' },
+              { emoji: '💼', label: t('forCareer'), value: '3, 10, 24' },
+              { emoji: '✨', label: t('forManifestation'), value: '5, 19, 26' },
+            ].map((item) => (
+              <View key={item.label} style={styles.bestDay}>
+                <Text style={styles.bestDayEmoji}>{item.emoji}</Text>
+                <Text style={styles.bestDayLabel}>{item.label}</Text>
+                <Text style={styles.bestDayValue}>{item.value}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
-        {/* Premium Badge */}
         <View style={styles.premiumBadge}>
           <Text style={styles.premiumIcon}>✨</Text>
           <Text style={styles.premiumText}>{t('premiumPlusFeature')}</Text>
         </View>
-    </View>
-  );
-
-  return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      {/* Header - Fixed at top */}
-      <View style={[styles.header, { paddingTop: 40 + topInset }]}>
-        <TouchableOpacity style={[styles.backButton, { top: 30 + topInset }]} onPress={() => router.back()}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>{t('monthlyHoroscope')}</Text>
-        <Text style={styles.date}>{monthName}</Text>
-      </View>
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
-        showsVerticalScrollIndicator={false}
-      >
-        {renderContent()}
       </ScrollView>
     </LinearGradient>
   );
@@ -343,17 +302,21 @@ function MonthlyHoroscopeScreenContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    ...(Platform.OS === 'web' ? {
-      height: '100%' as any,
-      width: '100%' as any,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          height: '100%' as any,
+          width: '100%' as any,
+        }
+      : {}),
   },
   scrollView: {
     flex: 1,
-    ...(Platform.OS === 'web' ? {
-      height: 'calc(100vh - 120px)' as any,
-      overflowY: 'auto' as any,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          height: 'calc(100vh - 120px)' as any,
+          overflowY: 'auto' as any,
+        }
+      : {}),
   },
   scrollContent: {
     paddingBottom: 40,
@@ -369,36 +332,38 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 50,
     left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: AppTheme.colors.panelStrong,
     justifyContent: 'center',
     alignItems: 'center',
   },
   backText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 24,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 4,
   },
   date: {
     fontSize: 16,
-    color: '#9333ea',
+    color: AppTheme.colors.cosmic,
     fontWeight: '600',
   },
   signCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(124, 108, 255, 0.14)',
     marginHorizontal: 20,
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(124, 108, 255, 0.22)',
   },
   signEmoji: {
     fontSize: 40,
@@ -409,14 +374,14 @@ const styles = StyleSheet.create({
   },
   signLabel: {
     fontSize: 12,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   signName: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   section: {
     paddingHorizontal: 20,
@@ -425,27 +390,30 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 12,
   },
   overviewCard: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
     borderRadius: 16,
     padding: 16,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
   },
   overviewText: {
     fontSize: 15,
-    color: '#ccc',
+    color: AppTheme.colors.textSecondary,
     lineHeight: 24,
   },
   themesRow: {
     flexDirection: 'row',
     gap: 10,
+    flexWrap: 'wrap',
   },
   themeTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(147, 51, 234, 0.2)',
+    backgroundColor: 'rgba(124, 108, 255, 0.16)',
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 20,
@@ -456,13 +424,15 @@ const styles = StyleSheet.create({
   },
   themeText: {
     fontSize: 13,
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   weekCard: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
   },
   weekHeader: {
     flexDirection: 'row',
@@ -470,19 +440,19 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   weekBadge: {
-    backgroundColor: '#9333ea',
+    backgroundColor: AppTheme.colors.cosmic,
     paddingVertical: 4,
     paddingHorizontal: 10,
     borderRadius: 8,
     marginRight: 10,
   },
   weekNumber: {
-    color: '#fff',
+    color: AppTheme.colors.textOnAccent,
     fontSize: 12,
     fontWeight: 'bold',
   },
   weekDates: {
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
     fontSize: 14,
     flex: 1,
   },
@@ -498,19 +468,21 @@ const styles = StyleSheet.create({
   weekTheme: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 6,
   },
   weekAdvice: {
     fontSize: 13,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
     lineHeight: 18,
   },
   aspectCard: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
   },
   aspectHeader: {
     flexDirection: 'row',
@@ -536,11 +508,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   aspectDescription: {
     fontSize: 13,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
     lineHeight: 18,
   },
   ratingsGrid: {
@@ -550,10 +522,12 @@ const styles = StyleSheet.create({
   },
   ratingItem: {
     width: '47%',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
   },
   ratingEmoji: {
     fontSize: 28,
@@ -561,25 +535,27 @@ const styles = StyleSheet.create({
   },
   ratingLabel: {
     fontSize: 14,
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 6,
   },
   ratingStars: {
     fontSize: 14,
-    color: '#fbbf24',
+    color: AppTheme.colors.warning,
     letterSpacing: 2,
   },
   bestDaysCard: {
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(124, 108, 255, 0.14)',
     marginHorizontal: 20,
     borderRadius: 20,
     padding: 20,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(124, 108, 255, 0.22)',
   },
   bestDaysTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     textAlign: 'center',
     marginBottom: 16,
   },
@@ -597,19 +573,21 @@ const styles = StyleSheet.create({
   },
   bestDayLabel: {
     fontSize: 11,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     marginBottom: 4,
+    textAlign: 'center',
   },
   bestDayValue: {
     fontSize: 12,
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontWeight: '600',
+    textAlign: 'center',
   },
   premiumBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(147, 51, 234, 0.2)',
+    backgroundColor: 'rgba(124, 108, 255, 0.16)',
     marginHorizontal: 60,
     paddingVertical: 10,
     paddingHorizontal: 20,
@@ -621,7 +599,7 @@ const styles = StyleSheet.create({
   },
   premiumText: {
     fontSize: 12,
-    color: '#9333ea',
+    color: AppTheme.colors.cosmic,
     fontWeight: '600',
   },
 });

@@ -1,8 +1,10 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
-import { useEffect, useLayoutEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BlockReportMenu from '../../components/BlockReportMenu';
+import { AppTheme } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { usePremium } from '../../contexts/PremiumContext';
 import {
@@ -15,7 +17,7 @@ import {
 import { calculateNatalChart, calculateCompatibility } from '../../services/astrology';
 import { signDegreeToLongitude } from '../../services/astrologyCore';
 import { supabase } from '../../services/supabase';
-import { useAuth } from '../_layout';
+import { useAuth } from '../../contexts/AuthContext';
 
 type Profile = {
   id: string;
@@ -40,15 +42,29 @@ type Category = {
 };
 
 type Aspect = {
-  aspect: string;
+  title: string;
   type: 'harmonious' | 'intense' | 'challenging';
   description: string;
 };
 
-function ScoreRing({ score, loading, label }: { score: number; loading: boolean; label: string }) {
+const ScoreRing = React.memo(function ScoreRing({ score, loading, label, t }: { score: number; loading: boolean; label: string; t: (key: string) => string }) {
+  const getScoreVerdict = (s: number) => {
+    if (s >= 90) return t('scoreExcellent') || 'Soulmate potential';
+    if (s >= 75) return t('scoreGreat') || 'Strong cosmic bond';
+    if (s >= 60) return t('scoreGood') || 'Promising alignment';
+    if (s >= 45) return t('scoreFair') || 'Room to grow together';
+    return t('scoreLow') || 'Different cosmic paths';
+  };
+
+  const getScoreColor = (s: number) => {
+    if (s >= 80) return '#4ade80';
+    if (s >= 60) return '#e9c46a';
+    return '#ef4444';
+  };
+
   return (
     <View style={styles.scoreRing}>
-      <View style={styles.scoreInner}>
+      <View style={[styles.scoreInner, !loading && { borderColor: getScoreColor(score) }]}>
         {loading ? (
           <ActivityIndicator size="large" color="#e94560" />
         ) : (
@@ -59,15 +75,26 @@ function ScoreRing({ score, loading, label }: { score: number; loading: boolean;
         )}
       </View>
       <Text style={styles.scoreLabel}>{label}</Text>
+      {!loading && (
+        <Text style={[styles.scoreVerdict, { color: getScoreColor(score) }]}>
+          {getScoreVerdict(score)}
+        </Text>
+      )}
     </View>
   );
-}
+});
 
-function CategoryCard({ category }: { category: Category }) {
+const CategoryCard = React.memo(function CategoryCard({ category, explainer }: { category: Category; explainer?: string }) {
   const getScoreColor = (score: number) => {
     if (score >= 80) return '#4ade80';
     if (score >= 60) return '#e9c46a';
     return '#ef4444';
+  };
+
+  const getScoreLabel = (score: number) => {
+    if (score >= 80) return 'Excellent';
+    if (score >= 60) return 'Good';
+    return 'Needs work';
   };
 
   return (
@@ -76,27 +103,33 @@ function CategoryCard({ category }: { category: Category }) {
       <View style={styles.categoryContent}>
         <View style={styles.categoryHeader}>
           <Text style={styles.categoryName}>{category.name}</Text>
-          <Text style={[styles.categoryScore, { color: getScoreColor(category.score) }]}>
-            {category.score}%
-          </Text>
+          <View style={styles.categoryScoreWrap}>
+            <Text style={[styles.categoryScore, { color: getScoreColor(category.score) }]}>
+              {category.score}%
+            </Text>
+            <Text style={[styles.categoryScoreLabel, { color: getScoreColor(category.score) }]}>
+              {getScoreLabel(category.score)}
+            </Text>
+          </View>
         </View>
+        {explainer && <Text style={styles.categoryExplainer}>{explainer}</Text>}
         <Text style={styles.categoryDescription}>{category.description}</Text>
       </View>
     </View>
   );
-}
+});
 
-function AspectRow({ aspect }: { aspect: Aspect }) {
+const AspectRow = React.memo(function AspectRow({ aspect, typeExplainer }: { aspect: Aspect; typeExplainer?: string }) {
   const getTypeStyle = (type: string) => {
     switch (type) {
       case 'harmonious':
-        return { color: '#4ade80', symbol: '△' };
+        return { color: '#4ade80', symbol: '△', label: 'Harmonious' };
       case 'intense':
-        return { color: '#f59e0b', symbol: '☆' };
+        return { color: '#f59e0b', symbol: '☆', label: 'Intense' };
       case 'challenging':
-        return { color: '#ef4444', symbol: '□' };
+        return { color: '#ef4444', symbol: '□', label: 'Challenging' };
       default:
-        return { color: '#888', symbol: '○' };
+        return { color: '#888', symbol: '○', label: '' };
     }
   };
 
@@ -104,34 +137,40 @@ function AspectRow({ aspect }: { aspect: Aspect }) {
 
   return (
     <View style={styles.aspectRow}>
-      <Text style={[styles.aspectSymbol, { color: typeStyle.color }]}>{typeStyle.symbol}</Text>
+      <View style={styles.aspectSymbolWrap}>
+        <Text style={[styles.aspectSymbol, { color: typeStyle.color }]}>{typeStyle.symbol}</Text>
+        <Text style={[styles.aspectTypeLabel, { color: typeStyle.color }]}>{typeStyle.label}</Text>
+      </View>
       <View style={styles.aspectContent}>
-        <Text style={styles.aspectName}>{aspect.aspect}</Text>
+        <Text style={styles.aspectName}>{aspect.title}</Text>
         <Text style={styles.aspectDescription}>{aspect.description}</Text>
+        {typeExplainer && <Text style={styles.aspectExplainer}>{typeExplainer}</Text>}
       </View>
     </View>
   );
-}
+});
 
 function generateAspectDescriptions(
   userChart: BirthChart | null,
   matchChart: BirthChart | null,
-  compatibility: CompatibilityScore | null
+  compatibility: CompatibilityScore | null,
+  t: (key: string) => string
 ): Aspect[] {
   if (!userChart || !matchChart || !compatibility) {
     return [];
   }
 
   const aspects: Aspect[] = [];
+  const translateSign = (sign: string) => t(sign.toLowerCase()) || sign;
 
   // Sun-Moon aspect
   const sunMoonCompat = getElement(userChart.sun.sign) === getElement(matchChart.moon.sign);
   aspects.push({
-    aspect: `Your Sun (${userChart.sun.sign}) & Their Moon (${matchChart.moon.sign})`,
+    title: `${t('sun')} (${translateSign(userChart.sun.sign)}) • ${t('moon')} (${translateSign(matchChart.moon.sign)})`,
     type: sunMoonCompat ? 'harmonious' : 'challenging',
     description: sunMoonCompat
-      ? 'Natural emotional understanding between you'
-      : 'Different emotional languages - requires patience'
+      ? t('emotionalDesc')
+      : t('growthCompatibility')
   });
 
   // Venus-Mars aspect (passion)
@@ -143,41 +182,39 @@ function generateAspectDescriptions(
     (venusEl === 'water' && marsEl === 'earth') ||
     (venusEl === 'earth' && marsEl === 'water');
   aspects.push({
-    aspect: `Venus (${userChart.planets.venus.sign}) & Mars (${matchChart.planets.mars.sign})`,
+    title: `${t('venus')} (${translateSign(userChart.planets.venus.sign)}) • ${t('mars')} (${translateSign(matchChart.planets.mars.sign)})`,
     type: passionCompat ? 'intense' : 'challenging',
     description: passionCompat
-      ? 'Strong romantic and physical chemistry'
-      : 'Different approaches to love and desire'
+      ? t('passionDesc')
+      : t('growthCompatibility')
   });
 
   // Mercury aspect (communication)
   const mercCompat = getElement(userChart.planets.mercury.sign) === getElement(matchChart.planets.mercury.sign);
   aspects.push({
-    aspect: `Mercury-Mercury (${userChart.planets.mercury.sign} & ${matchChart.planets.mercury.sign})`,
+    title: `${t('mercury')} (${translateSign(userChart.planets.mercury.sign)}) • ${t('mercury')} (${translateSign(matchChart.planets.mercury.sign)})`,
     type: mercCompat ? 'harmonious' : 'challenging',
-    description: mercCompat
-      ? 'Easy, flowing communication'
-      : 'Different communication styles to navigate'
+    description: t('communicationDesc')
   });
 
   // Moon-Moon aspect (emotional)
   const moonCompat = getElement(userChart.moon.sign) === getElement(matchChart.moon.sign);
   aspects.push({
-    aspect: `Moon-Moon (${userChart.moon.sign} & ${matchChart.moon.sign})`,
+    title: `${t('moon')} (${translateSign(userChart.moon.sign)}) • ${t('moon')} (${translateSign(matchChart.moon.sign)})`,
     type: moonCompat ? 'harmonious' : 'challenging',
     description: moonCompat
-      ? 'Deep emotional resonance and understanding'
-      : 'Different emotional needs - growth opportunity'
+      ? t('emotionalDesc')
+      : t('growthCompatibility')
   });
 
   // Saturn aspect (long-term)
   const saturnCompat = getElement(userChart.planets.saturn.sign) === getElement(matchChart.planets.saturn.sign);
   aspects.push({
-    aspect: `Saturn-Saturn (${userChart.planets.saturn.sign} & ${matchChart.planets.saturn.sign})`,
+    title: `${t('saturn')} (${translateSign(userChart.planets.saturn.sign)}) • ${t('saturn')} (${translateSign(matchChart.planets.saturn.sign)})`,
     type: saturnCompat ? 'harmonious' : 'intense',
     description: saturnCompat
-      ? 'Shared approach to commitment and structure'
-      : 'Different timelines and life lessons'
+      ? t('longTermDesc')
+      : t('growthCompatibility')
   });
 
   return aspects;
@@ -250,11 +287,11 @@ export default function MatchDetailScreen() {
   const { tier, triggerPaywall } = usePremium();
   const isPremium = tier !== 'free';
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
-  // Set translated header title
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: t('compatibilityAnalysis'),
+      headerShown: false,
     });
   }, [navigation, t]);
 
@@ -298,27 +335,33 @@ export default function MatchDetailScreen() {
       let localChart2 = null;
 
       // User's chart - use local calculation
-      if (userResult.data.birth_date) {
-        const [year, month, day] = userResult.data.birth_date.split('-').map(Number);
-        const birthDate = new Date(year, month - 1, day);
-        localChart1 = calculateNatalChart(
-          birthDate,
-          userResult.data.birth_time,
-          userResult.data.birth_latitude || 45.5,
-          userResult.data.birth_longitude || -73.5
-        );
+      if (userResult.data.birth_date && typeof userResult.data.birth_date === 'string') {
+        const parts = userResult.data.birth_date.split('-').map(Number);
+        const [year, month, day] = parts;
+        if (year && month && day && !isNaN(year) && !isNaN(month) && !isNaN(day)) {
+          const birthDate = new Date(year, month - 1, day);
+          localChart1 = calculateNatalChart(
+            birthDate,
+            userResult.data.birth_time,
+            userResult.data.birth_latitude || 45.5,
+            userResult.data.birth_longitude || -73.5
+          );
+        }
       }
 
       // Match's chart - use local calculation
-      if (matchResult.data.birth_date) {
-        const [year, month, day] = matchResult.data.birth_date.split('-').map(Number);
-        const birthDate = new Date(year, month - 1, day);
-        localChart2 = calculateNatalChart(
-          birthDate,
-          matchResult.data.birth_time,
-          matchResult.data.birth_latitude || 45.5,
-          matchResult.data.birth_longitude || -73.5
-        );
+      if (matchResult.data.birth_date && typeof matchResult.data.birth_date === 'string') {
+        const parts = matchResult.data.birth_date.split('-').map(Number);
+        const [year, month, day] = parts;
+        if (year && month && day && !isNaN(year) && !isNaN(month) && !isNaN(day)) {
+          const birthDate = new Date(year, month - 1, day);
+          localChart2 = calculateNatalChart(
+            birthDate,
+            matchResult.data.birth_time,
+            matchResult.data.birth_latitude || 45.5,
+            matchResult.data.birth_longitude || -73.5
+          );
+        }
       }
 
       // Convert local chart format to BirthChart format for display
@@ -412,12 +455,35 @@ export default function MatchDetailScreen() {
     router.push(`/chat/${id}`);
   };
 
-  const categories = generateCategoryDescriptions(userChart, matchChart, compatibility, t);
-  const aspects = generateAspectDescriptions(userChart, matchChart, compatibility);
+  const categories = useMemo(
+    () => generateCategoryDescriptions(userChart, matchChart, compatibility, t),
+    [userChart, matchChart, compatibility, t]
+  );
+  const aspects = useMemo(
+    () => generateAspectDescriptions(userChart, matchChart, compatibility, t),
+    [userChart, matchChart, compatibility, t]
+  );
+
+  // Beginner-friendly explainers for each compatibility category
+  const categoryExplainers: Record<string, string> = useMemo(() => ({
+    [t('emotional')]: t('emotionalExplainer') || "How well you understand each other's feelings and emotional needs",
+    [t('communication')]: t('communicationExplainer') || 'How naturally you exchange ideas and resolve differences',
+    [t('passion')]: t('passionExplainer') || 'The spark and physical chemistry between you',
+    [t('longTerm')]: t('longTermExplainer') || 'How well you can build a lasting, committed relationship',
+    [t('values')]: t('valuesExplainer') || 'Whether you share the same priorities and vision for life',
+    [t('growth')]: t('growthExplainer') || 'How much you inspire each other to evolve and improve',
+  }), [t]);
+
+  // Explainers for aspect types
+  const aspectTypeExplainers: Record<string, string> = useMemo(() => ({
+    harmonious: t('harmonious_explainer') || 'Easy flow -- these energies complement each other',
+    intense: t('intense_explainer') || 'Magnetic pull -- powerful but requires awareness',
+    challenging: t('challenging_explainer') || 'Growth edge -- differences that push you both forward',
+  }), [t]);
 
   if (error) {
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+      <LinearGradient colors={[...AppTheme.gradients.screen]} style={styles.container}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={loadProfiles}>
@@ -432,8 +498,31 @@ export default function MatchDetailScreen() {
   }
 
   return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+    <LinearGradient colors={[...AppTheme.gradients.screen]} style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={[styles.inlineHeader, { paddingTop: insets.top + 12 }]}>
+          <TouchableOpacity style={styles.inlineBackButton} onPress={() => router.back()}>
+            <Text style={styles.inlineBackText}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.inlineHeaderTitle}>{t('compatibilityAnalysis')}</Text>
+          <View style={styles.inlineHeaderSpacer} />
+        </View>
+
+        {/* Cosmic Bond Celebration Banner */}
+        {matchProfile && !loading && compatibility && (
+          <View style={styles.celebrationBanner}>
+            <Text style={styles.celebrationEmoji}>
+              {compatibility.overall >= 80 ? '\u{1F496}' : compatibility.overall >= 60 ? '\u{2728}' : '\u{1F30C}'}
+            </Text>
+            <Text style={styles.celebrationTitle}>
+              {t('matchDetailCelebration') || 'Your Cosmic Bond'}
+            </Text>
+            <Text style={styles.celebrationDesc}>
+              {t('matchDetailCelebrationDesc') || 'The universe brought your paths together. Explore what the stars reveal about your connection.'}
+            </Text>
+          </View>
+        )}
+
         {/* Match Header */}
         {matchProfile && (
           <View style={styles.matchHeader}>
@@ -465,7 +554,7 @@ export default function MatchDetailScreen() {
 
         {/* Overall Score */}
         <View style={styles.scoreSection}>
-          <ScoreRing score={compatibility?.overall || 0} loading={loading} label={t('overallCompatibility')} />
+          <ScoreRing score={compatibility?.overall || 0} loading={loading} label={t('overallCompatibility')} t={t} />
           <Text style={styles.subtitle}>
             {t('synastrySubtitle')}
           </Text>
@@ -478,13 +567,13 @@ export default function MatchDetailScreen() {
             {isPremium ? (
               // Premium users see all categories
               categories.map((category) => (
-                <CategoryCard key={category.name} category={category} />
+                <CategoryCard key={category.name} category={category} explainer={categoryExplainers[category.name]} />
               ))
             ) : (
               // Free users see only first 2 categories + unlock prompt
               <>
                 {categories.slice(0, 2).map((category) => (
-                  <CategoryCard key={category.name} category={category} />
+                  <CategoryCard key={category.name} category={category} explainer={categoryExplainers[category.name]} />
                 ))}
                 <TouchableOpacity
                   style={styles.unlockMoreContainer}
@@ -520,7 +609,7 @@ export default function MatchDetailScreen() {
             {isPremium ? (
               <View style={styles.aspectsContainer}>
                 {aspects.map((aspect, index) => (
-                  <AspectRow key={index} aspect={aspect} />
+                  <AspectRow key={index} aspect={aspect} typeExplainer={aspectTypeExplainers[aspect.type]} />
                 ))}
               </View>
             ) : (
@@ -536,27 +625,52 @@ export default function MatchDetailScreen() {
           </View>
         )}
 
-        {/* Legend */}
+        {/* Legend with beginner-friendly explainer */}
         <View style={styles.legend}>
-          <Text style={styles.legendTitle}>{t('keyAspects')}</Text>
+          <Text style={styles.legendTitle}>{t('legendExplainerTitle') || 'Reading Your Chart'}</Text>
+          <Text style={styles.legendDesc}>{t('legendExplainerDesc') || 'Planetary aspects show how your planets interact. Think of each pairing as a conversation between two cosmic energies.'}</Text>
           <View style={styles.legendRow}>
             <Text style={[styles.legendSymbol, { color: '#4ade80' }]}>△</Text>
-            <Text style={styles.legendText}>{t('harmonious')}</Text>
+            <View style={styles.legendTextWrap}>
+              <Text style={styles.legendText}>{t('harmonious')}</Text>
+              <Text style={styles.legendSubtext}>{t('harmonious_explainer') || 'Easy flow'}</Text>
+            </View>
           </View>
           <View style={styles.legendRow}>
             <Text style={[styles.legendSymbol, { color: '#f59e0b' }]}>☆</Text>
-            <Text style={styles.legendText}>{t('neutral')}</Text>
+            <View style={styles.legendTextWrap}>
+              <Text style={styles.legendText}>{t('neutral')}</Text>
+              <Text style={styles.legendSubtext}>{t('intense_explainer') || 'Magnetic pull'}</Text>
+            </View>
           </View>
           <View style={styles.legendRow}>
             <Text style={[styles.legendSymbol, { color: '#ef4444' }]}>□</Text>
-            <Text style={styles.legendText}>{t('challenging')}</Text>
+            <View style={styles.legendTextWrap}>
+              <Text style={styles.legendText}>{t('challenging')}</Text>
+              <Text style={styles.legendSubtext}>{t('challenging_explainer') || 'Growth edge'}</Text>
+            </View>
           </View>
         </View>
+
+        {/* Conversation Starter Hint */}
+        {matchProfile && compatibility && (
+          <View style={styles.conversationHint}>
+            <Text style={styles.conversationHintIcon}>{'\u{1F4A1}'}</Text>
+            <Text style={styles.conversationHintText}>
+              {compatibility.passion >= 75
+                ? (t('matchDetailConversationHint', { sign: matchProfile.sun_sign || '', category: t('passion').toLowerCase() }) || `Start the conversation \u2014 your charts suggest strong passion compatibility`)
+                : compatibility.communication >= 75
+                  ? (t('matchDetailConversationHint', { sign: matchProfile.sun_sign || '', category: t('communication').toLowerCase() }) || `Start the conversation \u2014 your charts suggest strong communication compatibility`)
+                  : (t('matchDetailIcebreaker', { sign: matchProfile.sun_sign || '' }) || `Say something about their ${matchProfile.sun_sign} energy`)}
+            </Text>
+          </View>
+        )}
 
         {/* Action Buttons */}
         <View style={styles.actions}>
           <TouchableOpacity style={styles.messageButton} onPress={handleSendMessage}>
-            <Text style={styles.messageButtonText}>{t('typeMessage')}</Text>
+            <Text style={styles.messageButtonEmoji}>💬</Text>
+            <Text style={styles.messageButtonText}>{t('sendFirstMessage') || 'Send a Message'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.datePlannerButton}
@@ -579,11 +693,43 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 48,
+  },
+  inlineHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+  inlineBackButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: AppTheme.colors.cardBg,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.cardBorder,
+  },
+  inlineBackText: {
+    color: AppTheme.colors.textPrimary,
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  inlineHeaderTitle: {
+    flex: 1,
+    marginHorizontal: 12,
+    color: AppTheme.colors.textPrimary,
+    ...AppTheme.type.section,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  inlineHeaderSpacer: {
+    width: 42,
   },
   matchHeader: {
     alignItems: 'center',
-    paddingTop: 20,
+    paddingTop: 24,
     paddingHorizontal: 20,
   },
   matchHeaderTop: {
@@ -591,12 +737,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   matchName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
+    ...AppTheme.type.title,
+    color: AppTheme.colors.textPrimary,
     flex: 1,
     textAlign: 'center',
   },
@@ -605,17 +750,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   signBadge: {
-    backgroundColor: 'rgba(233, 69, 96, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    color: '#e94560',
+    backgroundColor: 'rgba(232, 93, 117, 0.12)',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: AppTheme.radius.pill,
+    color: AppTheme.colors.coral,
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
+    borderWidth: 1,
+    borderColor: 'rgba(232, 93, 117, 0.22)',
+    overflow: 'hidden',
   },
   scoreSection: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: 36,
     paddingHorizontal: 20,
   },
   scoreRing: {
@@ -623,55 +771,74 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   scoreInner: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    borderWidth: 6,
-    borderColor: '#e94560',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    borderWidth: 5,
+    borderColor: AppTheme.colors.coral,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
-    marginBottom: 8,
+    marginBottom: 12,
+    backgroundColor: 'rgba(232, 93, 117, 0.06)',
+    shadowColor: AppTheme.colors.coral,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.30,
+    shadowRadius: 24,
+    elevation: 8,
   },
   scoreNumber: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontSize: 52,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -1,
   },
   scorePercent: {
     fontSize: 24,
-    color: '#e94560',
-    marginTop: 8,
+    color: AppTheme.colors.coral,
+    marginTop: 10,
+    fontWeight: '700',
   },
   scoreLabel: {
-    fontSize: 16,
-    color: '#888',
+    ...AppTheme.type.meta,
+    color: AppTheme.colors.textMuted,
     textTransform: 'uppercase',
-    letterSpacing: 2,
+    letterSpacing: 2.5,
+  },
+  scoreVerdict: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: 6,
+    letterSpacing: 0.3,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#666',
+    ...AppTheme.type.caption,
+    color: AppTheme.colors.textSecondary,
     textAlign: 'center',
   },
   section: {
     paddingHorizontal: 20,
-    marginBottom: 24,
+    marginBottom: 28,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 16,
+    ...AppTheme.type.section,
+    color: AppTheme.colors.textPrimary,
+    marginBottom: 18,
+    fontWeight: '700',
   },
   categoryCard: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 16,
+    backgroundColor: AppTheme.colors.cardBg,
+    borderRadius: AppTheme.radius.lg,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: AppTheme.colors.cardBorderElevated,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
   },
   categoryIcon: {
     fontSize: 28,
@@ -684,93 +851,137 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   categoryName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+    ...AppTheme.type.body,
+    fontWeight: '700',
+    color: AppTheme.colors.textPrimary,
+  },
+  categoryScoreWrap: {
+    alignItems: 'flex-end',
   },
   categoryScore: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '800',
+  },
+  categoryScoreLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  categoryExplainer: {
+    ...AppTheme.type.caption,
+    color: AppTheme.colors.textMuted,
+    fontStyle: 'italic',
+    marginBottom: 4,
+    fontSize: 11,
   },
   categoryDescription: {
-    fontSize: 13,
-    color: '#888',
-    lineHeight: 18,
+    ...AppTheme.type.caption,
+    color: AppTheme.colors.textSecondary,
   },
   aspectsContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: AppTheme.colors.cardBg,
+    borderRadius: AppTheme.radius.lg,
+    padding: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: AppTheme.colors.cardBorderElevated,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
   },
   aspectRow: {
     flexDirection: 'row',
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    borderBottomColor: AppTheme.colors.cardBorder,
+  },
+  aspectSymbolWrap: {
+    alignItems: 'center',
+    width: 42,
+    paddingTop: 2,
   },
   aspectSymbol: {
     fontSize: 20,
-    width: 30,
     textAlign: 'center',
+  },
+  aspectTypeLabel: {
+    fontSize: 8,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+  aspectExplainer: {
+    ...AppTheme.type.caption,
+    color: AppTheme.colors.textMuted,
+    fontStyle: 'italic',
+    fontSize: 11,
+    marginTop: 3,
   },
   aspectContent: {
     flex: 1,
   },
   aspectName: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#fff',
-    marginBottom: 2,
+    ...AppTheme.type.body,
+    fontWeight: '600',
+    color: AppTheme.colors.textPrimary,
+    marginBottom: 3,
   },
   aspectDescription: {
-    fontSize: 13,
-    color: '#888',
+    ...AppTheme.type.caption,
+    color: AppTheme.colors.textSecondary,
   },
   premiumLock: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 16,
-    padding: 24,
+    backgroundColor: 'rgba(232, 93, 117, 0.06)',
+    borderRadius: AppTheme.radius.lg,
+    padding: 28,
     borderWidth: 1,
-    borderColor: 'rgba(233, 69, 96, 0.3)',
+    borderColor: 'rgba(232, 93, 117, 0.22)',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+    shadowColor: AppTheme.colors.coral,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.10,
+    shadowRadius: 12,
+    elevation: 3,
   },
   lockIcon: {
-    fontSize: 32,
+    fontSize: 36,
   },
   lockText: {
-    color: '#888',
-    fontSize: 14,
+    ...AppTheme.type.caption,
+    color: AppTheme.colors.textSecondary,
     textAlign: 'center',
   },
   unlockButton: {
-    color: '#e94560',
-    fontSize: 15,
-    fontWeight: '600',
+    color: AppTheme.colors.coral,
+    ...AppTheme.type.body,
+    fontWeight: '700',
     marginTop: 8,
   },
   unlockMoreContainer: {
     marginTop: 4,
   },
   lockedCategoriesPreview: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 12,
-    opacity: 0.6,
+    backgroundColor: AppTheme.colors.cardBg,
+    borderRadius: AppTheme.radius.lg,
+    padding: 14,
+    marginBottom: 14,
+    opacity: 0.55,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.cardBorder,
   },
   lockedCategoryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 4,
+    paddingVertical: 11,
+    paddingHorizontal: 6,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    borderBottomColor: AppTheme.colors.cardBorder,
   },
   lockedCategoryIcon: {
     fontSize: 20,
@@ -778,118 +989,159 @@ const styles = StyleSheet.create({
   },
   lockedCategoryName: {
     flex: 1,
-    fontSize: 15,
-    color: '#666',
+    ...AppTheme.type.body,
+    color: AppTheme.colors.textMuted,
   },
   lockedScore: {
-    fontSize: 16,
-    color: '#444',
-    fontWeight: '600',
+    ...AppTheme.type.body,
+    color: 'rgba(255,255,255,0.20)',
+    fontWeight: '700',
   },
   unlockPrompt: {
-    backgroundColor: 'rgba(233, 69, 96, 0.1)',
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: 'rgba(232, 93, 117, 0.08)',
+    borderRadius: AppTheme.radius.xl,
+    padding: 24,
     borderWidth: 1,
-    borderColor: 'rgba(233, 69, 96, 0.3)',
+    borderColor: 'rgba(232, 93, 117, 0.25)',
     alignItems: 'center',
+    shadowColor: AppTheme.colors.coral,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 4,
   },
   unlockIcon: {
-    fontSize: 36,
-    marginBottom: 8,
+    fontSize: 40,
+    marginBottom: 12,
   },
   unlockTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
+    ...AppTheme.type.heading,
+    color: AppTheme.colors.textPrimary,
     textAlign: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   unlockSubtitle: {
-    fontSize: 14,
-    color: '#888',
+    ...AppTheme.type.caption,
+    color: AppTheme.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   unlockButtonContainer: {
-    backgroundColor: '#e94560',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 10,
+    backgroundColor: AppTheme.colors.coral,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: AppTheme.radius.pill,
+    shadowColor: AppTheme.colors.coral,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.40,
+    shadowRadius: 12,
+    elevation: 6,
   },
   unlockButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
+    color: '#FFFFFF',
+    ...AppTheme.type.body,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   legend: {
     marginHorizontal: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
+    backgroundColor: AppTheme.colors.cardBg,
+    borderRadius: AppTheme.radius.lg,
+    padding: 18,
+    marginBottom: 28,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.cardBorder,
   },
   legendTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#888',
-    marginBottom: 12,
+    ...AppTheme.type.meta,
+    color: AppTheme.colors.textMuted,
+    marginBottom: 14,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  legendDesc: {
+    ...AppTheme.type.caption,
+    color: AppTheme.colors.textMuted,
+    marginBottom: 14,
+    lineHeight: 18,
   },
   legendRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   legendSymbol: {
     fontSize: 16,
-    width: 24,
+    width: 26,
+  },
+  legendTextWrap: {
+    flex: 1,
   },
   legendText: {
-    fontSize: 13,
-    color: '#666',
+    ...AppTheme.type.caption,
+    color: AppTheme.colors.textSecondary,
+    fontWeight: '600',
+  },
+  legendSubtext: {
+    ...AppTheme.type.caption,
+    color: AppTheme.colors.textMuted,
+    fontSize: 11,
+    marginTop: 1,
   },
   actions: {
     paddingHorizontal: 20,
     gap: 12,
   },
   messageButton: {
-    backgroundColor: '#e94560',
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: AppTheme.colors.coral,
+    paddingVertical: 18,
+    borderRadius: AppTheme.radius.pill,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    shadowColor: AppTheme.colors.coral,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  messageButtonEmoji: {
+    fontSize: 20,
   },
   messageButtonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '600',
+    color: '#FFFFFF',
+    ...AppTheme.type.bodyLarge,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   datePlannerButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
-    paddingVertical: 14,
-    borderRadius: 12,
+    backgroundColor: AppTheme.colors.premiumCosmicSoft,
+    paddingVertical: 16,
+    borderRadius: AppTheme.radius.pill,
     gap: 8,
     borderWidth: 1,
-    borderColor: 'rgba(147, 51, 234, 0.3)',
+    borderColor: AppTheme.colors.premiumCosmicBorder,
   },
   datePlannerIcon: {
     fontSize: 18,
   },
   datePlannerText: {
-    color: '#9333ea',
-    fontSize: 16,
-    fontWeight: '600',
+    color: AppTheme.colors.cosmic,
+    ...AppTheme.type.body,
+    fontWeight: '700',
   },
   backButton: {
     paddingVertical: 14,
     alignItems: 'center',
   },
   backButtonText: {
-    color: '#888',
-    fontSize: 15,
+    color: AppTheme.colors.textMuted,
+    ...AppTheme.type.body,
   },
   errorContainer: {
     flex: 1,
@@ -898,20 +1150,72 @@ const styles = StyleSheet.create({
     padding: 40,
   },
   errorText: {
-    color: '#ef4444',
-    fontSize: 16,
+    color: AppTheme.colors.danger,
+    ...AppTheme.type.body,
     textAlign: 'center',
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: '#e94560',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 10,
+    backgroundColor: AppTheme.colors.coral,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: AppTheme.radius.pill,
     marginBottom: 12,
+    shadowColor: AppTheme.colors.coral,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.30,
+    shadowRadius: 10,
+    elevation: 6,
   },
   retryButtonText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  celebrationBanner: {
+    alignItems: 'center',
+    paddingTop: 20,
+    paddingBottom: 8,
+    paddingHorizontal: 32,
+  },
+  celebrationEmoji: {
+    fontSize: 36,
+    marginBottom: 10,
+  },
+  celebrationTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: AppTheme.colors.textPrimary,
+    marginBottom: 6,
+    textAlign: 'center',
+    letterSpacing: 0.3,
+  },
+  celebrationDesc: {
+    fontSize: 13,
+    color: AppTheme.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 19,
+    maxWidth: 300,
+  },
+  conversationHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 16,
+    backgroundColor: 'rgba(124, 108, 255, 0.08)',
+    borderRadius: AppTheme.radius.lg,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(124, 108, 255, 0.16)',
+    gap: 10,
+  },
+  conversationHintIcon: {
+    fontSize: 18,
+  },
+  conversationHintText: {
+    flex: 1,
+    fontSize: 13,
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 19,
+    fontStyle: 'italic',
   },
 });

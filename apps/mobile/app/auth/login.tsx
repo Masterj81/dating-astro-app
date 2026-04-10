@@ -21,7 +21,7 @@ import { showAlert } from '../../utils/alert';
 import LanguageSelector from '../../components/LanguageSelector';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { validateEmail } from '../../utils/validation';
-import { useAuth } from '../_layout';
+import { useAuth } from '../../contexts/AuthContext';
 import { checkRateLimit, recordAttempt, resetRateLimit, formatRetryMessage } from '../../utils/rateLimiter';
 import {
   useReduceMotion,

@@ -9,11 +9,12 @@ import "dotenv/config";
 
 import { createServer, IncomingMessage, ServerResponse } from "http";
 import { readFileSync, writeFileSync, existsSync } from "fs";
+import { ensurePublicUrl } from "./upload-image.js";
 
 const PORT = 4200;
 const POSTS_FILE = "posts.json";
 const SCHEDULE_FILE = "schedule.json";
-const BLOTATO_API_URL = "https://api.blotato.com/v1/posts";
+const BLOTATO_API_URL = "https://backend.blotato.com/v2/posts";
 
 // ── Types ──
 
@@ -25,6 +26,7 @@ interface Post {
   createdAt: string;
   status: "draft" | "approved" | "scheduled" | "posted" | "failed" | "rejected";
   scheduledFor?: string;
+  imagePath?: string;
   blotato?: {
     postId?: string;
     platforms: string[];
@@ -62,21 +64,79 @@ function saveSchedule(schedule: ScheduleEntry[]): void {
 
 // ── Blotato ──
 
-async function publishToBlotato(text: string, platforms: string[]): Promise<{ success: boolean; postId?: string; error?: string }> {
+async function publishToBlotato(text: string, platforms: string[], imageUrl?: string): Promise<{ success: boolean; postId?: string; error?: string }> {
   const apiKey = process.env.BLOTATO_API_KEY;
   if (!apiKey) return { success: false, error: "BLOTATO_API_KEY not set" };
 
+  // Upload local images to Supabase Storage so Blotato gets a public URL
+  imageUrl = await ensurePublicUrl(imageUrl);
+
+  const fbPageId = process.env.BLOTATO_FB_PAGE_ID;
+
   try {
-    const res = await fetch(BLOTATO_API_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ content: text, platforms }),
-    });
-    if (!res.ok) return { success: false, error: `API ${res.status}` };
-    const data = await res.json();
-    return { success: true, postId: data.id || data.postId };
+    const results: { platform: string; success: boolean; postId?: string; error?: string }[] = [];
+
+    for (const platform of platforms) {
+      const accountId = platform === 'instagram'
+        ? process.env.BLOTATO_IG_ACCOUNT_ID
+        : process.env.BLOTATO_FB_ACCOUNT_ID;
+      if (!accountId) {
+        results.push({ platform, success: false, error: `BLOTATO_${platform === 'instagram' ? 'IG' : 'FB'}_ACCOUNT_ID not set` });
+        continue;
+      }
+
+      // Instagram requires an image — skip if text-only
+      if (platform === 'instagram' && !imageUrl) {
+        results.push({ platform, success: false, error: 'Instagram requires an image — skipped' });
+        continue;
+      }
+
+      const target: Record<string, string> = { targetType: platform };
+      if (platform === "facebook") {
+        if (!fbPageId) {
+          results.push({ platform, success: false, error: "BLOTATO_FB_PAGE_ID not set — required for Facebook posts" });
+          continue;
+        }
+        target.pageId = fbPageId;
+      }
+
+      const res = await fetch(BLOTATO_API_URL, {
+        method: "POST",
+        headers: { "blotato-api-key": apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          post: {
+            accountId,
+            content: { text, mediaUrls: imageUrl ? [imageUrl] : [], platform },
+            target,
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        results.push({ platform, success: false, error: `Blotato API ${res.status}: ${errorText.slice(0, 200)}` });
+        continue;
+      }
+
+      const data = await res.json();
+      results.push({ platform, success: true, postId: data.postSubmissionId || data.id || data.postId });
+    }
+
+    const allFailed = results.every((r) => !r.success);
+    const firstSuccess = results.find((r) => r.success);
+    const errors = results.filter((r) => !r.success).map((r) => `${r.platform}: ${r.error}`);
+
+    if (allFailed) {
+      return { success: false, error: `All platforms failed — ${errors.join("; ")}` };
+    }
+
+    return {
+      success: true,
+      postId: firstSuccess?.postId,
+      ...(errors.length > 0 ? { error: `Partial failure — ${errors.join("; ")}` } : {}),
+    };
   } catch (err) {
-    return { success: false, error: (err as Error).message };
+    return { success: false, error: `Network error posting to Blotato: ${(err as Error).message}` };
   }
 }
 
@@ -100,7 +160,7 @@ function startScheduler(): void {
       }
 
       console.log(`⏰ Publishing scheduled post #${post.id}...`);
-      const result = await publishToBlotato(post.text, entry.platforms);
+      const result = await publishToBlotato(post.text, entry.platforms, post.imagePath);
 
       if (result.success) {
         post.status = "posted";
@@ -176,7 +236,7 @@ async function handleAPI(req: IncomingMessage, res: ServerResponse): Promise<voi
     const post = posts.find((p) => p.id === id);
     if (!post) { res.writeHead(404); res.end('{"error":"Not found"}'); return; }
 
-    const result = await publishToBlotato(post.text, ["facebook", "instagram"]);
+    const result = await publishToBlotato(post.text, ["facebook", "instagram"], post.imagePath);
     if (result.success) {
       post.status = "posted";
       post.blotato = { postId: result.postId, platforms: ["facebook", "instagram"], postedAt: new Date().toISOString() };

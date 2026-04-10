@@ -1,38 +1,23 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback } from 'react';
+import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppTheme } from '../../constants/theme';
+import {
+  CELESTIAL_FEATURES,
+  COSMIC_FEATURES,
+  PAYWALL_PREVIEW_FEATURES,
+} from '../../constants/premiumCatalog';
+import { AppCard } from '../../components/ui/AppCard';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { usePremium } from '../../contexts/PremiumContext';
-import { useAuth } from '../../contexts/AuthContext';
 import { LoadingState } from '../../components/ScreenStates';
 import WebTabWrapper from '../../components/WebTabWrapper';
+import { useAuth } from '../../contexts/AuthContext';
+import { getManageSubscriptionAction, manageSubscription } from '../../services/subscriptionManagement';
 
-// Feature cards for the dashboard
-const CELESTIAL_FEATURES = [
-  { key: 'fullNatalChart', icon: '\u{1F31F}', route: '/premium-screens/natal-chart' },
-  { key: 'advancedSynastry', icon: '\u{1F495}', route: '/premium-screens/synastry' },
-  { key: 'seeWhoLikes', icon: '\u{2764}\u{FE0F}', route: '/premium-screens/likes' },
-  { key: 'superLikes', icon: '\u{2B50}', route: '/premium-screens/super-likes' },
-  { key: 'priorityMessages', icon: '\u{1F4AC}', route: '/premium-screens/priority-messages' },
-];
-
-const COSMIC_FEATURES = [
-  { key: 'dailyHoroscope', icon: '\u{1F52E}', route: '/premium-screens/daily-horoscope' },
-  { key: 'monthlyHoroscope', icon: '\u{1F4C5}', route: '/premium-screens/monthly-horoscope' },
-  { key: 'planetaryTransits', icon: '\u{1FA90}', route: '/premium-screens/planetary-transits' },
-  { key: 'luckyDays', icon: '\u{1F340}', route: '/premium-screens/lucky-days' },
-  { key: 'datePlanner', icon: '\u{1F4AB}', route: '/premium-screens/date-planner' },
-];
-
-const PAYWALL_PREVIEW_FEATURES = [
-  { key: 'fullNatalChart', icon: '\u{1F31F}', fallback: 'Natal Chart' },
-  { key: 'advancedSynastry', icon: '\u{1F495}', fallback: 'Synastry' },
-  { key: 'dailyHoroscope', icon: '\u{1F52E}', fallback: 'Horoscopes' },
-  { key: 'luckyDays', icon: '\u{1F340}', fallback: 'Lucky Days' },
-];
-
-function FeatureCard({ title, icon, onPress, locked = false }: {
+const FeatureCard = React.memo(function FeatureCard({ title, icon, onPress, locked = false }: {
   title: string;
   icon: string;
   onPress: () => void;
@@ -40,26 +25,67 @@ function FeatureCard({ title, icon, onPress, locked = false }: {
 }) {
   return (
     <TouchableOpacity
-      style={[styles.card, locked && styles.lockedCard]}
+      style={[styles.featureCard, locked && styles.featureCardLocked]}
       onPress={onPress}
       disabled={locked}
-      activeOpacity={0.7}
+      activeOpacity={0.8}
     >
-      <Text style={styles.cardIcon}>{icon}</Text>
-      <Text style={styles.cardTitle}>{title}</Text>
-      {locked && <Text style={styles.lockText}>🔒</Text>}
+      <AppCard style={styles.featureCardInner} elevated={locked}>
+        <Text style={styles.featureIcon}>{icon}</Text>
+        <Text style={styles.featureTitle}>{title}</Text>
+        {locked ? <Text style={styles.featureLock}>🔒</Text> : null}
+      </AppCard>
     </TouchableOpacity>
   );
-}
+});
 
 export default function PremiumScreen() {
   const { t } = useLanguage();
   const { tier, loading } = usePremium();
-  const { user: _user } = useAuth();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
 
   const isPremiumPlus = tier === 'premium_plus';
   const hasAccess = tier !== 'free';
+
+  // Stable callback for navigating to feature routes (avoids re-creating per render)
+  const handleFeaturePress = useCallback((route: string) => {
+    router.push(route as any);
+  }, []);
+
+  const handleCosmicFeaturePress = useCallback((route: string) => {
+    if (isPremiumPlus) {
+      router.push(route as any);
+    } else {
+      router.push('/premium-screens/plus');
+    }
+  }, [isPremiumPlus]);
+
+  const handleManageSubscription = async () => {
+    if (!user?.id) return;
+
+    try {
+      const action = await getManageSubscriptionAction(user.id);
+
+      if (action.type === 'none') {
+        Alert.alert(
+          t('subscriptions') || 'Subscriptions',
+          t('manageSubscriptionUnavailable') || 'No active subscription was found to manage.',
+          [{ text: t('ok') || 'OK' }]
+        );
+        return;
+      }
+
+      await manageSubscription(user.id);
+    } catch (error) {
+      console.error('[Premium] Failed to open subscription management:', error);
+      Alert.alert(
+        t('error') || 'Error',
+        t('manageSubscriptionError') || 'Unable to open subscription management right now.',
+        [{ text: t('ok') || 'OK' }]
+      );
+    }
+  };
 
   // Show loading state
   if (loading) {
@@ -81,10 +107,13 @@ export default function PremiumScreen() {
         >
           <span style={{ fontSize: 80, marginBottom: 24 }}>✨</span>
           <h1 style={{ fontSize: 28, fontWeight: 'bold', color: '#fff', margin: '0 0 12px' }}>
-            {t('unlockCosmos') || 'Unlock the Cosmos'}
+            {t('paywallHeroTitle') || 'The Stars Know Your Match'}
           </h1>
-          <p style={{ fontSize: 16, color: '#888', margin: '0 0 32px', maxWidth: 300 }}>
-            {t('premiumRequired') || 'Access natal charts, synastry, horoscopes and more'}
+          <p style={{ fontSize: 16, color: '#888', margin: '0 0 16px', maxWidth: 340 }}>
+            {t('paywallHeroSubtitle') || 'Unlock the cosmic insights that lead to deeper, more meaningful connections'}
+          </p>
+          <p style={{ fontSize: 12, color: '#DAB56D', margin: '0 0 32px' }}>
+            {t('paywallSocialProofLine') || 'Join 12,000+ cosmic seekers finding real connections'}
           </p>
 
           {/* Features preview */}
@@ -103,7 +132,7 @@ export default function PremiumScreen() {
           </div>
 
           <button
-            onClick={() => router.push('/premium-screens/plus')}
+            onClick={() => router.push('/premium-screens/plans' as any)}
             style={{
               background: 'linear-gradient(90deg, #e94560, #9333ea)',
               border: 'none',
@@ -114,52 +143,107 @@ export default function PremiumScreen() {
             }}
           >
             <span style={{ color: '#fff', fontSize: 18, fontWeight: 600 }}>
-              {t('viewPlans') || 'View Plans'}
+              {t('paywallCtaButton') || 'Try 7 Days Free'}
             </span>
           </button>
 
-          <p style={{ fontSize: 13, color: '#666', margin: 0 }}>
-            {t('startingAt') || 'Starting at $9.99/month'}
+          <p style={{ fontSize: 13, color: '#666', margin: '0 0 4px' }}>
+            {t('paywallCtaSub') || 'Then $9.99/month'}
+          </p>
+          <p style={{ fontSize: 12, color: '#555', margin: 0 }}>
+            {t('paywallTrialReassurance') || 'No charge for 7 days \u00B7 Cancel anytime in 30 seconds'}
           </p>
         </WebTabWrapper>
       );
     }
 
-    // Native version paywall
+    // Native version paywall — compelling upsell with social proof and benefit previews
+    const BENEFIT_ROWS = [
+      { icon: '\u{1F495}', label: t('paywallBenefitLabel1') || 'See Who\u2019s Drawn to You', desc: t('paywallBenefitDesc1') || 'Reveal every person who swiped right on your profile' },
+      { icon: '\u{1F31F}', label: t('paywallBenefitLabel2') || 'Your Complete Star Map', desc: t('paywallBenefitDesc2') || 'All 10 planets, 12 houses \u2014 your full cosmic blueprint' },
+      { icon: '\u{1F52E}', label: t('paywallBenefitLabel3') || 'Daily Cosmic Guidance', desc: t('paywallBenefitDesc3') || 'Personalized love insights based on today\u2019s transits' },
+      { icon: '\u{2B50}', label: t('paywallBenefitLabel4') || '3x More Matches', desc: t('paywallBenefitDesc4') || '5 daily super likes \u2014 profiles with super likes match 3x more' },
+    ];
+
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-        <View style={[styles.paywallContent, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 }]}>
-          <Text style={styles.paywallEmoji}>✨</Text>
-          <Text style={styles.paywallTitle}>{t('unlockCosmos') || 'Unlock the Cosmos'}</Text>
+      <LinearGradient colors={[...AppTheme.gradients.screen]} style={styles.container}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[styles.paywallScroll, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 40 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.paywallEmoji}>{'\u2728'}</Text>
+          <Text style={styles.paywallTitle}>{t('paywallHeroTitle') || 'The Stars Know Your Match'}</Text>
           <Text style={styles.paywallSubtitle}>
-            {t('premiumRequired') || 'Access natal charts, synastry, horoscopes and more'}
+            {t('paywallHeroSubtitle') || 'Unlock the cosmic insights that lead to deeper, more meaningful connections'}
           </Text>
 
-          {/* Features preview */}
-          <View style={styles.featuresPreview}>
-            {PAYWALL_PREVIEW_FEATURES.map((feature, i) => (
-              <View key={i} style={styles.featureTag}>
-                <Text style={styles.featureTagText}>{feature.icon} {t(feature.key) || feature.fallback}</Text>
+          {/* Social proof nudge */}
+          <View style={styles.socialProof}>
+            <Text style={styles.socialProofText}>
+              {t('paywallSocialProofLine') || 'Join 12,000+ cosmic seekers finding real connections'}
+            </Text>
+          </View>
+
+          {/* Benefit rows with descriptions */}
+          <View style={styles.benefitsList}>
+            {BENEFIT_ROWS.map((b, i) => (
+              <View key={i} style={styles.benefitRow}>
+                <View style={styles.benefitIconWrap}>
+                  <Text style={styles.benefitIcon}>{b.icon}</Text>
+                </View>
+                <View style={styles.benefitTextWrap}>
+                  <Text style={styles.benefitLabel}>{b.label}</Text>
+                  <Text style={styles.benefitDesc}>{b.desc}</Text>
+                </View>
               </View>
             ))}
           </View>
 
+          {/* Blurred preview teaser */}
+          <View style={styles.previewTeaser}>
+            <Text style={styles.previewTeaserTitle}>
+              {t('paywallCompatPreview') || 'Your compatibility preview'}
+            </Text>
+            <View style={styles.previewBarRow}>
+              <Text style={styles.previewBarLabel}>{'\u{2600}\u{FE0F}'} Sun</Text>
+              <View style={styles.previewBar}><View style={[styles.previewBarFill, { width: '78%' }]} /></View>
+              <Text style={styles.previewBarPct}>78%</Text>
+            </View>
+            <View style={styles.previewBarRow}>
+              <Text style={styles.previewBarLabel}>{'\u{1F319}'} Moon</Text>
+              <View style={styles.previewBar}><View style={[styles.previewBarFill, styles.previewBarBlurred, { width: '65%' }]} /></View>
+              <Text style={[styles.previewBarPct, styles.previewBarLocked]}>{'\u{1F512}'}</Text>
+            </View>
+            <View style={styles.previewBarRow}>
+              <Text style={styles.previewBarLabel}>{'\u{2B06}\u{FE0F}'} Rising</Text>
+              <View style={styles.previewBar}><View style={[styles.previewBarFill, styles.previewBarBlurred, { width: '85%' }]} /></View>
+              <Text style={[styles.previewBarPct, styles.previewBarLocked]}>{'\u{1F512}'}</Text>
+            </View>
+            <Text style={styles.previewTeaserHint}>
+              {t('paywallCompatHint') || 'Moon & Rising reveal 60% of relationship compatibility'}
+            </Text>
+          </View>
+
           <TouchableOpacity
             style={styles.subscribeButton}
-            onPress={() => router.push('/premium-screens/plus')}
+            onPress={() => router.push('/premium-screens/plans' as any)}
+            activeOpacity={0.85}
           >
             <LinearGradient
-              colors={['#e94560', '#9333ea']}
+              colors={[AppTheme.colors.coral, AppTheme.colors.cosmic]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.subscribeGradient}
             >
-              <Text style={styles.subscribeButtonText}>{t('viewPlans') || 'View Plans'}</Text>
+              <Text style={styles.subscribeButtonText}>{t('paywallCtaButton') || 'Try 7 Days Free'}</Text>
+              <Text style={styles.subscribeButtonSubtext}>{t('paywallCtaSub') || 'Then $9.99/month'}</Text>
             </LinearGradient>
           </TouchableOpacity>
 
-          <Text style={styles.pricingHint}>{t('startingAt') || 'Starting at $9.99/month'}</Text>
-        </View>
+          <Text style={styles.pricingHint}>{t('paywallTrialReassurance') || 'No charge for 7 days \u00B7 Cancel anytime in 30 seconds'}</Text>
+          <Text style={styles.cancelAnytime}>{t('paywallGuarantee') || 'Satisfaction guaranteed or your money back'}</Text>
+        </ScrollView>
       </LinearGradient>
     );
   }
@@ -180,6 +264,21 @@ export default function PremiumScreen() {
           <p style={{ fontSize: 16, color: '#e94560', fontWeight: 600, margin: 0 }}>
             {isPremiumPlus ? '🌌 ' + (t('cosmicMember') || 'Cosmic Member') : '✨ ' + (t('celestialMember') || 'Celestial Member')}
           </p>
+          <button
+            onClick={() => void handleManageSubscription()}
+            style={{
+              marginTop: 16,
+              backgroundColor: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 14,
+              padding: '12px 16px',
+              color: '#fff',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            {t('subscriptions') || 'Subscriptions & Payments'}
+          </button>
         </div>
 
         {/* Celestial Features */}
@@ -293,30 +392,33 @@ export default function PremiumScreen() {
 
   // Native version
   return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+    <LinearGradient colors={[...AppTheme.gradients.screen]} style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 20, paddingBottom: 100 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={styles.heroBlock}>
           <Text style={styles.title}>{t('cosmicHub') || 'Cosmic Hub'}</Text>
           <Text style={styles.subtitle}>
-            {isPremiumPlus ? '🌌 ' + (t('cosmicMember') || 'Cosmic Member') : '✨ ' + (t('celestialMember') || 'Celestial Member')}
+            {isPremiumPlus ? t('cosmicMember') || 'Cosmic Member' : t('celestialMember') || 'Celestial Member'}
           </Text>
+          <TouchableOpacity style={styles.manageButton} onPress={() => void handleManageSubscription()}>
+            <Text style={styles.manageButtonText}>{t('subscriptions') || 'Subscriptions & Payments'}</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Celestial Features */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('celestialFeatures') || 'Celestial Features'}</Text>
+          <Text style={styles.sectionEyebrow}>{t('celestialFeatures') || 'Celestial Features'}</Text>
           <View style={styles.grid}>
             {CELESTIAL_FEATURES.map((feature) => (
               <FeatureCard
                 key={feature.key}
                 title={t(feature.key) || feature.key}
                 icon={feature.icon}
-                onPress={() => router.push(feature.route as any)}
+                onPress={() => handleFeaturePress(feature.route)}
               />
             ))}
           </View>
@@ -324,20 +426,14 @@ export default function PremiumScreen() {
 
         {/* Cosmic Features */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('cosmicFeatures') || 'Cosmic Features'}</Text>
+          <Text style={styles.sectionEyebrow}>{t('cosmicFeatures') || 'Cosmic Features'}</Text>
           <View style={styles.grid}>
             {COSMIC_FEATURES.map((feature) => (
               <FeatureCard
                 key={feature.key}
                 title={t(feature.key) || feature.key}
                 icon={feature.icon}
-                onPress={() => {
-                  if (isPremiumPlus) {
-                    router.push(feature.route as any);
-                  } else {
-                    router.push('/premium-screens/plus');
-                  }
-                }}
+                onPress={() => handleCosmicFeaturePress(feature.route)}
                 locked={!isPremiumPlus}
               />
             ))}
@@ -369,10 +465,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: '#0f0f1a',
-  },
   // Paywall styles
   paywallContent: {
     flex: 1,
@@ -382,21 +474,21 @@ const styles = StyleSheet.create({
   },
   paywallEmoji: {
     fontSize: 80,
-    marginBottom: 24,
+    marginBottom: 28,
   },
   paywallTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 12,
+    ...AppTheme.type.hero,
+    color: AppTheme.colors.textPrimary,
+    marginBottom: 14,
     textAlign: 'center',
   },
   paywallSubtitle: {
-    fontSize: 16,
-    color: '#888',
+    ...AppTheme.type.bodyLarge,
+    color: AppTheme.colors.textSecondary,
     textAlign: 'center',
     marginBottom: 32,
     maxWidth: 300,
+    lineHeight: 26,
   },
   featuresPreview: {
     flexDirection: 'row',
@@ -413,124 +505,287 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   featureTagText: {
-    color: '#ccc',
+    color: AppTheme.colors.textSecondary,
     fontSize: 14,
   },
   subscribeButton: {
-    borderRadius: 16,
+    borderRadius: AppTheme.radius.pill,
     overflow: 'hidden',
     marginBottom: 16,
+    shadowColor: AppTheme.colors.coral,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.50,
+    shadowRadius: 24,
+    elevation: 12,
+    minWidth: 280,
   },
   subscribeGradient: {
-    paddingVertical: 16,
-    paddingHorizontal: 48,
+    paddingVertical: 20,
+    paddingHorizontal: 52,
   },
   subscribeButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '800',
     textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  subscribeButtonSubtext: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  previewTeaserHint: {
+    ...AppTheme.type.meta,
+    color: AppTheme.colors.coral,
+    textAlign: 'center',
+    marginTop: 12,
+    fontWeight: '600',
+    fontStyle: 'italic',
   },
   pricingHint: {
+    ...AppTheme.type.caption,
+    color: AppTheme.colors.textSecondary,
+    fontWeight: '600',
+  },
+  cancelAnytime: {
+    ...AppTheme.type.meta,
+    color: AppTheme.colors.textMuted,
+    marginTop: 8,
+    fontWeight: '400',
+  },
+  paywallScroll: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  socialProof: {
+    backgroundColor: AppTheme.colors.premiumGoldSoft,
+    borderRadius: AppTheme.radius.pill,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginBottom: 32,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.premiumGoldBorder,
+  },
+  socialProofText: {
+    ...AppTheme.type.meta,
+    color: AppTheme.colors.gold,
+    textAlign: 'center',
+    letterSpacing: 0.3,
+  },
+  benefitsList: {
+    width: '100%',
+    gap: 12,
+    marginBottom: 32,
+  },
+  benefitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: AppTheme.colors.cardBg,
+    borderRadius: AppTheme.radius.md,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.cardBorder,
+  },
+  benefitIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(232,93,117,0.10)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(232,93,117,0.18)',
+  },
+  benefitIcon: {
+    fontSize: 24,
+  },
+  benefitTextWrap: {
+    flex: 1,
+  },
+  benefitLabel: {
+    ...AppTheme.type.body,
+    fontWeight: '700',
+    color: AppTheme.colors.textPrimary,
+    marginBottom: 3,
+  },
+  benefitDesc: {
+    ...AppTheme.type.caption,
+    color: AppTheme.colors.textSecondary,
+  },
+  previewTeaser: {
+    width: '100%',
+    backgroundColor: AppTheme.colors.cardBg,
+    borderRadius: AppTheme.radius.xl,
+    padding: 20,
+    marginBottom: 32,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.premiumCosmicBorder,
+    shadowColor: AppTheme.colors.cosmic,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  previewTeaserTitle: {
+    ...AppTheme.type.caption,
+    fontWeight: '700',
+    color: AppTheme.colors.textPrimary,
+    marginBottom: 16,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  previewBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  previewBarLabel: {
+    width: 70,
     fontSize: 13,
-    color: '#666',
+    color: AppTheme.colors.textSecondary,
+  },
+  previewBar: {
+    flex: 1,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+  },
+  previewBarFill: {
+    height: '100%',
+    borderRadius: 4,
+    backgroundColor: AppTheme.colors.coral,
+  },
+  previewBarBlurred: {
+    opacity: 0.25,
+    backgroundColor: AppTheme.colors.cosmic,
+  },
+  previewBarPct: {
+    width: 36,
+    fontSize: 12,
+    fontWeight: '600',
+    color: AppTheme.colors.textPrimary,
+    textAlign: 'right',
+  },
+  previewBarLocked: {
+    color: AppTheme.colors.textMuted,
+    fontSize: 14,
   },
   scrollView: {
     flex: 1,
   },
   content: {
-    padding: 20,
+    padding: AppTheme.spacing.xl,
   },
-  header: {
-    marginBottom: 30,
+  heroBlock: {
+    marginBottom: 36,
+    gap: AppTheme.spacing.sm,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
+    ...AppTheme.type.hero,
+    color: AppTheme.colors.textPrimary,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#e94560',
+    ...AppTheme.type.body,
+    color: AppTheme.colors.coral,
     fontWeight: '600',
+  },
+  manageButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: AppTheme.spacing.md,
+    paddingHorizontal: AppTheme.spacing.xl,
+    borderRadius: AppTheme.radius.pill,
+    backgroundColor: AppTheme.colors.cardBg,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.cardBorderElevated,
+    marginTop: AppTheme.spacing.sm,
+  },
+  manageButtonText: {
+    ...AppTheme.type.meta,
+    color: AppTheme.colors.textSecondary,
+    letterSpacing: 0.3,
   },
   section: {
-    marginBottom: 30,
+    marginBottom: 36,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#888',
-    marginBottom: 15,
+  sectionEyebrow: {
+    ...AppTheme.type.micro,
+    color: AppTheme.colors.textMuted,
+    marginBottom: AppTheme.spacing.lg,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 2,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: AppTheme.spacing.md,
   },
-  card: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 20,
-    padding: 20,
+  featureCard: {
     width: '47%',
-    aspectRatio: 1,
+  },
+  featureCardInner: {
+    minHeight: 150,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
   },
-  lockedCard: {
-    opacity: 0.5,
+  featureCardLocked: {
+    opacity: 0.70,
   },
-  cardIcon: {
-    fontSize: 36,
-    marginBottom: 12,
+  featureIcon: {
+    fontSize: 38,
+    marginBottom: AppTheme.spacing.md,
   },
-  cardTitle: {
-    color: '#fff',
-    fontWeight: '600',
+  featureTitle: {
     textAlign: 'center',
-    fontSize: 13,
+    color: AppTheme.colors.textPrimary,
+    ...AppTheme.type.caption,
+    fontWeight: '700',
   },
-  lockText: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
+  featureLock: {
+    marginTop: AppTheme.spacing.sm,
     fontSize: 14,
   },
   upgradeBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: AppTheme.colors.premiumCosmicSoft,
+    borderRadius: AppTheme.radius.xl,
+    padding: AppTheme.spacing.xl,
     borderWidth: 1,
-    borderColor: 'rgba(147, 51, 234, 0.3)',
-    marginTop: 10,
+    borderColor: AppTheme.colors.premiumCosmicBorder,
+    marginTop: AppTheme.spacing.md,
+    shadowColor: AppTheme.colors.cosmic,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 4,
   },
   upgradeIcon: {
-    fontSize: 32,
-    marginRight: 12,
+    fontSize: 36,
+    marginRight: 14,
   },
   upgradeTextContainer: {
     flex: 1,
   },
   upgradeTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    ...AppTheme.type.body,
+    fontWeight: '700',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 4,
   },
   upgradeDescription: {
-    color: '#aaa',
-    fontSize: 13,
+    ...AppTheme.type.caption,
+    color: AppTheme.colors.textSecondary,
   },
   upgradeArrow: {
-    color: '#9333ea',
-    fontSize: 20,
+    color: AppTheme.colors.cosmic,
+    fontSize: 22,
     fontWeight: 'bold',
   },
 });

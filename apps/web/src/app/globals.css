@@ -10,7 +10,7 @@
   --color-purple-light: #4da7ff;
   --color-text: #f7f4ee;
   --color-text-muted: #c9c2b8;
-  --color-text-dim: #8e8a84;
+  --color-text-dim: #a09b94;
   --color-border: rgba(255, 255, 255, 0.12);
   --color-card: rgba(255, 255, 255, 0.07);
   --color-card-hover: rgba(255, 255, 255, 0.12);
@@ -18,6 +18,38 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .star {
+    animation: none !important;
+    opacity: 0.6;
+  }
+
+  .animate-slide-up {
+    animation: none !important;
+    opacity: 1;
+  }
+
+  .animate-pulse-glow {
+    animation: none !important;
+  }
 }
 
 body {
@@ -28,7 +60,8 @@ body {
     radial-gradient(circle at 50% 120%, rgba(77, 167, 255, 0.14), transparent 28%),
     linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-secondary) 46%, var(--color-bg-tertiary) 100%);
   color: var(--color-text);
-  font-family: "Segoe UI", "SF Pro Display", "Helvetica Neue", sans-serif;
+  font-family: "SF Pro Display", "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
+  letter-spacing: -0.01em;
 }
 
 body::before,
@@ -41,11 +74,14 @@ body::after {
 }
 
 body::before {
+  /* Wider gradient stops (22%/18%/22%) replace the old 18%/14%/18% + blur(18px)
+     combo. The blur forced the browser to rasterise the entire viewport-sized
+     pseudo-element every composite frame — ~2-4 ms/frame on mid-range devices.
+     Wider stops produce the same soft glow without the GPU cost. */
   background:
-    radial-gradient(circle at 12% 22%, rgba(232, 93, 117, 0.16), transparent 18%),
-    radial-gradient(circle at 82% 8%, rgba(77, 167, 255, 0.10), transparent 14%),
-    radial-gradient(circle at 78% 84%, rgba(118, 129, 255, 0.18), transparent 18%);
-  filter: blur(18px);
+    radial-gradient(circle at 12% 22%, rgba(232, 93, 117, 0.14), transparent 22%),
+    radial-gradient(circle at 82% 8%, rgba(77, 167, 255, 0.09), transparent 18%),
+    radial-gradient(circle at 78% 84%, rgba(118, 129, 255, 0.15), transparent 22%);
 }
 
 body::after {
@@ -76,6 +112,68 @@ button {
   color: #fff;
 }
 
+/* Skip to main content link */
+.skip-to-main {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 9999;
+}
+
+.skip-to-main:focus {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  width: auto;
+  height: auto;
+  padding: 12px 24px;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 9999px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* Focus-visible for accessibility */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Ensure minimum touch target size of 44px on touch devices */
+@media (pointer: coarse) {
+  button,
+  a,
+  select,
+  [role="button"] {
+    min-height: 44px;
+  }
+}
+
+/* Scrollbar styling for premium feel */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 /* Star animation for hero background */
 @keyframes twinkle {
   0%, 100% { opacity: 0.3; }
@@ -87,7 +185,45 @@ button {
   50% { transform: translateY(-10px); }
 }
 
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(232, 93, 117, 0.15); }
+  50% { box-shadow: 0 0 40px rgba(232, 93, 117, 0.25); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .star {
   animation: twinkle var(--duration, 3s) ease-in-out infinite;
   animation-delay: var(--delay, 0s);
+  /* Opacity-only animation — hint the compositor to promote each star to its
+     own layer so repaints are isolated. contain: strict tells the browser the
+     element won't affect layout or paint outside its bounds. */
+  will-change: opacity;
+  contain: strict;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.5s ease-out both;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* Select element styling for dark theme */
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238e8a84' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px;
+  appearance: none;
+  padding-right: 32px;
+}
+
+select option {
+  background-color: #141a2b;
+  color: #f7f4ee;
 }

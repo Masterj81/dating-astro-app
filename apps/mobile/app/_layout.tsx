@@ -5,19 +5,17 @@ import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { LogBox, Platform } from 'react-native';
-import { AuthContext, useAuth } from '../contexts/AuthContext';
+import { AuthContext } from '../contexts/AuthContext';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { PremiumProvider } from '../contexts/PremiumContext';
+import OfflineBanner from '../components/OfflineBanner';
 import PaywallModal from '../components/PaywallModal';
-import { registerAndSavePushToken, clearPushToken, startPushTokenRefresh } from '../services/notifications';
+import { registerAndSavePushToken, clearPushToken, startPushTokenRefresh, NotificationPayload, NotificationType } from '../services/notifications';
 import { initializePurchases } from '../services/purchases';
 import { getAuthCallbackRedirectUri } from '../services/authRedirect';
 import { supabase } from '../services/supabase';
 import { syncWidgetWithProfile } from '../services/widgetService';
 import { registerServiceWorker, setupInstallPrompt } from '../services/pwa';
-
-// Re-export useAuth for backward compatibility
-export { useAuth };
 
 // Suppress known benign warnings on native only (LogBox is the proper API)
 // Only in dev - production builds don't show LogBox anyway
@@ -118,13 +116,18 @@ function RootLayout() {
 
   const refreshProfile = async () => {
     if (!user) return;
-    // Refresh user data from Supabase Auth (for email_confirmed_at)
-    const { data: { user: refreshedUser } } = await supabase.auth.getUser();
-    if (refreshedUser) {
-      setUser(refreshedUser);
-      setIsEmailVerified(!!refreshedUser.email_confirmed_at);
+    try {
+      // Refresh user data from Supabase Auth (for email_confirmed_at)
+      const { data: { user: refreshedUser } } = await supabase.auth.getUser();
+      if (refreshedUser) {
+        setUser(refreshedUser);
+        setIsEmailVerified(!!refreshedUser.email_confirmed_at);
+      }
+      await fetchProfile(user.id);
+    } catch (err) {
+      console.error('Error refreshing profile:', err);
+      safeSentry.captureException(err);
     }
-    await fetchProfile(user.id);
   };
 
   const ensureProfileExists = async (userId: string, name?: string, gender?: string) => {
@@ -360,17 +363,63 @@ function RootLayout() {
     // Require expo-notifications only on native to avoid web warnings
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const Notifications = require('expo-notifications');
-    const subscription = Notifications.addNotificationResponseReceivedListener((response: any) => {
-      const data = response.notification.request.content.data;
-      if (data?.type === 'match') {
-        router.push('/(tabs)/matches');
-      } else if (data?.type === 'message' && data?.matchId) {
-        router.push(`/chat/${data.matchId}`);
+
+    const VALID_TYPES: NotificationType[] = [
+      'match', 'message', 'like', 'superLike',
+      'dailyHoroscope', 'retrogradeAlert', 'promotion',
+    ];
+
+    const handleNotificationResponse = (response: any) => {
+      const data = response?.notification?.request?.content?.data as NotificationPayload | undefined;
+      if (!data || typeof data.type !== 'string') return;
+      if (!VALID_TYPES.includes(data.type as NotificationType)) return;
+
+      // Don't navigate if user is not authenticated yet
+      if (!user) return;
+
+      switch (data.type) {
+        case 'match':
+        case 'like':
+        case 'superLike':
+          if (data.matchId) {
+            router.push(`/match/${data.matchId}`);
+          } else {
+            router.push('/(tabs)/matches');
+          }
+          break;
+        case 'message':
+          if (data.matchId) {
+            router.push(`/chat/${data.matchId}`);
+          } else {
+            router.push('/(tabs)/chat');
+          }
+          break;
+        case 'dailyHoroscope':
+          router.push('/premium-screens/daily-horoscope');
+          break;
+        case 'retrogradeAlert':
+          router.push('/premium-screens/retrograde-alerts');
+          break;
+        case 'promotion':
+          router.push('/(tabs)/premium');
+          break;
+        default:
+          break;
+      }
+    };
+
+    // Handle taps when app is already running
+    const subscription = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse);
+
+    // Handle cold-start: check if app was opened from a notification
+    Notifications.getLastNotificationResponseAsync().then((response: any) => {
+      if (response) {
+        handleNotificationResponse(response);
       }
     });
 
     return () => subscription.remove();
-  }, []);
+  }, [user]);
 
   // Initialize PWA on web
   useEffect(() => {
@@ -485,11 +534,14 @@ function RootLayout() {
             <Stack.Screen name="onboarding" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="premium-screens" options={{ headerShown: false }} />
+            <Stack.Screen name="settings" options={{ headerShown: false }} />
+            <Stack.Screen name="profile" options={{ headerShown: false }} />
             <Stack.Screen name="match/[id]" options={{ presentation: 'modal' }} />
             <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="splash" options={{ headerShown: false }} />
           </Stack>
           <PaywallModal />
+          <OfflineBanner />
         </PremiumProvider>
       </AuthContext.Provider>
     </LanguageProvider>

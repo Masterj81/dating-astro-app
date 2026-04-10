@@ -11,8 +11,10 @@ Deno.serve(async (req) => {
   // Auth: service_role JWT or shared secret
   const authHeader = req.headers.get("authorization") || "";
   const secretHeader = req.headers.get("x-scheduled-emails-secret") || "";
-  const isServiceRole = authHeader.includes(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "NONE");
-  const isValidSecret = SECRET && secretHeader === SECRET;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const bearerToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+  const isServiceRole = serviceRoleKey.length > 0 && bearerToken === serviceRoleKey;
+  const isValidSecret = SECRET.length > 0 && secretHeader === SECRET;
 
   if (!isServiceRole && !isValidSecret) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {

@@ -64,6 +64,13 @@ function CardGlyph({ icon }: { icon: NonNullable<DashboardCard["icon"]> }) {
   }
 }
 
+function getTimeGreetingKey(): "dashboardGreetingMorning" | "dashboardGreetingAfternoon" | "dashboardGreetingEvening" {
+  const hour = new Date().getHours();
+  if (hour < 12) return "dashboardGreetingMorning";
+  if (hour < 18) return "dashboardGreetingAfternoon";
+  return "dashboardGreetingEvening";
+}
+
 export function DashboardOverview() {
   const t = useTranslations("webApp");
   const [loading, setLoading] = useState(true);
@@ -86,6 +93,8 @@ export function DashboardOverview() {
 
     load();
   }, [t]);
+
+  const isFree = state?.tier === "free";
 
   if (loading) {
     return (
@@ -210,23 +219,66 @@ export function DashboardOverview() {
 
   return (
     <div className="space-y-6">
-      {/* Welcome strip */}
+      {/* Welcome strip with time-based greeting */}
       {state && (
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-[linear-gradient(135deg,rgba(232,93,117,0.08),rgba(124,108,255,0.08))] px-6 py-4">
           <div>
             <h2 className="text-xl font-semibold text-white">
-              {t("dashboardSignedInTitle", { name: state.displayName })}
+              {t(getTimeGreetingKey(), { name: state.displayName })}
             </h2>
             <p className="mt-1 text-sm text-text-muted">
               {t("dashboardSignedInBody", { tier: tierLabel ?? "" })}
             </p>
           </div>
-          {tierLabel && (
-            <span className="rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.18em] text-text-muted">
-              {t("dashboardTierPill", { tier: tierLabel })}
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {tierLabel && (
+              <span className="rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.18em] text-text-muted">
+                {t("dashboardTierPill", { tier: tierLabel })}
+              </span>
+            )}
+          </div>
         </div>
+      )}
+
+      {/* Daily cosmic insight card -- drives daily return habit */}
+      {state && !isFree && (
+        <Link
+          href="/app/premium/cosmic"
+          className="group flex items-center gap-5 rounded-2xl border border-[rgba(124,108,255,0.2)] bg-[linear-gradient(135deg,rgba(124,108,255,0.1),rgba(77,159,255,0.06))] px-6 py-4 transition-all hover:-translate-y-0.5 hover:border-[rgba(124,108,255,0.35)] hover:shadow-[0_12px_30px_rgba(124,108,255,0.12)]"
+        >
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[rgba(124,108,255,0.15)] text-2xl">
+            🔮
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs uppercase tracking-[0.22em] text-[#b4a8ff]">
+              {t("dashboardDailyInsightLabel")}
+            </p>
+            <p className="mt-1 text-sm font-medium text-white">{t("dashboardDailyInsightTitle")}</p>
+            <p className="mt-1 text-xs text-text-muted">{t("dashboardDailyInsightBody")}</p>
+          </div>
+          <span className="hidden shrink-0 rounded-full border border-[rgba(124,108,255,0.3)] bg-[rgba(124,108,255,0.12)] px-4 py-2 text-xs font-semibold text-[#c4bcff] transition-colors group-hover:bg-[rgba(124,108,255,0.2)] sm:inline-flex">
+            {t("dashboardDailyInsightCta")} →
+          </span>
+        </Link>
+      )}
+
+      {/* Free tier upsell -- subtle, value-focused */}
+      {state && isFree && (
+        <Link
+          href="/app/plans"
+          className="group flex items-center gap-5 rounded-2xl border border-[rgba(232,93,117,0.18)] bg-[linear-gradient(135deg,rgba(232,93,117,0.08),rgba(124,108,255,0.06))] px-6 py-4 transition-all hover:-translate-y-0.5 hover:border-[rgba(232,93,117,0.3)] hover:shadow-[0_12px_30px_rgba(232,93,117,0.1)]"
+        >
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent/12 text-2xl">
+            ✨
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-white">{t("dashboardFreeUpsellTitle")}</p>
+            <p className="mt-1 text-xs text-text-muted">{t("dashboardFreeUpsellBody")}</p>
+          </div>
+          <span className="hidden shrink-0 rounded-full bg-accent/90 px-4 py-2 text-xs font-semibold text-white transition-colors group-hover:bg-accent sm:inline-flex">
+            {t("dashboardFreeUpsellCta")} →
+          </span>
+        </Link>
       )}
 
       {state ? (
@@ -271,7 +323,7 @@ export function DashboardOverview() {
                 {card.featured && card.icon === "discover" ? discoverPreview : null}
                 <div className="mt-auto pt-4">
                   <span className="inline-flex items-center gap-1.5 text-xs font-medium text-text-dim transition-colors group-hover:text-white">
-                    <span>Open</span>
+                    <span>{t("openCard")}</span>
                     <svg viewBox="0 0 12 12" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.5">
                       <path d="M4 2.5l4 3.5-4 3.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>

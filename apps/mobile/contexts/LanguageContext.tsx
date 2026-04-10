@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import i18n, { initializeLanguage, getCurrentLanguage, setLanguage as setI18nLanguage } from '../services/i18n';
 
 type TranslateFunction = (key: string, options?: Record<string, string | number>) => string;
@@ -33,7 +33,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     init();
   }, []);
 
-  const setLanguage = async (lang: string) => {
+  const setLanguage = useCallback(async (lang: string) => {
     // Update i18n locale first
     i18n.locale = lang;
     await setI18nLanguage(lang);
@@ -41,10 +41,16 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     setLanguageState(lang);
     // Increment version to force all consumers to re-render
     setVersion(v => v + 1);
-  };
+  }, []);
+
+  // Memoize context value to prevent unnecessary re-renders of all consumers
+  // when parent re-renders for unrelated reasons
+  const contextValue = useMemo(() => ({
+    language, setLanguage, isLoading, version,
+  }), [language, setLanguage, isLoading, version]);
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, isLoading, version }}>
+    <LanguageContext.Provider value={contextValue}>
       {children}
     </LanguageContext.Provider>
   );
@@ -64,6 +70,7 @@ export const useLanguage = () => {
     language: context.language,
     setLanguage: context.setLanguage,
     isLoading: context.isLoading,
+    version: context.version,
     t
   };
 };

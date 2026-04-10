@@ -1,20 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import {
-  Image,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PremiumGate from '../../components/PremiumGate';
-import { useLanguage } from '../../contexts/LanguageContext';
-// import { supabase } from '../../services/supabase'; // TODO: use when implementing API
+import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { formatRelativeTime } from '../../utils/dateFormatting';
 
 type PriorityMessage = {
   id: string;
@@ -33,7 +26,7 @@ type MessageStats = {
 
 function PriorityMessagesScreenContent() {
   const [messages, setMessages] = useState<PriorityMessage[]>([]);
-  const [stats, _setStats] = useState<MessageStats>({
+  const [stats] = useState<MessageStats>({
     prioritySent: 8,
     responseRate: 85,
     avgResponseTime: '2h',
@@ -43,12 +36,6 @@ function PriorityMessagesScreenContent() {
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    loadPriorityMessages();
-  }, [user]);
-
-  const loadPriorityMessages = async () => {
-    // In real app, load actual priority messages from Supabase
-    // Simulated data for now
     setMessages([
       {
         id: '1',
@@ -67,21 +54,9 @@ function PriorityMessagesScreenContent() {
         compatibility: 88,
       },
     ]);
-  };
+  }, [user]);
 
-  const formatTimeAgo = (dateString: string): string => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return t('justNow') || 'Just now';
-    if (diffMins < 60) return t('minutesAgo', { count: diffMins }) || `${diffMins}m ago`;
-    if (diffHours < 24) return t('hoursAgo', { count: diffHours }) || `${diffHours}h ago`;
-    return t('daysAgo', { count: diffDays }) || `${diffDays}d ago`;
-  };
+  const formatTimeAgo = (dateString: string) => formatRelativeTime(dateString, t);
 
   const benefits = [
     {
@@ -90,9 +65,9 @@ function PriorityMessagesScreenContent() {
       description: t('topOfInboxDesc') || 'Your message appears first in their chat list',
     },
     {
-      emoji: '💜',
+      emoji: '💎',
       title: t('specialHighlight') || 'Special Highlight',
-      description: t('specialHighlightDesc') || 'Priority messages have a distinctive purple glow',
+      description: t('specialHighlightDesc') || 'Priority messages have a distinctive glow',
     },
     {
       emoji: '📈',
@@ -108,18 +83,30 @@ function PriorityMessagesScreenContent() {
 
   const conversationStarters = [
     t('starter1') || "I noticed we're both fire signs! What's your take on sign compatibility?",
-    t('starter2') || "Your Moon in Scorpio caught my eye. I bet you have amazing intuition!",
-    t('starter3') || "Our Venus signs are a perfect match. Want to explore what that means?",
-    t('starter4') || "I love that we share similar cosmic energy. What drew you to astrology?",
+    t('starter2') || 'Your Moon in Scorpio caught my eye. I bet you have amazing intuition!',
+    t('starter3') || 'Our Venus signs are a perfect match. Want to explore what that means?',
+    t('starter4') || 'I love that we share similar cosmic energy. What drew you to astrology?',
   ];
 
-  // Fallbacks for web where SafeAreaProvider may not work
   const topInset = insets?.top ?? 0;
   const bottomInset = insets?.bottom ?? 0;
 
-  const renderContent = () => (
-    <View>
-      {/* Stats Card */}
+  return (
+    <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + bottomInset }]}
+        showsVerticalScrollIndicator={false}
+      >
+      <View style={[styles.header, { paddingTop: 40 + topInset }]}>
+        <TouchableOpacity style={[styles.backButton, { top: 30 + topInset }]} onPress={() => router.back()}>
+          <Text style={styles.backText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>{t('priorityMessages') || 'Priority Messages'}</Text>
+        <Text style={styles.subtitle}>{t('priorityMessagesSubtitle') || 'Get noticed in crowded inboxes'}</Text>
+      </View>
+
+
         <View style={styles.statsCard}>
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
@@ -139,58 +126,39 @@ function PriorityMessagesScreenContent() {
           </View>
         </View>
 
-        {/* Demo Preview */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('howItLooks') || 'How It Looks'}</Text>
           <View style={styles.demoContainer}>
-            {/* Regular message */}
-            <View style={styles.demoMessage}>
-              <View style={styles.demoAvatar}>
-                <Text style={styles.demoAvatarText}>J</Text>
-              </View>
-              <View style={styles.demoContent}>
-                <Text style={styles.demoName}>John</Text>
-                <Text style={styles.demoText}>Hey, how are you?</Text>
-              </View>
-              <Text style={styles.demoTime}>2h</Text>
-            </View>
-
-            {/* Priority message */}
-            <View style={[styles.demoMessage, styles.priorityMessage]}>
-              <View style={styles.priorityGlow} />
-              <View style={[styles.demoAvatar, styles.priorityAvatar]}>
-                <Text style={styles.demoAvatarText}>Y</Text>
-              </View>
-              <View style={styles.demoContent}>
-                <View style={styles.priorityBadgeSmall}>
-                  <Text style={styles.priorityBadgeIcon}>⭐</Text>
-                  <Text style={styles.priorityBadgeText}>{t('priority') || 'Priority'}</Text>
+            {[
+              { initial: 'J', name: 'John', text: 'Hey, how are you?', time: '2h', priority: false },
+              { initial: 'Y', name: t('you') || 'You', text: t('yourMessage') || 'Your message here...', time: t('now') || 'Now', priority: true },
+              { initial: 'M', name: 'Mike', text: 'Nice to meet you!', time: '5h', priority: false },
+            ].map((row) => (
+              <View key={`${row.initial}-${row.time}`} style={[styles.demoMessage, row.priority && styles.priorityMessage]}>
+                {row.priority ? <View style={styles.priorityGlow} /> : null}
+                <View style={[styles.demoAvatar, row.priority && styles.priorityAvatar]}>
+                  <Text style={styles.demoAvatarText}>{row.initial}</Text>
                 </View>
-                <Text style={[styles.demoName, styles.priorityName]}>{t('you') || 'You'}</Text>
-                <Text style={styles.demoText}>{t('yourMessage') || 'Your message here...'}</Text>
+                <View style={styles.demoContent}>
+                  {row.priority ? (
+                    <View style={styles.priorityBadgeSmall}>
+                      <Text style={styles.priorityBadgeIcon}>⭐</Text>
+                      <Text style={styles.priorityBadgeText}>{t('priority') || 'Priority'}</Text>
+                    </View>
+                  ) : null}
+                  <Text style={[styles.demoName, row.priority && styles.priorityName]}>{row.name}</Text>
+                  <Text style={styles.demoText}>{row.text}</Text>
+                </View>
+                <Text style={styles.demoTime}>{row.time}</Text>
               </View>
-              <Text style={styles.demoTime}>{t('now') || 'Now'}</Text>
-            </View>
-
-            {/* Regular message */}
-            <View style={styles.demoMessage}>
-              <View style={styles.demoAvatar}>
-                <Text style={styles.demoAvatarText}>M</Text>
-              </View>
-              <View style={styles.demoContent}>
-                <Text style={styles.demoName}>Mike</Text>
-                <Text style={styles.demoText}>Nice to meet you!</Text>
-              </View>
-              <Text style={styles.demoTime}>5h</Text>
-            </View>
+            ))}
           </View>
         </View>
 
-        {/* Benefits */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('benefits') || 'Benefits'}</Text>
-          {benefits.map((benefit, index) => (
-            <View key={index} style={styles.benefitCard}>
+          {benefits.map((benefit) => (
+            <View key={benefit.title} style={styles.benefitCard}>
               <Text style={styles.benefitEmoji}>{benefit.emoji}</Text>
               <View style={styles.benefitContent}>
                 <Text style={styles.benefitTitle}>{benefit.title}</Text>
@@ -200,15 +168,14 @@ function PriorityMessagesScreenContent() {
           ))}
         </View>
 
-        {/* Conversation Starters */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('conversationStarters') || 'Cosmic Conversation Starters'}</Text>
           <Text style={styles.startersSubtitle}>
             {t('startersSubtitle') || 'Use these astrology-based openers for better results'}
           </Text>
-          {conversationStarters.map((starter, index) => (
-            <TouchableOpacity key={index} style={styles.starterCard}>
-              <Text style={styles.starterQuote}>{'"'}</Text>
+          {conversationStarters.map((starter) => (
+            <TouchableOpacity key={starter} style={styles.starterCard}>
+              <Text style={styles.starterQuote}>"</Text>
               <Text style={styles.starterText}>{starter}</Text>
               <View style={styles.copyButton}>
                 <Text style={styles.copyText}>{t('copy') || 'Copy'}</Text>
@@ -217,8 +184,7 @@ function PriorityMessagesScreenContent() {
           ))}
         </View>
 
-        {/* Recent Priority Messages */}
-        {messages.length > 0 && (
+        {messages.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t('recentPriority') || 'Recent Priority Messages'}</Text>
             {messages.map((msg) => (
@@ -243,48 +209,16 @@ function PriorityMessagesScreenContent() {
               </TouchableOpacity>
             ))}
           </View>
-        )}
+        ) : null}
 
-        {/* CTA */}
-        <TouchableOpacity
-          style={styles.ctaButton}
-          onPress={() => router.push('/(tabs)/matches')}
-        >
-          <LinearGradient
-            colors={['#9b59b6', '#8e44ad']}
-            style={styles.ctaGradient}
-          >
+        <TouchableOpacity style={styles.ctaButton} onPress={() => router.push('/(tabs)/matches')}>
+          <LinearGradient colors={[AppTheme.colors.cosmic, AppTheme.colors.ctaEnd]} style={styles.ctaGradient}>
             <Text style={styles.ctaIcon}>💬</Text>
-            <Text style={styles.ctaText}>
-              {t('sendPriorityMessage') || 'Send a Priority Message'}
-            </Text>
+            <Text style={styles.ctaText}>{t('sendPriorityMessage') || 'Send a Priority Message'}</Text>
           </LinearGradient>
         </TouchableOpacity>
-    </View>
-  );
-
-  return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      {/* Header - Fixed at top */}
-      <View style={[styles.header, { paddingTop: 40 + topInset }]}>
-        <TouchableOpacity style={[styles.backButton, { top: 30 + topInset }]} onPress={() => router.back()}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>{t('priorityMessages') || 'Priority Messages'}</Text>
-        <Text style={styles.subtitle}>
-          {t('priorityMessagesSubtitle') || 'Get noticed in crowded inboxes'}
-        </Text>
-      </View>
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + bottomInset }]}
-        showsVerticalScrollIndicator={false}
-      >
-        {renderContent()}
       </ScrollView>
 
-      {/* Premium Badge */}
       <View style={styles.premiumBadge}>
         <Text style={styles.premiumIcon}>⭐</Text>
         <Text style={styles.premiumText}>{t('premiumFeature') || 'Premium Feature'}</Text>
@@ -296,17 +230,21 @@ function PriorityMessagesScreenContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    ...(Platform.OS === 'web' ? {
-      height: '100%' as any,
-      width: '100%' as any,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          height: '100%' as any,
+          width: '100%' as any,
+        }
+      : {}),
   },
   scrollView: {
     flex: 1,
-    ...(Platform.OS === 'web' ? {
-      height: 'calc(100vh - 120px)' as any,
-      overflowY: 'auto' as any,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          height: 'calc(100vh - 120px)' as any,
+          overflowY: 'auto' as any,
+        }
+      : {}),
   },
   scrollContent: {
     paddingBottom: 100,
@@ -322,34 +260,34 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 50,
     left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: AppTheme.colors.panelStrong,
     justifyContent: 'center',
     alignItems: 'center',
   },
   backText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 24,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
   },
   statsCard: {
     marginHorizontal: 20,
-    backgroundColor: 'rgba(155, 89, 182, 0.15)',
+    backgroundColor: 'rgba(124, 108, 255, 0.14)',
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(155, 89, 182, 0.3)',
+    borderColor: 'rgba(124, 108, 255, 0.22)',
     marginBottom: 24,
   },
   statsRow: {
@@ -363,16 +301,16 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#9b59b6',
+    color: AppTheme.colors.cosmic,
   },
   statLabel: {
     fontSize: 12,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
     marginTop: 4,
   },
   statDivider: {
     width: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: AppTheme.colors.border,
   },
   section: {
     paddingHorizontal: 20,
@@ -381,13 +319,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 16,
   },
   demoContainer: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
     borderRadius: 16,
     padding: 12,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
   },
   demoMessage: {
     flexDirection: 'row',
@@ -397,9 +337,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   priorityMessage: {
-    backgroundColor: 'rgba(155, 89, 182, 0.15)',
+    backgroundColor: 'rgba(124, 108, 255, 0.14)',
     borderWidth: 1,
-    borderColor: 'rgba(155, 89, 182, 0.4)',
+    borderColor: 'rgba(124, 108, 255, 0.22)',
     position: 'relative',
     overflow: 'hidden',
   },
@@ -409,22 +349,22 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 4,
-    backgroundColor: '#9b59b6',
+    backgroundColor: AppTheme.colors.cosmic,
   },
   demoAvatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: AppTheme.colors.panelStrong,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   priorityAvatar: {
-    backgroundColor: '#9b59b6',
+    backgroundColor: AppTheme.colors.cosmic,
   },
   demoAvatarText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontWeight: '600',
     fontSize: 16,
   },
@@ -442,34 +382,36 @@ const styles = StyleSheet.create({
   },
   priorityBadgeText: {
     fontSize: 10,
-    color: '#9b59b6',
+    color: AppTheme.colors.cosmic,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
   demoName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 2,
   },
   priorityName: {
-    color: '#9b59b6',
+    color: AppTheme.colors.cosmic,
   },
   demoText: {
     fontSize: 13,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
   },
   demoTime: {
     fontSize: 12,
-    color: '#666',
+    color: AppTheme.colors.textMuted,
   },
   benefitCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
     borderRadius: 12,
     padding: 16,
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
   },
   benefitEmoji: {
     fontSize: 28,
@@ -481,30 +423,32 @@ const styles = StyleSheet.create({
   benefitTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 4,
   },
   benefitDesc: {
     fontSize: 14,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
   },
   startersSubtitle: {
     fontSize: 14,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
     marginBottom: 16,
     marginTop: -8,
   },
   starterCard: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
     borderRadius: 12,
     padding: 16,
     marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'flex-start',
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
   },
   starterQuote: {
     fontSize: 24,
-    color: '#9b59b6',
+    color: AppTheme.colors.cosmic,
     marginRight: 8,
     marginTop: -8,
     fontWeight: 'bold',
@@ -512,11 +456,11 @@ const styles = StyleSheet.create({
   starterText: {
     flex: 1,
     fontSize: 14,
-    color: '#ccc',
+    color: AppTheme.colors.textSecondary,
     lineHeight: 20,
   },
   copyButton: {
-    backgroundColor: 'rgba(155, 89, 182, 0.2)',
+    backgroundColor: 'rgba(124, 108, 255, 0.16)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
@@ -524,16 +468,18 @@ const styles = StyleSheet.create({
   },
   copyText: {
     fontSize: 12,
-    color: '#9b59b6',
+    color: AppTheme.colors.cosmic,
     fontWeight: '600',
   },
   messageCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
     borderRadius: 12,
     padding: 12,
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
   },
   messageAvatar: {
     width: 50,
@@ -552,27 +498,27 @@ const styles = StyleSheet.create({
   messageName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginRight: 8,
   },
   compatBadge: {
-    backgroundColor: 'rgba(233, 69, 96, 0.2)',
+    backgroundColor: 'rgba(232, 93, 117, 0.16)',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
   },
   compatText: {
     fontSize: 11,
-    color: '#e94560',
+    color: AppTheme.colors.coral,
     fontWeight: '600',
   },
   messagePreview: {
     fontSize: 14,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
   },
   messageTime: {
     fontSize: 12,
-    color: '#666',
+    color: AppTheme.colors.textMuted,
   },
   ctaButton: {
     marginHorizontal: 20,
@@ -590,7 +536,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   ctaText: {
-    color: '#fff',
+    color: AppTheme.colors.textOnAccent,
     fontSize: 18,
     fontWeight: '600',
   },
@@ -600,7 +546,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(233, 69, 96, 0.2)',
+    backgroundColor: 'rgba(232, 93, 117, 0.16)',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
@@ -611,7 +557,7 @@ const styles = StyleSheet.create({
   },
   premiumText: {
     fontSize: 12,
-    color: '#e94560',
+    color: AppTheme.colors.coral,
     fontWeight: '600',
   },
 });

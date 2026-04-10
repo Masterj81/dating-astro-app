@@ -8,7 +8,11 @@ export type AuthContextType = {
   loading: boolean;
   isEmailVerified: boolean;
   onboardingCompleted: boolean;
-  signUp: (email: string, password: string, name: string) => Promise<{ error: any }>;
+  signUp: (
+    email: string,
+    password: string,
+    name: string
+  ) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<{ error: any }>;

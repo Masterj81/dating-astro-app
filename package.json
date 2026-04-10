@@ -13,6 +13,7 @@
     "build:mobile:android": "npm run build:android --workspace=@astro/mobile",
     "build:mobile:ios": "npm run build:ios --workspace=@astro/mobile",
     "build:web": "npm run build --workspace=@astro/web",
+    "validate:web:locales": "node scripts/validate-sensitive-web-locales.js",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test --continue",
@@ -27,5 +28,9 @@
     "typescript": "^5.9.2",
     "expo-constants": "~18.0.13",
     "expo-asset": "~12.0.12"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.81.0",
+    "@google/generative-ai": "^0.24.1"
   }
 }

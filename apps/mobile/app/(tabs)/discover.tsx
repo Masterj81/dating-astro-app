@@ -1,12 +1,14 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useNavigation } from 'expo-router';
-import { LoadingState, EmptyState } from '../../components/ScreenStates';
+import { ErrorState, LoadingState, EmptyState } from '../../components/ScreenStates';
 import WebTabWrapper from '../../components/WebTabWrapper';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
   Image,
+  ImageErrorEventData,
+  NativeSyntheticEvent,
   PanResponder,
   Platform,
   Share,
@@ -29,7 +31,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { calculateQuickCompatibility } from '../../services/astrologyService';
 import { supabase } from '../../services/supabase';
 import { throttleAction } from '../../utils/rateLimit';
-import { resolveProfileImage } from '../../utils/profileImages';
+import { resolveProfileImage, DEFAULT_PROFILE_IMAGE } from '../../utils/profileImages';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   useReduceMotion,
@@ -46,13 +48,13 @@ import {
   buttonPress,
   refreshTrigger,
 } from '../../services/haptics';
-import { AppTheme } from '../../constants/theme';
+import { usePremium } from '../../contexts/PremiumContext';
+import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = Math.min(width - 40, 400);
 const CARD_HEIGHT = Math.min(CARD_WIDTH * 1.2, 500);
 const SWIPE_THRESHOLD = 100;
-const SCREEN_GRADIENT = [...AppTheme.gradients.screen] as const;
 
 type Profile = {
   id: string;
@@ -80,7 +82,13 @@ export default function DiscoverScreen() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [dragX, setDragX] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [swipeError, setSwipeError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
+  const [deckExhausted, setDeckExhausted] = useState(false);
+  // Use discrete direction state instead of raw dragX to avoid per-frame re-renders
+  const [swipeDirection, setSwipeDirection] = useState<'none' | 'left' | 'right'>('none');
+  const dragXRef = useRef(0);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const hasReachedThresholdRef = useRef(false);
   const translateX = useSharedValue(0);
@@ -89,6 +97,7 @@ export default function DiscoverScreen() {
   const { t, language } = useLanguage();
   const navigation = useNavigation();
   const reduceMotion = useReduceMotion();
+  const swipeInProgressRef = useRef(false);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -113,6 +122,25 @@ export default function DiscoverScreen() {
   const goToNextProfileRef = useRef<(direction: 'left' | 'right') => void>(() => {});
 
   const { user } = useAuth();
+  const { tier } = usePremium();
+  const isFreeUser = tier === 'free';
+
+  // Compute compatibility eagerly (before any early returns) to respect Rules of Hooks
+  const currentProfile = profiles.length > 0 && currentIndex < profiles.length
+    ? profiles[currentIndex]
+    : null;
+  const currentProfileImage = resolveProfileImage(currentProfile);
+
+  const getCompatibility = useCallback((profileSign: string | null | undefined): number => {
+    if (!profileSign) return 50; // safe fallback
+    const userSign = userProfile?.sun_sign || 'Sagittarius';
+    return calculateQuickCompatibility(userSign, profileSign);
+  }, [userProfile?.sun_sign]);
+
+  const compatibility = useMemo(
+    () => getCompatibility(currentProfile?.sun_sign),
+    [currentProfile?.sun_sign, getCompatibility]
+  );
 
   useEffect(() => {
     loadProfiles();
@@ -124,9 +152,11 @@ export default function DiscoverScreen() {
   }, [user, reduceMotion]);
 
   useEffect(() => {
+    // Reset image error when profile changes
+    setImageError(false);
+
     // Animate card entrance when index changes
     if (reduceMotion) {
-      // Skip animations for reduce motion
       cardScale.setValue(1);
       cardOpacity.setValue(1);
       return;
@@ -172,64 +202,73 @@ export default function DiscoverScreen() {
   const loadUserProfile = async () => {
     if (!user) return;
 
-    const { data } = await supabase
-      .from('profiles')
-      .select('sun_sign, moon_sign, rising_sign')
-      .eq('id', user.id)
-      .maybeSingle();
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('sun_sign, moon_sign, rising_sign')
+        .eq('id', user.id)
+        .maybeSingle();
 
-    if (data) {
-      setUserProfile(data);
+      if (data) {
+        setUserProfile(data);
+      }
+    } catch (err) {
+      console.error('Error loading user profile:', err);
     }
   };
 
   const loadProfiles = async () => {
     setLoading(true);
+    setLoadError(null);
+    setDeckExhausted(false);
 
-    // Try to use the RPC function for filtered profiles first
-    if (user) {
-      const { data: rpcData, error: rpcError } = await supabase
-        .rpc('get_discoverable_profiles', { p_user_id: user.id, p_limit: 50 });
+    try {
+      // Try to use the RPC function for filtered profiles first
+      if (user) {
+        const { data: rpcData, error: rpcError } = await supabase
+          .rpc('get_discoverable_profiles', { p_user_id: user.id, p_limit: 50 });
 
-      if (!rpcError && rpcData && rpcData.length > 0) {
-        setProfiles(rpcData || []);
+        if (!rpcError && rpcData && rpcData.length > 0) {
+          setProfiles(rpcData || []);
+          setCurrentIndex(0);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Fallback to direct table query
+      let query = supabase
+        .from('discoverable_profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // Exclude current user's profile
+      if (user) {
+        query = query.neq('id', user.id);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        setLoadError(t('loadProfilesFailed') || 'Could not load profiles. Check your connection and try again.');
         setLoading(false);
         return;
       }
-    }
 
-    // Fallback to direct table query
-    let query = supabase
-      .from('discoverable_profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    // Exclude current user's profile
-    if (user) {
-      query = query.neq('id', user.id);
-    }
-
-    const { data, error } = await query;
-
-    if (!error) {
       setProfiles(data || []);
+      setCurrentIndex(0);
+    } catch (err) {
+      console.error('Error loading profiles:', err);
+      setLoadError(t('loadProfilesFailed') || 'Could not load profiles. Check your connection and try again.');
     }
 
     setLoading(false);
   };
 
-  const currentProfile = profiles[currentIndex];
-  const currentProfileImage = resolveProfileImage(currentProfile);
-
-  const getCompatibility = (profileSign: string): number => {
-    // Use the user's actual sun sign from their profile
-    const userSign = userProfile?.sun_sign || 'Sagittarius';
-
-    // Use the astrology service for compatibility calculation
-    return calculateQuickCompatibility(userSign, profileSign);
-  };
-
   const goToNextProfile = async (direction: 'left' | 'right') => {
+    if (swipeInProgressRef.current) return;
+    swipeInProgressRef.current = true;
+
     const currentProfiles = profilesRef.current;
     const profile = currentProfiles[currentIndexRef.current];
 
@@ -240,21 +279,52 @@ export default function DiscoverScreen() {
       passSwipe();
     }
 
+    // Persist swipe to backend
     if (user && profile && throttleAction('swipe', 500)) {
-      // Use upsert to handle duplicate swipes gracefully
-      const { error: _error } = await supabase.from('swipes').upsert({
-        swiper_id: user.id,
-        swiped_id: profile.id,
-        action: direction === 'right' ? 'like' : 'pass',
-      }, { onConflict: 'swiper_id,swiped_id' });
+      try {
+        const { error } = await supabase.from('swipes').upsert({
+          swiper_id: user.id,
+          swiped_id: profile.id,
+          action: direction === 'right' ? 'like' : 'pass',
+        }, { onConflict: 'swiper_id,swiped_id' });
+
+        if (error) {
+          console.error('Swipe save error:', error);
+          setSwipeError(t('swipeFailed') || 'Could not save your choice. Please try again.');
+          // Auto-dismiss after 3 seconds
+          setTimeout(() => setSwipeError(null), 3000);
+        }
+      } catch (err) {
+        console.error('Swipe network error:', err);
+        setSwipeError(t('swipeFailed') || 'Could not save your choice. Please try again.');
+        setTimeout(() => setSwipeError(null), 3000);
+      }
     }
 
-    const nextIndex = currentIndexRef.current < currentProfiles.length - 1
-      ? currentIndexRef.current + 1
-      : 0;
+    // Check if we've reached the end of the deck
+    const isLastProfile = currentIndexRef.current >= currentProfiles.length - 1;
+
+    if (isLastProfile) {
+      setDeckExhausted(true);
+      swipeInProgressRef.current = false;
+      dragXRef.current = 0;
+      setSwipeDirection('none');
+      hasReachedThresholdRef.current = false;
+
+      cancelAnimation(translateX);
+      cancelAnimation(translateY);
+      cancelAnimation(rotation);
+      translateX.value = 0;
+      translateY.value = 0;
+      rotation.value = 0;
+      return;
+    }
+
+    const nextIndex = currentIndexRef.current + 1;
 
     setCurrentIndex(nextIndex);
-    setDragX(0);
+    dragXRef.current = 0;
+    setSwipeDirection('none');
     hasReachedThresholdRef.current = false;
 
     // Cancel any ongoing animations and reset values
@@ -273,10 +343,12 @@ export default function DiscoverScreen() {
           name: nextProfile.name || t('unknown'),
           age: nextProfile.age || '?',
           sign: nextProfile.sun_sign || t('unknown'),
-          score: getCompatibility(nextProfile.sun_sign || 'Aries'),
+          score: getCompatibility(nextProfile.sun_sign),
         })
       );
     }
+
+    swipeInProgressRef.current = false;
   };
 
   // Keep ref updated with latest function
@@ -291,7 +363,10 @@ export default function DiscoverScreen() {
       translateX.value = gestureState.dx;
       translateY.value = gestureState.dy * 0.3;
       rotation.value = (gestureState.dx / width) * 15;
-      setDragX(gestureState.dx);
+      dragXRef.current = gestureState.dx;
+      // Only update React state when crossing the overlay visibility threshold (30px)
+      const newDir = gestureState.dx > 30 ? 'right' : gestureState.dx < -30 ? 'left' : 'none';
+      setSwipeDirection(prev => prev !== newDir ? newDir : prev);
 
       // Haptic feedback when reaching threshold
       if (Math.abs(gestureState.dx) > SWIPE_THRESHOLD && !hasReachedThresholdRef.current) {
@@ -314,7 +389,8 @@ export default function DiscoverScreen() {
         translateX.value = withSpring(0);
         translateY.value = withSpring(0);
         rotation.value = withSpring(0);
-        setDragX(0);
+        dragXRef.current = 0;
+        setSwipeDirection('none');
       }
     },
   })).current;
@@ -328,8 +404,10 @@ export default function DiscoverScreen() {
   }));
 
   const handleLike = () => {
+    if (swipeInProgressRef.current || !currentProfile) return;
     buttonPress();
-    setDragX(150);
+    dragXRef.current = 150;
+    setSwipeDirection('right');
 
     if (reduceMotion) {
       goToNextProfile('right');
@@ -346,8 +424,8 @@ export default function DiscoverScreen() {
     const sign = currentProfile.sun_sign || 'someone';
     const score = getCompatibility(sign);
     const message = Platform.select({
-      android: `I'm ${score}% compatible with a ${sign} on AstroDating! Find your cosmic match 🪐\nhttps://play.google.com/store/apps/details?id=com.astrodatingapp.mobile`,
-      default: `I'm ${score}% compatible with a ${sign} on AstroDating! Find your cosmic match 🪐\nhttps://astrodatingapp.com`,
+      android: `I'm ${score}% compatible with a ${sign} on AstroDating! Find your cosmic match \u{1F6F0}\nhttps://play.google.com/store/apps/details?id=com.astrodatingapp.mobile`,
+      default: `I'm ${score}% compatible with a ${sign} on AstroDating! Find your cosmic match \u{1F6F0}\nhttps://astrodatingapp.com`,
     });
     try {
       await Share.share({ message, title: 'AstroDating Compatibility' });
@@ -355,8 +433,10 @@ export default function DiscoverScreen() {
   };
 
   const handlePass = () => {
+    if (swipeInProgressRef.current || !currentProfile) return;
     buttonPress();
-    setDragX(-150);
+    dragXRef.current = -150;
+    setSwipeDirection('left');
 
     if (reduceMotion) {
       goToNextProfile('left');
@@ -368,20 +448,44 @@ export default function DiscoverScreen() {
   };
 
   const handleViewChart = () => {
+    if (!currentProfile?.id) return;
     buttonPress();
-    router.push(`/match/${currentProfile?.id}`);
+    router.push(`/match/${currentProfile.id}`);
   };
 
   const handleRefresh = () => {
     refreshTrigger();
+    setDeckExhausted(false);
+    setSwipeError(null);
     loadProfiles();
   };
+
+  const handleImageError = (_e: NativeSyntheticEvent<ImageErrorEventData>) => {
+    setImageError(true);
+  };
+
+  const compatibilityLabel = useMemo(() => {
+    if (compatibility >= 80) return t('compatibilityHigh') || 'Strong cosmic bond';
+    if (compatibility >= 55) return t('compatibilityMedium') || 'Promising alignment';
+    return t('compatibilityLow') || 'Different energies';
+  }, [compatibility, t]);
+
+  // Rotating loading tips for engagement during load
+  const loadingTips = useMemo(() => [
+    t('loadingTip1') || 'Aligning the planets\u2026',
+    t('loadingTip2') || 'Reading the cosmic map\u2026',
+    t('loadingTip3') || 'Consulting the stars\u2026',
+    t('loadingTip4') || 'Charting your constellation\u2026',
+    t('loadingTip5') || 'Syncing with the cosmos\u2026',
+  ], [t]);
+
+  const [loadingTipIndex] = useState(() => Math.floor(Math.random() * 5));
 
   if (loading) {
     return (
       <WebTabWrapper>
         <LoadingState
-          message={t('findingConnections')}
+          message={loadingTips[loadingTipIndex]}
           accessibilityLabel={t('a11y.loadingProfiles')}
           testID="discover-loading"
         />
@@ -389,7 +493,21 @@ export default function DiscoverScreen() {
     );
   }
 
-  if (!currentProfile || profiles.length === 0) {
+  if (loadError) {
+    return (
+      <WebTabWrapper>
+        <ErrorState
+          title={t('error') || 'Something went wrong'}
+          message={loadError}
+          onRetry={handleRefresh}
+          retryLabel={t('refresh') || 'Try Again'}
+          testID="discover-error"
+        />
+      </WebTabWrapper>
+    );
+  }
+
+  if (profiles.length === 0) {
     return (
       <WebTabWrapper>
         <EmptyState
@@ -403,33 +521,129 @@ export default function DiscoverScreen() {
     );
   }
 
-  const compatibility = getCompatibility(currentProfile.sun_sign || 'Aries');
+  // End-of-deck state: user has swiped through all profiles
+  if (deckExhausted || !currentProfile) {
+    return (
+      <WebTabWrapper>
+        <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+          <View style={styles.exhaustedContainer} testID="discover-exhausted">
+            <Text style={styles.exhaustedEmoji}>{'\u{1F30C}'}</Text>
+            <Text style={styles.exhaustedTitle}>
+              {t('profilesExhausted') || "You've seen everyone!"}
+            </Text>
+            <Text style={styles.exhaustedSubtitle}>
+              {t('profilesExhaustedSub') || 'Check back soon \u2014 new people join every day.'}
+            </Text>
+            <View style={styles.exhaustedTimeTip}>
+              <Text style={styles.exhaustedTimeTipIcon}>{'\u{23F0}'}</Text>
+              <Text style={styles.exhaustedTimeTipText}>
+                {t('newProfilesDaily') || 'New profiles appear daily'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.exhaustedRefreshButton}
+              onPress={handleRefresh}
+              activeOpacity={0.7}
+              {...getButtonA11yProps(t('refresh') || 'Refresh')}
+            >
+              <LinearGradient
+                colors={[AppTheme.colors.coral, AppTheme.colors.cosmic]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.exhaustedRefreshGradient}
+              >
+                <Text style={styles.exhaustedRefreshText}>{t('refresh') || 'Refresh'}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            {/* Daily horoscope re-engagement hook */}
+            <TouchableOpacity
+              style={styles.exhaustedHoroscopeButton}
+              onPress={() => {
+                buttonPress();
+                router.push('/premium-screens/daily-horoscope' as any);
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.exhaustedHoroscopeIcon}>{'\u{1F52E}'}</Text>
+              <View style={styles.exhaustedHoroscopeTextWrap}>
+                <Text style={styles.exhaustedHoroscopeTitle}>
+                  {t('deckExhaustedDailyTip') || 'While you wait, explore your daily horoscope'}
+                </Text>
+                <Text style={styles.exhaustedHoroscopeCta}>
+                  {t('checkDailyHoroscope') || 'View Daily Horoscope'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <Text style={styles.exhaustedHint}>
+              {t('deckExhaustedCheckMatches')}
+            </Text>
+            <TouchableOpacity
+              style={styles.exhaustedMatchesButton}
+              onPress={() => {
+                buttonPress();
+                router.push('/(tabs)/matches');
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.exhaustedMatchesText}>{t('goToMatches')}</Text>
+            </TouchableOpacity>
+            <Text style={styles.exhaustedCounter}>
+              {profiles.length} {profiles.length === 1 ? 'profile' : 'profiles'} seen
+            </Text>
+          </View>
+        </LinearGradient>
+      </WebTabWrapper>
+    );
+  }
 
   return (
     <WebTabWrapper>
-    <LinearGradient colors={[...SCREEN_GRADIENT]} style={styles.container}>
+    <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+      {/* Swipe error toast */}
+      {swipeError && (
+        <View style={styles.swipeErrorToast} accessibilityRole="alert">
+          <Text style={styles.swipeErrorText}>{swipeError}</Text>
+          <TouchableOpacity onPress={() => setSwipeError(null)}>
+            <Text style={styles.swipeErrorDismiss}>{'\u2715'}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <Animated.View style={{ transform: [{ scale: cardScale }], opacity: cardOpacity }}>
         <View {...panResponder.panHandlers}>
           <ReAnimated.View
             style={[styles.card, animatedCardStyle]}
             accessible={true}
             accessibilityLabel={t('a11y.matchCard', {
-              name: currentProfile.name,
-              age: currentProfile.age,
-              sign: currentProfile.sun_sign,
+              name: currentProfile.name ?? t('unknown'),
+              age: currentProfile.age ?? '?',
+              sign: currentProfile.sun_sign ?? t('unknown'),
               score: compatibility,
             })}
             accessibilityHint={`${t('a11y.swipeLeftHint')}. ${t('a11y.swipeRightHint')}`}
             accessibilityRole="adjustable"
           >
-          <Image
-            source={{ uri: currentProfileImage }}
-            style={styles.cardImage}
-            resizeMode="cover"
-            {...getImageA11yProps(t('a11y.profileImage', { name: currentProfile.name }))}
-          />
+          {/* Profile image with error fallback */}
+          {imageError ? (
+            <View style={[styles.cardImage, styles.imageFallback]}>
+              <Text style={styles.imageFallbackEmoji}>{'\u{1F464}'}</Text>
+              <Text style={styles.imageFallbackText}>
+                {t('imageLoadFailed') || 'Photo unavailable'}
+              </Text>
+            </View>
+          ) : (
+            <Image
+              source={{ uri: currentProfileImage, cache: 'force-cache' }}
+              style={styles.cardImage}
+              resizeMode="cover"
+              onError={handleImageError}
+              defaultSource={Platform.OS === 'ios' ? { uri: DEFAULT_PROFILE_IMAGE } : undefined}
+              {...getImageA11yProps(t('a11y.profileImage', { name: currentProfile.name ?? 'Profile' }))}
+            />
+          )}
 
-          {dragX > 30 && (
+          {swipeDirection === 'right' && (
             <Animated.View
               style={[styles.overlay, styles.likeOverlay]}
               accessibilityLabel={t('like')}
@@ -438,7 +652,7 @@ export default function DiscoverScreen() {
             </Animated.View>
           )}
 
-          {dragX < -30 && (
+          {swipeDirection === 'left' && (
             <Animated.View
               style={[styles.overlay, styles.nopeOverlay]}
               accessibilityLabel={t('nope')}
@@ -452,38 +666,52 @@ export default function DiscoverScreen() {
             <Animated.View
               style={[
                 styles.compatibilityBadge,
+                compatibility >= 80 && styles.compatBadgeHigh,
+                compatibility >= 55 && compatibility < 80 && styles.compatBadgeMedium,
                 { transform: [{ scale: reduceMotion ? 1 : pulseAnim }] }
               ]}
               accessibilityLabel={formatCompatibilityForA11y(compatibility)}
             >
               <Text style={styles.compatibilityNumber}>{compatibility}%</Text>
               <Text style={styles.compatibilityLabel}>{t('match')}</Text>
+              <Text style={styles.compatibilityHint}>{compatibilityLabel}</Text>
             </Animated.View>
 
             <View style={styles.cardContent}>
               <View style={styles.nameRow}>
                 <Text style={styles.name} accessibilityRole="header">
-                  {currentProfile.name}, {currentProfile.age}
+                  {currentProfile.name ?? t('unknown')}, {currentProfile.age ?? '?'}
                 </Text>
                 {currentProfile.is_verified && <VerifiedBadge size="small" />}
               </View>
 
-              <View style={styles.signsRow} accessibilityLabel={`Sun sign: ${currentProfile.sun_sign}, Moon sign: ${currentProfile.moon_sign || 'unknown'}, Rising sign: ${currentProfile.rising_sign || 'unknown'}`}>
+              <View style={styles.signsRow} accessibilityLabel={`Sun sign: ${currentProfile.sun_sign ?? 'unknown'}, Moon sign: ${currentProfile.moon_sign ?? 'unknown'}, Rising sign: ${currentProfile.rising_sign ?? 'unknown'}`}>
                 <View style={styles.signPill}>
-                  <Text style={styles.signEmoji}>☀️</Text>
-                  <Text style={styles.signText}>{currentProfile.sun_sign || '?'}</Text>
+                  <Text style={styles.signEmoji}>{'\u2600\uFE0F'}</Text>
+                  <View>
+                    <Text style={styles.signText}>{currentProfile.sun_sign || '?'}</Text>
+                    <Text style={styles.signSubtext}>{t('sunSignExplainer')}</Text>
+                  </View>
                 </View>
                 <View style={styles.signPill}>
-                  <Text style={styles.signEmoji}>🌙</Text>
-                  <Text style={styles.signText}>{currentProfile.moon_sign || '?'}</Text>
+                  <Text style={styles.signEmoji}>{'\u{1F319}'}</Text>
+                  <View>
+                    <Text style={styles.signText}>{currentProfile.moon_sign || '?'}</Text>
+                    <Text style={styles.signSubtext}>{t('moonSignExplainer')}</Text>
+                  </View>
                 </View>
                 <View style={styles.signPill}>
-                  <Text style={styles.signEmoji}>⬆️</Text>
-                  <Text style={styles.signText}>{currentProfile.rising_sign || '?'}</Text>
+                  <Text style={styles.signEmoji}>{'\u2B06\uFE0F'}</Text>
+                  <View>
+                    <Text style={styles.signText}>{currentProfile.rising_sign || '?'}</Text>
+                    <Text style={styles.signSubtext}>{t('risingSignExplainer')}</Text>
+                  </View>
                 </View>
               </View>
 
-              <Text style={styles.bio} numberOfLines={2}>{currentProfile.bio}</Text>
+              {currentProfile.bio ? (
+                <Text style={styles.bio} numberOfLines={2}>{currentProfile.bio}</Text>
+              ) : null}
 
               {currentProfile.has_voice_intro && currentProfile.voice_intro_url && (
                 <View style={styles.voiceIntroContainer}>
@@ -509,17 +737,37 @@ export default function DiscoverScreen() {
       </Animated.View>
 
       {/* Action Buttons */}
+      {/* Score explainer + premium teaser — below card */}
+      <View style={styles.belowCardInfo}>
+        <Text style={styles.scoreExplainerText}>{t('compatScoreExplainer')}</Text>
+        {isFreeUser && (
+          <TouchableOpacity
+            style={styles.deepInsightRow}
+            onPress={() => router.push('/premium-screens/plans' as any)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.deepInsightIcon}>{'\u2726'}</Text>
+            <Text style={styles.deepInsightTitle}>
+              {t('deeperCompatibility')}
+            </Text>
+            <Text style={styles.deepInsightCta}>
+              {t('unlockFullChart')}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
       <View style={styles.actions} accessibilityRole="toolbar">
         <TouchableOpacity
           style={[styles.actionButton, styles.passButton]}
           onPress={handlePass}
           activeOpacity={0.7}
           {...getButtonA11yProps(
-            t('a11y.passButton', { name: currentProfile.name }),
+            t('a11y.passButton', { name: currentProfile.name ?? '' }),
             t('a11y.doubleTapHint')
           )}
         >
-          <Text style={styles.passEmoji}>✕</Text>
+          <Text style={styles.passEmoji}>{'\u2715'}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -528,16 +776,17 @@ export default function DiscoverScreen() {
           activeOpacity={0.7}
           {...getButtonA11yProps(t('shareCompatibility') || 'Share compatibility')}
         >
-          <Text style={styles.shareEmoji}>📤</Text>
+          <Text style={styles.shareEmoji}>{'\u{1F4E4}'}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.actionButton, styles.superButton]}
-          onPress={handleViewChart}
+          style={[styles.actionButton, styles.superButton, isFreeUser && styles.superButtonPremium]}
+          onPress={isFreeUser ? () => router.push('/premium-screens/plans' as any) : handleViewChart}
           activeOpacity={0.7}
-          {...getButtonA11yProps(t('viewSynastry'))}
+          {...getButtonA11yProps(isFreeUser ? (t('unlockSuperLikes') || 'Unlock Super Likes') : t('viewSynastry'))}
         >
-          <Text style={styles.superEmoji}>✦</Text>
+          <Text style={styles.superEmoji}>{isFreeUser ? '\u2B50' : '\u2726'}</Text>
+          {isFreeUser && <View style={styles.premiumDot} />}
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -545,16 +794,16 @@ export default function DiscoverScreen() {
           onPress={handleLike}
           activeOpacity={0.7}
           {...getButtonA11yProps(
-            t('a11y.likeButton', { name: currentProfile.name }),
+            t('a11y.likeButton', { name: currentProfile.name ?? '' }),
             t('a11y.doubleTapHint')
           )}
         >
-          <Text style={styles.likeEmoji}>♥</Text>
+          <Text style={styles.likeEmoji}>{'\u2665'}</Text>
         </TouchableOpacity>
       </View>
 
       <Text style={styles.counter} accessibilityLabel={`Profile ${currentIndex + 1} of ${profiles.length}`}>
-        {currentIndex + 1} / {profiles.length}
+        {currentIndex + 1} of {profiles.length}
       </Text>
     </LinearGradient>
     </WebTabWrapper>
@@ -579,21 +828,35 @@ const styles = StyleSheet.create({
   card: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
-    borderRadius: 24,
+    borderRadius: 28,
     overflow: 'hidden',
     backgroundColor: a11yColors.background.primary,
-    borderWidth: 1,
-    borderColor: AppTheme.colors.border,
+    borderWidth: 1.5,
+    borderColor: AppTheme.colors.cardBorderElevated,
     shadowColor: AppTheme.colors.coral,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    elevation: 12,
   },
   cardImage: {
     width: '100%',
     height: '100%',
     position: 'absolute',
+  },
+  imageFallback: {
+    backgroundColor: AppTheme.colors.canvasAlt,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageFallbackEmoji: {
+    fontSize: 48,
+    marginBottom: 8,
+    opacity: 0.5,
+  },
+  imageFallbackText: {
+    color: AppTheme.colors.textMuted,
+    fontSize: 13,
   },
   cardGradient: {
     flex: 1,
@@ -636,25 +899,38 @@ const styles = StyleSheet.create({
     top: 16,
     right: 16,
     backgroundColor: AppTheme.colors.coral,
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     alignItems: 'center',
     shadowColor: AppTheme.colors.coral,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.55,
+    shadowRadius: 14,
+    elevation: 10,
+    minWidth: 72,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.20)',
   },
   compatibilityNumber: {
-    color: AppTheme.colors.textPrimary,
-    fontSize: 22,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
   compatibilityLabel: {
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: 'rgba(255, 255, 255, 0.95)',
     fontSize: 10,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 1.5,
+    fontWeight: '700',
+  },
+  compatibilityHint: {
+    color: 'rgba(255, 255, 255, 0.80)',
+    fontSize: 9,
+    marginTop: 3,
+    textAlign: 'center',
+    fontWeight: '500',
   },
   cardContent: {
     gap: 12,
@@ -665,12 +941,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   name: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 30,
+    fontWeight: '800',
     color: '#fff',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    letterSpacing: -0.3,
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
     textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    textShadowRadius: 6,
   },
   voiceIntroContainer: {
     marginTop: 4,
@@ -683,21 +960,22 @@ const styles = StyleSheet.create({
   signPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: AppTheme.colors.panelStrong,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     borderWidth: 1,
-    borderColor: AppTheme.colors.border,
-    borderRadius: 20,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    borderColor: 'rgba(255,255,255,0.18)',
+    borderRadius: AppTheme.radius.pill,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
     gap: 6,
   },
   signEmoji: {
     fontSize: 14,
   },
   signText: {
-    color: AppTheme.colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   bio: {
     color: AppTheme.colors.textSecondary,
@@ -705,73 +983,204 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   viewChartButton: {
-    marginTop: 4,
+    marginTop: 8,
+    backgroundColor: 'rgba(232, 93, 117, 0.15)',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: AppTheme.radius.pill,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(232, 93, 117, 0.28)',
+    shadowColor: AppTheme.colors.coral,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.20,
+    shadowRadius: 8,
+    elevation: 3,
   },
   viewChartText: {
     color: AppTheme.colors.coral,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   actions: {
     flexDirection: 'row',
-    gap: 20,
-    marginTop: 24,
+    alignItems: 'center',
+    gap: 14,
+    marginTop: 28,
   },
   actionButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     justifyContent: 'center',
     alignItems: 'center',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.30,
+    shadowRadius: 10,
     elevation: 6,
   },
   passButton: {
-    backgroundColor: AppTheme.colors.panelStrong,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 2,
-    borderColor: a11yColors.text.muted,
-    shadowColor: a11yColors.text.muted,
+    borderColor: 'rgba(255,255,255,0.15)',
+    shadowColor: '#000',
   },
   shareButton: {
-    backgroundColor: AppTheme.colors.panelStrong,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    shadowColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(255,255,255,0.15)',
+    shadowColor: '#000',
   },
   shareEmoji: {
     fontSize: 22,
   },
   superButton: {
-    backgroundColor: AppTheme.colors.panelStrong,
+    backgroundColor: 'rgba(124,108,255,0.10)',
     borderWidth: 2,
     borderColor: AppTheme.colors.cosmic,
     shadowColor: AppTheme.colors.cosmic,
+    shadowOpacity: 0.40,
   },
   likeButton: {
-    backgroundColor: AppTheme.colors.panelStrong,
-    borderWidth: 2,
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    backgroundColor: 'rgba(232, 93, 117, 0.12)',
+    borderWidth: 2.5,
     borderColor: AppTheme.colors.coral,
     shadowColor: AppTheme.colors.coral,
+    shadowOpacity: 0.50,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 16,
+    elevation: 10,
   },
   passEmoji: {
-    fontSize: 28,
-    color: a11yColors.text.secondary,
+    fontSize: 26,
+    color: 'rgba(255,255,255,0.50)',
   },
   superEmoji: {
-    fontSize: 28,
+    fontSize: 26,
     color: AppTheme.colors.cosmic,
   },
   likeEmoji: {
-    fontSize: 28,
+    fontSize: 34,
     color: AppTheme.colors.coral,
   },
   counter: {
-    marginTop: 16,
+    marginTop: 12,
     color: a11yColors.text.muted,
-    fontSize: 14,
+    fontSize: 13,
+    letterSpacing: 0.5,
   },
+  // Swipe error toast
+  swipeErrorToast: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 20,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(239, 68, 68, 0.9)',
+    borderRadius: AppTheme.radius.md,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  swipeErrorText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
+    marginRight: 12,
+  },
+  swipeErrorDismiss: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 18,
+    fontWeight: 'bold',
+    padding: 4,
+  },
+  // End of deck / exhausted state
+  exhaustedContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingVertical: 40,
+  },
+  exhaustedEmoji: {
+    fontSize: 72,
+    marginBottom: 20,
+  },
+  exhaustedTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: AppTheme.colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  exhaustedSubtitle: {
+    fontSize: 16,
+    color: AppTheme.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
+    maxWidth: 280,
+  },
+  exhaustedTimeTip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: AppTheme.colors.panel,
+    borderRadius: AppTheme.radius.pill,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    marginBottom: 28,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
+  },
+  exhaustedTimeTipIcon: {
+    fontSize: 16,
+  },
+  exhaustedTimeTipText: {
+    color: AppTheme.colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  exhaustedRefreshButton: {
+    borderRadius: AppTheme.radius.pill,
+    overflow: 'hidden',
+    shadowColor: AppTheme.colors.coral,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+    marginBottom: 16,
+  },
+  exhaustedRefreshGradient: {
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    borderRadius: AppTheme.radius.pill,
+    minWidth: 180,
+    alignItems: 'center',
+  },
+  exhaustedRefreshText: {
+    color: AppTheme.colors.textOnAccent,
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.3,
+  },
+  exhaustedCounter: {
+    color: AppTheme.colors.textMuted,
+    fontSize: 13,
+    letterSpacing: 0.3,
+  },
+  // Legacy empty state styles (kept for reference but EmptyState component is used)
   emptyState: {
     alignItems: 'center',
     paddingHorizontal: 40,
@@ -801,5 +1210,117 @@ const styles = StyleSheet.create({
   refreshText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  deepInsightIcon: {
+    fontSize: 12,
+    color: AppTheme.colors.cosmic,
+  },
+  deepInsightTitle: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.5)',
+  },
+  deepInsightCta: {
+    fontSize: 10,
+    color: AppTheme.colors.cosmic,
+    fontWeight: '700',
+  },
+  superButtonPremium: {
+    borderColor: AppTheme.colors.gold,
+    shadowColor: AppTheme.colors.gold,
+  },
+  premiumDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: AppTheme.colors.gold,
+    borderWidth: 1.5,
+    borderColor: AppTheme.colors.canvas,
+  },
+  signSubtext: {
+    color: 'rgba(255,255,255,0.50)',
+    fontSize: 9,
+    fontWeight: '500',
+    marginTop: 1,
+    letterSpacing: 0.3,
+  },
+  belowCardInfo: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 4,
+    gap: 6,
+  },
+  scoreExplainerText: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  deepInsightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  compatBadgeHigh: {
+    backgroundColor: '#22c55e',
+    shadowColor: '#22c55e',
+  },
+  compatBadgeMedium: {
+    backgroundColor: AppTheme.colors.coral,
+    shadowColor: AppTheme.colors.coral,
+  },
+  exhaustedHoroscopeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(124, 108, 255, 0.10)',
+    borderRadius: AppTheme.radius.lg,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(124, 108, 255, 0.22)',
+    gap: 12,
+    width: '100%',
+    maxWidth: 320,
+  },
+  exhaustedHoroscopeIcon: {
+    fontSize: 28,
+  },
+  exhaustedHoroscopeTextWrap: {
+    flex: 1,
+  },
+  exhaustedHoroscopeTitle: {
+    fontSize: 13,
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 19,
+    marginBottom: 4,
+  },
+  exhaustedHoroscopeCta: {
+    fontSize: 14,
+    color: AppTheme.colors.cosmic,
+    fontWeight: '700',
+  },
+  exhaustedHint: {
+    color: AppTheme.colors.textSecondary,
+    fontSize: 14,
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  exhaustedMatchesButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    borderRadius: AppTheme.radius.pill,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    marginBottom: 16,
+  },
+  exhaustedMatchesText: {
+    color: a11yColors.text.primary,
+    fontWeight: '600',
+    fontSize: 15,
+    letterSpacing: 0.3,
   },
 });

@@ -1,13 +1,14 @@
-import { useIsFocused } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect, router } from 'expo-router';
-import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ConstellationBg } from '../../components/astrology/ConstellationBg';
+import { AnimatedGradientBg } from '../../components/ui/AnimatedGradientBg';
+import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
+import WebTabWrapper from '../../components/WebTabWrapper';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { usePremium } from '../../contexts/PremiumContext';
-import { useAuth } from '../../contexts/AuthContext';
 
-// Feature cards for the dashboard
 const CELESTIAL_FEATURES = [
   { key: 'fullNatalChart', icon: '🌟', route: '/premium-screens/natal-chart' },
   { key: 'advancedSynastry', icon: '💕', route: '/premium-screens/synastry' },
@@ -24,7 +25,12 @@ const COSMIC_FEATURES = [
   { key: 'datePlanner', icon: '💫', route: '/premium-screens/date-planner' },
 ];
 
-function FeatureCard({ title, icon, onPress, locked = false }: {
+function FeatureCard({
+  title,
+  icon,
+  onPress,
+  locked = false,
+}: {
   title: string;
   icon: string;
   onPress: () => void;
@@ -34,12 +40,15 @@ function FeatureCard({ title, icon, onPress, locked = false }: {
     <TouchableOpacity
       style={[styles.card, locked && styles.lockedCard]}
       onPress={onPress}
-      disabled={locked}
-      activeOpacity={0.7}
+      activeOpacity={0.82}
     >
       <Text style={styles.cardIcon}>{icon}</Text>
       <Text style={styles.cardTitle}>{title}</Text>
-      {locked && <Text style={styles.lockText}>🔒</Text>}
+      {locked ? (
+        <View style={styles.lockBadge}>
+          <Text style={styles.lockBadgeText}>{'\u{2728}'} Cosmic</Text>
+        </View>
+      ) : null}
     </TouchableOpacity>
   );
 }
@@ -47,54 +56,41 @@ function FeatureCard({ title, icon, onPress, locked = false }: {
 export default function PremiumDashboard() {
   const { t } = useLanguage();
   const { tier, loading } = usePremium();
-  const { user: _user } = useAuth();
   const insets = useSafeAreaInsets();
-  const isFocused = useIsFocused();
 
   const isPremiumPlus = tier === 'premium_plus';
   const hasAccess = tier !== 'free';
 
-  // Show loading state
   if (loading) {
-    return <View style={styles.loadingContainer} />;
-  }
-
-  // Redirect free users to the paywall
-  if (!hasAccess) {
-    return <Redirect href="/premium-screens/plus" />;
-  }
-
-  // Web version with position fixed
-  if (Platform.OS === 'web') {
-    if (!isFocused) {
-      return null;
-    }
     return (
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 60,
-        background: 'linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%)',
-        padding: 20,
-        paddingTop: 40,
-        overflowY: 'auto',
-        zIndex: 1
-      }}>
-        {/* Header */}
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={AppTheme.colors.coral} />
+      </View>
+    );
+  }
+
+  if (!hasAccess) {
+    return <Redirect href={'/premium-screens/plans' as any} />;
+  }
+
+  if (Platform.OS === 'web') {
+    return (
+      <WebTabWrapper
+        background={`linear-gradient(180deg, ${AppTheme.colors.heroStart} 0%, ${AppTheme.colors.heroMid} 50%, ${AppTheme.colors.heroEnd} 100%)`}
+        padding={20}
+        paddingTop={40}
+      >
         <div style={{ marginBottom: 30 }}>
-          <h1 style={{ fontSize: 32, fontWeight: 'bold', color: '#fff', marginBottom: 8, margin: 0 }}>
+          <h1 style={{ fontSize: 32, fontWeight: 'bold', color: AppTheme.colors.textPrimary, marginBottom: 8, margin: 0 }}>
             {t('cosmicHub') || 'Cosmic Hub'}
           </h1>
-          <p style={{ fontSize: 16, color: '#e94560', fontWeight: 600, margin: 0 }}>
-            {isPremiumPlus ? '🌌 ' + (t('cosmicMember') || 'Cosmic Member') : '✨ ' + (t('celestialMember') || 'Celestial Member')}
+          <p style={{ fontSize: 16, color: AppTheme.colors.coral, fontWeight: 600, margin: 0 }}>
+            {isPremiumPlus ? `🌌 ${t('cosmicMember') || 'Cosmic Member'}` : `✨ ${t('celestialMember') || 'Celestial Member'}`}
           </p>
         </div>
 
-        {/* Celestial Features */}
         <div style={{ marginBottom: 30 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, color: '#888', marginBottom: 15, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 15px' }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, color: AppTheme.colors.textMuted, margin: '0 0 15px', textTransform: 'uppercase', letterSpacing: 1 }}>
             {t('celestialFeatures') || 'Celestial Features'}
           </h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
@@ -103,7 +99,7 @@ export default function PremiumDashboard() {
                 key={feature.key}
                 onClick={() => router.push(feature.route as any)}
                 style={{
-                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  backgroundColor: AppTheme.colors.panel,
                   borderRadius: 20,
                   padding: 20,
                   width: 'calc(50% - 6px)',
@@ -112,13 +108,13 @@ export default function PremiumDashboard() {
                   flexDirection: 'column',
                   justifyContent: 'center',
                   alignItems: 'center',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: `1px solid ${AppTheme.colors.border}`,
                   cursor: 'pointer',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
                 }}
               >
                 <span style={{ fontSize: 36, marginBottom: 12 }}>{feature.icon}</span>
-                <span style={{ color: '#fff', fontWeight: 600, textAlign: 'center', fontSize: 13 }}>
+                <span style={{ color: AppTheme.colors.textPrimary, fontWeight: 600, textAlign: 'center', fontSize: 13 }}>
                   {t(feature.key) || feature.key}
                 </span>
               </div>
@@ -126,9 +122,8 @@ export default function PremiumDashboard() {
           </div>
         </div>
 
-        {/* Cosmic Features */}
         <div style={{ marginBottom: 30 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, color: '#888', marginBottom: 15, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 15px' }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, color: AppTheme.colors.textMuted, margin: '0 0 15px', textTransform: 'uppercase', letterSpacing: 1 }}>
             {t('cosmicFeatures') || 'Cosmic Features'}
           </h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
@@ -138,12 +133,12 @@ export default function PremiumDashboard() {
                 onClick={() => {
                   if (isPremiumPlus) {
                     router.push(feature.route as any);
-                  } else {
-                    router.push('/premium-screens/plus');
+                    return;
                   }
+                  router.push('/premium-screens/plus');
                 }}
                 style={{
-                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  backgroundColor: AppTheme.colors.panel,
                   borderRadius: 20,
                   padding: 20,
                   width: 'calc(50% - 6px)',
@@ -152,72 +147,71 @@ export default function PremiumDashboard() {
                   flexDirection: 'column',
                   justifyContent: 'center',
                   alignItems: 'center',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: `1px solid ${AppTheme.colors.border}`,
                   cursor: 'pointer',
                   boxSizing: 'border-box',
-                  opacity: isPremiumPlus ? 1 : 0.5,
-                  position: 'relative'
+                  opacity: isPremiumPlus ? 1 : 0.58,
+                  position: 'relative',
                 }}
               >
                 <span style={{ fontSize: 36, marginBottom: 12 }}>{feature.icon}</span>
-                <span style={{ color: '#fff', fontWeight: 600, textAlign: 'center', fontSize: 13 }}>
+                <span style={{ color: AppTheme.colors.textPrimary, fontWeight: 600, textAlign: 'center', fontSize: 13 }}>
                   {t(feature.key) || feature.key}
                 </span>
-                {!isPremiumPlus && (
-                  <span style={{ position: 'absolute', top: 12, right: 12, fontSize: 14 }}>🔒</span>
-                )}
+                {!isPremiumPlus ? <span style={{ position: 'absolute', top: 12, right: 12, fontSize: 14 }}>🔒</span> : null}
               </div>
             ))}
           </div>
         </div>
 
-        {/* Upgrade Banner */}
-        {!isPremiumPlus && (
+        {!isPremiumPlus ? (
           <div
             onClick={() => router.push('/premium-screens/plus')}
             style={{
               display: 'flex',
               alignItems: 'center',
-              backgroundColor: 'rgba(147, 51, 234, 0.15)',
+              backgroundColor: 'rgba(124, 108, 255, 0.14)',
               borderRadius: 16,
               padding: 16,
-              border: '1px solid rgba(147, 51, 234, 0.3)',
+              border: '1px solid rgba(124, 108, 255, 0.22)',
               marginTop: 10,
-              cursor: 'pointer'
+              cursor: 'pointer',
             }}
           >
             <span style={{ fontSize: 32, marginRight: 12 }}>🌌</span>
             <div style={{ flex: 1 }}>
-              <div style={{ color: '#fff', fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
+              <div style={{ color: AppTheme.colors.textPrimary, fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
                 {t('upgradeToCosmic') || 'Upgrade to Cosmic'}
               </div>
-              <div style={{ color: '#aaa', fontSize: 13 }}>
+              <div style={{ color: AppTheme.colors.textSecondary, fontSize: 13 }}>
                 {t('unlockAllFeatures') || 'Unlock daily horoscopes, transits & more'}
               </div>
             </div>
-            <span style={{ color: '#9333ea', fontSize: 20, fontWeight: 'bold' }}>→</span>
+            <span style={{ color: AppTheme.colors.cosmic, fontSize: 20, fontWeight: 'bold' }}>→</span>
           </div>
-        )}
-      </div>
+        ) : null}
+      </WebTabWrapper>
     );
   }
 
   return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+    <AnimatedGradientBg style={styles.container}>
+      <ConstellationBg density={20} />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 20, paddingBottom: 100 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>{t('cosmicHub') || 'Cosmic Hub'}</Text>
           <Text style={styles.subtitle}>
-            {isPremiumPlus ? '🌌 ' + (t('cosmicMember') || 'Cosmic Member') : '✨ ' + (t('celestialMember') || 'Celestial Member')}
+            {isPremiumPlus ? `🌌 ${t('cosmicMember') || 'Cosmic Member'}` : `✨ ${t('celestialMember') || 'Celestial Member'}`}
+          </Text>
+          <Text style={styles.headerWelcome}>
+            {t('hubWelcome') || 'Your cosmic toolkit is ready. Explore the features below.'}
           </Text>
         </View>
 
-        {/* Celestial Features */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('celestialFeatures') || 'Celestial Features'}</Text>
           <View style={styles.grid}>
@@ -232,7 +226,6 @@ export default function PremiumDashboard() {
           </View>
         </View>
 
-        {/* Cosmic Features */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('cosmicFeatures') || 'Cosmic Features'}</Text>
           <View style={styles.grid}>
@@ -241,152 +234,181 @@ export default function PremiumDashboard() {
                 key={feature.key}
                 title={t(feature.key) || feature.key}
                 icon={feature.icon}
+                locked={!isPremiumPlus}
                 onPress={() => {
                   if (isPremiumPlus) {
                     router.push(feature.route as any);
-                  } else {
-                    router.push('/premium-screens/plus');
+                    return;
                   }
+                  router.push('/premium-screens/plus');
                 }}
-                locked={!isPremiumPlus}
               />
             ))}
           </View>
         </View>
 
-        {/* Upgrade Banner for Celestial users */}
-        {!isPremiumPlus && (
-          <TouchableOpacity
-            style={styles.upgradeBanner}
-            onPress={() => router.push('/premium-screens/plus')}
-          >
+        {!isPremiumPlus ? (
+          <TouchableOpacity style={styles.upgradeBanner} onPress={() => router.push('/premium-screens/plus')}>
             <Text style={styles.upgradeIcon}>🌌</Text>
             <View style={styles.upgradeTextContainer}>
-              <Text style={styles.upgradeTitle}>{t('upgradeToCosmic') || 'Upgrade to Cosmic'}</Text>
+              <Text style={styles.upgradeTitle}>{t('hubUpgradeTitle') || 'Go Cosmic for the Full Experience'}</Text>
               <Text style={styles.upgradeDescription}>
-                {t('unlockAllFeatures') || 'Unlock daily horoscopes, transits & more'}
+                {t('hubUpgradeDesc') || 'Daily love forecasts, lucky timing, planetary alerts \u2014 everything the stars offer'}
               </Text>
             </View>
             <Text style={styles.upgradeArrow}>→</Text>
           </TouchableOpacity>
-        )}
+        ) : null}
       </ScrollView>
-    </LinearGradient>
+    </AnimatedGradientBg>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    ...(Platform.OS === 'web' ? {
-      height: '100%' as any,
-      width: '100%' as any,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          height: '100%' as any,
+          width: '100%' as any,
+        }
+      : {}),
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#0f0f1a',
+    backgroundColor: AppTheme.colors.heroStart,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollView: {
     flex: 1,
-    ...(Platform.OS === 'web' ? {
-      height: '100%' as any,
-      overflowY: 'auto' as any,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          height: '100%' as any,
+          overflowY: 'auto' as any,
+        }
+      : {}),
   },
   content: {
-    padding: 20,
+    padding: AppTheme.spacing.xl,
   },
   header: {
-    marginBottom: 30,
+    marginBottom: 36,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
+    ...AppTheme.type.hero,
+    color: AppTheme.colors.textPrimary,
+    marginBottom: AppTheme.spacing.sm,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#e94560',
-    fontWeight: '600',
+    ...AppTheme.type.body,
+    color: AppTheme.colors.coral,
+    fontWeight: '700',
+  },
+  headerWelcome: {
+    ...AppTheme.type.caption,
+    color: AppTheme.colors.textSecondary,
+    marginTop: 8,
+    lineHeight: 20,
   },
   section: {
-    marginBottom: 30,
+    marginBottom: 36,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#888',
-    marginBottom: 15,
+    ...AppTheme.type.micro,
+    color: AppTheme.colors.textMuted,
+    marginBottom: AppTheme.spacing.lg,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 2,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: AppTheme.spacing.md,
   },
   card: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 20,
-    padding: 20,
+    backgroundColor: AppTheme.colors.cardBg,
+    borderRadius: AppTheme.radius.xl,
+    padding: AppTheme.spacing.xl,
     width: '47%',
     aspectRatio: 1,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: AppTheme.colors.cardBorderElevated,
+    minHeight: 140,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 4,
   },
   lockedCard: {
-    opacity: 0.5,
+    opacity: 0.60,
+    borderColor: AppTheme.colors.premiumCosmicBorder,
+    backgroundColor: 'rgba(124,108,255,0.05)',
   },
   cardIcon: {
-    fontSize: 36,
-    marginBottom: 12,
+    fontSize: 40,
+    marginBottom: AppTheme.spacing.md,
   },
   cardTitle: {
-    color: '#fff',
-    fontWeight: '600',
+    ...AppTheme.type.caption,
+    color: AppTheme.colors.textPrimary,
+    fontWeight: '700',
     textAlign: 'center',
-    fontSize: 13,
   },
-  lockText: {
+  lockBadge: {
     position: 'absolute',
     top: 12,
     right: 12,
-    fontSize: 14,
+    backgroundColor: 'rgba(124, 108, 255, 0.18)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: AppTheme.radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(124, 108, 255, 0.30)',
+  },
+  lockBadgeText: {
+    ...AppTheme.type.micro,
+    color: AppTheme.colors.cosmic,
+    fontWeight: '700',
   },
   upgradeBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: AppTheme.colors.premiumCosmicSoft,
+    borderRadius: AppTheme.radius.xl,
+    padding: AppTheme.spacing.xl,
     borderWidth: 1,
-    borderColor: 'rgba(147, 51, 234, 0.3)',
-    marginTop: 10,
+    borderColor: AppTheme.colors.premiumCosmicBorder,
+    marginTop: AppTheme.spacing.md,
+    shadowColor: AppTheme.colors.cosmic,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 4,
   },
   upgradeIcon: {
-    fontSize: 32,
-    marginRight: 12,
+    fontSize: 36,
+    marginRight: 14,
   },
   upgradeTextContainer: {
     flex: 1,
   },
   upgradeTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    color: AppTheme.colors.textPrimary,
+    ...AppTheme.type.body,
+    fontWeight: '700',
     marginBottom: 4,
   },
   upgradeDescription: {
-    color: '#aaa',
-    fontSize: 13,
+    color: AppTheme.colors.textSecondary,
+    ...AppTheme.type.caption,
   },
   upgradeArrow: {
-    color: '#9333ea',
-    fontSize: 20,
+    color: AppTheme.colors.cosmic,
+    fontSize: 22,
     fontWeight: 'bold',
   },
 });

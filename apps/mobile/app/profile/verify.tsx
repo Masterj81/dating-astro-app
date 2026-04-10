@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
   MAX_RECORDING_DURATION_MS,
@@ -18,7 +19,7 @@ import {
   setUserVerified,
   uploadVerificationVideo,
 } from '../../services/verificationService';
-import { useAuth } from '../_layout';
+import { useAuth } from '../../contexts/AuthContext';
 
 type Step = 'instructions' | 'recording' | 'preview' | 'uploading' | 'success';
 
@@ -175,7 +176,7 @@ export default function VerifyScreen() {
   // Instructions Step
   if (step === 'instructions') {
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
         <View style={styles.content}>
           <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
             <Text style={styles.closeText}>x</Text>
@@ -311,9 +312,9 @@ export default function VerifyScreen() {
   // Uploading Step
   if (step === 'uploading') {
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
         <View style={styles.content}>
-          <ActivityIndicator size="large" color="#e94560" />
+          <ActivityIndicator size="large" color={AppTheme.colors.coral} />
           <Text style={styles.uploadingText}>{t('verifying')}</Text>
         </View>
       </LinearGradient>
@@ -323,7 +324,7 @@ export default function VerifyScreen() {
   // Success Step
   if (step === 'success') {
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
         <View style={styles.content}>
           <View style={styles.successIcon}>
             <Text style={styles.successEmoji}>✓</Text>
@@ -360,15 +361,15 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 50,
     left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: AppTheme.colors.panel,
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 20,
     fontWeight: 'bold',
   },
@@ -376,7 +377,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    backgroundColor: 'rgba(124, 108, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
@@ -387,13 +388,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     textAlign: 'center',
     marginBottom: 32,
     lineHeight: 24,
@@ -411,8 +412,8 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#3b82f6',
-    color: '#fff',
+    backgroundColor: AppTheme.colors.cosmic,
+    color: AppTheme.colors.textOnAccent,
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
@@ -422,47 +423,51 @@ const styles = StyleSheet.create({
   instructionText: {
     flex: 1,
     fontSize: 15,
-    color: '#ccc',
+    color: AppTheme.colors.textSecondary,
     lineHeight: 22,
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    borderRadius: 12,
+    backgroundColor: 'rgba(124, 108, 255, 0.12)',
+    borderRadius: AppTheme.radius.md,
     padding: 16,
     marginBottom: 32,
     width: '100%',
   },
   badgeIcon: {
     fontSize: 24,
-    color: '#3b82f6',
+    color: AppTheme.colors.cosmic,
     marginRight: 12,
   },
   badgeText: {
     flex: 1,
     fontSize: 14,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     lineHeight: 20,
   },
   primaryButton: {
     width: '100%',
-    backgroundColor: '#3b82f6',
+    backgroundColor: AppTheme.colors.cosmic,
     paddingVertical: 18,
-    borderRadius: 16,
+    borderRadius: AppTheme.radius.lg,
     alignItems: 'center',
     marginBottom: 12,
+    minHeight: 56,
+    justifyContent: 'center',
   },
   primaryButtonText: {
-    color: '#fff',
+    color: AppTheme.colors.textOnAccent,
     fontSize: 18,
     fontWeight: '600',
   },
   secondaryButton: {
     paddingVertical: 12,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   secondaryButtonText: {
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     fontSize: 16,
   },
   cameraContainer: {
@@ -510,13 +515,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   recordingHint: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 16,
     textAlign: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: AppTheme.radius.md,
   },
   cameraControls: {
     alignItems: 'center',
@@ -560,7 +565,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   noPermissionText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 16,
   },
   previewVideo: {
@@ -578,12 +583,12 @@ const styles = StyleSheet.create({
   previewTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 8,
   },
   previewSubtitle: {
     fontSize: 14,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     marginBottom: 20,
   },
   previewActions: {
@@ -593,29 +598,33 @@ const styles = StyleSheet.create({
   retakeButton: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: AppTheme.radius.md,
+    backgroundColor: AppTheme.colors.panel,
     alignItems: 'center',
+    minHeight: 48,
+    justifyContent: 'center',
   },
   retakeText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '500',
   },
   submitButton: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: '#3b82f6',
+    borderRadius: AppTheme.radius.md,
+    backgroundColor: AppTheme.colors.cosmic,
     alignItems: 'center',
+    minHeight: 48,
+    justifyContent: 'center',
   },
   submitText: {
-    color: '#fff',
+    color: AppTheme.colors.textOnAccent,
     fontSize: 16,
     fontWeight: '600',
   },
   uploadingText: {
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     fontSize: 16,
     marginTop: 20,
   },
@@ -623,25 +632,25 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#3b82f6',
+    backgroundColor: AppTheme.colors.success,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
   },
   successEmoji: {
     fontSize: 48,
-    color: '#fff',
+    color: AppTheme.colors.textOnAccent,
   },
   successTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
   },
   successSubtitle: {
     fontSize: 16,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     textAlign: 'center',
     marginBottom: 32,
     lineHeight: 24,

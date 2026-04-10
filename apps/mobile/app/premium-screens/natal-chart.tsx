@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -11,7 +11,10 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AuthBrandMark from '../../components/AuthBrandMark';
 import PremiumGate from '../../components/PremiumGate';
+import PlanetGlyph from '../../components/ui/PlanetGlyph';
+import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -38,8 +41,6 @@ type NatalChartData = {
   birth_time: string;
   birth_city: string;
 };
-
-// type TranslateFunction = (key: string, options?: Record<string, string | number>) => string;
 
 // Get element for a sign
 const getElement = (sign: string): string => {
@@ -78,17 +79,17 @@ function NatalChartScreenContent() {
   const signs = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
                  'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
 
-  // Generate planetary positions
+  // Generate planetary positions (deterministic fallbacks instead of Math.random)
   const getPlanetaryPositions = (data: NatalChartData): PlanetPosition[] => {
     return [
       { planet: t('sun'), planetKey: 'sun', sign: data.sun_sign || 'Unknown', degree: 15, house: 1, emoji: '☀️' },
       { planet: t('moon'), planetKey: 'moon', sign: data.moon_sign || 'Unknown', degree: 22, house: 4, emoji: '🌙' },
       { planet: t('rising'), planetKey: 'rising', sign: data.rising_sign || 'Unknown', degree: 8, house: 1, emoji: '⬆️' },
-      { planet: t('mercury') || 'Mercury', planetKey: 'mercury', sign: data.mercury_sign || signs[Math.floor(Math.random() * 12)], degree: 12, house: 3, emoji: '☿️' },
-      { planet: t('venus') || 'Venus', planetKey: 'venus', sign: data.venus_sign || signs[Math.floor(Math.random() * 12)], degree: 28, house: 7, emoji: '♀️' },
-      { planet: t('mars') || 'Mars', planetKey: 'mars', sign: data.mars_sign || signs[Math.floor(Math.random() * 12)], degree: 5, house: 10, emoji: '♂️' },
-      { planet: t('jupiter') || 'Jupiter', planetKey: 'jupiter', sign: data.jupiter_sign || signs[Math.floor(Math.random() * 12)], degree: 19, house: 9, emoji: '♃' },
-      { planet: t('saturn') || 'Saturn', planetKey: 'saturn', sign: data.saturn_sign || signs[Math.floor(Math.random() * 12)], degree: 3, house: 11, emoji: '♄' },
+      { planet: t('mercury') || 'Mercury', planetKey: 'mercury', sign: data.mercury_sign || signs[3], degree: 12, house: 3, emoji: '☿️' },
+      { planet: t('venus') || 'Venus', planetKey: 'venus', sign: data.venus_sign || signs[6], degree: 28, house: 7, emoji: '♀️' },
+      { planet: t('mars') || 'Mars', planetKey: 'mars', sign: data.mars_sign || signs[0], degree: 5, house: 10, emoji: '♂️' },
+      { planet: t('jupiter') || 'Jupiter', planetKey: 'jupiter', sign: data.jupiter_sign || signs[8], degree: 19, house: 9, emoji: '♃' },
+      { planet: t('saturn') || 'Saturn', planetKey: 'saturn', sign: data.saturn_sign || signs[9], degree: 3, house: 11, emoji: '♄' },
     ];
   };
 
@@ -103,14 +104,18 @@ function NatalChartScreenContent() {
       return;
     }
     setLoading(true);
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('sun_sign, moon_sign, rising_sign, birth_date, birth_time, birth_city')
-      .eq('id', user.id)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('sun_sign, moon_sign, rising_sign, birth_date, birth_time, birth_city')
+        .eq('id', user.id)
+        .maybeSingle();
 
-    if (!error && data) {
-      setChartData(data);
+      if (!error && data) {
+        setChartData(data);
+      }
+    } catch (err) {
+      console.error('Error loading natal chart data:', err);
     }
     setLoading(false);
   };
@@ -268,23 +273,30 @@ function NatalChartScreenContent() {
     return interpretations[modality] || '';
   };
 
-  if (loading) {
-    return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#e94560" />
-        </View>
-      </LinearGradient>
-    );
-  }
-
-  const positions = chartData ? getPlanetaryPositions(chartData) : [];
-  const elements = calculateElements(positions);
-  const modalities = calculateModalities(positions);
+  // Memoize before any early returns to respect React hooks rules
+  const positions = useMemo(
+    () => chartData ? getPlanetaryPositions(chartData) : [],
+    [chartData, t] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const elements = useMemo(() => calculateElements(positions), [positions]);
+  const modalities = useMemo(() => calculateModalities(positions), [positions]);
 
   // Fallbacks for web where SafeAreaProvider may not work
   const topInset = insets?.top ?? 0;
   const bottomInset = insets?.bottom ?? 0;
+
+  if (loading) {
+    return (
+      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={AppTheme.colors.coral} />
+          <Text style={{ color: AppTheme.colors.textMuted, marginTop: 12, fontSize: 14 }}>
+            {t('loadingChart') || 'Mapping your cosmic blueprint...'}
+          </Text>
+        </View>
+      </LinearGradient>
+    );
+  }
 
   const renderContent = () => (
     <View>
@@ -311,7 +323,7 @@ function NatalChartScreenContent() {
       <View style={styles.chartWheel}>
         <View style={styles.wheelOuter}>
           <View style={styles.wheelInner}>
-            <Text style={styles.wheelCenter}>✦</Text>
+            <AuthBrandMark size={58} />
           </View>
           <Text style={[styles.wheelSign, { top: 5, left: '45%' }]}>♈</Text>
           <Text style={[styles.wheelSign, { top: '15%', right: '10%' }]}>♉</Text>
@@ -423,7 +435,7 @@ function NatalChartScreenContent() {
         <Text style={styles.sectionTitle}>{t('planetaryPositions')}</Text>
         {positions.map((pos, index) => (
           <View key={index} style={styles.planetRow}>
-            <Text style={styles.planetEmoji}>{pos.emoji}</Text>
+            <PlanetGlyph planetKey={pos.planetKey} symbol={pos.emoji} size={30} textStyle={styles.planetEmoji} />
             <View style={styles.planetInfo}>
               <Text style={styles.planetName}>{pos.planet}</Text>
               <Text style={styles.planetDetail}>
@@ -513,22 +525,28 @@ function NatalChartScreenContent() {
   );
 
   return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      {/* Header - Fixed at top */}
-      <View style={[styles.header, { paddingTop: 40 + topInset }]}>
-        <TouchableOpacity style={[styles.backButton, { top: 30 + topInset }]} onPress={() => router.back()}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>{t('fullNatalChart')}</Text>
-        <Text style={styles.subtitle}>{t('natalChartSubtitle')}</Text>
-      </View>
-
-      {/* Use ScrollView for the main content */}
-      <ScrollView
+    <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+<ScrollView
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
         showsVerticalScrollIndicator={false}
       >
+      {/* Header - Fixed at top */}
+      <View style={[styles.header, { paddingTop: 24 + topInset }]}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Text style={styles.backText}>←</Text>
+        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <Text style={styles.title}>{t('fullNatalChart')}</Text>
+          <Text style={styles.subtitle}>{t('natalChartSubtitle')}</Text>
+        </View>
+        <View style={styles.headerSpacer} />
+      </View>
+      </View>
+
+      {/* Use ScrollView for the main content */}
+      
         {renderContent()}
       </ScrollView>
     </LinearGradient>
@@ -559,47 +577,59 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   header: {
-    alignItems: 'center',
-    paddingTop: 60,
     paddingBottom: 24,
     paddingHorizontal: 20,
     zIndex: 10,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
   backButton: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: AppTheme.colors.panelStrong,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
   backText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 24,
+  },
+  headerContent: {
+    flex: 1,
+    alignItems: 'center',
+    paddingTop: 2,
+  },
+  headerSpacer: {
+    width: 52,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
+    textAlign: 'center',
   },
   birthInfo: {
     marginHorizontal: 20,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
   },
   birthInfoTitle: {
     fontSize: 14,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 12,
@@ -615,7 +645,7 @@ const styles = StyleSheet.create({
   },
   birthInfoValue: {
     fontSize: 15,
-    color: '#ccc',
+    color: AppTheme.colors.textSecondary,
   },
   chartWheel: {
     alignItems: 'center',
@@ -626,29 +656,25 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 100,
     borderWidth: 2,
-    borderColor: 'rgba(233, 69, 96, 0.3)',
+    borderColor: 'rgba(232, 93, 117, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
   },
   wheelInner: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(233, 69, 96, 0.1)',
+    width: 108,
+    height: 108,
+    borderRadius: 54,
+    backgroundColor: 'rgba(232, 93, 117, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(233, 69, 96, 0.3)',
+    borderColor: 'rgba(232, 93, 117, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  wheelCenter: {
-    fontSize: 32,
-    color: '#e94560',
   },
   wheelSign: {
     position: 'absolute',
     fontSize: 16,
-    color: '#e94560',
+    color: AppTheme.colors.coral,
     opacity: 0.7,
   },
   section: {
@@ -658,7 +684,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 16,
   },
   interpretationHeader: {
@@ -681,18 +707,18 @@ const styles = StyleSheet.create({
   },
   interpretationTitle: {
     fontSize: 14,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   interpretationSign: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   expandIcon: {
     fontSize: 24,
-    color: '#e94560',
+    color: AppTheme.colors.coral,
     fontWeight: 'bold',
   },
   interpretationContent: {
@@ -708,7 +734,7 @@ const styles = StyleSheet.create({
   },
   interpretationLabel: {
     fontSize: 12,
-    color: '#e94560',
+    color: AppTheme.colors.coral,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 8,
@@ -720,7 +746,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   keyTraits: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
@@ -732,7 +760,7 @@ const styles = StyleSheet.create({
   },
   keyTraitsText: {
     fontSize: 14,
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontWeight: '500',
   },
   elementBadge: {
@@ -787,7 +815,7 @@ const styles = StyleSheet.create({
   },
   analysisText: {
     fontSize: 14,
-    color: '#ccc',
+    color: AppTheme.colors.textSecondary,
     lineHeight: 20,
     marginTop: 12,
   },
@@ -797,7 +825,7 @@ const styles = StyleSheet.create({
   },
   elementCard: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
     borderRadius: 12,
     padding: 12,
     alignItems: 'center',
@@ -805,7 +833,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   elementCardDominant: {
-    borderColor: '#e94560',
+    borderColor: AppTheme.colors.coral,
     backgroundColor: 'rgba(233, 69, 96, 0.1)',
   },
   elementEmoji: {
@@ -814,13 +842,13 @@ const styles = StyleSheet.create({
   },
   elementName: {
     fontSize: 11,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     textTransform: 'capitalize',
   },
   elementCount: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   modalitiesRow: {
     flexDirection: 'row',
@@ -845,12 +873,12 @@ const styles = StyleSheet.create({
   },
   modalityName: {
     fontSize: 11,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
   },
   modalityCount: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   summaryCard: {
     backgroundColor: 'rgba(233, 69, 96, 0.1)',
@@ -862,7 +890,7 @@ const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#e94560',
+    color: AppTheme.colors.coral,
     marginBottom: 12,
   },
   summaryText: {
@@ -882,7 +910,7 @@ const styles = StyleSheet.create({
   },
   premiumText: {
     fontSize: 12,
-    color: '#e94560',
+    color: AppTheme.colors.coral,
     fontWeight: '600',
   },
 });

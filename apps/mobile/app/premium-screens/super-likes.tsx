@@ -1,18 +1,12 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import {
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PremiumGate from '../../components/PremiumGate';
-import { useLanguage } from '../../contexts/LanguageContext';
+import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 type SuperLikeStats = {
   available: number;
@@ -35,12 +29,6 @@ function SuperLikesScreenContent() {
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    // In a real app, load super like stats from API
-    loadSuperLikeStats();
-  }, [user]);
-
-  const loadSuperLikeStats = async () => {
-    // Simulated stats - in real app, fetch from Supabase
     setStats({
       available: 5,
       maxDaily: 5,
@@ -48,7 +36,7 @@ function SuperLikesScreenContent() {
       totalSent: 12,
       matchRate: 67,
     });
-  };
+  }, [user]);
 
   const benefits = [
     {
@@ -62,7 +50,7 @@ function SuperLikesScreenContent() {
       description: t('higherMatchRateDesc') || 'Super Likes are 3x more likely to result in a match',
     },
     {
-      emoji: '💜',
+      emoji: '💞',
       title: t('showInterest') || 'Show Special Interest',
       description: t('showInterestDesc') || 'Let them know you really like them before matching',
     },
@@ -80,13 +68,25 @@ function SuperLikesScreenContent() {
     t('superLikeTip4') || 'Save Super Likes for profiles that truly resonate with you',
   ];
 
-  // Fallbacks for web where SafeAreaProvider may not work
   const topInset = insets?.top ?? 0;
   const bottomInset = insets?.bottom ?? 0;
 
-  const renderContent = () => (
-    <View>
-      {/* Stats Card */}
+  return (
+    <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + bottomInset }]}
+        showsVerticalScrollIndicator={false}
+      >
+      <View style={[styles.header, { paddingTop: 40 + topInset }]}>
+        <TouchableOpacity style={[styles.backButton, { top: 30 + topInset }]} onPress={() => router.back()}>
+          <Text style={styles.backText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>{t('superLikes') || 'Super Likes'}</Text>
+        <Text style={styles.subtitle}>{t('superLikesSubtitle') || 'Make a lasting first impression'}</Text>
+      </View>
+
+
         <View style={styles.statsCard}>
           <View style={styles.mainStat}>
             <Text style={styles.mainStatNumber}>{stats.available}</Text>
@@ -95,7 +95,9 @@ function SuperLikesScreenContent() {
 
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{stats.usedToday}/{stats.maxDaily}</Text>
+              <Text style={styles.statNumber}>
+                {stats.usedToday}/{stats.maxDaily}
+              </Text>
               <Text style={styles.statLabel}>{t('usedToday') || 'Used Today'}</Text>
             </View>
             <View style={styles.statDivider} />
@@ -112,63 +114,50 @@ function SuperLikesScreenContent() {
 
           <View style={styles.refreshInfo}>
             <Text style={styles.refreshIcon}>🔄</Text>
-            <Text style={styles.refreshText}>
-              {t('superLikesRefresh') || 'Super Likes refresh daily at midnight'}
-            </Text>
+            <Text style={styles.refreshText}>{t('superLikesRefresh') || 'Super Likes refresh daily at midnight'}</Text>
           </View>
         </View>
 
-        {/* How It Works */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('howItWorks') || 'How It Works'}</Text>
           <View style={styles.stepsContainer}>
-            <View style={styles.step}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>1</Text>
+            {[
+              {
+                number: '1',
+                title: t('swipeUp') || 'Swipe Up',
+                description: t('swipeUpDesc') || 'Or tap the star icon on a profile you love',
+              },
+              {
+                number: '2',
+                title: t('theyGetNotified') || 'They Get Notified',
+                description: t('theyGetNotifiedDesc') || 'Your profile appears with a special star highlight',
+              },
+              {
+                number: '3',
+                title: t('higherChance') || 'Higher Match Chance',
+                description: t('higherChanceDesc') || "They know you're truly interested, increasing match probability",
+              },
+            ].map((step, index) => (
+              <View key={step.number}>
+                <View style={styles.step}>
+                  <View style={styles.stepNumber}>
+                    <Text style={styles.stepNumberText}>{step.number}</Text>
+                  </View>
+                  <View style={styles.stepContent}>
+                    <Text style={styles.stepTitle}>{step.title}</Text>
+                    <Text style={styles.stepDesc}>{step.description}</Text>
+                  </View>
+                </View>
+                {index < 2 ? <View style={styles.stepConnector} /> : null}
               </View>
-              <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>{t('swipeUp') || 'Swipe Up'}</Text>
-                <Text style={styles.stepDesc}>
-                  {t('swipeUpDesc') || 'Or tap the star icon on a profile you love'}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.stepConnector} />
-
-            <View style={styles.step}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>2</Text>
-              </View>
-              <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>{t('theyGetNotified') || 'They Get Notified'}</Text>
-                <Text style={styles.stepDesc}>
-                  {t('theyGetNotifiedDesc') || 'Your profile appears with a special star highlight'}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.stepConnector} />
-
-            <View style={styles.step}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>3</Text>
-              </View>
-              <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>{t('higherChance') || 'Higher Match Chance'}</Text>
-                <Text style={styles.stepDesc}>
-                  {t('higherChanceDesc') || 'They know you\'re truly interested, increasing match probability'}
-                </Text>
-              </View>
-            </View>
+            ))}
           </View>
         </View>
 
-        {/* Benefits */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('benefits') || 'Benefits'}</Text>
-          {benefits.map((benefit, index) => (
-            <View key={index} style={styles.benefitCard}>
+          {benefits.map((benefit) => (
+            <View key={benefit.title} style={styles.benefitCard}>
               <Text style={styles.benefitEmoji}>{benefit.emoji}</Text>
               <View style={styles.benefitContent}>
                 <Text style={styles.benefitTitle}>{benefit.title}</Text>
@@ -178,12 +167,11 @@ function SuperLikesScreenContent() {
           ))}
         </View>
 
-        {/* Tips */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('proTips') || 'Pro Tips'}</Text>
           <View style={styles.tipsCard}>
-            {tips.map((tip, index) => (
-              <View key={index} style={styles.tipItem}>
+            {tips.map((tip) => (
+              <View key={tip} style={styles.tipItem}>
                 <Text style={styles.tipBullet}>✦</Text>
                 <Text style={styles.tipText}>{tip}</Text>
               </View>
@@ -191,46 +179,14 @@ function SuperLikesScreenContent() {
           </View>
         </View>
 
-        {/* CTA */}
-        <TouchableOpacity
-          style={styles.ctaButton}
-          onPress={() => router.push('/(tabs)/discover')}
-        >
-          <LinearGradient
-            colors={['#e94560', '#c23a51']}
-            style={styles.ctaGradient}
-          >
+        <TouchableOpacity style={styles.ctaButton} onPress={() => router.push('/(tabs)/discover')}>
+          <LinearGradient colors={[...AppTheme.gradients.cta]} style={styles.ctaGradient}>
             <Text style={styles.ctaIcon}>⭐</Text>
-            <Text style={styles.ctaText}>
-              {t('startSuperLiking') || 'Start Super Liking'}
-            </Text>
+            <Text style={styles.ctaText}>{t('startSuperLiking') || 'Start Super Liking'}</Text>
           </LinearGradient>
         </TouchableOpacity>
-    </View>
-  );
-
-  return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      {/* Header - Fixed at top */}
-      <View style={[styles.header, { paddingTop: 40 + topInset }]}>
-        <TouchableOpacity style={[styles.backButton, { top: 30 + topInset }]} onPress={() => router.back()}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>{t('superLikes') || 'Super Likes'}</Text>
-        <Text style={styles.subtitle}>
-          {t('superLikesSubtitle') || 'Make a lasting first impression'}
-        </Text>
-      </View>
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + bottomInset }]}
-        showsVerticalScrollIndicator={false}
-      >
-        {renderContent()}
       </ScrollView>
 
-      {/* Premium Badge */}
       <View style={styles.premiumBadge}>
         <Text style={styles.premiumIcon}>⭐</Text>
         <Text style={styles.premiumText}>{t('premiumFeature') || 'Premium Feature'}</Text>
@@ -242,17 +198,21 @@ function SuperLikesScreenContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    ...(Platform.OS === 'web' ? {
-      height: '100%' as any,
-      width: '100%' as any,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          height: '100%' as any,
+          width: '100%' as any,
+        }
+      : {}),
   },
   scrollView: {
     flex: 1,
-    ...(Platform.OS === 'web' ? {
-      height: 'calc(100vh - 120px)' as any,
-      overflowY: 'auto' as any,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          height: 'calc(100vh - 120px)' as any,
+          overflowY: 'auto' as any,
+        }
+      : {}),
   },
   scrollContent: {
     paddingBottom: 100,
@@ -268,34 +228,34 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 50,
     left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: AppTheme.colors.panelStrong,
     justifyContent: 'center',
     alignItems: 'center',
   },
   backText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 24,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
   },
   statsCard: {
     marginHorizontal: 20,
-    backgroundColor: 'rgba(233, 69, 96, 0.1)',
+    backgroundColor: 'rgba(232, 93, 117, 0.12)',
     borderRadius: 20,
     padding: 24,
     borderWidth: 1,
-    borderColor: 'rgba(233, 69, 96, 0.3)',
+    borderColor: 'rgba(232, 93, 117, 0.25)',
     marginBottom: 24,
   },
   mainStat: {
@@ -305,11 +265,11 @@ const styles = StyleSheet.create({
   mainStatNumber: {
     fontSize: 64,
     fontWeight: 'bold',
-    color: '#e94560',
+    color: AppTheme.colors.coral,
   },
   mainStatLabel: {
     fontSize: 16,
-    color: '#ccc',
+    color: AppTheme.colors.textSecondary,
     marginTop: -4,
   },
   statsRow: {
@@ -317,7 +277,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
+    borderTopColor: AppTheme.colors.border,
   },
   statItem: {
     alignItems: 'center',
@@ -326,16 +286,16 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   statLabel: {
     fontSize: 12,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     marginTop: 4,
   },
   statDivider: {
     width: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: AppTheme.colors.border,
   },
   refreshInfo: {
     flexDirection: 'row',
@@ -349,7 +309,7 @@ const styles = StyleSheet.create({
   },
   refreshText: {
     fontSize: 13,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
   },
   section: {
     paddingHorizontal: 20,
@@ -358,13 +318,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 16,
   },
   stepsContainer: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
     borderRadius: 16,
     padding: 20,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
   },
   step: {
     flexDirection: 'row',
@@ -374,13 +336,13 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#e94560',
+    backgroundColor: AppTheme.colors.coral,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
   },
   stepNumberText: {
-    color: '#fff',
+    color: AppTheme.colors.textOnAccent,
     fontWeight: 'bold',
     fontSize: 16,
   },
@@ -390,28 +352,30 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 4,
   },
   stepDesc: {
     fontSize: 14,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
     lineHeight: 20,
   },
   stepConnector: {
     width: 2,
     height: 24,
-    backgroundColor: 'rgba(233, 69, 96, 0.3)',
+    backgroundColor: 'rgba(232, 93, 117, 0.25)',
     marginLeft: 15,
     marginVertical: 8,
   },
   benefitCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
     borderRadius: 12,
     padding: 16,
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
   },
   benefitEmoji: {
     fontSize: 28,
@@ -423,31 +387,33 @@ const styles = StyleSheet.create({
   benefitTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 4,
   },
   benefitDesc: {
     fontSize: 14,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
   },
   tipsCard: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
     borderRadius: 16,
     padding: 16,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
   },
   tipItem: {
     flexDirection: 'row',
     marginBottom: 12,
   },
   tipBullet: {
-    color: '#e94560',
+    color: AppTheme.colors.coral,
     marginRight: 10,
     fontSize: 12,
   },
   tipText: {
     flex: 1,
     fontSize: 14,
-    color: '#ccc',
+    color: AppTheme.colors.textSecondary,
     lineHeight: 20,
   },
   ctaButton: {
@@ -466,7 +432,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   ctaText: {
-    color: '#fff',
+    color: AppTheme.colors.textOnAccent,
     fontSize: 18,
     fontWeight: '600',
   },
@@ -476,7 +442,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(233, 69, 96, 0.2)',
+    backgroundColor: 'rgba(232, 93, 117, 0.16)',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
@@ -487,7 +453,7 @@ const styles = StyleSheet.create({
   },
   premiumText: {
     fontSize: 12,
-    color: '#e94560',
+    color: AppTheme.colors.coral,
     fontWeight: '600',
   },
 });

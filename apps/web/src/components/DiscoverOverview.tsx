@@ -258,28 +258,68 @@ export function DiscoverOverview() {
     }
   };
 
+  // Keyboard shortcut support for like/pass
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!currentProfile || actionLoading || reportOpen) return;
+      if (e.key === "ArrowRight" || e.key === "l") {
+        e.preventDefault();
+        handleSwipe("like");
+      } else if (e.key === "ArrowLeft" || e.key === "p") {
+        e.preventDefault();
+        handleSwipe("pass");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [currentProfile, actionLoading, reportOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (loading) {
     return (
-      <div className="rounded-[2rem] border border-border bg-card/90 p-6 text-sm text-text-muted">
-        {t("loading")}
+      <div className="rounded-[2rem] border border-border bg-card/90 p-10 text-center">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-accent/20 bg-accent/8">
+          <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent border-t-transparent" aria-hidden="true" />
+        </div>
+        <p role="status" className="mt-5 text-sm font-medium text-white">{t("discoverLoadingTitle")}</p>
+        <p className="mt-2 text-xs text-text-dim">{t("discoverLoadingBody")}</p>
       </div>
     );
   }
 
   if (!currentProfile) {
     return (
-      <div className="rounded-[2rem] border border-border bg-card/90 p-8">
-        <h2 className="text-2xl font-semibold text-white">{t("discoverEmptyTitle")}</h2>
-        <p className="mt-3 max-w-2xl text-sm leading-7 text-text-muted">
-          {t("discoverEmptyBody")}
-        </p>
-        <button
-          type="button"
-          onClick={loadProfiles}
-          className="mt-6 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+      <div className="space-y-4">
+        <div className="rounded-[2rem] border border-border bg-card/90 p-10 text-center">
+          <p className="mb-4 text-5xl" aria-hidden="true">🌌</p>
+          <h2 className="text-2xl font-semibold text-white">{t("discoverEmptyTitle")}</h2>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-text-muted">
+            {t("discoverEmptyBody")}
+          </p>
+          <button
+            type="button"
+            onClick={loadProfiles}
+            className="mt-6 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)]"
+          >
+            {t("refreshProfiles")}
+          </button>
+        </div>
+
+        {/* Profile improvement nudge -- activation booster */}
+        <Link
+          href="/app/profile"
+          className="group flex items-center gap-4 rounded-2xl border border-[rgba(74,222,128,0.18)] bg-[linear-gradient(135deg,rgba(74,222,128,0.06),rgba(74,222,128,0.02))] px-6 py-5 transition-all hover:-translate-y-0.5 hover:border-[rgba(74,222,128,0.3)]"
         >
-          {t("refreshProfiles")}
-        </button>
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(74,222,128,0.12)] text-xl">
+            📸
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-white">{t("discoverEmptyImproveTitle")}</p>
+            <p className="mt-1 text-xs text-text-muted">{t("discoverEmptyImproveBody")}</p>
+          </div>
+          <span className="hidden shrink-0 text-xs font-semibold text-[#a7f3c0] group-hover:text-white sm:inline">
+            {t("discoverEmptyImproveCta")} →
+          </span>
+        </Link>
       </div>
     );
   }
@@ -296,16 +336,22 @@ export function DiscoverOverview() {
           <div className="relative min-h-[420px] bg-bg-secondary">
             <Image
               src={profileImage}
-              alt={currentProfile.name || "Profile"}
+              alt={`${currentProfile.name || t("unknownUser")} — ${currentProfile.sun_sign ? translateSign(currentProfile.sun_sign, locale) : ""}`}
               fill
               sizes="(max-width: 1024px) 100vw, 40vw"
               unoptimized={shouldBypassImageOptimization(profileImage)}
               className="object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-            <div className={`absolute left-5 top-5 rounded-full border px-4 py-2 text-sm font-semibold backdrop-blur-md ${compatibilityTone.overlay}`}>
+            <div className={`absolute left-5 top-5 flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold backdrop-blur-md ${compatibilityTone.overlay}`}>
+              {compatibility >= 80 && <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-400" />}
               {compatibility}% {t("discoverMatch")}
             </div>
+            {compatibility >= 80 && (
+              <div className="absolute right-5 top-5 rounded-full border border-emerald-400/30 bg-emerald-500/15 px-3 py-1.5 text-[11px] font-semibold text-emerald-300 backdrop-blur-md">
+                {t("discoverHighCompatAlert")}
+              </div>
+            )}
             <div className="absolute inset-x-0 bottom-0 p-6">
               <h2 className="text-3xl font-semibold text-white">
                 {currentProfile.name || t("unknownUser")}
@@ -367,7 +413,7 @@ export function DiscoverOverview() {
                 {/* Circle */}
                 <div className="flex flex-col items-center">
                   <div className="relative flex h-28 w-28 items-center justify-center">
-                    <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+                    <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90" role="img" aria-label={`${t("discoverCompatibility")} ${compatibility}%`}>
                       <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
                       <circle
                         cx="50" cy="50" r="42" fill="none"
@@ -437,13 +483,17 @@ export function DiscoverOverview() {
                   </div>
                 </div>
 
-                {/* Upgrade CTA */}
-                <Link
-                  href="/app/plans"
-                  className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-accent/10 px-4 py-2.5 text-sm font-medium text-accent transition-colors hover:bg-accent/20"
-                >
-                  ✨ {t("discoverUnlockFull") || "Unlock full compatibility"}
-                </Link>
+                {/* Upgrade CTA -- contextual premium nudge */}
+                <div className="mt-4 rounded-xl border border-accent/15 bg-[linear-gradient(135deg,rgba(232,93,117,0.08),rgba(124,108,255,0.06))] p-4">
+                  <p className="text-xs font-medium text-white">{t("discoverUnlockInsight")}</p>
+                  <p className="mt-1 text-[11px] leading-5 text-text-muted">{t("discoverPremiumInsightBody")}</p>
+                  <Link
+                    href="/app/plans"
+                    className="mt-3 flex items-center justify-center gap-2 rounded-full bg-accent/90 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-accent hover:shadow-[0_0_16px_rgba(232,93,117,0.25)]"
+                  >
+                    ✨ {t("discoverUnlockFull")}
+                  </Link>
+                </div>
               </div>
             </div>
 
@@ -452,17 +502,31 @@ export function DiscoverOverview() {
                 type="button"
                 onClick={() => handleSwipe("pass")}
                 disabled={actionLoading !== null}
-                className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover disabled:cursor-not-allowed disabled:opacity-70"
+                className="group flex items-center gap-2 rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-all hover:border-white/30 hover:bg-card-hover disabled:cursor-not-allowed disabled:opacity-70"
+                title="Keyboard: Arrow Left or P"
               >
-                {actionLoading === "pass" ? t("loading") : t("discoverPass")}
+                {actionLoading === "pass" ? (
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden="true" />
+                ) : (
+                  <span className="text-base" aria-hidden="true">&#10005;</span>
+                )}
+                {t("discoverPass")}
+                <kbd className="ml-1 hidden rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-[10px] text-text-dim lg:inline">&#8592;</kbd>
               </button>
               <button
                 type="button"
                 onClick={() => handleSwipe("like")}
                 disabled={actionLoading !== null}
-                className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
+                className="group flex items-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
+                title="Keyboard: Arrow Right or L"
               >
-                {actionLoading === "like" ? t("loading") : t("discoverLike")}
+                {actionLoading === "like" ? (
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden="true" />
+                ) : (
+                  <span className="text-base" aria-hidden="true">&#10084;</span>
+                )}
+                {t("discoverLike")}
+                <kbd className="ml-1 hidden rounded border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px] text-white/60 lg:inline">&#8594;</kbd>
               </button>
               <button
                 type="button"
@@ -471,14 +535,14 @@ export function DiscoverOverview() {
                   const sign = currentProfile.sun_sign || "someone";
                   const text = `I'm ${compatibility}% compatible with a ${sign} on AstroDating! Find your cosmic match 🪐\nhttps://astrodatingapp.com`;
                   if (navigator.share) {
-                    navigator.share({ text, title: "AstroDating Compatibility" }).catch(() => {});
-                  } else {
-                    navigator.clipboard.writeText(text);
+                    navigator.share({ text, title: t("shareCompatibilityTitle") }).catch(() => {});
+                  } else if (navigator.clipboard) {
+                    navigator.clipboard.writeText(text).catch(() => {});
                   }
                 }}
                 className="rounded-full border border-white/20 bg-white/[0.06] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/[0.1]"
               >
-                📤 {t("shareCompatibility") || "Share"}
+                📤 {t("shareCompatibility")}
               </button>
               <button
                 type="button"
@@ -494,7 +558,7 @@ export function DiscoverOverview() {
             </div>
 
             {reportOpen ? (
-              <div className="mt-5 rounded-[1.5rem] border border-[#6b3346] bg-[#241824]/85 p-5">
+              <div role="region" aria-label={t("reportUser")} className="mt-5 rounded-[1.5rem] border border-[#6b3346] bg-[#241824]/85 p-5">
                 <p className="text-xs uppercase tracking-[0.24em] text-[#d69bab]">
                   {t("reportUser")}
                 </p>
@@ -511,6 +575,7 @@ export function DiscoverOverview() {
                     <button
                       key={value}
                       type="button"
+                      aria-pressed={reportReason === value}
                       onClick={() => setReportReason(value)}
                       className={`rounded-2xl border px-4 py-3 text-left text-sm transition-colors ${
                         reportReason === value
@@ -522,13 +587,16 @@ export function DiscoverOverview() {
                     </button>
                   ))}
                 </div>
-                <textarea
-                  value={reportDescription}
-                  onChange={(event) => setReportDescription(event.target.value)}
-                  placeholder={t("reportNote")}
-                  rows={4}
-                  className="mt-4 w-full rounded-[1.25rem] border border-border bg-bg/80 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-text-dim focus:border-accent"
-                />
+                <label className="mt-4 block">
+                  <span className="sr-only">{t("reportNote")}</span>
+                  <textarea
+                    value={reportDescription}
+                    onChange={(event) => setReportDescription(event.target.value)}
+                    placeholder={t("reportNote")}
+                    rows={4}
+                    className="w-full rounded-[1.25rem] border border-border bg-bg/80 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-text-dim focus:border-accent"
+                  />
+                </label>
                 <div className="mt-4 flex flex-wrap gap-3">
                   <button
                     type="button"
@@ -550,13 +618,13 @@ export function DiscoverOverview() {
             ) : null}
 
             {error ? (
-              <p className="mt-4 rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
+              <p role="alert" className="mt-4 rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
                 {error}
               </p>
             ) : null}
 
             {reportFeedback ? (
-              <p className="mt-4 rounded-2xl border border-[#6b3346] bg-[#3d1f2a]/40 px-4 py-3 text-sm text-[#ffd0d7]">
+              <p role="status" className="mt-4 rounded-2xl border border-[#6b3346] bg-[#3d1f2a]/40 px-4 py-3 text-sm text-[#ffd0d7]">
                 {reportFeedback}
               </p>
             ) : null}

@@ -1,9 +1,22 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+
 const RESEND_API_URL = "https://api.resend.com/emails";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const FROM_EMAIL =
   Deno.env.get("EMAIL_FROM") || "AstroDating <noreply@astrodatingapp.com>";
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 function renderEmailShell({
   eyebrow,
@@ -227,6 +240,20 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // --- Auth ---
+    const authHeader =
+      req.headers.get("authorization") ?? req.headers.get("Authorization");
+    const token = authHeader?.replace(/^Bearer\s+/i, "").trim() ?? "";
+
+    if (!token) {
+      return new Response(
+        JSON.stringify({ error: "Missing auth token" }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    const isServiceRole = supabaseServiceKey.length > 0 && token === supabaseServiceKey;
+
     const { userId, template, params } = await req.json();
 
     if (!userId || !template) {
@@ -234,6 +261,28 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Missing required fields: userId, template" }),
         { status: 400, headers: { "Content-Type": "application/json" } },
       );
+    }
+
+    if (!isServiceRole) {
+      const userSupabase = createClient(supabaseUrl, supabaseAnonKey);
+      const {
+        data: { user },
+        error: authError,
+      } = await userSupabase.auth.getUser(token);
+
+      if (authError || !user?.id) {
+        return new Response(
+          JSON.stringify({ error: "Invalid or expired token" }),
+          { status: 401, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      if (user.id !== userId) {
+        return new Response(
+          JSON.stringify({ error: "Forbidden: userId mismatch" }),
+          { status: 403, headers: { "Content-Type": "application/json" } },
+        );
+      }
     }
 
     const buildEmail = TEMPLATES[template];
@@ -244,10 +293,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
@@ -272,7 +318,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { subject, html } = buildEmail({ name: profile.name, ...(params ?? {}) });
+    // HTML-escape user-provided params to prevent XSS in emails
+    const safeParams: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(params ?? {})) {
+      safeParams[key] = typeof value === "string" ? escapeHtml(value) : value;
+    }
+    const safeName = profile.name ? escapeHtml(String(profile.name)) : "";
+
+    const { subject, html } = buildEmail({ name: safeName, ...safeParams });
 
     const resendRes = await fetch(RESEND_API_URL, {
       method: "POST",

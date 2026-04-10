@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -21,8 +21,15 @@ import { showAlert } from '../../utils/alert';
 import LanguageSelector from '../../components/LanguageSelector';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { validateEmail, validateName, validatePassword } from '../../utils/validation';
-import { useAuth } from '../_layout';
-import { checkRateLimit, recordAttempt, resetRateLimit, formatRetryMessage } from '../../utils/rateLimiter';
+import { useAuth } from '../../contexts/AuthContext';
+import { checkRateLimit, recordAttempt, formatRetryMessage } from '../../utils/rateLimiter';
+import { buttonPress, errorNotification } from '../../services/haptics';
+import {
+  useReduceMotion,
+  getButtonA11yProps,
+  getTextInputA11yProps,
+  a11yColors,
+} from '../../utils/accessibility';
 
 export default function SignupScreen() {
   const [name, setName] = useState('');
@@ -33,82 +40,121 @@ export default function SignupScreen() {
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
   const { signUp, signInWithGoogle, signInWithApple, signInWithFacebook } = useAuth();
   const { t } = useLanguage();
+  const reduceMotion = useReduceMotion();
 
-  // Animations
-  const fadeAnim = useState(new Animated.Value(0))[0];
-  const slideAnim = useState(new Animated.Value(30))[0];
-  const scaleAnim = useState(new Animated.Value(0.8))[0];
+  // Inline validation errors (shown below each field)
+  const [nameError, setNameError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
+  // Refs for keyboard flow
+  const emailInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInput>(null);
+
+  // Animations - start at final values if reduce motion is enabled
+  const fadeAnim = useState(new Animated.Value(reduceMotion ? 1 : 0))[0];
+  const slideAnim = useState(new Animated.Value(reduceMotion ? 0 : 30))[0];
+  const scaleAnim = useState(new Animated.Value(reduceMotion ? 1 : 0.8))[0];
   useEffect(() => {
+    if (reduceMotion) {
+      fadeAnim.setValue(1);
+      slideAnim.setValue(0);
+      scaleAnim.setValue(1);
+      return;
+    }
+
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 800,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: 800,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
         tension: 50,
         friction: 7,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
     ]).start();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- animation refs are stable
-  }, []);
+  }, [reduceMotion]);
+
+  // Clear inline error when user starts typing in a field
+  const handleNameChange = (value: string) => {
+    setName(value);
+    if (nameError) setNameError('');
+  };
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (emailError) setEmailError('');
+  };
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    if (passwordError) setPasswordError('');
+  };
 
   const handleSignup = async () => {
-    if (!name || !email || !password) {
-      showAlert(t('error'), t('fillAllFields'));
-      return;
-    }
+    // Inline validation -- set errors on each field instead of alert popups
+    let hasError = false;
 
-    const nameResult = validateName(name);
+    const nameResult = name.trim() ? validateName(name) : { valid: false, error: 'signupInlineNameRequired' };
     if (!nameResult.valid) {
-      showAlert(t('error'), t(nameResult.error!));
-      return;
+      setNameError(t(nameResult.error!) || nameResult.error!);
+      hasError = true;
+    } else {
+      setNameError('');
     }
 
-    const emailResult = validateEmail(email);
+    const emailResult = email.trim() ? validateEmail(email) : { valid: false, error: 'signupInlineEmailRequired' };
     if (!emailResult.valid) {
-      showAlert(t('error'), t(emailResult.error!));
-      return;
+      setEmailError(t(emailResult.error!) || emailResult.error!);
+      hasError = true;
+    } else {
+      setEmailError('');
     }
 
-    const passwordResult = validatePassword(password);
+    const passwordResult = password ? validatePassword(password) : { valid: false, error: 'signupInlinePasswordRequired' };
     if (!passwordResult.valid) {
-      showAlert(t('error'), t(passwordResult.error!));
+      setPasswordError(t(passwordResult.error!) || passwordResult.error!);
+      hasError = true;
+    } else {
+      setPasswordError('');
+    }
+
+    if (hasError) {
+      errorNotification();
       return;
     }
 
     const limit = checkRateLimit('signup', { maxAttempts: 3, windowMs: 60000, lockoutMs: 600000 });
     if (!limit.allowed) {
+      errorNotification();
       showAlert(t('error'), formatRetryMessage(limit.retryAfterMs));
       return;
     }
 
+    buttonPress();
     setLoading(true);
     recordAttempt('signup');
     const { error } = await signUp(email, password, name);
     setLoading(false);
 
     if (error) {
+      errorNotification();
       showAlert(t('error'), t('signupError') || 'Unable to create account. Please try again.');
     } else {
-      // Show success message and navigate to verify email
-      showAlert(
-        t('accountCreated') || 'Account Created',
-        t('checkEmailVerification') || 'Please check your email to verify your account.'
-      );
-      // Navigate after alert (works on both web and native)
+      // Navigate immediately -- the verify-email screen shows the success context
       router.replace('/auth/verify-email');
     }
   };
 
   const handleSocialAuth = async (provider: 'google' | 'apple' | 'facebook') => {
+    buttonPress();
     setSocialLoading(provider);
     try {
       const signInFn =
@@ -117,11 +163,13 @@ export default function SignupScreen() {
         signInWithFacebook;
       const { error } = await signInFn();
       if (error) {
+        errorNotification();
         showAlert(t('error'), t('socialAuthError'));
       } else {
         router.replace('/');
       }
     } catch {
+      errorNotification();
       showAlert(t('error'), t('socialAuthError'));
     } finally {
       setSocialLoading(null);
@@ -153,6 +201,7 @@ export default function SignupScreen() {
                   transform: [{ scale: scaleAnim }],
                 }
               ]}
+              accessibilityRole="header"
             >
               <AuthBrandMark />
               <Text style={styles.title}>{t('joinTheCosmos')}</Text>
@@ -183,44 +232,67 @@ export default function SignupScreen() {
               ]}
             >
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>{t('name')}</Text>
+                <Text style={styles.label} nativeID="nameLabel">{t('name')}</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, nameError ? styles.inputError : null]}
                   placeholder={t('yourName')}
                   placeholderTextColor="#666"
                   value={name}
-                  onChangeText={setName}
+                  onChangeText={handleNameChange}
                   autoCapitalize="words"
+                  autoComplete="name"
+                  textContentType="name"
+                  returnKeyType="next"
+                  onSubmitEditing={() => emailInputRef.current?.focus()}
+                  {...getTextInputA11yProps(t('a11y.nameInput') || t('name'), t('a11y.requiredField'))}
+                  accessibilityLabelledBy="nameLabel"
                 />
+                {nameError ? <Text style={styles.fieldError}>{nameError}</Text> : null}
               </View>
 
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>{t('email')}</Text>
+                <Text style={styles.label} nativeID="emailLabel">{t('email')}</Text>
                 <TextInput
-                  style={styles.input}
+                  ref={emailInputRef}
+                  style={[styles.input, emailError ? styles.inputError : null]}
                   placeholder={t('yourEmail')}
                   placeholderTextColor="#666"
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={handleEmailChange}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  autoComplete="email"
+                  textContentType="emailAddress"
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordInputRef.current?.focus()}
+                  {...getTextInputA11yProps(t('a11y.emailInput') || t('email'), t('a11y.requiredField'))}
+                  accessibilityLabelledBy="emailLabel"
                 />
+                {emailError ? <Text style={styles.fieldError}>{emailError}</Text> : null}
               </View>
 
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>{t('password')}</Text>
+                <Text style={styles.label} nativeID="passwordLabel">{t('password')}</Text>
                 <View style={styles.passwordRow}>
                   <TextInput
-                    style={[styles.input, styles.passwordInput]}
+                    ref={passwordInputRef}
+                    style={[styles.input, styles.passwordInput, passwordError ? styles.inputError : null]}
                     placeholder="********"
                     placeholderTextColor="#666"
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={handlePasswordChange}
                     secureTextEntry={!showPassword}
+                    autoComplete="password-new"
+                    textContentType="newPassword"
+                    returnKeyType="done"
+                    onSubmitEditing={handleSignup}
+                    {...getTextInputA11yProps(t('a11y.passwordInput') || t('password'), t('a11y.requiredField'))}
+                    accessibilityLabelledBy="passwordLabel"
                   />
                   <TouchableOpacity
                     style={styles.passwordToggle}
                     onPress={() => setShowPassword(prev => !prev)}
+                    {...getButtonA11yProps(showPassword ? t('hidePassword') : t('showPassword'))}
                   >
                     <Ionicons
                       name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -229,7 +301,11 @@ export default function SignupScreen() {
                     />
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.hint}>{t('passwordHintStrong')}</Text>
+                {passwordError ? (
+                  <Text style={styles.fieldError}>{passwordError}</Text>
+                ) : (
+                  <Text style={styles.hint}>{t('passwordHintStrong')}</Text>
+                )}
               </View>
 
               <TouchableOpacity
@@ -237,6 +313,11 @@ export default function SignupScreen() {
                 onPress={handleSignup}
                 disabled={loading}
                 activeOpacity={0.8}
+                {...getButtonA11yProps(
+                  t('createAccount'),
+                  t('a11y.doubleTapHint'),
+                  { busy: loading }
+                )}
               >
                 <LinearGradient
                   colors={['#e94560', '#c23a51']}
@@ -453,6 +534,15 @@ const styles = StyleSheet.create({
     color: AppTheme.colors.textMuted,
     fontSize: 12,
     marginTop: 6,
+  },
+  inputError: {
+    borderColor: '#e94560',
+  },
+  fieldError: {
+    color: '#e94560',
+    fontSize: 12,
+    marginTop: 6,
+    fontStyle: 'italic',
   },
   preferenceOptions: {
     flexDirection: 'row',

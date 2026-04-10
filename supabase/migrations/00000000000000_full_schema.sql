@@ -17,6 +17,7 @@ DROP TRIGGER IF EXISTS trigger_notify_new_match ON matches;
 DROP TRIGGER IF EXISTS trigger_notify_new_message ON messages;
 DROP TRIGGER IF EXISTS trigger_send_welcome_email ON profiles;
 DROP TRIGGER IF EXISTS trigger_send_match_email ON matches;
+DROP TRIGGER IF EXISTS trigger_send_report_email ON reports;
 
 -- Drop functions
 DROP FUNCTION IF EXISTS check_and_create_match() CASCADE;
@@ -35,6 +36,7 @@ DROP FUNCTION IF EXISTS notify_new_match() CASCADE;
 DROP FUNCTION IF EXISTS notify_new_message() CASCADE;
 DROP FUNCTION IF EXISTS send_welcome_email() CASCADE;
 DROP FUNCTION IF EXISTS send_match_email() CASCADE;
+DROP FUNCTION IF EXISTS send_report_email() CASCADE;
 
 -- Drop view
 DROP VIEW IF EXISTS discoverable_profiles CASCADE;
@@ -160,6 +162,39 @@ DO $$ BEGIN
   ALTER TABLE profiles ADD CONSTRAINT profiles_age_check CHECK (age >= 18 OR age IS NULL);
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+
+CREATE OR REPLACE FUNCTION public.enforce_adult_profile()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  calculated_age INTEGER;
+BEGIN
+  IF NEW.birth_date IS NOT NULL THEN
+    calculated_age := DATE_PART('year', AGE(CURRENT_DATE, NEW.birth_date::date));
+    IF calculated_age < 18 THEN
+      RAISE EXCEPTION 'Users must be at least 18 years old.'
+        USING ERRCODE = 'P0001';
+    END IF;
+  END IF;
+
+  IF NEW.age IS NOT NULL AND NEW.age < 18 THEN
+    RAISE EXCEPTION 'Users must be at least 18 years old.'
+      USING ERRCODE = 'P0001';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trigger_enforce_adult_profile ON public.profiles;
+
+CREATE TRIGGER trigger_enforce_adult_profile
+BEFORE INSERT OR UPDATE ON public.profiles
+FOR EACH ROW
+EXECUTE FUNCTION public.enforce_adult_profile();
 
 -- Profiles indexes
 CREATE INDEX IF NOT EXISTS idx_profiles_active ON profiles(is_active) WHERE is_active = TRUE;
@@ -307,6 +342,30 @@ CREATE TABLE IF NOT EXISTS deletion_requests (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS promo_campaign_redemptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  campaign_code TEXT NOT NULL,
+  platform TEXT NOT NULL CHECK (platform IN ('stripe', 'play_store')),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (
+    status IN ('pending', 'checkout_completed', 'consumed', 'failed')
+  ),
+  stripe_customer_id TEXT,
+  stripe_subscription_id TEXT,
+  stripe_price_id TEXT,
+  applied_at TIMESTAMPTZ,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, campaign_code, platform)
+);
+
+CREATE INDEX IF NOT EXISTS idx_promo_campaign_redemptions_status
+  ON promo_campaign_redemptions(status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_promo_campaign_redemptions_user
+  ON promo_campaign_redemptions(user_id, created_at DESC);
+
 -- ============================================
 -- 10. ROW LEVEL SECURITY
 -- ============================================
@@ -364,6 +423,47 @@ CREATE POLICY "Deny all direct access to rate_limits" ON rate_limits FOR ALL USI
 -- Deletion requests (deny all direct access)
 ALTER TABLE deletion_requests ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Deny all direct access" ON deletion_requests FOR ALL USING (false);
+
+-- Promo campaign redemptions (service role only)
+ALTER TABLE promo_campaign_redemptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Deny all direct access to promo campaign redemptions"
+  ON promo_campaign_redemptions FOR ALL USING (false);
+CREATE POLICY "Service role can manage promo campaign redemptions"
+  ON promo_campaign_redemptions FOR ALL USING (auth.role() = 'service_role');
+
+CREATE TABLE IF NOT EXISTS promo_campaigns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code TEXT NOT NULL,
+  platform TEXT NOT NULL CHECK (platform IN ('stripe', 'play_store')),
+  billing_cycle TEXT NOT NULL CHECK (billing_cycle IN ('monthly', 'yearly')),
+  reward_type TEXT NOT NULL CHECK (
+    reward_type IN (
+      'stripe_deferred_coupon',
+      'stripe_checkout_coupon',
+      'play_store_defer_billing',
+      'play_store_subscription_option'
+    )
+  ),
+  stripe_coupon_id TEXT,
+  play_defer_duration_seconds INTEGER,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  starts_at TIMESTAMPTZ,
+  ends_at TIMESTAMPTZ,
+  max_redemptions INTEGER,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (code, platform, billing_cycle)
+);
+
+CREATE INDEX IF NOT EXISTS idx_promo_campaigns_lookup
+  ON promo_campaigns(code, platform, billing_cycle, active);
+
+ALTER TABLE promo_campaigns ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Deny all direct access to promo campaigns"
+  ON promo_campaigns FOR ALL USING (false);
+CREATE POLICY "Service role can manage promo campaigns"
+  ON promo_campaigns FOR ALL USING (auth.role() = 'service_role');
 
 -- ============================================
 -- 11. STORAGE BUCKET FOR AVATARS
@@ -705,6 +805,20 @@ END;
 $$;
 
 CREATE TRIGGER trigger_send_match_email AFTER INSERT ON matches FOR EACH ROW EXECUTE FUNCTION send_match_email();
+
+-- Report email
+CREATE OR REPLACE FUNCTION send_report_email() RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE edge_function_url TEXT;
+BEGIN
+  edge_function_url := 'https://qtihezzbuubnyvrjdkjd.supabase.co/functions/v1/send-report-email';
+  PERFORM net.http_post(url := edge_function_url,
+    body := jsonb_build_object('reportId', NEW.id),
+    headers := jsonb_build_object('Content-Type', 'application/json'));
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trigger_send_report_email AFTER INSERT ON reports FOR EACH ROW EXECUTE FUNCTION send_report_email();
 
 -- ============================================
 -- 18. OPTIONAL: pg_cron cleanup

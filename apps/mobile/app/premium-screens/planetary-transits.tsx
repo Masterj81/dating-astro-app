@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PremiumGate from '../../components/PremiumGate';
+import PlanetGlyph from '../../components/ui/PlanetGlyph';
+import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -36,6 +38,7 @@ type UpcomingTransit = {
 
 function PlanetaryTransitsScreenContent() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [sunSign, setSunSign] = useState<string | null>(null);
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -63,15 +66,20 @@ function PlanetaryTransitsScreenContent() {
       return;
     }
     setLoading(true);
+    setError(null);
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('sun_sign')
+        .eq('id', user.id)
+        .maybeSingle();
 
-    const { data } = await supabase
-      .from('profiles')
-      .select('sun_sign')
-      .eq('id', user.id)
-      .single();
-
-    if (data?.sun_sign) {
-      setSunSign(data.sun_sign);
+      if (data?.sun_sign) {
+        setSunSign(data.sun_sign);
+      }
+    } catch (err) {
+      console.error('Error loading user sign:', err);
+      setError(t('loadingError') || 'Could not load transit data. Please try again.');
     }
     setLoading(false);
   };
@@ -198,8 +206,30 @@ function PlanetaryTransitsScreenContent() {
 
   if (loading) {
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-        <ActivityIndicator size="large" color="#e94560" />
+      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={AppTheme.colors.coral} />
+          <Text style={{ color: AppTheme.colors.textMuted, marginTop: 12, fontSize: 14 }}>
+            {t('loadingTransits') || 'Tracking planetary movements...'}
+          </Text>
+        </View>
+      </LinearGradient>
+    );
+  }
+
+  if (error) {
+    return (
+      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+          <Text style={{ fontSize: 48, marginBottom: 16 }}>{'🪐'}</Text>
+          <Text style={{ color: AppTheme.colors.textSecondary, fontSize: 16, textAlign: 'center', marginBottom: 20 }}>{error}</Text>
+          <TouchableOpacity
+            onPress={loadUserSign}
+            style={{ backgroundColor: AppTheme.colors.coral, paddingVertical: 14, paddingHorizontal: 28, borderRadius: 14, minHeight: 48 }}
+          >
+            <Text style={{ color: AppTheme.colors.textOnAccent, fontWeight: '600', fontSize: 16 }}>{t('tryAgain') || 'Try Again'}</Text>
+          </TouchableOpacity>
+        </View>
       </LinearGradient>
     );
   }
@@ -231,7 +261,7 @@ function PlanetaryTransitsScreenContent() {
           {transits.map((transit, index) => (
             <View key={index} style={styles.transitCard}>
               <View style={styles.transitHeader}>
-                <Text style={styles.transitEmoji}>{transit.emoji}</Text>
+                <PlanetGlyph symbol={transit.emoji} size={30} textStyle={styles.transitEmoji} />
                 <View style={styles.transitInfo}>
                   <Text style={styles.transitPlanet}>{transit.planet}</Text>
                   <Text style={styles.transitSign}>
@@ -273,7 +303,7 @@ function PlanetaryTransitsScreenContent() {
               <View style={styles.upcomingDate}>
                 <Text style={styles.upcomingDateText}>{transit.date}</Text>
               </View>
-              <Text style={styles.upcomingEmoji}>{transit.emoji}</Text>
+              <PlanetGlyph symbol={transit.emoji} size={26} textStyle={styles.upcomingEmoji} />
               <View style={styles.upcomingInfo}>
                 <Text style={styles.upcomingEvent}>{transit.event}</Text>
                 <Text style={styles.upcomingImpact}>{transit.impact}</Text>
@@ -308,7 +338,12 @@ function PlanetaryTransitsScreenContent() {
   );
 
   return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+    <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+<ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
+        showsVerticalScrollIndicator={false}
+      >
       {/* Header - Fixed at top */}
       <View style={[styles.header, { paddingTop: 40 + topInset }]}>
         <TouchableOpacity style={[styles.backButton, { top: 30 + topInset }]} onPress={() => router.back()}>
@@ -318,11 +353,7 @@ function PlanetaryTransitsScreenContent() {
         <Text style={styles.subtitle}>{t('planetaryTransitsSubtitle')}</Text>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
-        showsVerticalScrollIndicator={false}
-      >
+      
         {renderContent()}
       </ScrollView>
     </LinearGradient>
@@ -358,26 +389,26 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 50,
     left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: AppTheme.colors.panelStrong,
     justifyContent: 'center',
     alignItems: 'center',
   },
   backText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 24,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
     textAlign: 'center',
   },
   personalCard: {

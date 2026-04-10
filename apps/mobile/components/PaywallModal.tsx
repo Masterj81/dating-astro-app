@@ -129,51 +129,62 @@ export default function PaywallModal() {
               </Text>
             </View>
 
-            {/* Title */}
+            {/* Title - emotional, specific to the blocked feature */}
             <Text style={styles.title} accessibilityRole="header">
-              {t('trialExhausted') || 'Free Preview Used'}
+              {feature
+                ? t('paywallFeatureTitle') || 'This Insight Awaits You'
+                : t('youreAlmostThere') || 'You\u2019re Almost There'}
             </Text>
 
-            {/* Description */}
+            {/* Description - concrete value, not generic */}
             <Text style={styles.description}>
-              {t('trialExhaustedDesc') ||
-                "You've used your free daily preview. Subscribe for unlimited access."}
+              {feature
+                ? `${getFeatureDisplayName(feature)} ${t('paywallFeatureDesc') || 'reveals what the stars see in your connections. Unlock it with a free 7-day trial.'}`
+                : t('paywallGenericDesc') || 'Your cosmic blueprint is ready. Start your free trial to see who the stars align you with.'}
             </Text>
 
-            {/* Feature info */}
-            {feature && (
-              <View style={styles.featureCard}>
-                <Text style={styles.featureLabel}>
-                  {getFeatureDisplayName(feature)}
-                </Text>
-                <View style={styles.tierBadge}>
-                  <Text style={styles.tierText}>
-                    {getTierDisplayName(recommendedTier)} {t('required') || 'REQUIRED'}
-                  </Text>
+            {/* Quick benefits - emotional copy with concrete value */}
+            <View style={styles.quickBenefits}>
+              {[
+                { icon: '\u2764\uFE0F', text: t('paywallBenefit1') || 'See who\u2019s drawn to your energy' },
+                { icon: '\u{1F31F}', text: t('paywallBenefit2') || 'Your full birth chart with 10 planets' },
+                { icon: '\u{1F52E}', text: t('paywallBenefit3') || 'Daily guidance tuned to your chart' },
+              ].map((b, i) => (
+                <View key={i} style={styles.quickBenefitRow}>
+                  <Text style={styles.quickBenefitIcon}>{b.icon}</Text>
+                  <Text style={styles.quickBenefitText}>{b.text}</Text>
                 </View>
-              </View>
-            )}
-
-            {/* Tier display - no hardcoded price */}
-            <View style={styles.priceContainer}>
-              <Text style={styles.price}>{getTierDisplayName(recommendedTier)}</Text>
+              ))}
             </View>
 
-            {/* CTA Button */}
+            {/* Social proof line */}
+            <View style={styles.paywallSocialProof}>
+              <Text style={styles.paywallSocialProofText}>
+                {t('paywallSocialProof') || 'Trusted by 12,000+ cosmic seekers'}
+              </Text>
+            </View>
+
+            {/* CTA Button - urgency without being pushy */}
             <TouchableOpacity
               style={styles.ctaButton}
               onPress={handleUpgrade}
               {...getButtonA11yProps(t('a11y.upgradeButton'))}
             >
               <LinearGradient
-                colors={['#e94560', '#c23a51']}
+                colors={['#e94560', '#7C6CFF']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
                 style={styles.ctaGradient}
               >
                 <Text style={styles.ctaText}>
-                  {t('startFreeTrial') || 'Start 7-Day Free Trial'}
+                  {t('paywallCta') || 'Try 7 Days Free'}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
+
+            <Text style={styles.trialNote}>
+              {t('paywallTrialReassurance') || 'No charge for 7 days \u00B7 Cancel anytime in 30 seconds'}
+            </Text>
 
             {/* Secondary CTA */}
             <TouchableOpacity
@@ -182,7 +193,7 @@ export default function PaywallModal() {
               {...getButtonA11yProps(t('a11y.viewPlansButton'))}
             >
               <Text style={styles.secondaryText}>
-                {t('viewAllPlans') || 'View All Plans'}
+                {t('viewAllPlans') || 'Compare Plans'}
               </Text>
             </TouchableOpacity>
 
@@ -264,41 +275,45 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 20,
   },
-  featureCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
-    padding: 16,
+  quickBenefits: {
     width: '100%',
     marginBottom: 20,
-    alignItems: 'center',
+    gap: 10,
   },
-  featureLabel: {
+  quickBenefitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  quickBenefitIcon: {
     fontSize: 16,
-    fontWeight: '600',
+  },
+  quickBenefitText: {
+    fontSize: 14,
     color: a11yColors.text.primary,
-    marginBottom: 8,
+    fontWeight: '500',
   },
-  tierBadge: {
-    backgroundColor: 'rgba(233, 69, 96, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+  paywallSocialProof: {
+    backgroundColor: 'rgba(218, 181, 109, 0.12)',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(218, 181, 109, 0.25)',
   },
-  tierText: {
-    fontSize: 11,
-    color: '#e94560',
+  paywallSocialProofText: {
+    fontSize: 12,
+    color: '#DAB56D',
+    textAlign: 'center',
     fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
-  priceContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  price: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#e94560',
+  trialNote: {
+    fontSize: 12,
+    color: a11yColors.text.muted,
+    marginBottom: 12,
+    textAlign: 'center',
   },
   ctaButton: {
     width: '100%',

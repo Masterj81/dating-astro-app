@@ -177,6 +177,214 @@ cosmic dark background, nebula gradient from deep indigo #1a0a3e to black, scatt
 
 ---
 
+## Reel Captions (Copy-Paste Ready)
+
+Each caption is optimized for Instagram Reels / TikTok: hook line first, value in the middle, CTA at the end. Keep hashtags in a comment below the caption if the platform supports it.
+
+---
+
+### ♈ Aries
+
+The truth about being an Aries? You don't wait for permission. You don't play it safe. You go all in — in life AND in love.
+
+Your superpower is fearless initiative. Your struggle? Patience was never your thing.
+
+You need someone who can keep up, not slow you down.
+
+Best cosmic matches: Leo, Sagittarius, Gemini.
+
+Ready to find yours? Link in bio.
+
+#Aries #ZodiacTruth #AstroDating #AriesSeason #FireSign #ZodiacCompatibility #AstrologyTikTok
+
+---
+
+### ♉ Taurus
+
+The truth about being a Taurus? You're not stubborn — you're loyal to what matters.
+
+Your superpower is unshakeable loyalty. Once you're in, you're IN. But letting go of your comfort zone? That's the real battle.
+
+In love, you build something real. No games. No situationships.
+
+You need someone who values depth over drama.
+
+Best cosmic matches: Virgo, Cancer, Capricorn.
+
+Find your person on AstroDating — link in bio.
+
+#Taurus #ZodiacTruth #AstroDating #EarthSign #TaurusSeason #ZodiacCompatibility #AstrologyReels
+
+---
+
+### ♊ Gemini
+
+The truth about being a Gemini? You're not two-faced. You're multifaceted.
+
+Your superpower is endless curiosity — your mind never stops. The struggle? Committing to just ONE thing when everything looks interesting.
+
+In love, you keep them guessing. And you need someone who stimulates your mind, not just your heart.
+
+Best cosmic matches: Libra, Aquarius, Aries.
+
+Find someone who gets all your sides — link in bio.
+
+#Gemini #ZodiacTruth #AstroDating #AirSign #GeminiSeason #ZodiacCompatibility #AstrologyTikTok
+
+---
+
+### ♋ Cancer
+
+The truth about being a Cancer? You feel everything — and you love harder than anyone.
+
+Your superpower is emotional intelligence. You read people before they even speak. But protecting that soft heart? It's exhausting.
+
+In love, you give everything. You just need someone who makes you feel safe doing it.
+
+Best cosmic matches: Scorpio, Pisces, Taurus.
+
+Your person is out there — link in bio.
+
+#Cancer #ZodiacTruth #AstroDating #WaterSign #CancerSeason #ZodiacCompatibility #AstrologyReels
+
+---
+
+### ♌ Leo
+
+The truth about being a Leo? You don't need the spotlight — but you DESERVE it.
+
+Your superpower is magnetic confidence. People are drawn to you without even knowing why. The struggle? Needing to be seen and sometimes feeling invisible.
+
+In love, you make your partner feel like royalty. You just need someone who adores you back just as hard.
+
+Best cosmic matches: Aries, Sagittarius, Libra.
+
+Find your crown — link in bio.
+
+#Leo #ZodiacTruth #AstroDating #FireSign #LeoSeason #ZodiacCompatibility #AstrologyTikTok
+
+---
+
+### ♍ Virgo
+
+The truth about being a Virgo? You see what everyone else misses — and it's both a gift and a curse.
+
+Your superpower is attention to detail. You notice EVERYTHING. The struggle? Your brain won't stop overanalyzing.
+
+In love, you show it through actions, not words. A perfect playlist. Remembering the little things. You just need someone who actually appreciates the effort.
+
+Best cosmic matches: Taurus, Capricorn, Cancer.
+
+Someone who sees your effort is waiting — link in bio.
+
+#Virgo #ZodiacTruth #AstroDating #EarthSign #VirgoSeason #ZodiacCompatibility #AstrologyReels
+
+---
+
+### ♎ Libra
+
+The truth about being a Libra? You just want everyone to be happy — including yourself.
+
+Your superpower is creating harmony. You walk into chaos and make it beautiful. The struggle? Making a decision when both options are equally good.
+
+In love, you seek the perfect balance. Not 50/50 — you want 100/100.
+
+You need someone who chooses you first. No maybes.
+
+Best cosmic matches: Gemini, Aquarius, Leo.
+
+Stop weighing options, start swiping — link in bio.
+
+#Libra #ZodiacTruth #AstroDating #AirSign #LibraSeason #ZodiacCompatibility #AstrologyTikTok
+
+---
+
+### ♏ Scorpio
+
+The truth about being a Scorpio? You love with terrifying intensity — and you wouldn't have it any other way.
+
+Your superpower is reading people instantly. One look and you know exactly who they are. The struggle? Letting your walls down for the people who actually deserve it.
+
+In love, it's all or nothing. Surface-level doesn't exist for you.
+
+You need someone who isn't afraid to go deep.
+
+Best cosmic matches: Cancer, Pisces, Virgo.
+
+Find someone who can handle your depth — link in bio.
+
+#Scorpio #ZodiacTruth #AstroDating #WaterSign #ScorpioSeason #ZodiacCompatibility #AstrologyReels
+
+---
+
+### ♐ Sagittarius
+
+The truth about being a Sagittarius? Life is the adventure — and you're not here to watch from the sidelines.
+
+Your superpower is infectious optimism. You make people believe anything is possible. The struggle? Staying in one place long enough to build something real.
+
+In love, you turn ordinary life into an adventure. Road trips at 2am? Why not.
+
+You need someone who says YES.
+
+Best cosmic matches: Aries, Leo, Aquarius.
+
+Your next adventure starts here — link in bio.
+
+#Sagittarius #ZodiacTruth #AstroDating #FireSign #SagittariusSeason #ZodiacCompatibility #AstrologyTikTok
+
+---
+
+### ♑ Capricorn
+
+The truth about being a Capricorn? You're not cold — you're focused.
+
+Your superpower is relentless ambition. You build empires while everyone else sleeps. The struggle? Letting yourself relax without feeling guilty.
+
+In love, you want a partner, not a project. Someone who matches your drive and builds the vision WITH you.
+
+Best cosmic matches: Taurus, Virgo, Pisces.
+
+Find your co-CEO — link in bio.
+
+#Capricorn #ZodiacTruth #AstroDating #EarthSign #CapricornSeason #ZodiacCompatibility #AstrologyReels
+
+---
+
+### ♒ Aquarius
+
+The truth about being an Aquarius? You're not weird — everyone else just hasn't caught up yet.
+
+Your superpower is thinking different. You see the world in ways nobody else can. The struggle? Feeling misunderstood by almost everyone.
+
+In love, you rewrite the rules. Traditional? Boring. You want something that's never been done before.
+
+You need someone who gets your weird — and loves it.
+
+Best cosmic matches: Gemini, Libra, Sagittarius.
+
+Find your kind of different — link in bio.
+
+#Aquarius #ZodiacTruth #AstroDating #AirSign #AquariusSeason #ZodiacCompatibility #AstrologyTikTok
+
+---
+
+### ♓ Pisces
+
+The truth about being a Pisces? You feel everything — and that's your superpower AND your kryptonite.
+
+You absorb emotions like a sponge. You love unconditionally. You see beauty where nobody else looks. The struggle? Sometimes you escape reality because the real world is too much.
+
+In love, there are no boundaries. You merge completely. You just need someone who grounds you without clipping your wings.
+
+Best cosmic matches: Cancer, Scorpio, Capricorn.
+
+Find your anchor — link in bio.
+
+#Pisces #ZodiacTruth #AstroDating #WaterSign #PiscesSeason #ZodiacCompatibility #AstrologyReels
+
+---
+
 ## Production Notes
 
 ### Video Format
@@ -212,3 +420,90 @@ The final CTA scene (28-30s) is identical for all signs — generate once and re
 
 ### Missing Signs Note
 Scorpio section was missing from V1. It has been added in this version between Libra and Sagittarius.
+
+---
+
+## AI Music Prompts (Per Sign)
+
+Generate a unique 30-second background track per sign using Suno, Udio, or similar AI music tools. Each prompt captures the sign's energy and mood to match the reel visuals above.
+
+**Format:** Copy-paste directly into Suno/Udio. Each includes style tags, mood, tempo, and instruments.
+
+---
+
+### ♈ Aries
+```
+Epic cinematic trailer music, 30 seconds, aggressive drums building to a powerful drop, war horns, driving electric guitar power chords, fast tempo 140bpm, fiery confident energy, triumphant brass stabs, no vocals, action hero vibe
+```
+
+### ♉ Taurus
+```
+Warm lo-fi jazz with deep bass, 30 seconds, slow tempo 75bpm, mellow Rhodes piano chords, vinyl crackle, soft brush drums, sensual and grounded, velvet smooth saxophone solo, cozy late-night atmosphere, no vocals
+```
+
+### ♊ Gemini
+```
+Playful electronic pop, 30 seconds, bouncy synth arpeggios switching between major and minor every 4 bars, glitchy vocal chops, fast tempo 128bpm, dueling melodies ping-ponging left and right, curious restless energy, bright and airy, no lyrics
+```
+
+### ♋ Cancer
+```
+Emotional piano ballad, 30 seconds, slow tempo 65bpm, solo grand piano with gentle reverb, soft strings entering at 15 seconds, tender and intimate, moonlit lullaby feeling, bittersweet melody in D minor, slight music box tones, no vocals
+```
+
+### ♌ Leo
+```
+Glamorous disco-funk, 30 seconds, confident strut tempo 115bpm, slap bass groove, brass section hits, shimmering hi-hats, dramatic string rises, spotlight energy, walk-the-runway vibe, golden age Hollywood meets Studio 54, no vocals
+```
+
+### ♍ Virgo
+```
+Minimal ambient electronica, 30 seconds, precise clean beats at 100bpm, soft click percussion, delicate plucked synth melody, crystalline pads, meticulous and elegant, Japanese garden tranquility meets modern production, no vocals
+```
+
+### ♎ Libra
+```
+Dreamy French house, 30 seconds, smooth filtered disco sample, balanced stereo mix, airy vocal chops (no words), elegant tempo 110bpm, rose-tinted warmth, soft sidechain compression on pads, romantic Parisian sunset feeling, sophisticated and graceful
+```
+
+### ♏ Scorpio
+```
+Dark moody trap soul, 30 seconds, heavy 808 bass, slow tempo 80bpm, haunting minor key melody, eerie reversed vocal textures, snapping hi-hats, intense and mysterious, underwater cathedral reverb, dangerous seduction energy, no lyrics
+```
+
+### ♐ Sagittarius
+```
+Upbeat world music fusion, 30 seconds, acoustic guitar strumming with djembe drums, adventurous tempo 125bpm, pan flute melody, handclaps, optimistic major key, festival bonfire energy, nomadic wanderlust vibes, no vocals
+```
+
+### ♑ Capricorn
+```
+Cinematic orchestral build, 30 seconds, starting sparse with solo cello, timpani heartbeat pulse at 90bpm, strings layering in gradually, building to a powerful climax at 25 seconds, ambitious mountaintop anthem, dark and regal, no vocals
+```
+
+### ♒ Aquarius
+```
+Futuristic synthwave, 30 seconds, retro analog synth pads, pulsing arpeggiator, vocoder textures (no words), tempo 120bpm, neon electric blue energy, Blade Runner meets Daft Punk, glitchy digital artifacts, otherworldly and innovative, no vocals
+```
+
+### ♓ Pisces
+```
+Ethereal ambient dream pop, 30 seconds, heavily reverbed electric guitar swells, oceanic pad textures, gentle tempo 70bpm, underwater feeling, whale song-like synth, shimmering delay trails, floating weightless in space, hypnotic and transcendent, no vocals
+```
+
+---
+
+### AI Music Tools
+
+| Tool | Best For | Free Tier |
+|------|----------|-----------|
+| **Suno** | Full tracks, catchy melodies | 5 songs/day |
+| **Udio** | Realistic instrument quality | 5 songs/day |
+| **Stable Audio** | Short ambient/SFX clips | 20 tracks/month |
+
+### Tips
+- Generate 3-4 variations per sign, pick the best
+- Trim to exactly 30 seconds in CapCut/Premiere
+- Fade in 0.5s, fade out 1s for clean transitions
+- Match the drop/climax to the "Best match" reveal (23-28s mark)
+- Lower volume under text overlay sections so VO or text is readable

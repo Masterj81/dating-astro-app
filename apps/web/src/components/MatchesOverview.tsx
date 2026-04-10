@@ -70,7 +70,7 @@ export function MatchesOverview() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" role="status" aria-label={t("loading")} />
       </div>
     );
   }
@@ -78,7 +78,7 @@ export function MatchesOverview() {
   if (!matches.length) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-accent/10 text-5xl">
+        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-accent/10 text-5xl" aria-hidden="true">
           💫
         </div>
         <h2 className="text-2xl font-semibold text-white">{t("matchesEmptyTitle")}</h2>
@@ -146,7 +146,7 @@ export function MatchesOverview() {
                   fill
                   sizes="(max-width: 640px) 100vw, 33vw"
                   unoptimized={shouldBypassImageOptimization(profileImage)}
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#090b13] via-transparent to-transparent" />
 
@@ -157,7 +157,7 @@ export function MatchesOverview() {
 
                 {/* Unread badge */}
                 {match.unread_count ? (
-                  <div className="absolute left-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-bold text-white shadow-lg">
+                  <div className="absolute left-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-bold text-white shadow-lg" aria-label={t("matchesUnread", { count: match.unread_count })}>
                     {match.unread_count}
                   </div>
                 ) : null}
@@ -214,7 +214,7 @@ export function MatchesOverview() {
       </div>
 
       {error && (
-        <p className="rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
+        <p role="alert" className="rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
           {error}
         </p>
       )}

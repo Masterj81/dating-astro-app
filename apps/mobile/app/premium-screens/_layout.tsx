@@ -1,7 +1,9 @@
 import { Stack } from 'expo-router';
 import { Platform, ViewStyle } from 'react-native';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function PremiumLayout() {
+  const { version } = useLanguage();
   const webContentStyle: any = Platform.OS === 'web' ? {
     display: 'flex',
     flexDirection: 'column',
@@ -12,6 +14,7 @@ export default function PremiumLayout() {
 
   return (
     <Stack
+      key={`premium-lang-${version}`}
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
@@ -23,6 +26,7 @@ export default function PremiumLayout() {
       }}
     >
       <Stack.Screen name="index" />
+      <Stack.Screen name="plans" />
       <Stack.Screen name="plus" />
       <Stack.Screen name="natal-chart" />
       <Stack.Screen name="daily-horoscope" />
@@ -35,6 +39,7 @@ export default function PremiumLayout() {
       <Stack.Screen name="super-likes" />
       <Stack.Screen name="priority-messages" />
       <Stack.Screen name="date-planner" />
+      <Stack.Screen name="tarot" />
       <Stack.Screen name="success" />
     </Stack>
   );

@@ -13,12 +13,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
+import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
 import { getReferralStats, claimReferralCode, shareReferralCode } from '../../services/referral';
 import { checkRateLimit, recordAttempt, resetRateLimit, formatRetryMessage } from '../../utils/rateLimiter';
-import { useAuth } from '../_layout';
+import { useAuth } from '../../contexts/AuthContext';
 
 type NotificationSettings = {
   newMatches: boolean;
@@ -32,6 +34,7 @@ type NotificationSettings = {
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
   const { t } = useLanguage();
+  const insets = useSafeAreaInsets();
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [referralCount, setReferralCount] = useState(0);
   const [friendCode, setFriendCode] = useState('');
@@ -49,22 +52,27 @@ export default function SettingsScreen() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const [prefsResult, referralResult] = await Promise.all([
-        supabase.from('profiles').select('notification_preferences').eq('id', user.id).single(),
-        getReferralStats(user.id),
-      ]);
-      if (prefsResult.data?.notification_preferences) {
-        setNotifications(prev => ({ ...prev, ...prefsResult.data.notification_preferences }));
+      try {
+        const [prefsResult, referralResult] = await Promise.all([
+          supabase.from('profiles').select('notification_preferences').eq('id', user.id).maybeSingle(),
+          getReferralStats(user.id),
+        ]);
+        if (prefsResult.data?.notification_preferences) {
+          const prefs = prefsResult.data.notification_preferences;
+          setNotifications(prev => ({ ...prev, ...prefs }));
+        }
+        setReferralCode(referralResult.code);
+        setReferralCount(referralResult.totalReferrals);
+      } catch (err) {
+        console.error('Error loading settings:', err);
       }
-      setReferralCode(referralResult.code);
-      setReferralCount(referralResult.totalReferrals);
       setLoadingPrefs(false);
     })();
   }, [user]);
 
   const toggleNotification = (key: keyof NotificationSettings) => {
-    const prev = notifications;
-    const updated = { ...prev, [key]: !prev[key] };
+    const snapshot = { ...notifications };
+    const updated = { ...snapshot, [key]: !snapshot[key] };
     setNotifications(updated);
     supabase
       .from('profiles')
@@ -72,8 +80,8 @@ export default function SettingsScreen() {
       .eq('id', user?.id)
       .then(({ error }) => {
         if (error) {
-          setNotifications(prev);
-          Alert.alert(t('error'), t('somethingWrong'));
+          setNotifications(snapshot);
+          Alert.alert(t('error'), t('notificationSaveFailed') || 'Could not save notification preference. Please try again.');
         }
       });
   };
@@ -147,14 +155,22 @@ export default function SettingsScreen() {
   };
 
   return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>←</Text>
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel={t('goBack') || 'Go back'}
+          >
+            <Text style={styles.backText}>{'\u2190'}</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>{t('settings')}</Text>
+          <Text style={styles.title} accessibilityRole="header">{t('settings')}</Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -165,34 +181,40 @@ export default function SettingsScreen() {
           <TouchableOpacity
             style={styles.settingsRow}
             onPress={() => router.push('/profile/edit')}
+            accessibilityRole="button"
+            accessibilityLabel={t('editProfile') || 'Edit Profile'}
           >
             <View style={styles.rowLeft}>
-              <Text style={styles.rowIcon}>👤</Text>
+              <Text style={styles.rowIcon}>{'\u{1F464}'}</Text>
               <Text style={styles.rowText}>{t('editProfile') || 'Edit Profile'}</Text>
             </View>
-            <Text style={styles.rowArrow}>→</Text>
+            <Text style={styles.rowArrow}>{'\u{2192}'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.settingsRow}
             onPress={() => router.push('/settings/preferences')}
+            accessibilityRole="button"
+            accessibilityLabel={t('discoveryPreferences') || 'Discovery Preferences'}
           >
             <View style={styles.rowLeft}>
-              <Text style={styles.rowIcon}>🎯</Text>
+              <Text style={styles.rowIcon}>{'\u{1F3AF}'}</Text>
               <Text style={styles.rowText}>{t('discoveryPreferences') || 'Discovery Preferences'}</Text>
             </View>
-            <Text style={styles.rowArrow}>→</Text>
+            <Text style={styles.rowArrow}>{'\u{2192}'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.settingsRow}
             onPress={() => router.push('/onboarding/birth-info')}
+            accessibilityRole="button"
+            accessibilityLabel={t('editBirthInfo')}
           >
             <View style={styles.rowLeft}>
-              <Text style={styles.rowIcon}>⭐</Text>
+              <Text style={styles.rowIcon}>{'\u{2B50}'}</Text>
               <Text style={styles.rowText}>{t('editBirthInfo')}</Text>
             </View>
-            <Text style={styles.rowArrow}>→</Text>
+            <Text style={styles.rowArrow}>{'\u{2192}'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -283,10 +305,10 @@ export default function SettingsScreen() {
           <Text style={styles.sectionTitle}>{t('notifications') || 'Notifications'}</Text>
 
           {loadingPrefs ? (
-            <ActivityIndicator color="#e94560" style={{ marginVertical: 20 }} />
+            <ActivityIndicator color={AppTheme.colors.coral} style={{ marginVertical: 20 }} />
           ) : null}
 
-          <View style={styles.settingsRow}>
+          <View style={[styles.settingsRow, loadingPrefs && styles.rowDisabled]}>
             <View style={styles.rowLeft}>
               <Text style={styles.rowIcon}>💕</Text>
               <Text style={styles.rowText}>{t('newMatches') || 'New Matches'}</Text>
@@ -294,12 +316,13 @@ export default function SettingsScreen() {
             <Switch
               value={notifications.newMatches}
               onValueChange={() => toggleNotification('newMatches')}
-              trackColor={{ false: '#333', true: '#e94560' }}
+              disabled={loadingPrefs}
+              trackColor={{ false: '#333', true: AppTheme.colors.coral }}
               thumbColor="#fff"
             />
           </View>
 
-          <View style={styles.settingsRow}>
+          <View style={[styles.settingsRow, loadingPrefs && styles.rowDisabled]}>
             <View style={styles.rowLeft}>
               <Text style={styles.rowIcon}>💬</Text>
               <Text style={styles.rowText}>{t('messages') || 'Messages'}</Text>
@@ -307,12 +330,13 @@ export default function SettingsScreen() {
             <Switch
               value={notifications.messages}
               onValueChange={() => toggleNotification('messages')}
-              trackColor={{ false: '#333', true: '#e94560' }}
+              disabled={loadingPrefs}
+              trackColor={{ false: '#333', true: AppTheme.colors.coral }}
               thumbColor="#fff"
             />
           </View>
 
-          <View style={styles.settingsRow}>
+          <View style={[styles.settingsRow, loadingPrefs && styles.rowDisabled]}>
             <View style={styles.rowLeft}>
               <Text style={styles.rowIcon}>❤️</Text>
               <Text style={styles.rowText}>{t('likes') || 'Likes'}</Text>
@@ -320,12 +344,13 @@ export default function SettingsScreen() {
             <Switch
               value={notifications.likes}
               onValueChange={() => toggleNotification('likes')}
-              trackColor={{ false: '#333', true: '#e94560' }}
+              disabled={loadingPrefs}
+              trackColor={{ false: '#333', true: AppTheme.colors.coral }}
               thumbColor="#fff"
             />
           </View>
 
-          <View style={styles.settingsRow}>
+          <View style={[styles.settingsRow, loadingPrefs && styles.rowDisabled]}>
             <View style={styles.rowLeft}>
               <Text style={styles.rowIcon}>⭐</Text>
               <Text style={styles.rowText}>{t('superLikes')}</Text>
@@ -333,12 +358,13 @@ export default function SettingsScreen() {
             <Switch
               value={notifications.superLikes}
               onValueChange={() => toggleNotification('superLikes')}
-              trackColor={{ false: '#333', true: '#e94560' }}
+              disabled={loadingPrefs}
+              trackColor={{ false: '#333', true: AppTheme.colors.coral }}
               thumbColor="#fff"
             />
           </View>
 
-          <View style={styles.settingsRow}>
+          <View style={[styles.settingsRow, loadingPrefs && styles.rowDisabled]}>
             <View style={styles.rowLeft}>
               <Text style={styles.rowIcon}>🔮</Text>
               <Text style={styles.rowText}>{t('dailyHoroscope') || 'Daily Horoscope'}</Text>
@@ -346,12 +372,13 @@ export default function SettingsScreen() {
             <Switch
               value={notifications.dailyHoroscope}
               onValueChange={() => toggleNotification('dailyHoroscope')}
-              trackColor={{ false: '#333', true: '#e94560' }}
+              disabled={loadingPrefs}
+              trackColor={{ false: '#333', true: AppTheme.colors.coral }}
               thumbColor="#fff"
             />
           </View>
 
-          <View style={styles.settingsRow}>
+          <View style={[styles.settingsRow, loadingPrefs && styles.rowDisabled]}>
             <View style={styles.rowLeft}>
               <Text style={styles.rowIcon}>📢</Text>
               <Text style={styles.rowText}>{t('promotions') || 'Promotions & News'}</Text>
@@ -359,7 +386,8 @@ export default function SettingsScreen() {
             <Switch
               value={notifications.promotions}
               onValueChange={() => toggleNotification('promotions')}
-              trackColor={{ false: '#333', true: '#e94560' }}
+              disabled={loadingPrefs}
+              trackColor={{ false: '#333', true: AppTheme.colors.coral }}
               thumbColor="#fff"
             />
           </View>
@@ -479,24 +507,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: AppTheme.colors.panel,
     justifyContent: 'center',
     alignItems: 'center',
   },
   backText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 24,
   },
   title: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   placeholder: {
-    width: 40,
+    width: 44,
   },
   section: {
     paddingHorizontal: 20,
@@ -505,23 +533,24 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 12,
   },
   dangerTitle: {
-    color: '#e94560',
+    color: AppTheme.colors.danger,
   },
   settingsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.glass,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: AppTheme.radius.md,
     marginBottom: 8,
+    minHeight: 52,
   },
   rowLeft: {
     flexDirection: 'row',
@@ -534,17 +563,20 @@ const styles = StyleSheet.create({
   },
   rowText: {
     fontSize: 16,
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
+  },
+  rowDisabled: {
+    opacity: 0.5,
   },
   rowArrow: {
     fontSize: 16,
-    color: '#666',
+    color: AppTheme.colors.textMuted,
   },
   logoutText: {
-    color: '#e94560',
+    color: AppTheme.colors.coral,
   },
   deleteText: {
-    color: '#ff4444',
+    color: AppTheme.colors.danger,
   },
   versionContainer: {
     alignItems: 'center',
@@ -552,24 +584,24 @@ const styles = StyleSheet.create({
   },
   versionText: {
     fontSize: 14,
-    color: '#666',
+    color: AppTheme.colors.textMuted,
     marginBottom: 4,
   },
   versionSubtext: {
     fontSize: 12,
-    color: '#555',
+    color: AppTheme.colors.textMuted,
   },
   referralCard: {
-    backgroundColor: 'rgba(233, 69, 96, 0.08)',
-    borderRadius: 16,
+    backgroundColor: 'rgba(232, 93, 117, 0.08)',
+    borderRadius: AppTheme.radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(233, 69, 96, 0.2)',
+    borderColor: 'rgba(232, 93, 117, 0.2)',
     padding: 16,
     marginBottom: 12,
   },
   referralLabel: {
     fontSize: 12,
-    color: '#999',
+    color: AppTheme.colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 8,
@@ -583,39 +615,42 @@ const styles = StyleSheet.create({
   referralCodeText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     letterSpacing: 3,
   },
   referralCopyButton: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: AppTheme.colors.panel,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 12,
+    borderRadius: AppTheme.radius.md,
+    minHeight: 36,
+    justifyContent: 'center',
   },
   referralCopyText: {
     fontSize: 13,
-    color: '#e94560',
+    color: AppTheme.colors.coral,
     fontWeight: '600',
   },
   referralReward: {
     fontSize: 13,
-    color: '#ccc',
+    color: AppTheme.colors.textSecondary,
     lineHeight: 20,
     marginBottom: 6,
   },
   referralStats: {
     fontSize: 12,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
   },
   referralShareButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#e94560',
-    borderRadius: 14,
+    backgroundColor: AppTheme.colors.coral,
+    borderRadius: AppTheme.radius.md,
     paddingVertical: 14,
     marginBottom: 12,
     gap: 8,
+    minHeight: 48,
   },
   referralShareIcon: {
     fontSize: 16,
@@ -623,7 +658,7 @@ const styles = StyleSheet.create({
   referralShareText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textOnAccent,
   },
   referralInputRow: {
     marginTop: 4,
@@ -631,7 +666,7 @@ const styles = StyleSheet.create({
   referralInputWrapper: {},
   referralInputLabel: {
     fontSize: 13,
-    color: '#999',
+    color: AppTheme.colors.textMuted,
     marginBottom: 8,
   },
   referralInputContainer: {
@@ -640,21 +675,23 @@ const styles = StyleSheet.create({
   },
   referralInput: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: AppTheme.colors.glass,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 12,
+    borderColor: AppTheme.colors.border,
+    borderRadius: AppTheme.radius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     letterSpacing: 2,
+    minHeight: 48,
   },
   referralApplyButton: {
-    backgroundColor: '#e94560',
-    borderRadius: 12,
+    backgroundColor: AppTheme.colors.coral,
+    borderRadius: AppTheme.radius.md,
     paddingHorizontal: 20,
     justifyContent: 'center',
+    minHeight: 48,
   },
   referralApplyDisabled: {
     opacity: 0.4,
@@ -662,6 +699,6 @@ const styles = StyleSheet.create({
   referralApplyText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textOnAccent,
   },
 });

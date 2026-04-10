@@ -1,158 +1,170 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useEffect, useRef } from 'react';
-import { Animated, Dimensions, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, StyleSheet, Text, View } from 'react-native';
+import AuthBrandMark from '../components/AuthBrandMark';
+import { ConstellationBg } from '../components/astrology/ConstellationBg';
+import { ZodiacWheel } from '../components/astrology/ZodiacWheel';
+import { AnimatedGradientBg } from '../components/ui/AnimatedGradientBg';
+import { AppTheme } from '../constants/theme';
 import { useLanguage } from '../contexts/LanguageContext';
 
-const { width: _width } = Dimensions.get('window');
+const SPLASH_FACT_KEYS = [
+  'splashFact1',
+  'splashFact2',
+  'splashFact3',
+  'splashFact4',
+  'splashFact5',
+];
 
 export default function SplashScreen() {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.5)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-  const zodiacFade = useRef(new Animated.Value(0)).current;
-  const textSlide = useRef(new Animated.Value(50)).current;
-  const { t } = useLanguage(); // Use t from context for reactive translations
+  const { t } = useLanguage();
+  const [factIndex] = useState(() => Math.floor(Math.random() * SPLASH_FACT_KEYS.length));
+  const factFade = useRef(new Animated.Value(0)).current;
+  const brandFade = useRef(new Animated.Value(0)).current;
+  const brandRise = useRef(new Animated.Value(18)).current;
+  const cardFade = useRef(new Animated.Value(0)).current;
+  const cardRise = useRef(new Animated.Value(26)).current;
+  const glowPulse = useRef(new Animated.Value(0.92)).current;
 
   useEffect(() => {
-    // Sequence of animations
-    Animated.sequence([
-      // Logo appears
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          tension: 50,
-          friction: 7,
-          useNativeDriver: true,
-        }),
-      ]),
-      // Zodiac ring rotates in
-      Animated.parallel([
-        Animated.timing(zodiacFade, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-      ]),
-      // Text slides up
-      Animated.parallel([
-        Animated.timing(textSlide, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-      ]),
+    Animated.parallel([
+      Animated.timing(brandFade, {
+        toValue: 1,
+        duration: 700,
+        useNativeDriver: true,
+      }),
+      Animated.timing(brandRise, {
+        toValue: 0,
+        duration: 700,
+        useNativeDriver: true,
+      }),
+      Animated.timing(cardFade, {
+        toValue: 1,
+        duration: 850,
+        delay: 120,
+        useNativeDriver: true,
+      }),
+      Animated.timing(cardRise, {
+        toValue: 0,
+        duration: 850,
+        delay: 120,
+        useNativeDriver: true,
+      }),
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowPulse, {
+            toValue: 1.06,
+            duration: 1800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(glowPulse, {
+            toValue: 0.92,
+            duration: 1800,
+            useNativeDriver: true,
+          }),
+        ])
+      ),
+      Animated.timing(factFade, {
+        toValue: 1,
+        duration: 600,
+        delay: 900,
+        useNativeDriver: true,
+      }),
     ]).start();
 
-    // Navigate after animation
     const timer = setTimeout(() => {
       router.replace('/');
-    }, 3000);
+    }, 2600);
 
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- animation refs are stable
-  }, []);
-
-  const spin = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
+  }, [brandFade, brandRise, cardFade, cardRise, glowPulse, factFade]);
 
   return (
-    <LinearGradient
-      colors={['#0f0f1a', '#1a1a2e', '#16213e']}
-      style={styles.container}
-    >
-      {/* Animated star logo */}
+    <AnimatedGradientBg style={styles.container}>
+      <ConstellationBg density={15} />
+      <ZodiacWheel size={300} opacity={0.08} />
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.glowOrb,
+          styles.glowOrbPrimary,
+          { transform: [{ scale: glowPulse }] },
+        ]}
+      />
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.glowOrb,
+          styles.glowOrbSecondary,
+          { transform: [{ scale: glowPulse }] },
+        ]}
+      />
+
       <Animated.View
         style={[
-          styles.logoContainer,
+          styles.hero,
           {
-            opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
+            opacity: brandFade,
+            transform: [{ translateY: brandRise }],
           },
         ]}
       >
-        <Text style={styles.logo}>✦</Text>
+        <AuthBrandMark size={96} />
+        <Text style={styles.eyebrow}>ASTRODATING</Text>
       </Animated.View>
 
-      {/* Rotating zodiac ring */}
       <Animated.View
         style={[
-          styles.zodiacContainer,
+          styles.card,
           {
-            opacity: zodiacFade,
-            transform: [{ rotate: spin }],
-          },
-        ]}
-      >
-        <Text style={styles.zodiacRing}>♈ ♉ ♊ ♋ ♌ ♍ ♎ ♏ ♐ ♑ ♒ ♓</Text>
-      </Animated.View>
-
-      {/* App name */}
-      <Animated.View
-        style={[
-          styles.textContainer,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: textSlide }],
+            opacity: cardFade,
+            transform: [{ translateY: cardRise }],
           },
         ]}
       >
         <Text style={styles.title}>{t('appName')}</Text>
-        <Text style={styles.subtitle}>{t('tagline')}</Text>
-      </Animated.View>
-
-      {/* Loading dots */}
-      <View style={styles.loadingContainer}>
+        <Text style={styles.subtitle}>{t('findYourCosmicMatch')}</Text>
+        <View style={styles.divider} />
         <LoadingDots />
-      </View>
-    </LinearGradient>
+        <Animated.Text style={[styles.cosmicFact, { opacity: factFade }]}>
+          {t(SPLASH_FACT_KEYS[factIndex])}
+        </Animated.Text>
+      </Animated.View>
+    </AnimatedGradientBg>
   );
 }
 
 function LoadingDots() {
-  const dot1 = useRef(new Animated.Value(0.3)).current;
-  const dot2 = useRef(new Animated.Value(0.3)).current;
-  const dot3 = useRef(new Animated.Value(0.3)).current;
+  const dot1 = useRef(new Animated.Value(0.28)).current;
+  const dot2 = useRef(new Animated.Value(0.28)).current;
+  const dot3 = useRef(new Animated.Value(0.28)).current;
 
   useEffect(() => {
     const animateDots = () => {
       Animated.sequence([
-        Animated.timing(dot1, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(dot1, { toValue: 0.3, duration: 300, useNativeDriver: true }),
+        Animated.timing(dot1, { toValue: 1, duration: 260, useNativeDriver: true }),
+        Animated.timing(dot1, { toValue: 0.28, duration: 260, useNativeDriver: true }),
       ]).start();
 
       setTimeout(() => {
         Animated.sequence([
-          Animated.timing(dot2, { toValue: 1, duration: 300, useNativeDriver: true }),
-          Animated.timing(dot2, { toValue: 0.3, duration: 300, useNativeDriver: true }),
+          Animated.timing(dot2, { toValue: 1, duration: 260, useNativeDriver: true }),
+          Animated.timing(dot2, { toValue: 0.28, duration: 260, useNativeDriver: true }),
         ]).start();
-      }, 150);
+      }, 140);
 
       setTimeout(() => {
         Animated.sequence([
-          Animated.timing(dot3, { toValue: 1, duration: 300, useNativeDriver: true }),
-          Animated.timing(dot3, { toValue: 0.3, duration: 300, useNativeDriver: true }),
+          Animated.timing(dot3, { toValue: 1, duration: 260, useNativeDriver: true }),
+          Animated.timing(dot3, { toValue: 0.28, duration: 260, useNativeDriver: true }),
         ]).start();
-      }, 300);
+      }, 280);
     };
 
     animateDots();
     const interval = setInterval(animateDots, 900);
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- animation refs are stable
-  }, []);
+  }, [dot1, dot2, dot3]);
 
   return (
     <View style={styles.dotsContainer}>
@@ -168,53 +180,92 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 28,
+    overflow: 'hidden',
   },
-  logoContainer: {
-    marginBottom: 20,
+  glowOrb: {
+    position: 'absolute',
+    borderRadius: 999,
+    opacity: 0.18,
   },
-  logo: {
-    fontSize: 80,
-    color: '#e94560',
-    textShadowColor: 'rgba(233, 69, 96, 0.6)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 30,
+  glowOrbPrimary: {
+    width: 320,
+    height: 320,
+    top: -60,
+    right: -80,
+    backgroundColor: AppTheme.colors.coral,
   },
-  zodiacContainer: {
-    marginBottom: 30,
+  glowOrbSecondary: {
+    width: 260,
+    height: 260,
+    bottom: -40,
+    left: -60,
+    backgroundColor: AppTheme.colors.cosmic,
   },
-  zodiacRing: {
-    fontSize: 20,
-    color: '#e94560',
-    letterSpacing: 10,
-    opacity: 0.7,
-  },
-  textContainer: {
+  hero: {
     alignItems: 'center',
+    marginBottom: 24,
+  },
+  eyebrow: {
+    marginTop: 14,
+    color: AppTheme.colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 3.2,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 360,
+    paddingHorizontal: 28,
+    paddingVertical: 30,
+    borderRadius: 28,
+    backgroundColor: 'rgba(15, 18, 33, 0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.28,
+    shadowRadius: 40,
+    elevation: 18,
   },
   title: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#fff',
-    letterSpacing: 2,
-    marginBottom: 8,
+    ...AppTheme.type.display,
+    color: AppTheme.colors.textPrimary,
+    marginBottom: 10,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#888',
-    fontStyle: 'italic',
+    ...AppTheme.type.body,
+    color: AppTheme.colors.textSecondary,
+    textAlign: 'center',
+    maxWidth: 260,
   },
-  loadingContainer: {
-    position: 'absolute',
-    bottom: 80,
+  divider: {
+    width: 56,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    marginTop: 24,
+    marginBottom: 22,
   },
   dotsContainer: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
   dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#e94560',
+    width: 9,
+    height: 9,
+    borderRadius: 99,
+    backgroundColor: AppTheme.colors.coral,
+  },
+  cosmicFact: {
+    color: AppTheme.colors.textMuted,
+    fontSize: 13,
+    marginTop: 18,
+    textAlign: 'center',
+    letterSpacing: 0.2,
+    fontStyle: 'italic',
+    maxWidth: 260,
+    lineHeight: 19,
   },
 });

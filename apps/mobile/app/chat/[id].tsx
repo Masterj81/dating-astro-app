@@ -17,8 +17,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BlockReportMenu from '../../components/BlockReportMenu';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
+import { formatMessageTime } from '../../utils/dateFormatting';
+import { DEFAULT_PROFILE_IMAGE, resolveProfileImage } from '../../utils/profileImages';
 import { throttleAction } from '../../utils/rateLimit';
-import { useAuth } from '../_layout';
+import { useAuth } from '../../contexts/AuthContext';
 
 type Message = {
   id: string;
@@ -33,10 +35,13 @@ type MatchInfo = {
   id: string;
   user1_id: string;
   user2_id: string;
+  compatibility_score?: number;
   other_user: {
     id: string;
     name: string;
-    image_url: string;
+    image_url?: string | null;
+    photos?: Array<string | null>;
+    images?: Array<string | null>;
     sun_sign: string;
   };
 };
@@ -57,54 +62,64 @@ export default function ChatScreen() {
     if (matchId && user) {
       loadMatchInfo();
       loadMessages();
-      subscribeToMessages();
+      const unsubscribe = subscribeToMessages();
+      return () => { unsubscribe(); };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, [matchId, user]);
 
   const loadMatchInfo = async () => {
-    const { data: match, error } = await supabase
-      .from('matches')
-      .select('*')
-      .eq('id', matchId)
-      .maybeSingle();
+    try {
+      const { data: match, error } = await supabase
+        .from('matches')
+        .select('*')
+        .eq('id', matchId)
+        .maybeSingle();
 
-    if (error || !match) {
-      return;
+      if (error || !match) {
+        return;
+      }
+
+      // Get the other user's profile
+      const otherUserId = match.user1_id === user?.id ? match.user2_id : match.user1_id;
+
+      const { data: profile } = await supabase
+        .from('discoverable_profiles')
+        .select('*')
+        .eq('id', otherUserId)
+        .maybeSingle();
+
+      setMatchInfo({
+        ...match,
+        other_user: profile || {
+          id: otherUserId,
+          name: t('unknown'),
+          image_url: DEFAULT_PROFILE_IMAGE,
+          sun_sign: '?',
+        },
+      });
+    } catch (err) {
+      console.error('Error loading match info:', err);
     }
-
-    // Get the other user's profile
-    const otherUserId = match.user1_id === user?.id ? match.user2_id : match.user1_id;
-
-    const { data: profile } = await supabase
-      .from('discoverable_profiles')
-      .select('*')
-      .eq('id', otherUserId)
-      .maybeSingle();
-
-    setMatchInfo({
-      ...match,
-      other_user: profile || {
-        id: otherUserId,
-        name: t('unknown'),
-        image_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
-        sun_sign: '?',
-      },
-    });
   };
 
   const loadMessages = async () => {
     setLoading(true);
 
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('match_id', matchId)
-      .order('created_at', { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('match_id', matchId)
+        .order('created_at', { ascending: true });
 
-    if (error) {
-    } else {
-      setMessages(data || []);
+      if (error) {
+        console.error('Error loading messages:', error);
+      } else {
+        setMessages(data || []);
+      }
+    } catch (err) {
+      console.error('Error loading messages:', err);
     }
 
     setLoading(false);
@@ -140,27 +155,25 @@ export default function ChatScreen() {
     const messageContent = newMessage.trim();
     setNewMessage('');
 
-    const { error } = await supabase.from('messages').insert({
-      match_id: matchId,
-      sender_id: user.id,
-      content: messageContent,
-    });
+    try {
+      const { error } = await supabase.from('messages').insert({
+        match_id: matchId,
+        sender_id: user.id,
+        content: messageContent,
+      });
 
-    if (error) {
+      if (error) {
+        setNewMessage(messageContent);
+      }
+    } catch (err) {
+      console.error('Error sending message:', err);
       setNewMessage(messageContent);
     }
 
     setSending(false);
   };
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
-  };
+  const formatTime = formatMessageTime;
 
   const renderMessage = ({ item }: { item: Message }) => {
     const isMe = item.sender_id === user?.id;
@@ -177,8 +190,9 @@ export default function ChatScreen() {
 
   if (loading) {
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={[styles.container, styles.loadingContainer]}>
         <ActivityIndicator size="large" color="#e94560" />
+        <Text style={styles.loadingText}>{t('loading')}</Text>
       </LinearGradient>
     );
   }
@@ -192,14 +206,31 @@ export default function ChatScreen() {
         </TouchableOpacity>
 
         <Image
-          source={{ uri: matchInfo?.other_user?.image_url }}
+          source={{ uri: resolveProfileImage(matchInfo?.other_user) }}
           style={styles.headerImage}
         />
 
-        <View style={styles.headerInfo}>
+        <TouchableOpacity
+          style={styles.headerInfo}
+          onPress={() => {
+            if (matchInfo?.other_user?.id) {
+              router.push(`/match/${matchInfo.other_user.id}`);
+            }
+          }}
+          activeOpacity={0.7}
+        >
           <Text style={styles.headerName}>{matchInfo?.other_user?.name || t('chat')}</Text>
-          <Text style={styles.headerSign}>☀️ {matchInfo?.other_user?.sun_sign || '?'}</Text>
-        </View>
+          <View style={styles.headerMeta}>
+            <Text style={styles.headerSign}>☀️ {matchInfo?.other_user?.sun_sign || '?'}</Text>
+            {matchInfo?.compatibility_score && (
+              <View style={styles.headerCompatBadge}>
+                <Text style={styles.headerCompatText}>
+                  {t('chatCompatibility', { score: matchInfo.compatibility_score }) || `${matchInfo.compatibility_score}% compatible`}
+                </Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
 
         {user && matchInfo?.other_user && (
           <BlockReportMenu
@@ -224,6 +255,27 @@ export default function ChatScreen() {
             <Text style={styles.emptyChatEmoji}>💫</Text>
             <Text style={styles.emptyChatText}>{t('startCosmicConversation')}</Text>
             <Text style={styles.emptyChatSubtext}>{t('sayHelloTo', { name: matchInfo?.other_user?.name || '' })}</Text>
+
+            {/* Icebreaker suggestions */}
+            <View style={styles.icebreakersContainer}>
+              <Text style={styles.icebreakersTitle}>{t('chatIcebreaker')}</Text>
+              {[
+                t('icebreaker1') || 'What got you into astrology?',
+                t('icebreaker2', { sign: matchInfo?.other_user?.sun_sign || '' }) || `Do you feel like a typical ${matchInfo?.other_user?.sun_sign || ''}?`,
+                t('icebreaker3', { sign: matchInfo?.other_user?.sun_sign || '' }) || `What's the most ${matchInfo?.other_user?.sun_sign || ''} thing about you?`,
+              ].map((icebreaker, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={styles.icebreakerPill}
+                  onPress={() => setNewMessage(icebreaker)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.icebreakerText}>{icebreaker}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.emptyChatHint}>{t('chatEmptyHint')}</Text>
           </View>
         ) : (
           <FlatList
@@ -232,8 +284,11 @@ export default function ChatScreen() {
             keyExtractor={(item) => item.id}
             renderItem={renderMessage}
             contentContainerStyle={styles.messagesList}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
-            onLayout={() => flatListRef.current?.scrollToEnd()}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+            onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={15}
+            windowSize={10}
           />
         )}
 
@@ -299,9 +354,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
+  headerMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
   headerSign: {
     fontSize: 13,
     color: '#888',
+  },
+  headerCompatBadge: {
+    backgroundColor: 'rgba(232, 93, 117, 0.16)',
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+  },
+  headerCompatText: {
+    color: '#e94560',
+    fontSize: 10,
+    fontWeight: '600',
   },
   chatContainer: {
     flex: 1,
@@ -367,6 +439,50 @@ const styles = StyleSheet.create({
   emptyChatSubtext: {
     fontSize: 14,
     color: '#888',
+    marginBottom: 24,
+  },
+  icebreakersContainer: {
+    width: '100%',
+    paddingHorizontal: 12,
+    marginTop: 8,
+  },
+  icebreakersTitle: {
+    fontSize: 12,
+    color: '#888',
+    marginBottom: 10,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  icebreakerPill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  icebreakerText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  emptyChatHint: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.35)',
+    marginTop: 20,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingHorizontal: 30,
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: '#888',
+    fontSize: 14,
+    marginTop: 12,
   },
   inputContainer: {
     flexDirection: 'row',

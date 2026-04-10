@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, useCallback, useRef, ReactNode } from 'react';
 import { Platform } from 'react-native';
 import { useAuth } from './AuthContext';
 import { debugLog } from '../utils/debug';
@@ -9,21 +9,18 @@ import {
   incrementFeatureUsage,
   getFeatureUsageToday,
 } from '../services/premiumUsage';
-import { getWebSubscriptionStatus } from '../services/webPayments';
+import { getUserTier, SubscriptionTier } from '../services/subscriptionService';
 
-// Only import RevenueCat on native platforms
-let Purchases: any = null;
+let Purchases: typeof import('react-native-purchases').default | null = null;
 let initializePurchases: ((userId?: string) => Promise<void>) | null = null;
-let isPurchasesConfigured: (() => boolean) | null = null;
 
 if (Platform.OS !== 'web') {
   Purchases = require('react-native-purchases').default;
   const purchasesModule = require('../services/purchases');
   initializePurchases = purchasesModule.initializePurchases;
-  isPurchasesConfigured = purchasesModule.isPurchasesConfigured;
 }
 
-export type SubscriptionTier = 'free' | 'premium' | 'premium_plus';
+export type { SubscriptionTier };
 
 type PaywallState = {
   visible: boolean;
@@ -57,169 +54,187 @@ type PremiumProviderProps = {
   children: ReactNode;
 };
 
-// Use environment variable for testing premium features (never commit as true)
 const FORCE_PREMIUM_FOR_TESTING = process.env.EXPO_PUBLIC_FORCE_PREMIUM === 'true';
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export function PremiumProvider({ children }: PremiumProviderProps) {
   const { user, loading: authLoading } = useAuth();
-  const [tier, setTier] = useState<SubscriptionTier>(FORCE_PREMIUM_FOR_TESTING ? 'premium_plus' : 'free');
-  // On web, start with loading: false to prevent blank screen during hydration
-  // The actual subscription check will happen when user is ready
-  const [loading, setLoading] = useState(Platform.OS === 'web' ? false : true);
-  const [hasInitialized, setHasInitialized] = useState(false);
+  const [tier, setTier] = useState<SubscriptionTier>(
+    FORCE_PREMIUM_FOR_TESTING ? 'premium_plus' : 'free'
+  );
+  const [loading, setLoading] = useState(Platform.OS !== 'web');
   const [paywallState, setPaywallState] = useState<PaywallState>({
     visible: false,
     feature: null,
     recommendedTier: 'premium',
   });
 
-  // Check subscription status from RevenueCat (native) or Stripe (web)
-  const checkSubscriptionTier = useCallback(async (userId?: string): Promise<SubscriptionTier> => {
-    // Override for testing/screenshots
-    if (FORCE_PREMIUM_FOR_TESTING) {
-      return 'premium_plus';
-    }
+  const listenerRef = useRef<{ remove: () => void } | null>(null);
 
-    // Web: Check Stripe subscription via Supabase
-    if (Platform.OS === 'web') {
-      if (!userId) return 'free';
-      try {
-        const webStatus = await getWebSubscriptionStatus(userId);
-        // Map web tier names to our tier names (tier may come from Stripe with legacy names)
-        const tier = webStatus.tier as string;
-        if (tier === 'premium_plus' || tier === 'cosmic') {
-          return 'premium_plus';
-        }
-        if (tier === 'premium' || tier === 'celestial') {
-          return 'premium';
-        }
-        return 'free';
-      } catch (error) {
-        debugLog('Error checking web subscription:', error);
-        return 'free';
-      }
-    }
-
-    // Native: Check RevenueCat
-    try {
-      // Ensure RevenueCat is initialized before checking
-      if (!isPurchasesConfigured || !isPurchasesConfigured()) {
-        if (userId && initializePurchases) {
-          await initializePurchases(userId);
-        } else {
-          // Can't check without initialization
-          return 'free';
-        }
-      }
-
-      if (!Purchases) return 'free';
-      const customerInfo = await Purchases.getCustomerInfo();
-
-      // Check for premium_plus first (higher tier)
-      if (customerInfo.entitlements.active['premium_plus'] !== undefined) {
+  const checkSubscriptionTier = useCallback(
+    async (userId?: string): Promise<SubscriptionTier> => {
+      if (FORCE_PREMIUM_FOR_TESTING) {
         return 'premium_plus';
       }
 
-      // Check for premium
-      if (customerInfo.entitlements.active['premium'] !== undefined) {
-        return 'premium';
+      if (!userId) {
+        return 'free';
       }
 
-      return 'free';
-    } catch (error) {
-      debugLog('Error checking subscription tier:', error);
-      return 'free';
-    }
-  }, []);
+      try {
+        return await getUserTier(userId);
+      } catch (error) {
+        debugLog('Error checking subscription tier:', error);
+        return 'free';
+      }
+    },
+    []
+  );
 
-  // Refresh subscription status
+  const checkSubscriptionTierWithRetry = useCallback(
+    async (userId: string, expectedTier?: SubscriptionTier): Promise<SubscriptionTier> => {
+      const delays = [500, 1500, 3000];
+
+      for (let i = 0; i <= delays.length; i++) {
+        const currentTier = await checkSubscriptionTier(userId);
+
+        if (!expectedTier || currentTier === expectedTier) {
+          return currentTier;
+        }
+
+        if (i === delays.length) {
+          debugLog(
+            `[Premium] Retry exhausted. Expected ${expectedTier}, got ${currentTier}. Using Supabase value.`
+          );
+          return currentTier;
+        }
+
+        debugLog(`[Premium] Tier mismatch, retrying in ${delays[i]}ms...`);
+        await sleep(delays[i]);
+      }
+
+      // Defensive fallback; loop should always return before this point.
+      return 'free';
+    },
+    [checkSubscriptionTier]
+  );
+
   const refreshSubscription = useCallback(async () => {
+    if (!user?.id) {
+      setTier('free');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    const currentTier = await checkSubscriptionTier(user?.id);
+    const currentTier = await checkSubscriptionTier(user.id);
     setTier(currentTier);
     setLoading(false);
   }, [checkSubscriptionTier, user?.id]);
 
-  // Check subscription on mount and when user changes
   useEffect(() => {
-    // 1. If Auth is still doing its initial session check, WE ARE LOADING.
     if (authLoading) {
-      setLoading(true); // Ensure loading is true while auth is pending
+      setLoading(true);
       return;
     }
 
-    // 2. If Auth is finished and we have a user
-    if (user) {
-      debugLog('PremiumProvider: Auth ready with user, fetching tier...');
-      setHasInitialized(true);
-      refreshSubscription(); // This will set loading to false when done
-    }
-    // 3. If Auth is finished and there is NO user
-    else {
+    if (!user) {
       debugLog('PremiumProvider: Auth ready, no user found');
       setTier('free');
-      setLoading(false); // Auth is done, and we know they are free. Stop loading.
-      setHasInitialized(true);
-    }
-  }, [user, authLoading, refreshSubscription]);
-
-  // Listen for subscription changes (only when user is logged in and Purchases is configured)
-  useEffect(() => {
-    // Skip on web or if RevenueCat isn't available
-    if (!user || Platform.OS === 'web' || !Purchases || !isPurchasesConfigured || !isPurchasesConfigured()) {
+      setLoading(false);
       return;
     }
 
-    let listener: { remove: () => void } | undefined;
+    debugLog('PremiumProvider: Auth ready with user, initializing...');
 
-    try {
-      listener = Purchases.addCustomerInfoUpdateListener((info: any) => {
-        if (info.entitlements.active['premium_plus'] !== undefined) {
-          setTier('premium_plus');
-        } else if (info.entitlements.active['premium'] !== undefined) {
-          setTier('premium');
-        } else {
-          setTier('free');
+    const userId = user.id;
+    let cancelled = false;
+
+    async function initAndListen() {
+      setLoading(true);
+
+      const initialTier = await checkSubscriptionTier(userId);
+      if (cancelled) return;
+
+      setTier(initialTier);
+      setLoading(false);
+
+      if (Platform.OS !== 'web' && initializePurchases && Purchases) {
+        try {
+          await initializePurchases(userId);
+          if (cancelled) return;
+
+          debugLog('[Premium] RevenueCat initialized, attaching listener');
+
+          // RevenueCat returns EmitterSubscription, but types may be incomplete
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const subscription = (Purchases as any).addCustomerInfoUpdateListener(
+            async (info: any) => {
+              if (cancelled) return;
+
+              let expectedTier: SubscriptionTier = 'free';
+
+              if (info.entitlements.active['premium_plus'] !== undefined) {
+                expectedTier = 'premium_plus';
+              } else if (info.entitlements.active['premium'] !== undefined) {
+                expectedTier = 'premium';
+              }
+
+              debugLog(`[Premium] RevenueCat signal: expectedTier=${expectedTier}`);
+
+              const confirmedTier = await checkSubscriptionTierWithRetry(userId, expectedTier);
+              if (!cancelled) {
+                setTier(confirmedTier);
+              }
+            }
+          );
+          listenerRef.current = subscription;
+        } catch (err) {
+          debugLog('RevenueCat init error:', err);
         }
-      });
-    } catch (error) {
-      console.warn('Failed to add customer info listener:', error);
+      }
     }
 
-    return () => {
-      listener?.remove();
-    };
-  }, [user]);
+    initAndListen().catch((err) => {
+      debugLog('PremiumProvider initAndListen error:', err);
+      if (!cancelled) {
+        setLoading(false);
+      }
+    });
 
-  // Check if user can access a feature based on their tier
+    return () => {
+      cancelled = true;
+      listenerRef.current?.remove();
+      listenerRef.current = null;
+    };
+  }, [user, authLoading, checkSubscriptionTier, checkSubscriptionTierWithRetry]);
+
   const canAccessFeature = useCallback(
     (feature: FeatureKey): boolean => {
       const requiredTier = FEATURE_TIERS[feature];
 
       if (tier === 'premium_plus') {
-        // Premium Plus can access everything
         return true;
       }
 
       if (tier === 'premium') {
-        // Premium can only access premium tier features
         return requiredTier === 'premium';
       }
 
-      // Free users cannot directly access premium features (but can use trial)
       return false;
     },
     [tier]
   );
 
-  // Check if trial is available for a feature
   const checkTrialRemaining = useCallback(
     async (feature: FeatureKey): Promise<boolean> => {
       if (!user) return false;
 
-      // If user has access through subscription, trial doesn't matter
       if (canAccessFeature(feature)) {
-        return true; // Not technically "trial" but they have access
+        return true;
       }
 
       return hasTrialRemaining(user.id, feature);
@@ -227,27 +242,22 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
     [user, canAccessFeature]
   );
 
-  // Consume a trial view
   const consumeTrial = useCallback(
     async (feature: FeatureKey): Promise<{ success: boolean; showPaywall: boolean }> => {
       if (!user) {
         return { success: false, showPaywall: true };
       }
 
-      // If user has subscription access, no need to consume trial
       if (canAccessFeature(feature)) {
         return { success: true, showPaywall: false };
       }
 
-      // Check current usage
       const currentUsage = await getFeatureUsageToday(user.id, feature);
 
       if (currentUsage >= 1) {
-        // Trial already used today
         return { success: false, showPaywall: true };
       }
 
-      // Increment usage (consuming the trial)
       const result = await incrementFeatureUsage(user.id, feature);
 
       if (result.success) {
@@ -259,7 +269,6 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
     [user, canAccessFeature]
   );
 
-  // Trigger the paywall modal
   const triggerPaywall = useCallback((feature: FeatureKey) => {
     const requiredTier = FEATURE_TIERS[feature];
     setPaywallState({
@@ -269,7 +278,6 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
     });
   }, []);
 
-  // Dismiss the paywall modal
   const dismissPaywall = useCallback(() => {
     setPaywallState({
       visible: false,
@@ -278,21 +286,20 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
     });
   }, []);
 
-  const value: PremiumContextType = {
-    tier,
-    loading,
-    canAccessFeature,
-    hasTrialRemaining: checkTrialRemaining,
-    consumeTrial,
-    triggerPaywall,
-    dismissPaywall,
-    refreshSubscription,
-    paywallState,
-  };
-
-  return (
-    <PremiumContext.Provider value={value}>
-      {children}
-    </PremiumContext.Provider>
+  const value = useMemo<PremiumContextType>(
+    () => ({
+      tier,
+      loading,
+      canAccessFeature,
+      hasTrialRemaining: checkTrialRemaining,
+      consumeTrial,
+      triggerPaywall,
+      dismissPaywall,
+      refreshSubscription,
+      paywallState,
+    }),
+    [tier, loading, canAccessFeature, checkTrialRemaining, consumeTrial, triggerPaywall, dismissPaywall, refreshSubscription, paywallState]
   );
+
+  return <PremiumContext.Provider value={value}>{children}</PremiumContext.Provider>;
 }

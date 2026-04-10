@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import {
   Animated,
   Platform,
@@ -12,17 +12,19 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PremiumGate from '../../components/PremiumGate';
+import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
 type AspectType = {
-  planet1: string;
-  planet2: string;
-  aspect: string;
+  planet1Key: string;
+  planet2Key: string;
+  sign1: string;
+  sign2: string;
   orb: number;
   influence: 'harmonious' | 'challenging' | 'neutral';
-  description: string;
+  descriptionKey: string;
 };
 
 type CompatibilityArea = {
@@ -76,36 +78,40 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
     }
     setLoading(true);
 
-    // Load user's profile
-    const { data: userData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    if (userData) {
-      setUserProfile(userData);
-    }
-
-    // Load match's profile if matchId provided
-    if (matchId) {
-      const { data: matchData } = await supabase
-        .from('discoverable_profiles')
+    try {
+      // Load user's profile
+      const { data: userData } = await supabase
+        .from('profiles')
         .select('*')
-        .eq('id', matchId)
-        .single();
+        .eq('id', user.id)
+        .maybeSingle();
 
-      if (matchData) {
-        setMatchProfile(matchData);
+      if (userData) {
+        setUserProfile(userData);
       }
-    } else {
-      // Demo profile for display
-      setMatchProfile({
-        name: 'Luna',
-        sun_sign: 'Pisces',
-        moon_sign: 'Cancer',
-        rising_sign: 'Scorpio',
-      });
+
+      // Load match's profile if matchId provided
+      if (matchId) {
+        const { data: matchData } = await supabase
+          .from('discoverable_profiles')
+          .select('*')
+          .eq('id', matchId)
+          .maybeSingle();
+
+        if (matchData) {
+          setMatchProfile(matchData);
+        }
+      } else {
+        // Demo profile for display
+        setMatchProfile({
+          name: 'Luna',
+          sun_sign: 'Pisces',
+          moon_sign: 'Cancer',
+          rising_sign: 'Scorpio',
+        });
+      }
+    } catch (err) {
+      console.error('Error loading synastry profiles:', err);
     }
 
     setLoading(false);
@@ -178,44 +184,49 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
   const getAspects = (): AspectType[] => {
     return [
       {
-        planet1: 'Sun',
-        planet2: 'Moon',
-        aspect: 'Trine',
+        planet1Key: 'sun',
+        planet2Key: 'moon',
+        sign1: userProfile?.sun_sign || 'Cancer',
+        sign2: matchProfile?.moon_sign || 'Leo',
         orb: 2.5,
         influence: 'harmonious',
-        description: 'Natural understanding and emotional support',
+        descriptionKey: 'emotionalDesc',
       },
       {
-        planet1: 'Venus',
-        planet2: 'Mars',
-        aspect: 'Conjunction',
+        planet1Key: 'venus',
+        planet2Key: 'mars',
+        sign1: userProfile?.venus_sign || userProfile?.sun_sign || 'Gemini',
+        sign2: matchProfile?.mars_sign || matchProfile?.sun_sign || 'Virgo',
         orb: 1.2,
         influence: 'harmonious',
-        description: 'Strong romantic and physical attraction',
+        descriptionKey: 'passionDesc',
       },
       {
-        planet1: 'Mercury',
-        planet2: 'Mercury',
-        aspect: 'Square',
+        planet1Key: 'mercury',
+        planet2Key: 'mercury',
+        sign1: userProfile?.mercury_sign || userProfile?.sun_sign || 'Cancer',
+        sign2: matchProfile?.mercury_sign || matchProfile?.sun_sign || 'Sagittarius',
         orb: 3.8,
         influence: 'challenging',
-        description: 'Different communication styles to navigate',
+        descriptionKey: 'communicationDesc',
       },
       {
-        planet1: 'Moon',
-        planet2: 'Venus',
-        aspect: 'Sextile',
+        planet1Key: 'moon',
+        planet2Key: 'venus',
+        sign1: userProfile?.moon_sign || 'Aquarius',
+        sign2: matchProfile?.venus_sign || matchProfile?.sun_sign || 'Leo',
         orb: 4.1,
         influence: 'harmonious',
-        description: 'Affectionate and nurturing connection',
+        descriptionKey: 'emotionalDesc',
       },
       {
-        planet1: 'Saturn',
-        planet2: 'Sun',
-        aspect: 'Trine',
+        planet1Key: 'saturn',
+        planet2Key: 'sun',
+        sign1: userProfile?.saturn_sign || userProfile?.sun_sign || 'Leo',
+        sign2: matchProfile?.sun_sign || 'Aries',
         orb: 2.9,
         influence: 'neutral',
-        description: 'Stability and mutual respect in the relationship',
+        descriptionKey: 'longTermDesc',
       },
     ];
   };
@@ -228,18 +239,19 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
     }
   };
 
-  // Loading is now handled by PremiumGate via onLoadingChange callback
-  if (loading) {
-    return null; // PremiumGate shows the unified loading UI
-  }
-
-  const overallScore = calculateOverallScore();
-  const areas = getCompatibilityAreas();
-  const aspects = getAspects();
+  // Memoize before any early returns to respect React hooks rules
+  const overallScore = useMemo(() => calculateOverallScore(), [userProfile, matchProfile]); // eslint-disable-line react-hooks/exhaustive-deps
+  const areas = useMemo(() => getCompatibilityAreas(), [t]); // eslint-disable-line react-hooks/exhaustive-deps
+  const aspects = useMemo(() => getAspects(), [userProfile, matchProfile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fallbacks for web where SafeAreaProvider may not work
   const topInset = insets?.top ?? 0;
   const bottomInset = insets?.bottom ?? 0;
+
+  // Loading is now handled by PremiumGate via onLoadingChange callback
+  if (loading) {
+    return null; // PremiumGate shows the unified loading UI
+  }
 
   const renderContent = () => {
     // If we are here, loading is false, but data might still be missing
@@ -325,10 +337,10 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
             <View style={[styles.aspectDot, { backgroundColor: getInfluenceColor(aspect.influence) }]} />
             <View style={styles.aspectInfo}>
               <Text style={styles.aspectTitle}>
-                {aspect.planet1} {aspect.aspect} {aspect.planet2}
+                {t(aspect.planet1Key)} ({t(aspect.sign1.toLowerCase()) || aspect.sign1}) • {t(aspect.planet2Key)} ({t(aspect.sign2.toLowerCase()) || aspect.sign2})
               </Text>
-              <Text style={styles.aspectOrb}>{t('orb') || 'Orb'}: {aspect.orb}°</Text>
-              <Text style={styles.aspectDesc}>{aspect.description}</Text>
+              <Text style={styles.aspectOrb}>{t('orb') || 'Orb'}: {aspect.orb}° • {t(aspect.influence) || aspect.influence}</Text>
+              <Text style={styles.aspectDesc}>{t(aspect.descriptionKey) || aspect.descriptionKey}</Text>
             </View>
           </View>
         ))}
@@ -366,7 +378,12 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
 
   return (
     <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+<ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
+          showsVerticalScrollIndicator={false}
+        >
         {/* Header - Fixed at top */}
         <View style={[styles.header, { paddingTop: 40 + topInset }]}>
           <TouchableOpacity style={[styles.backButton, { top: 30 + topInset }]} onPress={() => router.back()}>
@@ -376,11 +393,7 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
           <Text style={styles.subtitle}>{t('synastrySubtitle') || 'Deep compatibility analysis'}</Text>
         </View>
 
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
-          showsVerticalScrollIndicator={false}
-        >
+        
           {renderContent()}
         </ScrollView>
       </LinearGradient>
@@ -421,22 +434,22 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   errorText: {
-    color: '#ff6b6b',
+    color: AppTheme.colors.danger,
     textAlign: 'center',
     marginBottom: 20,
     fontSize: 16,
     lineHeight: 24,
   },
   retryButton: {
-    backgroundColor: 'rgba(233, 69, 96, 0.2)',
+    backgroundColor: 'rgba(232, 93, 117, 0.16)',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(233, 69, 96, 0.4)',
+    borderColor: 'rgba(232, 93, 117, 0.28)',
   },
   retryText: {
-    color: '#e94560',
+    color: AppTheme.colors.coral,
     fontWeight: '600',
     fontSize: 14,
   },
@@ -451,26 +464,26 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 50,
     left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: AppTheme.colors.panelStrong,
     justifyContent: 'center',
     alignItems: 'center',
   },
   backText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 24,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
   },
   profilesSection: {
     flexDirection: 'row',
@@ -480,7 +493,9 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
@@ -488,7 +503,7 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 8,
   },
   profileSigns: {
@@ -496,7 +511,7 @@ const styles = StyleSheet.create({
   },
   profileSign: {
     fontSize: 13,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
   },
   vsContainer: {
     paddingHorizontal: 12,
@@ -513,9 +528,9 @@ const styles = StyleSheet.create({
     width: 150,
     height: 150,
     borderRadius: 75,
-    backgroundColor: 'rgba(233, 69, 96, 0.15)',
+    backgroundColor: 'rgba(232, 93, 117, 0.14)',
     borderWidth: 4,
-    borderColor: '#e94560',
+    borderColor: AppTheme.colors.coral,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -523,17 +538,17 @@ const styles = StyleSheet.create({
   scoreNumber: {
     fontSize: 40,
     fontWeight: 'bold',
-    color: '#e94560',
+    color: AppTheme.colors.coral,
   },
   scoreLabel: {
     fontSize: 12,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   scoreDescription: {
     fontSize: 15,
-    color: '#ccc',
+    color: AppTheme.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -548,7 +563,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   areaCard: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
@@ -566,35 +583,35 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   areaScore: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#e94560',
+    color: AppTheme.colors.coral,
   },
   progressBar: {
     height: 6,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: AppTheme.colors.panelStrong,
     borderRadius: 3,
     marginBottom: 8,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#e94560',
+    backgroundColor: AppTheme.colors.coral,
     borderRadius: 3,
   },
   areaDescription: {
     fontSize: 13,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
     lineHeight: 18,
   },
   aspectRow: {
     flexDirection: 'row',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: AppTheme.colors.border,
   },
   aspectDot: {
     width: 12,
@@ -609,15 +626,15 @@ const styles = StyleSheet.create({
   aspectTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   aspectOrb: {
     fontSize: 12,
-    color: '#666',
+    color: AppTheme.colors.textMuted,
   },
   aspectDesc: {
     fontSize: 13,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
     marginTop: 4,
   },
   legend: {
@@ -638,15 +655,15 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 12,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
   },
   adviceCard: {
-    backgroundColor: 'rgba(233, 69, 96, 0.1)',
+    backgroundColor: 'rgba(232, 93, 117, 0.12)',
     borderRadius: 16,
     padding: 20,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(233, 69, 96, 0.2)',
+    borderColor: 'rgba(232, 93, 117, 0.22)',
   },
   adviceEmoji: {
     fontSize: 32,
@@ -655,12 +672,12 @@ const styles = StyleSheet.create({
   adviceTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#e94560',
+    color: AppTheme.colors.coral,
     marginBottom: 8,
   },
   adviceText: {
     fontSize: 14,
-    color: '#ccc',
+    color: AppTheme.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
   },

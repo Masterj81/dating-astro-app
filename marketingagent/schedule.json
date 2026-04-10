@@ -1,0 +1,47 @@
+[
+  {
+    "postId": 4,
+    "scheduledFor": "2026-03-31T23:00:00.000Z",
+    "platforms": [
+      "facebook",
+      "instagram"
+    ],
+    "posted": true
+  },
+  {
+    "postId": 8,
+    "scheduledFor": "2026-04-02T23:00:00.000Z",
+    "platforms": [
+      "facebook",
+      "instagram"
+    ],
+    "posted": true
+  },
+  {
+    "postId": 7,
+    "scheduledFor": "2026-04-02T23:00:00.000Z",
+    "platforms": [
+      "facebook",
+      "instagram"
+    ],
+    "posted": true
+  },
+  {
+    "postId": 9,
+    "scheduledFor": "2026-04-03T23:00:00.000Z",
+    "platforms": [
+      "facebook",
+      "instagram"
+    ],
+    "posted": true
+  },
+  {
+    "postId": 12,
+    "scheduledFor": "2026-04-06T23:00:00.000Z",
+    "platforms": [
+      "facebook",
+      "instagram"
+    ],
+    "posted": true
+  }
+]

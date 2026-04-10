@@ -2,30 +2,39 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Platform, StyleSheet, Text, View } from 'react-native';
-import { useAuth } from './_layout';
+import AuthBrandMark from '../components/AuthBrandMark';
+import { AppTheme } from '../constants/theme';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 
-const ZODIAC_SIGNS = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
 const MIN_SPLASH_MS = 1500;
-const MAX_SPLASH_MS = 12000; // Failsafe: never show splash longer than 12 seconds
+const MAX_SPLASH_MS = 12000;
+
+const LOADING_TIP_KEYS = [
+  'loadingTip1',
+  'loadingTip2',
+  'loadingTip3',
+  'loadingTip4',
+  'loadingTip5',
+];
 
 export default function Index() {
   const { user, loading, isEmailVerified, onboardingCompleted } = useAuth();
+  const { t } = useLanguage();
   const [splashReady, setSplashReady] = useState(false);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
 
-  // Animations
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.5)).current;
-  const zodiacFade = useRef(new Animated.Value(0)).current;
-  const textSlide = useRef(new Animated.Value(50)).current;
+  const brandFade = useRef(new Animated.Value(0)).current;
+  const brandRise = useRef(new Animated.Value(18)).current;
+  const cardFade = useRef(new Animated.Value(0)).current;
+  const cardRise = useRef(new Animated.Value(26)).current;
+  const glowPulse = useRef(new Animated.Value(0.92)).current;
 
-  // Minimum splash display time
   useEffect(() => {
     const timer = setTimeout(() => setMinTimeElapsed(true), MIN_SPLASH_MS);
     return () => clearTimeout(timer);
   }, []);
 
-  // Failsafe: force splash to complete after MAX_SPLASH_MS to prevent infinite loading
   useEffect(() => {
     const failsafe = setTimeout(() => {
       if (!splashReady) {
@@ -33,47 +42,57 @@ export default function Index() {
         setSplashReady(true);
       }
     }, MAX_SPLASH_MS);
+
     return () => clearTimeout(failsafe);
   }, [splashReady]);
 
-  // Mark splash as ready once auth check completes AND min time has passed
   useEffect(() => {
     if (!loading && minTimeElapsed) {
       setSplashReady(true);
     }
   }, [loading, minTimeElapsed]);
 
-  // Start animations immediately
   useEffect(() => {
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          tension: 50,
-          friction: 7,
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.timing(zodiacFade, {
+    Animated.parallel([
+      Animated.timing(brandFade, {
         toValue: 1,
-        duration: 600,
+        duration: 700,
         useNativeDriver: true,
       }),
-      Animated.timing(textSlide, {
+      Animated.timing(brandRise, {
         toValue: 0,
-        duration: 500,
+        duration: 700,
         useNativeDriver: true,
       }),
+      Animated.timing(cardFade, {
+        toValue: 1,
+        duration: 850,
+        delay: 120,
+        useNativeDriver: true,
+      }),
+      Animated.timing(cardRise, {
+        toValue: 0,
+        duration: 850,
+        delay: 120,
+        useNativeDriver: true,
+      }),
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowPulse, {
+            toValue: 1.06,
+            duration: 1800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(glowPulse, {
+            toValue: 0.92,
+            duration: 1800,
+            useNativeDriver: true,
+          }),
+        ])
+      ),
     ]).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- animation refs are stable
-  }, []);
+  }, [brandFade, brandRise, cardFade, cardRise, glowPulse]);
 
-  // Smart redirect chain once splash is done
   if (splashReady) {
     if (!user) {
       return <Redirect href="/auth/login" />;
@@ -88,131 +107,108 @@ export default function Index() {
   }
 
   return (
-    <LinearGradient
-      colors={['#0f0f1a', '#1a1a2e', '#16213e']}
-      style={styles.container}
-    >
-      {/* Animated star logo */}
+    <LinearGradient colors={[...AppTheme.gradients.screen]} style={styles.container}>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.glowOrb,
+          styles.glowOrbPrimary,
+          { transform: [{ scale: glowPulse }] },
+        ]}
+      />
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.glowOrb,
+          styles.glowOrbSecondary,
+          { transform: [{ scale: glowPulse }] },
+        ]}
+      />
+
       <Animated.View
         style={[
-          styles.logoContainer,
+          styles.hero,
           {
-            opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
+            opacity: brandFade,
+            transform: [{ translateY: brandRise }],
           },
         ]}
       >
-        <Text style={styles.logo}>✦</Text>
+        <AuthBrandMark size={96} />
+        <Text style={styles.eyebrow}>ASTRODATING</Text>
       </Animated.View>
 
-      {/* Individual spinning zodiac signs */}
-      <Animated.View style={[styles.zodiacContainer, { opacity: zodiacFade }]}>
-        <View style={styles.zodiacRow}>
-          {ZODIAC_SIGNS.map((sign, index) => (
-            <SpinningSign key={index} sign={sign} delay={index * 100} />
-          ))}
-        </View>
-      </Animated.View>
-
-      {/* App name */}
       <Animated.View
         style={[
-          styles.textContainer,
+          styles.card,
           {
-            opacity: fadeAnim,
-            transform: [{ translateY: textSlide }],
+            opacity: cardFade,
+            transform: [{ translateY: cardRise }],
           },
         ]}
       >
-        <Text style={styles.title}>AstroDating</Text>
-        <Text style={styles.subtitle}>Written in the stars</Text>
-      </Animated.View>
-
-      {/* Loading dots */}
-      <View style={styles.dotsWrapper}>
+        <Text style={styles.title}>{t('appName')}</Text>
+        <Text style={styles.subtitle}>{t('findYourCosmicMatch')}</Text>
+        <View style={styles.divider} />
         <LoadingDots />
-      </View>
+        <RotatingLoadingTip t={t} />
+      </Animated.View>
     </LinearGradient>
   );
 }
 
-function SpinningSign({ sign, delay }: { sign: string; delay: number }) {
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0)).current;
+function RotatingLoadingTip({ t }: { t: (key: string) => string }) {
+  const [tipIndex, setTipIndex] = useState(0);
+  const tipFade = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 5,
-        useNativeDriver: true,
-      }).start();
-
-      Animated.loop(
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 3000 + Math.random() * 2000,
-          useNativeDriver: true,
-        })
-      ).start();
-    }, delay);
-
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- animation refs are stable
-  }, []);
-
-  const spin = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
+    const interval = setInterval(() => {
+      Animated.timing(tipFade, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+        setTipIndex(prev => (prev + 1) % LOADING_TIP_KEYS.length);
+        Animated.timing(tipFade, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      });
+    }, 2400);
+    return () => clearInterval(interval);
+  }, [tipFade]);
 
   return (
-    <Animated.View
-      style={[
-        styles.signContainer,
-        {
-          transform: [{ rotate: spin }, { scale: scaleAnim }],
-        },
-      ]}
-    >
-      <Text style={styles.zodiacSign}>{sign}</Text>
-    </Animated.View>
+    <Animated.Text style={[styles.loadingHint, { opacity: tipFade }]}>
+      {t(LOADING_TIP_KEYS[tipIndex]) || 'Preparing your stars\u2026'}
+    </Animated.Text>
   );
 }
 
 function LoadingDots() {
-  const dot1 = useRef(new Animated.Value(0.3)).current;
-  const dot2 = useRef(new Animated.Value(0.3)).current;
-  const dot3 = useRef(new Animated.Value(0.3)).current;
+  const dot1 = useRef(new Animated.Value(0.28)).current;
+  const dot2 = useRef(new Animated.Value(0.28)).current;
+  const dot3 = useRef(new Animated.Value(0.28)).current;
 
   useEffect(() => {
     const animateDots = () => {
       Animated.sequence([
-        Animated.timing(dot1, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(dot1, { toValue: 0.3, duration: 300, useNativeDriver: true }),
+        Animated.timing(dot1, { toValue: 1, duration: 260, useNativeDriver: true }),
+        Animated.timing(dot1, { toValue: 0.28, duration: 260, useNativeDriver: true }),
       ]).start();
 
       setTimeout(() => {
         Animated.sequence([
-          Animated.timing(dot2, { toValue: 1, duration: 300, useNativeDriver: true }),
-          Animated.timing(dot2, { toValue: 0.3, duration: 300, useNativeDriver: true }),
+          Animated.timing(dot2, { toValue: 1, duration: 260, useNativeDriver: true }),
+          Animated.timing(dot2, { toValue: 0.28, duration: 260, useNativeDriver: true }),
         ]).start();
-      }, 150);
+      }, 140);
 
       setTimeout(() => {
         Animated.sequence([
-          Animated.timing(dot3, { toValue: 1, duration: 300, useNativeDriver: true }),
-          Animated.timing(dot3, { toValue: 0.3, duration: 300, useNativeDriver: true }),
+          Animated.timing(dot3, { toValue: 1, duration: 260, useNativeDriver: true }),
+          Animated.timing(dot3, { toValue: 0.28, duration: 260, useNativeDriver: true }),
         ]).start();
-      }, 300);
+      }, 280);
     };
 
     animateDots();
     const interval = setInterval(animateDots, 900);
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- animation refs are stable
-  }, []);
+  }, [dot1, dot2, dot3]);
 
   return (
     <View style={styles.dotsContainer}>
@@ -228,70 +224,91 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 28,
+    overflow: 'hidden',
     ...(Platform.OS === 'web' && {
       minHeight: '100vh',
     }),
   } as any,
-  logoContainer: {
-    marginBottom: 30,
+  glowOrb: {
+    position: 'absolute',
+    borderRadius: 999,
+    opacity: 0.18,
   },
-  logo: {
-    fontSize: 80,
-    color: '#e94560',
-    textShadowColor: 'rgba(233, 69, 96, 0.6)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 30,
+  glowOrbPrimary: {
+    width: 320,
+    height: 320,
+    top: -60,
+    right: -80,
+    backgroundColor: AppTheme.colors.coral,
   },
-  zodiacContainer: {
-    marginBottom: 40,
+  glowOrbSecondary: {
+    width: 260,
+    height: 260,
+    bottom: -40,
+    left: -60,
+    backgroundColor: AppTheme.colors.cosmic,
   },
-  zodiacRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 12,
-    maxWidth: 320,
-  },
-  signContainer: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
+  hero: {
     alignItems: 'center',
+    marginBottom: 24,
   },
-  zodiacSign: {
-    fontSize: 28,
-    color: '#e94560',
-    textShadowColor: 'rgba(233, 69, 96, 0.4)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
+  eyebrow: {
+    marginTop: 14,
+    color: AppTheme.colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 3.2,
   },
-  textContainer: {
+  card: {
+    width: '100%',
+    maxWidth: 360,
+    paddingHorizontal: 28,
+    paddingVertical: 30,
+    borderRadius: 28,
+    backgroundColor: 'rgba(15, 18, 33, 0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.28,
+    shadowRadius: 40,
+    elevation: 18,
   },
   title: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#fff',
-    letterSpacing: 2,
-    marginBottom: 8,
+    ...AppTheme.type.display,
+    color: AppTheme.colors.textPrimary,
+    marginBottom: 10,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#888',
-    fontStyle: 'italic',
+    ...AppTheme.type.body,
+    color: AppTheme.colors.textSecondary,
+    textAlign: 'center',
+    maxWidth: 260,
   },
-  dotsWrapper: {
-    position: 'absolute',
-    bottom: 80,
+  divider: {
+    width: 56,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    marginTop: 24,
+    marginBottom: 22,
   },
   dotsContainer: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
   dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#e94560',
+    width: 9,
+    height: 9,
+    borderRadius: 99,
+    backgroundColor: AppTheme.colors.coral,
+  },
+  loadingHint: {
+    color: AppTheme.colors.textMuted,
+    fontSize: 13,
+    marginTop: 16,
+    letterSpacing: 0.3,
   },
 });

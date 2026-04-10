@@ -1,19 +1,28 @@
+import React from 'react';
 import { Tabs } from 'expo-router';
-import { Platform, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { MotiView } from 'moti';
+import { Platform, StyleSheet, Text, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { tabSwitch } from '../../services/haptics';
 
-function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
+const TabIcon = React.memo(function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
   return (
-    <View style={[styles.iconContainer, focused && styles.iconFocused]}>
+    <MotiView
+      style={styles.iconContainer}
+      animate={{
+        backgroundColor: focused ? 'rgba(233, 69, 96, 0.2)' : 'transparent',
+        scale: focused ? 1.1 : 1,
+      }}
+      transition={{ type: 'timing', duration: 200 }}
+    >
       <Text style={styles.icon}>{emoji}</Text>
-    </View>
+    </MotiView>
   );
-}
+});
 
 export default function TabsLayout() {
-  const { t } = useLanguage();
+  const { t, version } = useLanguage();
   const insets = useSafeAreaInsets();
 
   const handleTabPress = () => {
@@ -39,6 +48,7 @@ export default function TabsLayout() {
 
   return (
     <Tabs
+      key={`tabs-lang-${version}`}
       screenOptions={{
         headerShown: false,
         tabBarPosition: 'bottom',
@@ -111,9 +121,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  iconFocused: {
-    backgroundColor: 'rgba(233, 69, 96, 0.2)',
   },
   icon: {
     fontSize: 20,

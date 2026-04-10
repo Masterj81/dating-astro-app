@@ -64,7 +64,7 @@ export function ChatInbox() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" role="status" aria-label={t("loading")} />
       </div>
     );
   }
@@ -72,7 +72,7 @@ export function ChatInbox() {
   if (!matches.length) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-purple/10 text-5xl">
+        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-purple/10 text-5xl" aria-hidden="true">
           💬
         </div>
         <h2 className="text-2xl font-semibold text-white">{t("chatInboxEmptyTitle")}</h2>
@@ -150,7 +150,10 @@ export function ChatInbox() {
                   />
                 </div>
                 {hasUnread && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white ring-2 ring-[#090b13]">
+                  <span
+                    className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white ring-2 ring-[#090b13]"
+                    aria-label={t("matchesUnread", { count: match.unread_count || 0 })}
+                  >
                     {match.unread_count}
                   </span>
                 )}
@@ -189,7 +192,7 @@ export function ChatInbox() {
               </div>
 
               {/* Arrow */}
-              <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 text-text-dim" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 text-text-dim" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
                 <path d="M6 3l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </Link>
@@ -198,7 +201,7 @@ export function ChatInbox() {
       </div>
 
       {error && (
-        <p className="rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
+        <p role="alert" className="rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
           {error}
         </p>
       )}

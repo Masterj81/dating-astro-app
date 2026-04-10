@@ -5,7 +5,15 @@
     "text": "Your sun signs might clash, but if your moon signs vibe? That's the person who'll actually get why you cry at dog videos and need exactly 20 minutes to decompress after work 🌙 Moon compatibility = emotional wavelength matches",
     "aiScore": 0,
     "createdAt": "2026-03-31T19:49:24.761Z",
-    "status": "approved"
+    "status": "posted",
+    "blotato": {
+      "postId": "6f7f3c09-9cba-46c5-8ace-560691bd0582",
+      "platforms": [
+        "facebook",
+        "instagram"
+      ],
+      "postedAt": "2026-04-03T21:31:48.028Z"
+    }
   },
   {
     "id": 2,
@@ -21,6 +29,166 @@
     "text": "Scorpio energy in dating hits different. Other signs are like \"let's grab coffee sometime\" while Scorpios are already planning which of your childhood traumas they want to help you heal first ♏",
     "aiScore": 0,
     "createdAt": "2026-03-31T19:49:31.985Z",
+    "status": "failed",
+    "imagePath": "generated-images\\post-1774991271383.png",
+    "blotato": {
+      "platforms": [
+        "facebook",
+        "instagram"
+      ],
+      "error": "fetch failed"
+    }
+  },
+  {
+    "id": 4,
+    "topic": "scorpio dating intensity",
+    "text": "Scorpios don't do casual dating—they're either planning your spiritual awakening together or they've already decided you're not deep enough to handle their intensity. No middle ground, no surface level conversations ♏",
+    "aiScore": 0,
+    "createdAt": "2026-03-31T20:01:14.188Z",
+    "status": "failed",
+    "imagePath": "generated-images\\post-1774988203903.png",
+    "scheduledFor": "2026-03-31T23:00:00.000Z",
+    "blotato": {
+      "platforms": [
+        "facebook",
+        "instagram"
+      ],
+      "error": "fetch failed"
+    }
+  },
+  {
+    "id": 5,
+    "topic": "zodiac compatibility",
+    "text": "Sun sign compatibility is like judging a book by its cover. Your Mercury might sync perfectly with their Venus while your Mars squares their Moon. Real astrology compatibility? It's messy, complex, and way more accurate ✨",
+    "aiScore": 0,
+    "createdAt": "2026-03-31T21:11:12.449Z",
+    "status": "failed",
+    "imagePath": "generated-images\\post-1774991903387.png",
+    "blotato": {
+      "platforms": [
+        "facebook",
+        "instagram"
+      ],
+      "error": "fetch failed"
+    }
+  },
+  {
+    "id": 6,
+    "topic": "scorpio dating",
+    "text": "Scorpios will meet you on Tuesday and by Friday they've already decided if you're marriage material or just another surface-level disappointment. Zero patience for small talk about the weather ♏",
+    "aiScore": 0,
+    "createdAt": "2026-03-31T21:23:02.687Z",
+    "status": "failed",
+    "imagePath": "generated-images\\post-1774992321839.png",
+    "blotato": {
+      "platforms": [
+        "facebook",
+        "instagram"
+      ],
+      "error": "fetch failed"
+    }
+  },
+  {
+    "id": 7,
+    "topic": "Libra is texting you",
+    "text": "Libra is texting you back within 3 minutes or 3 business days—no in between. They're either completely obsessed or still weighing if you're worth disrupting their perfectly curated life ⚖️",
+    "aiScore": 0,
+    "createdAt": "2026-04-01T21:16:23.078Z",
+    "status": "failed",
+    "imagePath": "generated-images\\post-1775078208433.png",
+    "scheduledFor": "2026-04-02T23:00:00.000Z",
+    "blotato": {
+      "platforms": [
+        "facebook",
+        "instagram"
+      ],
+      "error": "fetch failed"
+    }
+  },
+  {
+    "id": 8,
+    "topic": "mercury retrograde dating survival",
+    "text": "Mercury retrograde means your ex will text you at 2am asking \"you up?\" while your current situationship suddenly can't figure out how phones work. Classic cosmic chaos ☿️",
+    "aiScore": 0,
+    "createdAt": "2026-04-02T19:04:44.230Z",
+    "status": "posted",
+    "scheduledFor": "2026-04-02T23:00:00.000Z",
+    "blotato": {
+      "postId": "unknown",
+      "platforms": [
+        "facebook",
+        "instagram"
+      ],
+      "postedAt": "2026-04-03T21:31:04.524Z"
+    }
+  },
+  {
+    "id": 9,
+    "topic": "the best date to make moeny",
+    "text": "Venus in your 2nd house activating? Perfect time to manifest that raise or side hustle. Money flows easier when your personal planet of attraction aligns with your wealth sector 💰",
+    "aiScore": 0,
+    "createdAt": "2026-04-03T22:10:13.485Z",
+    "status": "posted",
+    "imagePath": "generated-images\\post-1775254248120.png",
+    "scheduledFor": "2026-04-03T23:00:00.000Z",
+    "blotato": {
+      "postId": "2495e275-9ab1-4380-9c6f-db691de177c8",
+      "platforms": [
+        "facebook",
+        "instagram"
+      ],
+      "postedAt": "2026-04-05T16:58:49.080Z"
+    }
+  },
+  {
+    "id": 10,
+    "topic": "AstroDating is more than a dating app",
+    "text": "AstroDating isn't just about finding dates—it's your cosmic GPS for understanding why you're drawn to emotionally unavailable Geminis or why that Capricorn ghosted after three perfect weeks ✨",
+    "aiScore": 15,
+    "createdAt": "2026-04-05T16:57:07.583Z",
     "status": "approved"
+  },
+  {
+    "id": 11,
+    "topic": "what is the best date to travel",
+    "text": "Mercury direct + waning moon = ideal travel window. Your flights won't get delayed, your Airbnb won't have \"surprise\" construction, and that Sagittarius you matched with will actually show up to meet you ✈️",
+    "aiScore": 0,
+    "createdAt": "2026-04-05T16:57:52.080Z",
+    "status": "approved",
+    "imagePath": "generated-images\\post-1775408442364.png"
+  },
+  {
+    "id": 12,
+    "topic": "knowing my natal chart helps me a lot in my life",
+    "text": "My natal chart basically explains why I sabotage every relationship right when it gets good and why I'm magnetically drawn to people who ghost me. Self-awareness is brutal but useful 🔮",
+    "aiScore": 0,
+    "createdAt": "2026-04-06T20:03:43.634Z",
+    "status": "failed",
+    "imagePath": "generated-images\\post-1775505840796.png",
+    "scheduledFor": "2026-04-06T23:00:00.000Z",
+    "blotato": {
+      "platforms": [
+        "facebook",
+        "instagram"
+      ],
+      "error": "Network error posting to Blotato: fetch failed"
+    }
+  },
+  {
+    "id": 13,
+    "topic": "knowing my natal chart helps me a lot in my life",
+    "text": "Knowing my natal chart is like having cheat codes for my own personality. Finally understand why I attract chaos, why I procrastinate when Mercury hits my 6th house, and why that Scorpio broke my heart 🪐",
+    "aiScore": 0,
+    "createdAt": "2026-04-08T14:33:20.105Z",
+    "status": "posted",
+    "imagePath": "generated-images\\post-1775658812334.png",
+    "blotato": {
+      "postId": "471f40dd-1a89-4b10-9a3e-03c64211be05",
+      "platforms": [
+        "facebook",
+        "instagram"
+      ],
+      "postedAt": "2026-04-08T14:41:39.922Z"
+    }
   }
 ]

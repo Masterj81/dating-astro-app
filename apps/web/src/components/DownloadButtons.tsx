@@ -28,18 +28,18 @@ export function DownloadButtons({ size = "md" }: { size?: "sm" | "md" }) {
         href={SITE.links.playStore}
         target="_blank"
         rel="noopener noreferrer"
-        className={`inline-flex items-center gap-2 rounded-full bg-white text-black font-medium transition-opacity hover:opacity-90 ${padding}`}
+        className={`inline-flex items-center gap-2 rounded-full bg-white text-black font-medium shadow-lg shadow-white/10 transition-all hover:opacity-90 hover:shadow-white/15 ${padding}`}
       >
-        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden="true">
           <path d="M3 20.5v-17c0-.59.34-1.11.84-1.35L13.69 12l-9.85 9.85c-.5-.24-.84-.76-.84-1.35m13.81-5.38L6.05 21.34l8.49-8.49 2.27 2.27m3.35-4.31c.34.27.59.69.59 1.19s-.22.9-.57 1.18l-2.29 1.32-2.5-2.5 2.5-2.5 2.27 1.31M6.05 2.66l10.76 6.22-2.27 2.27-8.49-8.49z" />
         </svg>
         {t("playStore")}
       </a>
       <Link
         href="/app"
-        className={`inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 text-white font-medium backdrop-blur-sm transition-all hover:bg-white/20 ${padding}`}
+        className={`inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 text-white font-medium backdrop-blur-sm transition-all hover:bg-accent/20 hover:border-accent/60 hover:shadow-[0_0_16px_rgba(232,93,117,0.2)] ${padding}`}
       >
-        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
           <rect x="3" y="3" width="18" height="18" rx="3" />
           <path d="M8 12h8M12 8v8" strokeLinecap="round" />
         </svg>

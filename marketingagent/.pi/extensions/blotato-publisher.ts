@@ -4,12 +4,14 @@
  * Handles posting content to social media platforms via the Blotato API.
  * Supports Facebook, Instagram, Twitter/X, LinkedIn.
  *
- * API: https://api.blotato.com
- * Endpoint: POST /v1/posts
- * Auth: Bearer token
+ * API: https://backend.blotato.com
+ * Endpoint: POST /v2/posts
+ * Auth: blotato-api-key header
  */
 
-const BLOTATO_API_URL = "https://api.blotato.com/v1/posts";
+import { ensurePublicUrl } from "../../upload-image.js";
+
+const BLOTATO_API_URL = "https://backend.blotato.com/v2/posts";
 
 export type Platform = "facebook" | "instagram" | "twitter" | "linkedin";
 
@@ -33,42 +35,93 @@ export async function publish(options: PublishOptions): Promise<PublishResult> {
     return { success: false, error: "BLOTATO_API_KEY not configured" };
   }
 
+  const fbPageId = process.env.BLOTATO_FB_PAGE_ID;
+
   try {
-    const body: Record<string, unknown> = {
-      content: options.content,
-      platforms: options.platforms,
-    };
+    const platformResults: Record<string, { success: boolean; id?: string; error?: string }> = {};
+    // Upload local images to Supabase Storage so Blotato gets a public URL
+    const resolvedImageUrl = await ensurePublicUrl(options.imageUrl);
+    const mediaUrls = resolvedImageUrl ? [resolvedImageUrl] : [];
 
-    if (options.scheduledFor) {
-      body.scheduled_for = options.scheduledFor;
-    }
+    for (const platform of options.platforms) {
+      const accountId = platform === 'instagram'
+        ? process.env.BLOTATO_IG_ACCOUNT_ID
+        : process.env.BLOTATO_FB_ACCOUNT_ID;
+      if (!accountId) {
+        platformResults[platform] = { success: false, error: `BLOTATO_${platform === 'instagram' ? 'IG' : 'FB'}_ACCOUNT_ID not configured` };
+        continue;
+      }
 
-    if (options.imageUrl) {
-      body.media = [{ type: "image", url: options.imageUrl }];
-    }
+      // Instagram requires an image — skip if text-only
+      if (platform === 'instagram' && mediaUrls.length === 0) {
+        platformResults[platform] = { success: false, error: 'Instagram requires an image — skipped' };
+        continue;
+      }
 
-    const response = await fetch(BLOTATO_API_URL, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+      const target: Record<string, string> = { targetType: platform };
+      if (platform === "facebook") {
+        if (!fbPageId) {
+          platformResults[platform] = { success: false, error: "BLOTATO_FB_PAGE_ID not set — required for Facebook posts" };
+          continue;
+        }
+        target.pageId = fbPageId;
+      }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      return {
-        success: false,
-        error: `Blotato API error ${response.status}: ${errorText.slice(0, 200)}`,
+      const postBody: Record<string, unknown> = {
+        post: {
+          accountId,
+          content: { text: options.content, mediaUrls, platform },
+          target,
+        },
+      };
+
+      if (options.scheduledFor) {
+        (postBody.post as Record<string, unknown>).scheduledTime = options.scheduledFor;
+      }
+
+      const response = await fetch(BLOTATO_API_URL, {
+        method: "POST",
+        headers: {
+          "blotato-api-key": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(postBody),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        platformResults[platform] = {
+          success: false,
+          error: `Blotato API error ${response.status}: ${errorText.slice(0, 200)}`,
+        };
+        continue;
+      }
+
+      const data = await response.json();
+      platformResults[platform] = {
+        success: true,
+        id: data.postSubmissionId || data.id || data.postId,
       };
     }
 
-    const data = await response.json();
+    const allFailed = Object.values(platformResults).every((r) => !r.success);
+    const firstSuccess = Object.values(platformResults).find((r) => r.success);
+    const errors = Object.entries(platformResults)
+      .filter(([, r]) => !r.success)
+      .map(([p, r]) => `${p}: ${r.error}`);
+
+    if (allFailed) {
+      return {
+        success: false,
+        error: `All platforms failed — ${errors.join("; ")}`,
+        platformResults: platformResults as Record<Platform, { success: boolean; id?: string; error?: string }>,
+      };
+    }
+
     return {
       success: true,
-      postId: data.id || data.postId,
-      platformResults: data.platforms || undefined,
+      postId: firstSuccess?.id,
+      platformResults: platformResults as Record<Platform, { success: boolean; id?: string; error?: string }>,
     };
   } catch (err) {
     return {

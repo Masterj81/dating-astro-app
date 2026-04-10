@@ -1,20 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PremiumGate from '../../components/PremiumGate';
+import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
+import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
-import { useAuth } from '../../contexts/AuthContext';
 
 type HoroscopeSection = {
   title: string;
@@ -25,19 +18,20 @@ type HoroscopeSection = {
 
 function DailyHoroscopeScreenContent() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [sunSign, setSunSign] = useState<string | null>(null);
   const { user } = useAuth();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
+  // Stable date ref -- avoid creating new Date on every render
+  const today = useRef(new Date()).current;
 
-  const today = new Date();
-
-  const getMonthName = (monthIndex: number): string => {
+  const getMonthName = (monthIndex: number) => {
     const months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
     return t(months[monthIndex]) || months[monthIndex];
   };
 
-  const getDayName = (dayIndex: number): string => {
+  const getDayName = (dayIndex: number) => {
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     return t(days[dayIndex]) || days[dayIndex];
   };
@@ -46,62 +40,64 @@ function DailyHoroscopeScreenContent() {
 
   useEffect(() => {
     loadUserSign();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadUserSign = async () => {
     if (!user) {
       setLoading(false);
       return;
     }
+
     setLoading(true);
+    setError(null);
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('sun_sign')
+        .eq('id', user.id)
+        .maybeSingle();
 
-    const { data } = await supabase
-      .from('profiles')
-      .select('sun_sign')
-      .eq('id', user.id)
-      .single();
-
-    if (data?.sun_sign) {
-      setSunSign(data.sun_sign);
+      if (data?.sun_sign) {
+        setSunSign(data.sun_sign);
+      }
+    } catch (err) {
+      console.error('Error loading user sign:', err);
+      setError(t('loadingError') || 'Could not load your horoscope. Please try again.');
     }
+
     setLoading(false);
   };
 
-  const getHoroscopeSections = (): HoroscopeSection[] => {
-    return [
-      {
-        title: t('loveRomance'),
-        emoji: '💕',
-        content: t('dailyLoveContent'),
-        rating: 4,
-      },
-      {
-        title: t('careerMoney'),
-        emoji: '💼',
-        content: t('dailyCareerContent'),
-        rating: 3,
-      },
-      {
-        title: t('healthWellness'),
-        emoji: '🧘',
-        content: t('dailyHealthContent'),
-        rating: 5,
-      },
-      {
-        title: t('luckyElements'),
-        emoji: '🍀',
-        content: t('dailyLuckyContent'),
-        rating: 4,
-      },
-    ];
-  };
+  const getHoroscopeSections = (): HoroscopeSection[] => [
+    {
+      title: t('loveRomance'),
+      emoji: '💕',
+      content: t('dailyLoveContent'),
+      rating: 4,
+    },
+    {
+      title: t('careerMoney'),
+      emoji: '💼',
+      content: t('dailyCareerContent'),
+      rating: 3,
+    },
+    {
+      title: t('healthWellness'),
+      emoji: '🧘',
+      content: t('dailyHealthContent'),
+      rating: 5,
+    },
+    {
+      title: t('luckyElements'),
+      emoji: '🍀',
+      content: t('dailyLuckyContent'),
+      rating: 4,
+    },
+  ];
 
-  const renderStars = (rating: number) => {
-    return '★'.repeat(rating) + '☆'.repeat(5 - rating);
-  };
+  const renderStars = (rating: number) => `${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}`;
 
-  const getMoonPhase = (): { emoji: string; name: string } => {
+  const getMoonPhase = () => {
     const phases = [
       { emoji: '🌑', name: t('newMoon') },
       { emoji: '🌒', name: t('waxingCrescent') },
@@ -112,108 +108,52 @@ function DailyHoroscopeScreenContent() {
       { emoji: '🌗', name: t('lastQuarter') },
       { emoji: '🌘', name: t('waningCrescent') },
     ];
-    // Simple calculation based on day of month
-    const dayOfMonth = today.getDate();
-    const phaseIndex = Math.floor(dayOfMonth / 4) % 8;
-    return phases[phaseIndex];
+    return phases[Math.floor(today.getDate() / 4) % 8];
   };
+
+  // Memoize before any early returns to respect React hooks rules
+  const sections = useMemo(() => getHoroscopeSections(), [t]); // eslint-disable-line react-hooks/exhaustive-deps
+  const moonPhase = useMemo(() => getMoonPhase(), [t, today]); // eslint-disable-line react-hooks/exhaustive-deps
+  const topInset = insets?.top ?? 0;
+  const bottomInset = insets?.bottom ?? 0;
 
   if (loading) {
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-        <ActivityIndicator size="large" color="#e94560" />
+      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={AppTheme.colors.coral} />
+          <Text style={{ color: AppTheme.colors.textMuted, marginTop: 12, fontSize: 14 }}>
+            {t('loadingHoroscope') || 'Reading the stars...'}
+          </Text>
+        </View>
       </LinearGradient>
     );
   }
 
-  const sections = getHoroscopeSections();
-  const moonPhase = getMoonPhase();
-
-  // Fallbacks for web where SafeAreaProvider may not work
-  const topInset = insets?.top ?? 0;
-  const bottomInset = insets?.bottom ?? 0;
-
-  const renderContent = () => (
-    <View>
-      {/* Sign Card */}
-      <View style={styles.signCard}>
-        <Text style={styles.signEmoji}>☀️</Text>
-        <View style={styles.signInfo}>
-          <Text style={styles.signLabel}>{t('yourSign')}</Text>
-          <Text style={styles.signName}>{sunSign ? t(sunSign.toLowerCase()) : t('unknown')}</Text>
+  if (error) {
+    return (
+      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+          <Text style={{ fontSize: 48, marginBottom: 16 }}>{'🔮'}</Text>
+          <Text style={{ color: AppTheme.colors.textSecondary, fontSize: 16, textAlign: 'center', marginBottom: 20 }}>{error}</Text>
+          <TouchableOpacity
+            onPress={loadUserSign}
+            style={{ backgroundColor: AppTheme.colors.coral, paddingVertical: 14, paddingHorizontal: 28, borderRadius: 14, minHeight: 48 }}
+          >
+            <Text style={{ color: AppTheme.colors.textOnAccent, fontWeight: '600', fontSize: 16 }}>{t('tryAgain') || 'Try Again'}</Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.moonInfo}>
-          <Text style={styles.moonEmoji}>{moonPhase.emoji}</Text>
-          <Text style={styles.moonName}>{moonPhase.name}</Text>
-        </View>
-      </View>
-
-      {/* Daily Overview */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('todaysOverview')}</Text>
-        <View style={styles.overviewCard}>
-          <Text style={styles.overviewText}>
-            {t('dailyOverviewContent', { sign: sunSign ? t(sunSign.toLowerCase()) : '' })}
-          </Text>
-        </View>
-      </View>
-
-      {/* Overall Rating */}
-      <View style={styles.ratingSection}>
-        <Text style={styles.ratingLabel}>{t('overallEnergy')}</Text>
-        <Text style={styles.ratingStars}>★★★★☆</Text>
-        <Text style={styles.ratingPercent}>82%</Text>
-      </View>
-
-      {/* Horoscope Sections */}
-      {sections.map((section, index) => (
-        <View key={index} style={styles.horoscopeCard}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardEmoji}>{section.emoji}</Text>
-            <Text style={styles.cardTitle}>{section.title}</Text>
-            <Text style={styles.cardRating}>{renderStars(section.rating)}</Text>
-          </View>
-          <Text style={styles.cardContent}>{section.content}</Text>
-        </View>
-      ))}
-
-      {/* Lucky Numbers & Colors */}
-      <View style={styles.luckySection}>
-        <View style={styles.luckyItem}>
-          <Text style={styles.luckyLabel}>{t('luckyNumbers')}</Text>
-          <Text style={styles.luckyValue}>7, 14, 23</Text>
-        </View>
-        <View style={styles.luckyItem}>
-          <Text style={styles.luckyLabel}>{t('luckyColor')}</Text>
-          <View style={styles.colorDots}>
-            <View style={[styles.colorDot, { backgroundColor: '#9333ea' }]} />
-            <View style={[styles.colorDot, { backgroundColor: '#e94560' }]} />
-          </View>
-        </View>
-        <View style={styles.luckyItem}>
-          <Text style={styles.luckyLabel}>{t('luckyTime')}</Text>
-          <Text style={styles.luckyValue}>2:00 PM</Text>
-        </View>
-      </View>
-
-      {/* Affirmation */}
-      <View style={styles.affirmationCard}>
-        <Text style={styles.affirmationEmoji}>✨</Text>
-        <Text style={styles.affirmationLabel}>{t('dailyAffirmation')}</Text>
-        <Text style={styles.affirmationText}>{t('affirmationContent')}</Text>
-      </View>
-
-      {/* Premium Badge */}
-      <View style={styles.premiumBadge}>
-        <Text style={styles.premiumIcon}>✨</Text>
-        <Text style={styles.premiumText}>{t('premiumPlusFeature')}</Text>
-      </View>
-    </View>
-  );
+      </LinearGradient>
+    );
+  }
 
   return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      {/* Header - Fixed at top */}
+    <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
+        showsVerticalScrollIndicator={false}
+      >
       <View style={[styles.header, { paddingTop: 40 + topInset }]}>
         <TouchableOpacity style={[styles.backButton, { top: 30 + topInset }]} onPress={() => router.back()}>
           <Text style={styles.backText}>←</Text>
@@ -222,12 +162,73 @@ function DailyHoroscopeScreenContent() {
         <Text style={styles.date}>{dateString}</Text>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
-        showsVerticalScrollIndicator={false}
-      >
-        {renderContent()}
+
+        <View style={styles.signCard}>
+          <Text style={styles.signEmoji}>☀️</Text>
+          <View style={styles.signInfo}>
+            <Text style={styles.signLabel}>{t('yourSign')}</Text>
+            <Text style={styles.signName}>{sunSign ? t(sunSign.toLowerCase()) : t('unknown')}</Text>
+          </View>
+          <View style={styles.moonInfo}>
+            <Text style={styles.moonEmoji}>{moonPhase.emoji}</Text>
+            <Text style={styles.moonName}>{moonPhase.name}</Text>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('todaysOverview')}</Text>
+          <View style={styles.overviewCard}>
+            <Text style={styles.overviewText}>
+              {t('dailyOverviewContent', { sign: sunSign ? t(sunSign.toLowerCase()) : '' })}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.ratingSection}>
+          <Text style={styles.ratingLabel}>{t('overallEnergy')}</Text>
+          <Text style={styles.ratingStars}>★★★★☆</Text>
+          <Text style={styles.ratingPercent}>82%</Text>
+        </View>
+
+        {sections.map((section) => (
+          <View key={section.title} style={styles.horoscopeCard}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardEmoji}>{section.emoji}</Text>
+              <Text style={styles.cardTitle}>{section.title}</Text>
+              <Text style={styles.cardRating}>{renderStars(section.rating)}</Text>
+            </View>
+            <Text style={styles.cardContent}>{section.content}</Text>
+          </View>
+        ))}
+
+        <View style={styles.luckySection}>
+          <View style={styles.luckyItem}>
+            <Text style={styles.luckyLabel}>{t('luckyNumbers')}</Text>
+            <Text style={styles.luckyValue}>7, 14, 23</Text>
+          </View>
+          <View style={styles.luckyItem}>
+            <Text style={styles.luckyLabel}>{t('luckyColor')}</Text>
+            <View style={styles.colorDots}>
+              <View style={[styles.colorDot, { backgroundColor: AppTheme.colors.cosmic }]} />
+              <View style={[styles.colorDot, { backgroundColor: AppTheme.colors.coral }]} />
+            </View>
+          </View>
+          <View style={styles.luckyItem}>
+            <Text style={styles.luckyLabel}>{t('luckyTime')}</Text>
+            <Text style={styles.luckyValue}>2:00 PM</Text>
+          </View>
+        </View>
+
+        <View style={styles.affirmationCard}>
+          <Text style={styles.affirmationEmoji}>✨</Text>
+          <Text style={styles.affirmationLabel}>{t('dailyAffirmation')}</Text>
+          <Text style={styles.affirmationText}>{t('affirmationContent')}</Text>
+        </View>
+
+        <View style={styles.premiumBadge}>
+          <Text style={styles.premiumIcon}>✨</Text>
+          <Text style={styles.premiumText}>{t('premiumPlusFeature')}</Text>
+        </View>
       </ScrollView>
     </LinearGradient>
   );
@@ -236,17 +237,21 @@ function DailyHoroscopeScreenContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    ...(Platform.OS === 'web' ? {
-      height: '100%' as any,
-      width: '100%' as any,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          height: '100%' as any,
+          width: '100%' as any,
+        }
+      : {}),
   },
   scrollView: {
     flex: 1,
-    ...(Platform.OS === 'web' ? {
-      height: 'calc(100vh - 120px)' as any,
-      overflowY: 'auto' as any,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          height: 'calc(100vh - 120px)' as any,
+          overflowY: 'auto' as any,
+        }
+      : {}),
   },
   scrollContent: {
     paddingBottom: 40,
@@ -262,35 +267,37 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 50,
     left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: AppTheme.colors.panelStrong,
     justifyContent: 'center',
     alignItems: 'center',
   },
   backText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 24,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 4,
   },
   date: {
     fontSize: 14,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
   },
   signCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(124, 108, 255, 0.14)',
     marginHorizontal: 20,
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(124, 108, 255, 0.22)',
   },
   signEmoji: {
     fontSize: 40,
@@ -301,14 +308,14 @@ const styles = StyleSheet.create({
   },
   signLabel: {
     fontSize: 12,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   signName: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   moonInfo: {
     alignItems: 'center',
@@ -318,7 +325,7 @@ const styles = StyleSheet.create({
   },
   moonName: {
     fontSize: 10,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     marginTop: 2,
   },
   section: {
@@ -328,17 +335,19 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 12,
   },
   overviewCard: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
     borderRadius: 16,
     padding: 16,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
   },
   overviewText: {
     fontSize: 15,
-    color: '#ccc',
+    color: AppTheme.colors.textSecondary,
     lineHeight: 24,
   },
   ratingSection: {
@@ -350,24 +359,26 @@ const styles = StyleSheet.create({
   },
   ratingLabel: {
     fontSize: 14,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
   },
   ratingStars: {
     fontSize: 18,
-    color: '#fbbf24',
+    color: AppTheme.colors.warning,
     letterSpacing: 2,
   },
   ratingPercent: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#4ade80',
+    color: AppTheme.colors.success,
   },
   horoscopeCard: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
     marginHorizontal: 20,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -382,16 +393,16 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   cardRating: {
     fontSize: 12,
-    color: '#fbbf24',
+    color: AppTheme.colors.warning,
     letterSpacing: 1,
   },
   cardContent: {
     fontSize: 14,
-    color: '#aaa',
+    color: AppTheme.colors.textSecondary,
     lineHeight: 20,
   },
   luckySection: {
@@ -403,14 +414,16 @@ const styles = StyleSheet.create({
   },
   luckyItem: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: AppTheme.colors.panel,
     borderRadius: 12,
     padding: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
   },
   luckyLabel: {
     fontSize: 10,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 6,
@@ -418,7 +431,7 @@ const styles = StyleSheet.create({
   luckyValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   colorDots: {
     flexDirection: 'row',
@@ -430,13 +443,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   affirmationCard: {
-    backgroundColor: 'rgba(233, 69, 96, 0.1)',
+    backgroundColor: 'rgba(232, 93, 117, 0.12)',
     marginHorizontal: 20,
     borderRadius: 16,
     padding: 20,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(233, 69, 96, 0.2)',
+    borderColor: 'rgba(232, 93, 117, 0.22)',
     marginBottom: 24,
   },
   affirmationEmoji: {
@@ -445,14 +458,14 @@ const styles = StyleSheet.create({
   },
   affirmationLabel: {
     fontSize: 12,
-    color: '#e94560',
+    color: AppTheme.colors.coral,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 8,
   },
   affirmationText: {
     fontSize: 16,
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     textAlign: 'center',
     fontStyle: 'italic',
     lineHeight: 24,
@@ -461,7 +474,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(147, 51, 234, 0.2)',
+    backgroundColor: 'rgba(124, 108, 255, 0.16)',
     marginHorizontal: 60,
     paddingVertical: 10,
     paddingHorizontal: 20,
@@ -473,7 +486,7 @@ const styles = StyleSheet.create({
   },
   premiumText: {
     fontSize: 12,
-    color: '#9333ea',
+    color: AppTheme.colors.cosmic,
     fontWeight: '600',
   },
 });

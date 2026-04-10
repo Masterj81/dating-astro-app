@@ -43,6 +43,28 @@ export function AuthCard({ mode }: AuthCardProps) {
     [isSignup, t]
   );
 
+  const passwordStrength = useMemo(() => {
+    if (!isSignup || !password) return 0;
+    let strength = 0;
+    if (password.length >= 8) strength += 1;
+    if (password.length >= 12) strength += 1;
+    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) strength += 1;
+    if (/\d/.test(password)) strength += 1;
+    if (/[^A-Za-z0-9]/.test(password)) strength += 1;
+    return Math.min(strength, 4);
+  }, [isSignup, password]);
+
+  const passwordStrengthLabel = useMemo(() => {
+    if (!password) return "";
+    const labels = [t("passwordWeak"), t("passwordFair"), t("passwordGood"), t("passwordStrong"), t("passwordStrong")];
+    return labels[passwordStrength] ?? "";
+  }, [password, passwordStrength, t]);
+
+  const passwordStrengthColor = useMemo(() => {
+    const colors = ["bg-red-500", "bg-orange-400", "bg-yellow-400", "bg-emerald-400", "bg-emerald-400"];
+    return colors[passwordStrength] ?? "bg-white/10";
+  }, [passwordStrength]);
+
   const switchLocale = (nextLocale: string) => {
     router.replace(pathname, { locale: nextLocale });
     setLangOpen(false);
@@ -63,64 +85,69 @@ export function AuthCard({ mode }: AuthCardProps) {
     setError(null);
     setSuccess(null);
 
-    const supabase = getSupabaseBrowser();
+    try {
+      const supabase = getSupabaseBrowser();
 
-    if (isSignup) {
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      if (isSignup) {
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: name,
+              name,
+            },
+            emailRedirectTo: `${window.location.origin}/${locale}/auth/callback`,
+          },
+        });
+
+        setLoading(false);
+
+        if (signUpError) {
+          setError(signUpError.message);
+          return;
+        }
+
+        if (signUpData.session) {
+          await routeAfterAuth(signUpData.session.user.id);
+          return;
+        }
+
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem("pendingSignupEmail", email);
+        }
+
+        setSuccess(t("checkEmail"));
+        router.replace("/auth/verify-email");
+        return;
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
-        options: {
-          data: {
-            full_name: name,
-            name,
-          },
-          emailRedirectTo: `${window.location.origin}/${locale}/auth/login`,
-        },
       });
 
       setLoading(false);
 
-      if (signUpError) {
-        setError(signUpError.message);
+      if (signInError) {
+        setError(signInError.message);
         return;
       }
 
-      if (signUpData.session) {
-        await routeAfterAuth(signUpData.session.user.id);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session?.user?.id) {
+        await routeAfterAuth(session.user.id);
         return;
       }
 
-      if (typeof window !== "undefined") {
-        window.sessionStorage.setItem("pendingSignupEmail", email);
-      }
-
-      setSuccess(t("checkEmail"));
-      router.replace("/auth/verify-email");
-      return;
+      router.replace("/app");
+    } catch (unexpectedError) {
+      setLoading(false);
+      setError(unexpectedError instanceof Error ? unexpectedError.message : t("unknownError"));
     }
-
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    setLoading(false);
-
-    if (signInError) {
-      setError(signInError.message);
-      return;
-    }
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (session?.user?.id) {
-      await routeAfterAuth(session.user.id);
-      return;
-    }
-
-    router.replace("/app");
   };
 
   const handleOAuth = async (provider: OAuthProvider) => {
@@ -128,16 +155,22 @@ export function AuthCard({ mode }: AuthCardProps) {
     setSuccess(null);
     setOauthLoading(provider);
 
-    const { error: oauthError } = await getSupabaseBrowser().auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `https://app.astrodatingapp.com/${locale}/app`,
-      },
-    });
+    try {
+      const origin = typeof window !== "undefined" ? window.location.origin : "https://app.astrodatingapp.com";
+      const { error: oauthError } = await getSupabaseBrowser().auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${origin}/${locale}/auth/callback`,
+        },
+      });
 
-    if (oauthError) {
+      if (oauthError) {
+        setOauthLoading(null);
+        setError(oauthError.message);
+      }
+    } catch (unexpectedError) {
       setOauthLoading(null);
-      setError(oauthError.message);
+      setError(unexpectedError instanceof Error ? unexpectedError.message : t("unknownError"));
     }
   };
 
@@ -148,6 +181,9 @@ export function AuthCard({ mode }: AuthCardProps) {
           <button
             type="button"
             onClick={() => setLangOpen((open) => !open)}
+            aria-expanded={langOpen}
+            aria-haspopup="listbox"
+            aria-label={tLang("label")}
             className="inline-flex items-center gap-2 rounded-full border border-border bg-bg px-4 py-2 text-sm text-white transition-colors hover:bg-card-hover"
           >
             <span>{tLang(locale)}</span>
@@ -155,16 +191,19 @@ export function AuthCard({ mode }: AuthCardProps) {
               className={`text-[10px] transition-transform ${
                 langOpen ? "rotate-180" : ""
               }`}
+              aria-hidden="true"
             >
               ▼
             </span>
           </button>
           {langOpen ? (
-            <div className="absolute right-0 top-full z-20 mt-2 w-40 rounded-2xl border border-border bg-bg-secondary py-2 shadow-xl">
+            <div className="absolute right-0 top-full z-20 mt-2 w-40 rounded-2xl border border-border bg-bg-secondary py-2 shadow-xl" role="listbox" aria-label={tLang("label")}>
               {routing.locales.map((loc) => (
                 <button
                   key={loc}
                   type="button"
+                  role="option"
+                  aria-selected={loc === locale}
                   onClick={() => switchLocale(loc)}
                   className={`block w-full px-4 py-2 text-left text-sm transition-colors hover:bg-card-hover ${
                     loc === locale ? "text-accent" : "text-text-muted"
@@ -273,14 +312,39 @@ export function AuthCard({ mode }: AuthCardProps) {
           </div>
         </label>
 
+        {isSignup && password ? (
+          <div className="space-y-2">
+            <div
+              className="flex gap-1.5"
+              role="meter"
+              aria-label={t("password")}
+              aria-valuenow={passwordStrength}
+              aria-valuemin={0}
+              aria-valuemax={4}
+              aria-valuetext={passwordStrengthLabel}
+            >
+              {Array.from({ length: 4 }, (_, i) => (
+                <div
+                  key={i}
+                  className={`h-1.5 flex-1 rounded-full transition-colors ${
+                    i < passwordStrength ? passwordStrengthColor : "bg-white/10"
+                  }`}
+                />
+              ))}
+            </div>
+            <p className="text-xs text-text-dim" aria-live="polite">{passwordStrengthLabel}</p>
+          </div>
+        ) : null}
+
         {error ? (
-          <div className="rounded-2xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
-            {error}
+          <div role="alert" className="flex items-start gap-3 rounded-2xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
+            <span className="mt-0.5 shrink-0" aria-hidden="true">&#9888;</span>
+            <span>{error}</span>
           </div>
         ) : null}
 
         {success ? (
-          <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+          <div role="status" className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
             {success}
           </div>
         ) : null}
@@ -288,9 +352,14 @@ export function AuthCard({ mode }: AuthCardProps) {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-full bg-accent px-5 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-accent px-5 py-3.5 text-sm font-semibold text-white transition-all hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {loading ? t("loading") : isSignup ? t("createAccount") : t("signIn")}
+          {loading ? (
+            <>
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              {t("loading")}
+            </>
+          ) : isSignup ? t("createAccount") : t("signIn")}
         </button>
       </form>
 

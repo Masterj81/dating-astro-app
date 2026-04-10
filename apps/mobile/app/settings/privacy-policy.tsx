@@ -1,10 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function PrivacyPolicyScreen() {
   const { t } = useLanguage();
+  const insets = useSafeAreaInsets();
 
   const sections = [
     {
@@ -79,14 +82,22 @@ export default function PrivacyPolicyScreen() {
   ];
 
   return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel={t('goBack') || 'Go back'}
+          >
             <Text style={styles.backText}>{'\u2190'}</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>{t('privacyPolicyTitle') || 'Privacy Policy'}</Text>
+          <Text style={styles.title} accessibilityRole="header">{t('privacyPolicyTitle') || 'Privacy Policy'}</Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -137,24 +148,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: AppTheme.colors.panel,
     justifyContent: 'center',
     alignItems: 'center',
   },
   backText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 24,
   },
   title: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   placeholder: {
-    width: 40,
+    width: 44,
   },
   dateContainer: {
     paddingHorizontal: 20,
@@ -162,7 +173,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 13,
-    color: '#888',
+    color: AppTheme.colors.textMuted,
     marginBottom: 4,
   },
   introContainer: {
@@ -171,7 +182,7 @@ const styles = StyleSheet.create({
   },
   introText: {
     fontSize: 15,
-    color: '#ccc',
+    color: AppTheme.colors.textSecondary,
     lineHeight: 22,
   },
   section: {
@@ -181,12 +192,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#e94560',
+    color: AppTheme.colors.coral,
     marginBottom: 10,
   },
   sectionContent: {
     fontSize: 14,
-    color: '#bbb',
+    color: AppTheme.colors.textSecondary,
     lineHeight: 22,
   },
 });

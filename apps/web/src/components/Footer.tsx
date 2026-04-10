@@ -8,20 +8,21 @@ export function Footer() {
   const c = useTranslations("common");
 
   return (
-    <footer className="border-t border-border bg-bg-secondary">
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:grid-cols-3">
+    <footer className="relative border-t border-border bg-bg-secondary">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:grid-cols-3">
         {/* Brand */}
         <div>
           <h3 className="mb-3 text-lg font-bold text-white">{SITE.name}</h3>
-          <p className="text-sm text-text-muted">{c("madeWith")}</p>
+          <p className="max-w-xs text-sm leading-relaxed text-text-muted">{c("madeWith")}</p>
         </div>
 
         {/* Links */}
         <div>
-          <h4 className="mb-3 text-sm font-semibold uppercase tracking-wider text-text-dim">
+          <h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-text-dim">
             {t("links")}
           </h4>
-          <ul className="space-y-2 text-sm">
+          <ul className="space-y-2.5 text-sm">
             <li>
               <Link href="/help" className="text-text-muted transition-colors hover:text-white">
                 {t("helpCenter")}
@@ -57,14 +58,14 @@ export function Footer() {
 
         {/* Download */}
         <div>
-          <h4 className="mb-3 text-sm font-semibold uppercase tracking-wider text-text-dim">
+          <h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-text-dim">
             {t("download")}
           </h4>
           <DownloadButtons size="sm" />
         </div>
       </div>
 
-      <div className="border-t border-border px-4 py-4 text-center text-xs text-text-dim">
+      <div className="border-t border-border px-4 py-5 text-center text-xs text-text-dim">
         {c("copyright", { year: new Date().getFullYear() })}
       </div>
     </footer>

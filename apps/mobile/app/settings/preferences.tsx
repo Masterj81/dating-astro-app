@@ -1,4 +1,4 @@
-import Slider from '@react-native-community/slider';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -11,10 +11,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
-import { useAuth } from '../_layout';
+import { useAuth } from '../../contexts/AuthContext';
 
+// ── Types ──────────────────────────────────────────────────────────
 type Preferences = {
   minAge: number;
   maxAge: number;
@@ -24,6 +26,19 @@ type Preferences = {
   elementFilter: string[];
   onlyHighCompatibility: boolean;
 };
+
+const DEFAULTS: Preferences = {
+  minAge: 18,
+  maxAge: 50,
+  maxDistance: 50,
+  showMe: 'everyone',
+  zodiacFilter: [],
+  elementFilter: [],
+  onlyHighCompatibility: false,
+};
+
+// ── Constants ──────────────────────────────────────────────────────
+const ALL_ELEMENTS = ['fire', 'earth', 'air', 'water'] as const;
 
 const ZODIAC_SIGNS = [
   { name: 'Aries', emoji: '♈', element: 'fire' },
@@ -38,294 +53,378 @@ const ZODIAC_SIGNS = [
   { name: 'Capricorn', emoji: '♑', element: 'earth' },
   { name: 'Aquarius', emoji: '♒', element: 'air' },
   { name: 'Pisces', emoji: '♓', element: 'water' },
-];
+] as const;
 
 const ELEMENTS = [
   { name: 'Fire', emoji: '🔥', signs: ['Aries', 'Leo', 'Sagittarius'] },
   { name: 'Earth', emoji: '🌍', signs: ['Taurus', 'Virgo', 'Capricorn'] },
   { name: 'Air', emoji: '💨', signs: ['Gemini', 'Libra', 'Aquarius'] },
   { name: 'Water', emoji: '💧', signs: ['Cancer', 'Scorpio', 'Pisces'] },
-];
+] as const;
 
+const DISTANCE_STEPS = [1, 5, 10, 15, 25, 50, 75, 100, 150, 200];
+
+// ── Helpers ────────────────────────────────────────────────────────
+const storageKey = (uid: string) => `discovery_preferences_${uid}`;
+
+const safeStringArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
+
+const sanitizeStoredPreferences = (value: unknown): Partial<Preferences> => {
+  if (!value || typeof value !== 'object') return {};
+
+  const obj = value as Record<string, unknown>;
+
+  return {
+    zodiacFilter: safeStringArray(obj.zodiacFilter),
+    elementFilter: safeStringArray(obj.elementFilter),
+    onlyHighCompatibility:
+      typeof obj.onlyHighCompatibility === 'boolean'
+        ? obj.onlyHighCompatibility
+        : DEFAULTS.onlyHighCompatibility,
+  };
+};
+
+const lookingForToShowMe = (lf: unknown): Preferences['showMe'] => {
+  const n = safeStringArray(lf).map(v => v.toLowerCase());
+  if (n.length === 1 && n[0] === 'male') return 'men';
+  if (n.length === 1 && n[0] === 'female') return 'women';
+  return 'everyone';
+};
+
+const showMeToLookingFor = (s: Preferences['showMe']) => {
+  if (s === 'men') return ['male'];
+  if (s === 'women') return ['female'];
+  return ['male', 'female', 'non-binary', 'other'];
+};
+
+const elementsToFilter = (pe: unknown) => {
+  const n = safeStringArray(pe).map(v => v.toLowerCase());
+  if (!n.length || n.length === ALL_ELEMENTS.length) return [];
+  return n.map(v => v.charAt(0).toUpperCase() + v.slice(1));
+};
+
+// ── Stepper Component (pure JS, no native deps) ───────────────────
+function Stepper({
+  value,
+  min,
+  max,
+  step = 1,
+  onValueChange,
+  suffix,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  onValueChange: (v: number) => void;
+  suffix?: string;
+}) {
+  const dec = () => onValueChange(Math.max(min, value - step));
+  const inc = () => onValueChange(Math.min(max, value + step));
+
+  return (
+    <View style={s.stepper}>
+      <TouchableOpacity
+        style={[s.stepBtn, value <= min && s.stepBtnDisabled]}
+        onPress={dec}
+        disabled={value <= min}
+      >
+        <Text style={s.stepBtnText}>-</Text>
+      </TouchableOpacity>
+      <Text style={s.stepValue}>
+        {value}{suffix || ''}
+      </Text>
+      <TouchableOpacity
+        style={[s.stepBtn, value >= max && s.stepBtnDisabled]}
+        onPress={inc}
+        disabled={value >= max}
+      >
+        <Text style={s.stepBtnText}>+</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ── Distance Picker ────────────────────────────────────────────────
+function DistancePicker({
+  value,
+  onValueChange,
+}: {
+  value: number;
+  onValueChange: (v: number) => void;
+}) {
+  return (
+    <View style={s.distanceRow}>
+      {DISTANCE_STEPS.map(d => (
+        <TouchableOpacity
+          key={d}
+          style={[s.distanceChip, value === d && s.distanceChipActive]}
+          onPress={() => onValueChange(d)}
+        >
+          <Text style={[s.distanceText, value === d && s.distanceTextActive]}>
+            {d}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+// ── Main Screen ────────────────────────────────────────────────────
 export default function PreferencesScreen() {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [preferences, setPreferences] = useState<Preferences>({
-    minAge: 18,
-    maxAge: 50,
-    maxDistance: 50,
-    showMe: 'everyone',
-    zodiacFilter: [],
-    elementFilter: [],
-    onlyHighCompatibility: false,
-  });
+  const [prefs, setPrefs] = useState<Preferences>({ ...DEFAULTS });
 
   useEffect(() => {
     loadPreferences();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, [user]);
 
   const loadPreferences = async () => {
-    if (!user) {
+    if (!user) { setLoading(false); return; }
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('min_age, max_age, max_distance, looking_for, preferred_elements')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      let stored: Partial<Preferences> = {};
+      try {
+        const raw = await AsyncStorage.getItem(storageKey(user.id));
+        if (raw) {
+          stored = sanitizeStoredPreferences(JSON.parse(raw));
+        }
+      } catch { /* corrupted storage */ }
+
+      setPrefs(prev => ({
+        ...prev,
+        ...stored,
+        minAge: typeof data?.min_age === 'number' ? data.min_age : prev.minAge,
+        maxAge: typeof data?.max_age === 'number' ? data.max_age : prev.maxAge,
+        maxDistance: typeof data?.max_distance === 'number' ? data.max_distance : prev.maxDistance,
+        showMe: lookingForToShowMe(data?.looking_for),
+        elementFilter: elementsToFilter(data?.preferred_elements),
+        zodiacFilter: safeStringArray(stored.zodiacFilter),
+        onlyHighCompatibility:
+          typeof stored.onlyHighCompatibility === 'boolean'
+            ? stored.onlyHighCompatibility
+            : prev.onlyHighCompatibility,
+      }));
+    } catch (err) {
+      console.error('[Preferences] load failed', err);
+    } finally {
       setLoading(false);
-      return;
     }
-    setLoading(true);
-
-    const { data } = await supabase
-      .from('profiles')
-      .select('preferences')
-      .eq('id', user.id)
-      .single();
-
-    if (data?.preferences) {
-      setPreferences({ ...preferences, ...data.preferences });
-    }
-    setLoading(false);
   };
 
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        preferences,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', user.id);
+    try {
+      const payload = {
+        id: user.id,
+        email: user.email ?? null,
+        name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+        min_age: prefs.minAge,
+        max_age: prefs.maxAge,
+        max_distance: prefs.maxDistance,
+        looking_for: showMeToLookingFor(prefs.showMe),
+        preferred_elements: prefs.elementFilter.length
+          ? prefs.elementFilter.map(v => v.toLowerCase())
+          : [...ALL_ELEMENTS],
+      };
 
-    setSaving(false);
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert(payload, { onConflict: 'id' })
+        .select('id');
 
-    if (error) {
-      Alert.alert(t('error'), t('somethingWrong'));
-    } else {
+      if (error || !data?.length) {
+        Alert.alert(t('error'), error?.message || t('somethingWrong'));
+        return;
+      }
+
+      await AsyncStorage.setItem(
+        storageKey(user.id),
+        JSON.stringify({
+          zodiacFilter: prefs.zodiacFilter,
+          onlyHighCompatibility: prefs.onlyHighCompatibility,
+        })
+      );
+
       Alert.alert(t('success'), t('preferencesUpdated') || 'Preferences updated', [
         { text: t('ok'), onPress: () => router.back() },
       ]);
+    } catch (err: any) {
+      Alert.alert(t('error'), err?.message || t('somethingWrong'));
+    } finally {
+      setSaving(false);
     }
   };
 
-  const toggleZodiacFilter = (sign: string) => {
-    setPreferences(prev => ({
-      ...prev,
-      zodiacFilter: prev.zodiacFilter.includes(sign)
-        ? prev.zodiacFilter.filter(s => s !== sign)
-        : [...prev.zodiacFilter, sign],
+  const toggleZodiac = (sign: string) => {
+    setPrefs(p => ({
+      ...p,
+      zodiacFilter: p.zodiacFilter.includes(sign)
+        ? p.zodiacFilter.filter(x => x !== sign)
+        : [...p.zodiacFilter, sign],
     }));
   };
 
-  const toggleElementFilter = (element: string) => {
-    const elementData = ELEMENTS.find(e => e.name === element);
-    if (!elementData) return;
-
-    setPreferences(prev => {
-      const isSelected = prev.elementFilter.includes(element);
-      if (isSelected) {
-        // Remove element and its signs
-        return {
-          ...prev,
-          elementFilter: prev.elementFilter.filter(e => e !== element),
-          zodiacFilter: prev.zodiacFilter.filter(s => !elementData.signs.includes(s)),
-        };
-      } else {
-        // Add element and its signs
-        return {
-          ...prev,
-          elementFilter: [...prev.elementFilter, element],
-          zodiacFilter: [...new Set([...prev.zodiacFilter, ...elementData.signs])],
-        };
-      }
+  const toggleElement = (element: string) => {
+    const el = ELEMENTS.find(e => e.name === element);
+    if (!el) return;
+    setPrefs(p => {
+      const active = p.elementFilter.includes(element);
+      return {
+        ...p,
+        elementFilter: active
+          ? p.elementFilter.filter(e => e !== element)
+          : [...p.elementFilter, element],
+        zodiacFilter: active
+          ? p.zodiacFilter.filter(x => !(el.signs as readonly string[]).includes(x))
+          : [...new Set([...p.zodiacFilter, ...(el.signs as readonly string[])])],
+      };
     });
   };
 
-  const clearFilters = () => {
-    setPreferences(prev => ({
-      ...prev,
-      zodiacFilter: [],
-      elementFilter: [],
-    }));
-  };
+  const clearFilters = () => setPrefs(p => ({ ...p, zodiacFilter: [], elementFilter: [] }));
+  const zodiacFilter = safeStringArray(prefs.zodiacFilter);
+  const elementFilter = safeStringArray(prefs.elementFilter);
 
+  // ── Loading ──
   if (loading) {
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-        <ActivityIndicator size="large" color="#e94560" />
+      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={s.container}>
+        <ActivityIndicator size="large" color="#e94560" style={{ marginTop: 100 }} />
       </LinearGradient>
     );
   }
 
+  // ── Render ──
   return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={s.container}>
+      <ScrollView
+        contentContainerStyle={[s.scroll, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 40 }]}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>←</Text>
+        <View style={s.header}>
+          <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
+            <Text style={s.backText}>{'<'}</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>{t('discoveryPreferences') || 'Preferences'}</Text>
+          <Text style={s.title}>{t('discoveryPreferences') || 'Preferences'}</Text>
           <TouchableOpacity
-            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+            style={[s.saveBtn, saving && { opacity: 0.6 }]}
             onPress={handleSave}
             disabled={saving}
           >
-            {saving ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.saveText}>{t('save') || 'Save'}</Text>
-            )}
+            {saving
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Text style={s.saveText}>{t('save') || 'Save'}</Text>
+            }
           </TouchableOpacity>
         </View>
 
         {/* Age Range */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('ageRange') || 'Age Range'}</Text>
-          <View style={styles.rangeDisplay}>
-            <Text style={styles.rangeValue}>{preferences.minAge}</Text>
-            <Text style={styles.rangeSeparator}>-</Text>
-            <Text style={styles.rangeValue}>{preferences.maxAge}</Text>
-            <Text style={styles.rangeUnit}>{t('yearsOld') || 'years old'}</Text>
-          </View>
-
-          <View style={styles.sliderContainer}>
-            <Text style={styles.sliderLabel}>{t('minimum') || 'Min'}</Text>
-            <Slider
-              style={styles.slider}
-              minimumValue={18}
-              maximumValue={preferences.maxAge - 1}
-              step={1}
-              value={preferences.minAge}
-              onValueChange={(value) => setPreferences(prev => ({ ...prev, minAge: value }))}
-              minimumTrackTintColor="#e94560"
-              maximumTrackTintColor="#333"
-              thumbTintColor="#e94560"
-            />
-          </View>
-
-          <View style={styles.sliderContainer}>
-            <Text style={styles.sliderLabel}>{t('maximum') || 'Max'}</Text>
-            <Slider
-              style={styles.slider}
-              minimumValue={preferences.minAge + 1}
-              maximumValue={99}
-              step={1}
-              value={preferences.maxAge}
-              onValueChange={(value) => setPreferences(prev => ({ ...prev, maxAge: value }))}
-              minimumTrackTintColor="#e94560"
-              maximumTrackTintColor="#333"
-              thumbTintColor="#e94560"
-            />
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>{t('ageRange') || 'Age Range'}</Text>
+          <View style={s.ageRow}>
+            <View style={s.ageCol}>
+              <Text style={s.label}>{t('minimum') || 'Min'}</Text>
+              <Stepper
+                value={prefs.minAge}
+                min={18}
+                max={prefs.maxAge - 1}
+                onValueChange={v => setPrefs(p => ({ ...p, minAge: v }))}
+              />
+            </View>
+            <Text style={s.ageSep}>-</Text>
+            <View style={s.ageCol}>
+              <Text style={s.label}>{t('maximum') || 'Max'}</Text>
+              <Stepper
+                value={prefs.maxAge}
+                min={prefs.minAge + 1}
+                max={99}
+                onValueChange={v => setPrefs(p => ({ ...p, maxAge: v }))}
+              />
+            </View>
           </View>
         </View>
 
         {/* Distance */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('maxDistance') || 'Maximum Distance'}</Text>
-          <View style={styles.rangeDisplay}>
-            <Text style={styles.rangeValue}>{preferences.maxDistance}</Text>
-            <Text style={styles.rangeUnit}>km</Text>
-          </View>
-
-          <Slider
-            style={styles.fullSlider}
-            minimumValue={1}
-            maximumValue={200}
-            step={1}
-            value={preferences.maxDistance}
-            onValueChange={(value) => setPreferences(prev => ({ ...prev, maxDistance: value }))}
-            minimumTrackTintColor="#e94560"
-            maximumTrackTintColor="#333"
-            thumbTintColor="#e94560"
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>{t('maxDistance') || 'Maximum Distance'}</Text>
+          <Text style={s.bigValue}>{prefs.maxDistance} km</Text>
+          <DistancePicker
+            value={prefs.maxDistance}
+            onValueChange={v => setPrefs(p => ({ ...p, maxDistance: v }))}
           />
-          <View style={styles.sliderLabels}>
-            <Text style={styles.sliderEndLabel}>1 km</Text>
-            <Text style={styles.sliderEndLabel}>200 km</Text>
-          </View>
         </View>
 
         {/* Show Me */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('showMe') || 'Show Me'}</Text>
-          <View style={styles.optionButtons}>
-            {(['men', 'women', 'everyone'] as const).map((option) => (
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>{t('showMe') || 'Show Me'}</Text>
+          <View style={s.optionRow}>
+            {(['men', 'women', 'everyone'] as const).map(opt => (
               <TouchableOpacity
-                key={option}
-                style={[
-                  styles.optionButton,
-                  preferences.showMe === option && styles.optionButtonActive,
-                ]}
-                onPress={() => setPreferences(prev => ({ ...prev, showMe: option }))}
+                key={opt}
+                style={[s.optionBtn, prefs.showMe === opt && s.optionBtnActive]}
+                onPress={() => setPrefs(p => ({ ...p, showMe: opt }))}
               >
-                <Text style={[
-                  styles.optionText,
-                  preferences.showMe === option && styles.optionTextActive,
-                ]}>
-                  {t(option) || option.charAt(0).toUpperCase() + option.slice(1)}
+                <Text style={[s.optionText, prefs.showMe === opt && s.optionTextActive]}>
+                  {t(opt) || opt.charAt(0).toUpperCase() + opt.slice(1)}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        {/* Elements Filter */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t('filterByElement') || 'Filter by Element'}</Text>
-            {(preferences.elementFilter.length > 0 || preferences.zodiacFilter.length > 0) && (
+        {/* Elements */}
+        <View style={s.section}>
+          <View style={s.sectionRow}>
+            <Text style={s.sectionTitle}>{t('filterByElement') || 'Filter by Element'}</Text>
+            {(elementFilter.length > 0 || zodiacFilter.length > 0) && (
               <TouchableOpacity onPress={clearFilters}>
-                <Text style={styles.clearText}>{t('clearAll') || 'Clear all'}</Text>
+                <Text style={s.clearText}>{t('clearAll') || 'Clear'}</Text>
               </TouchableOpacity>
             )}
           </View>
-          <Text style={styles.sectionSubtitle}>
-            {t('elementFilterHint') || 'Select elements to filter by their zodiac signs'}
-          </Text>
-          <View style={styles.elementGrid}>
-            {ELEMENTS.map((element) => (
+          <View style={s.elementGrid}>
+            {ELEMENTS.map(el => (
               <TouchableOpacity
-                key={element.name}
-                style={[
-                  styles.elementCard,
-                  preferences.elementFilter.includes(element.name) && styles.elementCardActive,
-                ]}
-                onPress={() => toggleElementFilter(element.name)}
+                key={el.name}
+                style={[s.elementCard, elementFilter.includes(el.name) && s.cardActive]}
+                onPress={() => toggleElement(el.name)}
               >
-                <Text style={styles.elementEmoji}>{element.emoji}</Text>
-                <Text style={[
-                  styles.elementName,
-                  preferences.elementFilter.includes(element.name) && styles.elementNameActive,
-                ]}>
-                  {t(element.name.toLowerCase()) || element.name}
+                <Text style={s.elementEmoji}>{el.emoji}</Text>
+                <Text style={[s.elementName, elementFilter.includes(el.name) && s.textActive]}>
+                  {t(el.name.toLowerCase()) || el.name}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        {/* Zodiac Filter */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('filterByZodiac') || 'Filter by Zodiac Sign'}</Text>
-          <Text style={styles.sectionSubtitle}>
-            {t('zodiacFilterHint') || 'Only show profiles with these sun signs'}
-          </Text>
-          <View style={styles.zodiacGrid}>
-            {ZODIAC_SIGNS.map((sign) => (
+        {/* Zodiac Signs */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>{t('filterByZodiac') || 'Filter by Zodiac Sign'}</Text>
+          <Text style={s.hint}>{t('zodiacFilterHint') || 'Only show profiles with these sun signs'}</Text>
+          <View style={s.zodiacGrid}>
+            {ZODIAC_SIGNS.map(sign => (
               <TouchableOpacity
                 key={sign.name}
-                style={[
-                  styles.zodiacCard,
-                  preferences.zodiacFilter.includes(sign.name) && styles.zodiacCardActive,
-                ]}
-                onPress={() => toggleZodiacFilter(sign.name)}
+                style={[s.zodiacCard, zodiacFilter.includes(sign.name) && s.cardActive]}
+                onPress={() => toggleZodiac(sign.name)}
               >
-                <Text style={styles.zodiacEmoji}>{sign.emoji}</Text>
-                <Text style={[
-                  styles.zodiacName,
-                  preferences.zodiacFilter.includes(sign.name) && styles.zodiacNameActive,
-                ]}>
+                <Text style={s.zodiacEmoji}>{sign.emoji}</Text>
+                <Text style={[s.zodiacName, zodiacFilter.includes(sign.name) && s.textActive]}>
                   {t(sign.name.toLowerCase()) || sign.name}
                 </Text>
               </TouchableOpacity>
@@ -333,49 +432,37 @@ export default function PreferencesScreen() {
           </View>
         </View>
 
-        {/* Compatibility Filter */}
-        <View style={styles.section}>
+        {/* High Compatibility Toggle */}
+        <View style={s.section}>
           <TouchableOpacity
-            style={styles.compatibilityRow}
-            onPress={() => setPreferences(prev => ({
-              ...prev,
-              onlyHighCompatibility: !prev.onlyHighCompatibility,
-            }))}
+            style={s.compatRow}
+            onPress={() => setPrefs(p => ({ ...p, onlyHighCompatibility: !p.onlyHighCompatibility }))}
           >
-            <View style={styles.compatibilityLeft}>
-              <Text style={styles.compatibilityIcon}>💫</Text>
-              <View>
-                <Text style={styles.compatibilityTitle}>
+            <View style={s.compatLeft}>
+              <Text style={{ fontSize: 28 }}>💫</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={s.compatTitle}>
                   {t('highCompatibilityOnly') || 'High Compatibility Only'}
                 </Text>
-                <Text style={styles.compatibilitySubtitle}>
-                  {t('highCompatibilityHint') || 'Only show profiles with 70%+ compatibility'}
+                <Text style={s.hint}>
+                  {t('highCompatibilityHint') || 'Only show 70%+ compatibility'}
                 </Text>
               </View>
             </View>
-            <View style={[
-              styles.checkbox,
-              preferences.onlyHighCompatibility && styles.checkboxActive,
-            ]}>
-              {preferences.onlyHighCompatibility && (
-                <Text style={styles.checkmark}>✓</Text>
-              )}
+            <View style={[s.checkbox, prefs.onlyHighCompatibility && s.checkboxActive]}>
+              {prefs.onlyHighCompatibility && <Text style={s.checkmark}>✓</Text>}
             </View>
           </TouchableOpacity>
         </View>
 
         {/* Active Filters Summary */}
-        {(preferences.zodiacFilter.length > 0 || preferences.onlyHighCompatibility) && (
-          <View style={styles.filterSummary}>
-            <Text style={styles.filterSummaryTitle}>
-              {t('activeFilters') || 'Active Filters'}
-            </Text>
-            <Text style={styles.filterSummaryText}>
-              {preferences.zodiacFilter.length > 0 && (
-                `${preferences.zodiacFilter.length} ${t('zodiacSigns') || 'zodiac signs'}`
-              )}
-              {preferences.zodiacFilter.length > 0 && preferences.onlyHighCompatibility && ' • '}
-              {preferences.onlyHighCompatibility && (t('highCompatibility') || 'High compatibility')}
+        {(zodiacFilter.length > 0 || prefs.onlyHighCompatibility) && (
+          <View style={s.summary}>
+            <Text style={s.summaryTitle}>{t('activeFilters') || 'Active Filters'}</Text>
+            <Text style={s.summaryText}>
+              {zodiacFilter.length > 0 && `${zodiacFilter.length} ${t('zodiacSigns') || 'signs'}`}
+              {prefs.zodiacFilter.length > 0 && prefs.onlyHighCompatibility && ' · '}
+              {prefs.onlyHighCompatibility && (t('highCompatibility') || '70%+')}
             </Text>
           </View>
         )}
@@ -384,276 +471,80 @@ export default function PreferencesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 50,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backText: {
-    color: '#fff',
-    fontSize: 24,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  saveButton: {
-    backgroundColor: '#e94560',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    minWidth: 70,
-    alignItems: 'center',
-  },
-  saveButtonDisabled: {
-    opacity: 0.7,
-  },
-  saveText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 28,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  sectionSubtitle: {
-    fontSize: 13,
-    color: '#888',
-    marginBottom: 16,
-  },
-  clearText: {
-    fontSize: 14,
-    color: '#e94560',
-  },
-  rangeDisplay: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'center',
-    marginBottom: 16,
-    marginTop: 8,
-  },
-  rangeValue: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#e94560',
-  },
-  rangeSeparator: {
-    fontSize: 24,
-    color: '#666',
-    marginHorizontal: 8,
-  },
-  rangeUnit: {
-    fontSize: 16,
-    color: '#888',
-    marginLeft: 8,
-  },
-  sliderContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sliderLabel: {
-    width: 40,
-    fontSize: 14,
-    color: '#888',
-  },
-  slider: {
-    flex: 1,
-    height: 40,
-  },
-  fullSlider: {
-    width: '100%',
-    height: 40,
-  },
-  sliderLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: -8,
-  },
-  sliderEndLabel: {
-    fontSize: 12,
-    color: '#666',
-  },
-  optionButtons: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 12,
-  },
-  optionButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  optionButtonActive: {
-    borderColor: '#e94560',
-    backgroundColor: 'rgba(233, 69, 96, 0.1)',
-  },
-  optionText: {
-    fontSize: 15,
-    color: '#888',
-    fontWeight: '500',
-  },
-  optionTextActive: {
-    color: '#e94560',
-  },
-  elementGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  elementCard: {
-    width: '48%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    gap: 10,
-  },
-  elementCardActive: {
-    borderColor: '#e94560',
-    backgroundColor: 'rgba(233, 69, 96, 0.1)',
-  },
-  elementEmoji: {
-    fontSize: 24,
-  },
-  elementName: {
-    fontSize: 15,
-    color: '#888',
-    fontWeight: '500',
-  },
-  elementNameActive: {
-    color: '#e94560',
-  },
-  zodiacGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  zodiacCard: {
-    width: '23%',
-    aspectRatio: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  zodiacCardActive: {
-    borderColor: '#e94560',
-    backgroundColor: 'rgba(233, 69, 96, 0.1)',
-  },
-  zodiacEmoji: {
-    fontSize: 20,
-    marginBottom: 4,
-  },
-  zodiacName: {
-    fontSize: 10,
-    color: '#888',
-    textAlign: 'center',
-  },
-  zodiacNameActive: {
-    color: '#e94560',
-  },
-  compatibilityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    padding: 16,
-    borderRadius: 16,
-  },
-  compatibilityLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 12,
-  },
-  compatibilityIcon: {
-    fontSize: 28,
-  },
-  compatibilityTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 2,
-  },
-  compatibilitySubtitle: {
-    fontSize: 13,
-    color: '#888',
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#666',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxActive: {
-    backgroundColor: '#e94560',
-    borderColor: '#e94560',
-  },
-  checkmark: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  filterSummary: {
-    marginHorizontal: 20,
-    backgroundColor: 'rgba(233, 69, 96, 0.1)',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(233, 69, 96, 0.2)',
-  },
-  filterSummaryTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#e94560',
-    marginBottom: 4,
-  },
-  filterSummaryText: {
-    fontSize: 13,
-    color: '#ccc',
-  },
+// ── Styles ─────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+  container: { flex: 1 },
+  scroll: { paddingHorizontal: 20 },
+
+  // Header
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
+  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
+  backText: { color: '#fff', fontSize: 20, fontWeight: '600' },
+  title: { fontSize: 20, fontWeight: '600', color: '#fff' },
+  saveBtn: { backgroundColor: '#e94560', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, minWidth: 70, alignItems: 'center' },
+  saveText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+
+  // Section
+  section: { marginBottom: 28 },
+  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#fff', marginBottom: 12 },
+  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  hint: { fontSize: 13, color: '#888', marginBottom: 12 },
+  label: { fontSize: 14, color: '#888', textAlign: 'center', marginBottom: 8 },
+  clearText: { fontSize: 14, color: '#e94560' },
+
+  // Stepper
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  stepBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(233,69,96,0.15)', justifyContent: 'center', alignItems: 'center' },
+  stepBtnDisabled: { opacity: 0.3 },
+  stepBtnText: { color: '#e94560', fontSize: 24, fontWeight: '600', lineHeight: 28 },
+  stepValue: { fontSize: 32, fontWeight: 'bold', color: '#e94560', minWidth: 50, textAlign: 'center' },
+
+  // Age
+  ageRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20 },
+  ageCol: { alignItems: 'center' },
+  ageSep: { fontSize: 24, color: '#666', marginTop: 20 },
+
+  // Distance
+  bigValue: { fontSize: 36, fontWeight: 'bold', color: '#e94560', textAlign: 'center', marginBottom: 16 },
+  distanceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
+  distanceChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1.5, borderColor: 'transparent' },
+  distanceChipActive: { borderColor: '#e94560', backgroundColor: 'rgba(233,69,96,0.15)' },
+  distanceText: { fontSize: 14, color: '#888', fontWeight: '500' },
+  distanceTextActive: { color: '#e94560' },
+
+  // Options (Show Me)
+  optionRow: { flexDirection: 'row', gap: 10 },
+  optionBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', borderWidth: 2, borderColor: 'transparent' },
+  optionBtnActive: { borderColor: '#e94560', backgroundColor: 'rgba(233,69,96,0.1)' },
+  optionText: { fontSize: 15, color: '#888', fontWeight: '500' },
+  optionTextActive: { color: '#e94560' },
+
+  // Elements
+  elementGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  elementCard: { width: '47%', flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 2, borderColor: 'transparent', gap: 10 },
+  elementEmoji: { fontSize: 24 },
+  elementName: { fontSize: 15, color: '#888', fontWeight: '500' },
+
+  // Zodiac
+  zodiacGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  zodiacCard: { width: '22%', aspectRatio: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 2, borderColor: 'transparent' },
+  zodiacEmoji: { fontSize: 20, marginBottom: 4 },
+  zodiacName: { fontSize: 10, color: '#888', textAlign: 'center' },
+
+  // Shared active states
+  cardActive: { borderColor: '#e94560', backgroundColor: 'rgba(233,69,96,0.1)' },
+  textActive: { color: '#e94560' },
+
+  // Compatibility
+  compatRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.05)', padding: 16, borderRadius: 16 },
+  compatLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 },
+  compatTitle: { fontSize: 16, fontWeight: '600', color: '#fff', marginBottom: 2 },
+  checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: '#666', justifyContent: 'center', alignItems: 'center' },
+  checkboxActive: { backgroundColor: '#e94560', borderColor: '#e94560' },
+  checkmark: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
+
+  // Summary
+  summary: { backgroundColor: 'rgba(233,69,96,0.1)', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(233,69,96,0.2)' },
+  summaryTitle: { fontSize: 14, fontWeight: '600', color: '#e94560', marginBottom: 4 },
+  summaryText: { fontSize: 13, color: '#ccc' },
 });

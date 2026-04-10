@@ -1,16 +1,21 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useNavigation } from 'expo-router';
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LanguageSelector from '../../components/LanguageSelector';
+import { LoadingState } from '../../components/ScreenStates';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import WebTabWrapper from '../../components/WebTabWrapper';
+import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
+import { formatBirthDate } from '../../utils/dateFormatting';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { readFileAsArrayBuffer, getExtFromMime } from '../../services/fileUtils';
 import { pickImage as pickImageCrossPlatform } from '../../services/imagePicker';
+import { getManageSubscriptionAction, manageSubscription } from '../../services/subscriptionManagement';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePremium } from '../../contexts/PremiumContext';
 
 type UserProfile = {
   id: string;
@@ -34,6 +39,8 @@ export default function ProfileScreen() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const { user, signOut, loading: authLoading } = useAuth();
   const { t, language } = useLanguage();
+  const { tier } = usePremium();
+  const isFreeUser = tier === 'free';
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
 
@@ -54,38 +61,43 @@ export default function ProfileScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, [user, authLoading]);
 
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     setLoading(true);
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user?.id)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .maybeSingle();
 
-    if (error) {
-      console.error('Error loading profile:', error);
-    } else {
-      setProfile(data);
-
-      if (data?.photos && data.photos.length > 0) {
-        setAvatarUrl(data.photos[0]);
+      if (error) {
+        console.error('Error loading profile:', error);
       } else {
-        const { data: files } = await supabase.storage
-          .from('avatars')
-          .list(user?.id);
+        setProfile(data);
 
-        if (files && files.length > 0) {
-          const { data: urlData } = supabase.storage
+        const photos = Array.isArray(data?.photos) ? data.photos : [];
+        if (photos.length > 0 && photos[0]) {
+          setAvatarUrl(photos[0]);
+        } else {
+          const { data: files } = await supabase.storage
             .from('avatars')
-            .getPublicUrl(`${user?.id}/${files[0].name}`);
-          setAvatarUrl(urlData.publicUrl);
+            .list(user?.id);
+
+          if (files && files.length > 0) {
+            const { data: urlData } = supabase.storage
+              .from('avatars')
+              .getPublicUrl(`${user?.id}/${files[0].name}`);
+            setAvatarUrl(urlData.publicUrl);
+          }
         }
       }
+    } catch (err) {
+      console.error('Error loading profile:', err);
     }
 
     setLoading(false);
-  };
+  }, [user?.id]);
 
   const pickImage = async () => {
     const result = await pickImageCrossPlatform({
@@ -156,9 +168,48 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleLogout = async () => {
-    await signOut();
-    router.replace('/auth/login');
+  const handleLogout = () => {
+    Alert.alert(
+      t('logOut'),
+      t('logoutConfirm') || 'Are you sure you want to log out?',
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('logOut'),
+          style: 'destructive',
+          onPress: async () => {
+            await signOut();
+            router.replace('/auth/login');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleManageSubscription = async () => {
+    if (!user?.id) return;
+
+    try {
+      const action = await getManageSubscriptionAction(user.id);
+
+      if (action.type === 'none') {
+        Alert.alert(
+          t('subscriptions') || 'Subscriptions',
+          t('manageSubscriptionUnavailable') || 'No active subscription was found to manage.',
+          [{ text: t('ok') || 'OK' }]
+        );
+        return;
+      }
+
+      await manageSubscription(user.id);
+    } catch (error) {
+      console.error('[Profile] Failed to open subscription management:', error);
+      Alert.alert(
+        t('error') || 'Error',
+        t('manageSubscriptionError') || 'Unable to open subscription management right now.',
+        [{ text: t('ok') || 'OK' }]
+      );
+    }
   };
 
   const getMonthName = (monthIndex: number): string => {
@@ -167,26 +218,30 @@ export default function ProfileScreen() {
   };
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return t('notSet');
-    const date = new Date(dateString);
-    return `${getMonthName(date.getMonth())} ${date.getDate()}, ${date.getFullYear()}`;
+    return formatBirthDate(dateString, getMonthName, t('notSet'));
   };
+
+  const completeness = useMemo(() => {
+    if (!profile) return 0;
+    const fields = [
+      !!profile.name,
+      !!profile.bio,
+      !!avatarUrl,
+      !!profile.sun_sign,
+      !!profile.birth_city,
+      !!profile.birth_time,
+      !!profile.is_verified,
+    ];
+    const filled = fields.filter(Boolean).length;
+    return Math.round((filled / fields.length) * 100);
+  }, [profile, avatarUrl]);
 
   // Show loading while auth is initializing OR while loading profile data
   if (authLoading || loading) {
-    if (Platform.OS === 'web') {
-      return (
-        <WebTabWrapper centered>
-          <div style={{ color: '#e94560', fontSize: 24 }}>{'\u{23F3}'}</div>
-          <p style={{ color: '#888', marginTop: 12, fontSize: 14 }}>{t('loading')}</p>
-        </WebTabWrapper>
-      );
-    }
     return (
-      <View style={[styles.container, styles.centered, { backgroundColor: '#0f0f1a' }]}>
-        <ActivityIndicator size="large" color="#e94560" />
-        <Text style={styles.loadingText}>{t('loading')}</Text>
-      </View>
+      <WebTabWrapper>
+        <LoadingState message={t('loading')} testID="profile-loading" />
+      </WebTabWrapper>
     );
   }
 
@@ -194,19 +249,34 @@ export default function ProfileScreen() {
     if (Platform.OS === 'web') {
       return (
         <WebTabWrapper centered padding={20}>
-          <p style={{ color: '#fff', fontSize: 18, marginBottom: 12 }}>Profile not found</p>
-          <p style={{ color: '#888', fontSize: 14, textAlign: 'center' }}>
-            There was an issue loading your profile. Please try logging out and back in.
+          <p style={{ color: AppTheme.colors.textPrimary, fontSize: 18, marginBottom: 12 }}>Profile not found</p>
+          <p style={{ color: AppTheme.colors.textSecondary, fontSize: 14, textAlign: 'center' }}>
+            There was an issue loading your profile. Please try again.
           </p>
+          <button
+            onClick={() => loadProfile()}
+            style={{
+              marginTop: 20,
+              backgroundColor: AppTheme.colors.coral,
+              padding: '12px 24px',
+              borderRadius: AppTheme.radius.md,
+              border: 'none',
+              color: AppTheme.colors.textOnAccent,
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            {t('refresh') || 'Try Again'}
+          </button>
           <button
             onClick={handleLogout}
             style={{
               marginTop: 20,
-              backgroundColor: '#e94560',
+              backgroundColor: AppTheme.colors.coral,
               padding: '12px 24px',
-              borderRadius: 10,
+              borderRadius: AppTheme.radius.md,
               border: 'none',
-              color: '#fff',
+              color: AppTheme.colors.textOnAccent,
               fontWeight: 600,
               cursor: 'pointer'
             }}
@@ -217,16 +287,26 @@ export default function ProfileScreen() {
       );
     }
     return (
-      <View style={[styles.container, styles.centered, { backgroundColor: '#0f0f1a' }]}>
-        <Text style={{ color: '#fff', fontSize: 18, marginBottom: 12 }}>Profile not found</Text>
-        <Text style={{ color: '#888', fontSize: 14, textAlign: 'center', paddingHorizontal: 20 }}>
-          There was an issue loading your profile. Please try logging out and back in.
+      <View style={[styles.container, styles.centered, { backgroundColor: AppTheme.colors.heroStart, paddingHorizontal: 32 }]}>
+        <Text style={{ fontSize: 48, marginBottom: 16 }}>{'\u{1F30C}'}</Text>
+        <Text style={{ color: AppTheme.colors.textPrimary, fontSize: 20, fontWeight: '700', marginBottom: 10, textAlign: 'center' }}>
+          {t('profileNotFound') || 'We couldn\u2019t load your profile'}
+        </Text>
+        <Text style={{ color: AppTheme.colors.textSecondary, fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 28 }}>
+          {t('profileLoadError') || 'This is usually temporary. Give it another try, or sign back in.'}
         </Text>
         <TouchableOpacity
-          style={{ marginTop: 20, backgroundColor: '#e94560', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 10 }}
+          style={{ marginBottom: 16, backgroundColor: AppTheme.colors.coral, paddingVertical: 14, paddingHorizontal: 36, borderRadius: 999, shadowColor: AppTheme.colors.coral, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 4, minWidth: 180, alignItems: 'center' }}
+          onPress={loadProfile}
+          activeOpacity={0.85}
+        >
+          <Text style={{ color: AppTheme.colors.textOnAccent, fontWeight: '700', fontSize: 16 }}>{t('refresh') || 'Try Again'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ paddingVertical: 12, paddingHorizontal: 24 }}
           onPress={handleLogout}
         >
-          <Text style={{ color: '#fff', fontWeight: '600' }}>{t('logOut')}</Text>
+          <Text style={{ color: AppTheme.colors.textMuted, fontWeight: '500' }}>{t('logOut')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -236,7 +316,7 @@ export default function ProfileScreen() {
   if (Platform.OS === 'web') {
     return (
       <WebTabWrapper
-        background="linear-gradient(#0f0f1a, #1a1a2e, #16213e)"
+        background={`linear-gradient(${AppTheme.colors.heroStart}, ${AppTheme.colors.heroMid}, ${AppTheme.colors.heroEnd})`}
         padding={20}
         paddingTop={40}
       >
@@ -246,7 +326,7 @@ export default function ProfileScreen() {
             onClick={pickImage}
             style={{
               width: 120, height: 120, borderRadius: 60,
-              backgroundColor: '#1a1a2e', border: '3px solid #e94560',
+              backgroundColor: AppTheme.colors.canvasAlt, border: `3px solid ${AppTheme.colors.coral}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               margin: '0 auto 16px', cursor: 'pointer', position: 'relative'
             }}
@@ -254,20 +334,20 @@ export default function ProfileScreen() {
             {avatarUrl ? (
               <img src={avatarUrl} style={{ width: '100%', height: '100%', borderRadius: 60, objectFit: 'cover' }} />
             ) : (
-              <span style={{ fontSize: 48, color: '#e94560', fontWeight: 'bold' }}>
+              <span style={{ fontSize: 48, color: AppTheme.colors.coral, fontWeight: 'bold' }}>
                 {profile?.name?.charAt(0)?.toUpperCase() || '?'}
               </span>
             )}
             <div style={{
               position: 'absolute', bottom: 0, right: 0,
-              backgroundColor: '#e94560', width: 36, height: 36, borderRadius: 18,
+              backgroundColor: AppTheme.colors.coral, width: 36, height: 36, borderRadius: 18,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: '3px solid #0f0f1a'
+              border: `3px solid ${AppTheme.colors.heroStart}`
             }}>
               {'\u{1F4F7}'}
             </div>
           </div>
-          <h2 style={{ color: '#fff', margin: '0 0 20px', fontSize: 24 }}>{profile?.name}</h2>
+          <h2 style={{ color: AppTheme.colors.textPrimary, margin: '0 0 20px', fontSize: 24 }}>{profile?.name}</h2>
 
           {/* Big Three */}
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -277,13 +357,13 @@ export default function ProfileScreen() {
               { emoji: '\u{2B06}\u{FE0F}', label: t('rising'), value: profile?.rising_sign }
             ].map((sign, i) => (
               <div key={i} style={{
-                backgroundColor: 'rgba(255,255,255,0.05)',
+                backgroundColor: AppTheme.colors.panel,
                 borderRadius: 16, padding: 16, minWidth: 100,
-                border: '1px solid rgba(255,255,255,0.08)'
+                border: `1px solid ${AppTheme.colors.border}`
               }}>
                 <div style={{ fontSize: 24, marginBottom: 8 }}>{sign.emoji}</div>
-                <div style={{ fontSize: 12, color: '#666', textTransform: 'uppercase', marginBottom: 4 }}>{sign.label}</div>
-                <div style={{ fontSize: 16, color: '#fff', fontWeight: 600 }}>{sign.value ? t(sign.value.toLowerCase()) : '?'}</div>
+                <div style={{ fontSize: 12, color: AppTheme.colors.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>{sign.label}</div>
+                <div style={{ fontSize: 16, color: AppTheme.colors.textPrimary, fontWeight: 600 }}>{sign.value ? t(sign.value.toLowerCase()) : '?'}</div>
               </div>
             ))}
           </div>
@@ -291,11 +371,11 @@ export default function ProfileScreen() {
 
         {/* Birth Details */}
         <div style={{ marginBottom: 24, padding: '0 20px' }}>
-          <h3 style={{ color: '#fff', fontSize: 18, marginBottom: 12 }}>{t('birthDetails')}</h3>
+          <h3 style={{ color: AppTheme.colors.textPrimary, fontSize: 18, marginBottom: 12 }}>{t('birthDetails')}</h3>
           <div style={{
-            backgroundColor: 'rgba(255,255,255,0.05)',
+            backgroundColor: AppTheme.colors.panel,
             borderRadius: 16, padding: 16,
-            border: '1px solid rgba(255,255,255,0.08)'
+            border: `1px solid ${AppTheme.colors.border}`
           }}>
             {[
               { icon: '\u{1F4C5}', value: formatDate(profile?.birth_date || '') },
@@ -304,7 +384,7 @@ export default function ProfileScreen() {
             ].map((item, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: i < 2 ? 12 : 0 }}>
                 <span style={{ fontSize: 18 }}>{item.icon}</span>
-                <span style={{ color: '#ccc', fontSize: 15 }}>{item.value}</span>
+                <span style={{ color: AppTheme.colors.textSecondary, fontSize: 15 }}>{item.value}</span>
               </div>
             ))}
           </div>
@@ -315,30 +395,42 @@ export default function ProfileScreen() {
           <button
             onClick={() => router.push('/profile/edit')}
             style={{
-              flex: 1, backgroundColor: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              flex: 1, backgroundColor: AppTheme.colors.panel,
+              border: `1px solid ${AppTheme.colors.border}`,
               borderRadius: 12, padding: 16, cursor: 'pointer', textAlign: 'center'
             }}
           >
             <div style={{ fontSize: 24, marginBottom: 6 }}>{'\u{270F}\u{FE0F}'}</div>
-            <div style={{ fontSize: 12, color: '#ccc' }}>{t('editProfile') || 'Edit Profile'}</div>
+            <div style={{ fontSize: 12, color: AppTheme.colors.textSecondary }}>{t('editProfile') || 'Edit Profile'}</div>
           </button>
         </div>
 
         {/* Settings */}
         <div style={{ padding: '0 20px' }}>
-          <h3 style={{ color: '#fff', fontSize: 18, marginBottom: 12 }}>{t('settings')}</h3>
+          <h3 style={{ color: AppTheme.colors.textPrimary, fontSize: 18, marginBottom: 12 }}>{t('settings')}</h3>
 
           <div
             onClick={() => router.push('/onboarding/birth-info')}
             style={{
               display: 'flex', alignItems: 'center', gap: 12, padding: '14px 0',
-              borderBottom: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer'
+              borderBottom: `1px solid ${AppTheme.colors.border}`, cursor: 'pointer'
             }}
           >
             <span style={{ fontSize: 20 }}>{'\u{1F319}'}</span>
-            <span style={{ color: '#ccc', fontSize: 16 }}>{t('editBirthInfo')}</span>
-            <span style={{ marginLeft: 'auto', color: '#666' }}>{'\u{2192}'}</span>
+            <span style={{ color: AppTheme.colors.textSecondary, fontSize: 16 }}>{t('editBirthInfo')}</span>
+            <span style={{ marginLeft: 'auto', color: AppTheme.colors.textMuted }}>{'\u{2192}'}</span>
+          </div>
+
+          <div
+            onClick={() => void handleManageSubscription()}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '14px 0',
+              borderBottom: `1px solid ${AppTheme.colors.border}`, cursor: 'pointer'
+            }}
+          >
+            <span style={{ fontSize: 20 }}>{'\u{1F4B3}'}</span>
+            <span style={{ color: AppTheme.colors.textSecondary, fontSize: 16 }}>{t('subscriptions') || 'Subscriptions & Payments'}</span>
+            <span style={{ marginLeft: 'auto', color: AppTheme.colors.textMuted }}>{'\u{2192}'}</span>
           </div>
 
           <div
@@ -349,7 +441,7 @@ export default function ProfileScreen() {
             }}
           >
             <span style={{ fontSize: 20 }}>{'\u{1F6AA}'}</span>
-            <span style={{ color: '#e94560', fontSize: 16 }}>{t('logOut')}</span>
+            <span style={{ color: AppTheme.colors.coral, fontSize: 16 }}>{t('logOut')}</span>
           </div>
         </div>
       </WebTabWrapper>
@@ -357,7 +449,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+    <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + insets.bottom }]}
@@ -366,10 +458,15 @@ export default function ProfileScreen() {
       >
         {/* Profile Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={pickImage} disabled={uploading}>
+          <TouchableOpacity
+            onPress={pickImage}
+            disabled={uploading}
+            accessibilityRole="button"
+            accessibilityLabel={t('changeProfilePhoto') || 'Change profile photo'}
+          >
             <View style={styles.avatarContainer}>
               {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={styles.profileImage} />
+                <Image source={{ uri: avatarUrl, cache: 'force-cache' }} style={styles.profileImage} />
               ) : (
                 <View style={[styles.profileImage, styles.placeholderImage]}>
                   <Text style={styles.placeholderText}>
@@ -388,28 +485,85 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           <View style={styles.nameRow}>
-            <Text style={styles.name}>{profile?.name || t('yourName')}</Text>
+            <Text style={styles.name} accessibilityRole="header">{profile?.name || t('yourName')}</Text>
             {profile?.is_verified && <VerifiedBadge size="medium" />}
           </View>
 
+          {/* Bio Preview */}
+          {profile?.bio ? (
+            <Text style={styles.bioPreview} numberOfLines={2}>{profile.bio}</Text>
+          ) : (
+            <TouchableOpacity
+              onPress={() => router.push('/profile/edit')}
+              accessibilityRole="button"
+              accessibilityLabel={t('addBio') || 'Add a bio'}
+            >
+              <Text style={styles.bioPrompt}>{t('addBioPrompt') || 'Add a bio to tell others about yourself'}</Text>
+            </TouchableOpacity>
+          )}
+
           <View style={styles.bigThree}>
-            <View style={styles.signCard}>
+            <View style={styles.signCard} accessibilityLabel={`${t('sun')}: ${profile?.sun_sign ? t(profile.sun_sign.toLowerCase()) : t('notSet')}`}>
               <Text style={styles.signEmoji}>{'\u{2600}\u{FE0F}'}</Text>
               <Text style={styles.signLabel}>{t('sun')}</Text>
               <Text style={styles.signValue}>{profile?.sun_sign ? t(profile.sun_sign.toLowerCase()) : '?'}</Text>
             </View>
-            <View style={styles.signCard}>
+            <View style={styles.signCard} accessibilityLabel={`${t('moon')}: ${profile?.moon_sign ? t(profile.moon_sign.toLowerCase()) : t('notSet')}`}>
               <Text style={styles.signEmoji}>{'\u{1F319}'}</Text>
               <Text style={styles.signLabel}>{t('moon')}</Text>
               <Text style={styles.signValue}>{profile?.moon_sign ? t(profile.moon_sign.toLowerCase()) : '?'}</Text>
             </View>
-            <View style={styles.signCard}>
+            <View style={styles.signCard} accessibilityLabel={`${t('rising')}: ${profile?.rising_sign ? t(profile.rising_sign.toLowerCase()) : t('notSet')}`}>
               <Text style={styles.signEmoji}>{'\u{2B06}\u{FE0F}'}</Text>
               <Text style={styles.signLabel}>{t('rising')}</Text>
               <Text style={styles.signValue}>{profile?.rising_sign ? t(profile.rising_sign.toLowerCase()) : '?'}</Text>
             </View>
           </View>
         </View>
+
+        {/* Daily Horoscope Nudge - Re-engagement hook */}
+        <TouchableOpacity
+          style={styles.dailyNudge}
+          onPress={() => router.push('/premium-screens/daily-horoscope' as any)}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={t('checkDailyHoroscope') || 'View Daily Horoscope'}
+        >
+          <Text style={styles.dailyNudgeIcon}>{'\u{2728}'}</Text>
+          <View style={styles.dailyNudgeContent}>
+            <Text style={styles.dailyNudgeTitle}>
+              {t('matchesCosmicTip') || "Today's Cosmic Energy"}
+            </Text>
+            <Text style={styles.dailyNudgeSubtitle}>
+              {t('checkDailyHoroscope') || 'View Daily Horoscope'}
+            </Text>
+          </View>
+          <Text style={styles.dailyNudgeArrow}>{'\u{2192}'}</Text>
+        </TouchableOpacity>
+
+        {/* Profile Completeness */}
+        {completeness < 100 && (
+            <TouchableOpacity
+              style={styles.completenessCard}
+              onPress={() => router.push('/profile/edit')}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={`${t('profileCompleteness') || 'Profile completeness'}: ${completeness}%`}
+            >
+              <View style={styles.completenessHeader}>
+                <Text style={styles.completenessTitle}>
+                  {t('profileCompleteness') || 'Profile Completeness'}
+                </Text>
+                <Text style={styles.completenessScore}>{completeness}%</Text>
+              </View>
+              <View style={styles.completenessBar}>
+                <View style={[styles.completenessBarFill, { width: `${completeness}%` }]} />
+              </View>
+              <Text style={styles.completenessHint}>
+                {t('completeProfileHint') || 'Complete profiles get up to 3x more matches'}
+              </Text>
+            </TouchableOpacity>
+        )}
 
         {/* Birth Info */}
         <View style={styles.section}>
@@ -430,14 +584,60 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Premium Cosmic Insights Teaser */}
+        {isFreeUser && (
+          <TouchableOpacity
+            style={styles.cosmicTeaser}
+            onPress={() => router.push('/premium-screens/plans' as any)}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={t('unlockInsights') || 'Unlock Your Insights'}
+          >
+            <View style={styles.cosmicTeaserHeader}>
+              <Text style={styles.cosmicTeaserIcon}>{'\u{1F52E}'}</Text>
+              <View style={styles.cosmicTeaserHeaderText}>
+                <Text style={styles.cosmicTeaserTitle}>
+                  {t('yourCosmicInsights') || 'Your Cosmic Insights'}
+                </Text>
+                <Text style={styles.cosmicTeaserSubtitle}>
+                  {t('personalizedGuidance') || 'Personalized daily guidance awaits'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.cosmicTeaserPreview}>
+              <View style={styles.cosmicTeaserItem}>
+                <Text style={styles.cosmicTeaserItemIcon}>{'\u{2600}\u{FE0F}'}</Text>
+                <View style={styles.cosmicTeaserItemBlur}>
+                  <View style={styles.blurredLine} />
+                  <View style={[styles.blurredLine, { width: '60%' }]} />
+                </View>
+              </View>
+              <View style={styles.cosmicTeaserItem}>
+                <Text style={styles.cosmicTeaserItemIcon}>{'\u{1F495}'}</Text>
+                <View style={styles.cosmicTeaserItemBlur}>
+                  <View style={styles.blurredLine} />
+                  <View style={[styles.blurredLine, { width: '70%' }]} />
+                </View>
+              </View>
+            </View>
+            <View style={styles.cosmicTeaserCta}>
+              <Text style={styles.cosmicTeaserCtaText}>
+                {t('unlockInsights') || 'Unlock Your Insights'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Verification Prompt */}
         {!profile?.is_verified && (
           <TouchableOpacity
             style={styles.verificationPrompt}
             onPress={() => router.push('/profile/verify')}
+            accessibilityRole="button"
+            accessibilityLabel={t('getVerified') || 'Get verified'}
           >
             <View style={styles.verificationContent}>
-              <Text style={styles.verificationIcon}>✓</Text>
+              <Text style={styles.verificationIcon}>{'\u{2713}'}</Text>
               <View style={styles.verificationText}>
                 <Text style={styles.verificationTitle}>{t('getVerified')}</Text>
                 <Text style={styles.verificationDesc}>{t('verificationPromptDesc')}</Text>
@@ -453,6 +653,8 @@ export default function ProfileScreen() {
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => router.push('/profile/edit')}
+              accessibilityRole="button"
+              accessibilityLabel={t('editProfile') || 'Edit Profile'}
             >
               <Text style={styles.actionIcon}>{'\u{270F}\u{FE0F}'}</Text>
               <Text style={styles.actionText}>{t('editProfile') || 'Edit Profile'}</Text>
@@ -461,6 +663,8 @@ export default function ProfileScreen() {
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => router.push('/settings/preferences')}
+              accessibilityRole="button"
+              accessibilityLabel={t('preferences') || 'Preferences'}
             >
               <Text style={styles.actionIcon}>{'\u{1F3AF}'}</Text>
               <Text style={styles.actionText}>{t('preferences') || 'Preferences'}</Text>
@@ -480,19 +684,45 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <TouchableOpacity style={styles.settingsRow} onPress={() => router.push('/settings')}>
+          <TouchableOpacity
+            style={styles.settingsRow}
+            onPress={() => router.push('/settings')}
+            accessibilityRole="button"
+            accessibilityLabel={t('allSettings') || 'All Settings'}
+          >
             <Text style={styles.settingsIcon}>{'\u{2699}\u{FE0F}'}</Text>
             <Text style={styles.settingsText}>{t('allSettings') || 'All Settings'}</Text>
             <Text style={styles.settingsArrow}>{'\u{2192}'}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.settingsRow} onPress={() => router.push('/onboarding/birth-info')}>
+          <TouchableOpacity
+            style={styles.settingsRow}
+            onPress={() => router.push('/onboarding/birth-info')}
+            accessibilityRole="button"
+            accessibilityLabel={t('editBirthInfo')}
+          >
             <Text style={styles.settingsIcon}>{'\u{1F319}'}</Text>
             <Text style={styles.settingsText}>{t('editBirthInfo')}</Text>
             <Text style={styles.settingsArrow}>{'\u{2192}'}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.settingsRow} onPress={handleLogout}>
+          <TouchableOpacity
+            style={styles.settingsRow}
+            onPress={() => void handleManageSubscription()}
+            accessibilityRole="button"
+            accessibilityLabel={t('subscriptions') || 'Subscriptions & Payments'}
+          >
+            <Text style={styles.settingsIcon}>{'\u{1F4B3}'}</Text>
+            <Text style={styles.settingsText}>{t('subscriptions') || 'Subscriptions & Payments'}</Text>
+            <Text style={styles.settingsArrow}>{'\u{2192}'}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.settingsRow, styles.logoutRow]}
+            onPress={handleLogout}
+            accessibilityRole="button"
+            accessibilityLabel={t('logOut')}
+          >
             <Text style={styles.settingsIcon}>{'\u{1F6AA}'}</Text>
             <Text style={[styles.settingsText, styles.logoutText]}>{t('logOut')}</Text>
           </TouchableOpacity>
@@ -514,7 +744,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
     marginTop: 12,
     fontSize: 14,
   },
@@ -536,30 +766,30 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     borderWidth: 3,
-    borderColor: '#e94560',
+    borderColor: AppTheme.colors.coral,
   },
   placeholderImage: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: AppTheme.colors.canvasAlt,
     justifyContent: 'center',
     alignItems: 'center',
   },
   placeholderText: {
     fontSize: 48,
-    color: '#e94560',
+    color: AppTheme.colors.coral,
     fontWeight: 'bold',
   },
   editBadge: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#e94560',
+    backgroundColor: AppTheme.colors.coral,
     width: 36,
     height: 36,
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: '#0f0f1a',
+    borderColor: AppTheme.colors.heroStart,
   },
   editBadgeText: {
     fontSize: 16,
@@ -568,25 +798,114 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 20,
+    marginBottom: 6,
   },
   name: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
+  },
+  bioPreview: {
+    fontSize: 14,
+    color: AppTheme.colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 20,
+    lineHeight: 20,
+  },
+  bioPrompt: {
+    fontSize: 14,
+    color: AppTheme.colors.cosmic,
+    textAlign: 'center',
+    marginBottom: 20,
+    fontStyle: 'italic',
+  },
+  dailyNudge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 16,
+    backgroundColor: 'rgba(232, 93, 117, 0.08)',
+    borderRadius: AppTheme.radius.lg,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(232, 93, 117, 0.18)',
+    gap: 12,
+  },
+  dailyNudgeIcon: {
+    fontSize: 22,
+  },
+  dailyNudgeContent: {
+    flex: 1,
+  },
+  dailyNudgeTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: AppTheme.colors.textPrimary,
+    marginBottom: 2,
+  },
+  dailyNudgeSubtitle: {
+    fontSize: 12,
+    color: AppTheme.colors.coral,
+    fontWeight: '600',
+  },
+  dailyNudgeArrow: {
+    fontSize: 16,
+    color: AppTheme.colors.coral,
+  },
+  completenessCard: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    backgroundColor: 'rgba(124, 108, 255, 0.08)',
+    borderRadius: AppTheme.radius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(124, 108, 255, 0.20)',
+  },
+  completenessHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  completenessTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: AppTheme.colors.textPrimary,
+  },
+  completenessScore: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: AppTheme.colors.cosmic,
+  },
+  completenessBar: {
+    height: 6,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+  completenessBarFill: {
+    height: '100%',
+    backgroundColor: AppTheme.colors.cosmic,
+    borderRadius: 3,
+  },
+  completenessHint: {
+    fontSize: 13,
+    color: AppTheme.colors.textMuted,
   },
   bigThree: {
     flexDirection: 'row',
     gap: 12,
   },
   signCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 16,
+    backgroundColor: AppTheme.colors.panel,
+    borderRadius: AppTheme.radius.lg,
     padding: 16,
     alignItems: 'center',
     minWidth: 100,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: AppTheme.colors.border,
   },
   signEmoji: {
     fontSize: 24,
@@ -594,7 +913,7 @@ const styles = StyleSheet.create({
   },
   signLabel: {
     fontSize: 12,
-    color: '#666',
+    color: AppTheme.colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 4,
@@ -602,7 +921,7 @@ const styles = StyleSheet.create({
   signValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
   },
   section: {
     paddingHorizontal: 20,
@@ -611,16 +930,16 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 12,
   },
   birthInfo: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 16,
+    backgroundColor: AppTheme.colors.panel,
+    borderRadius: AppTheme.radius.lg,
     padding: 16,
     gap: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: AppTheme.colors.border,
   },
   birthRow: {
     flexDirection: 'row',
@@ -632,7 +951,7 @@ const styles = StyleSheet.create({
   },
   birthValue: {
     fontSize: 15,
-    color: '#ccc',
+    color: AppTheme.colors.textSecondary,
   },
   quickActions: {
     flexDirection: 'row',
@@ -640,12 +959,12 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: AppTheme.colors.panel,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: AppTheme.colors.border,
   },
   premiumAction: {
     backgroundColor: 'rgba(233, 69, 96, 0.1)',
@@ -657,7 +976,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontSize: 12,
-    color: '#ccc',
+    color: AppTheme.colors.textSecondary,
     fontWeight: '500',
   },
   premiumActionText: {
@@ -666,7 +985,8 @@ const styles = StyleSheet.create({
   settingsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 16,
+    minHeight: 52,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.06)',
     gap: 12,
@@ -681,25 +1001,96 @@ const styles = StyleSheet.create({
   },
   settingsText: {
     fontSize: 16,
-    color: '#ccc',
+    color: AppTheme.colors.textSecondary,
   },
   premiumText: {
-    color: '#e94560',
+    color: AppTheme.colors.coral,
     fontWeight: '600',
   },
+  logoutRow: {
+    borderBottomWidth: 0,
+    marginTop: 8,
+  },
   logoutText: {
-    color: '#e94560',
+    color: AppTheme.colors.coral,
+  },
+  cosmicTeaser: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    backgroundColor: 'rgba(124, 108, 255, 0.08)',
+    borderRadius: AppTheme.radius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(124, 108, 255, 0.20)',
+  },
+  cosmicTeaserHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  cosmicTeaserIcon: {
+    fontSize: 28,
+    marginRight: 12,
+  },
+  cosmicTeaserHeaderText: {
+    flex: 1,
+  },
+  cosmicTeaserTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: AppTheme.colors.textPrimary,
+    marginBottom: 2,
+  },
+  cosmicTeaserSubtitle: {
+    fontSize: 13,
+    color: AppTheme.colors.textSecondary,
+  },
+  cosmicTeaserPreview: {
+    gap: 10,
+    marginBottom: 14,
+  },
+  cosmicTeaserItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 10,
+    padding: 10,
+  },
+  cosmicTeaserItemIcon: {
+    fontSize: 18,
+  },
+  cosmicTeaserItemBlur: {
+    flex: 1,
+    gap: 6,
+  },
+  blurredLine: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    width: '80%',
+  },
+  cosmicTeaserCta: {
+    backgroundColor: AppTheme.colors.cosmic,
+    borderRadius: AppTheme.radius.pill,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  cosmicTeaserCtaText: {
+    color: AppTheme.colors.textOnAccent,
+    fontSize: 14,
+    fontWeight: '700',
   },
   verificationPrompt: {
     marginHorizontal: 20,
     marginBottom: 24,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderRadius: 16,
+    backgroundColor: 'rgba(124, 108, 255, 0.12)',
+    borderRadius: AppTheme.radius.lg,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
+    borderColor: 'rgba(124, 108, 255, 0.24)',
   },
   verificationContent: {
     flex: 1,
@@ -708,8 +1099,8 @@ const styles = StyleSheet.create({
   },
   verificationIcon: {
     fontSize: 24,
-    color: '#3b82f6',
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    color: AppTheme.colors.cosmic,
+    backgroundColor: 'rgba(124, 108, 255, 0.16)',
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -723,15 +1114,15 @@ const styles = StyleSheet.create({
   verificationTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#3b82f6',
+    color: AppTheme.colors.cosmic,
     marginBottom: 2,
   },
   verificationDesc: {
     fontSize: 13,
-    color: '#888',
+    color: AppTheme.colors.textSecondary,
   },
   verificationArrow: {
     fontSize: 20,
-    color: '#3b82f6',
+    color: AppTheme.colors.cosmic,
   },
 });
