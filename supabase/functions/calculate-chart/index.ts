@@ -423,14 +423,20 @@ function validateInputs(action: string, params: Record<string, any>): string | n
 
 // --- Server handler ---
 
-const ALLOWED_ORIGINS = [
+const PROD_ORIGINS = [
   'https://www.astrodatingapp.com',
   'https://astrodatingapp.com',
   'https://app.astrodatingapp.com',
+]
+const DEV_ORIGINS = [
+  ...PROD_ORIGINS,
   'http://localhost:3000',
   'http://localhost:8081',
   'http://localhost:19006',
 ]
+const ALLOWED_ORIGINS = Deno.env.get('ENVIRONMENT') === 'production'
+  ? PROD_ORIGINS
+  : DEV_ORIGINS
 
 function getAllowedOrigin(origin: string | null): string {
   if (origin && ALLOWED_ORIGINS.includes(origin)) return origin

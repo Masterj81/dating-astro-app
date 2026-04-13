@@ -9,14 +9,20 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
 // Allowed origins for CORS
-const ALLOWED_ORIGINS = [
+const PROD_ORIGINS = [
   'https://www.astrodatingapp.com',
   'https://astrodatingapp.com',
   'https://app.astrodatingapp.com',
+];
+const DEV_ORIGINS = [
+  ...PROD_ORIGINS,
   'http://localhost:3000',
   'http://localhost:8081',
   'http://localhost:19006',
 ];
+const ALLOWED_ORIGINS = Deno.env.get('ENVIRONMENT') === 'production'
+  ? PROD_ORIGINS
+  : DEV_ORIGINS;
 
 const getCorsHeaders = (origin: string | null) => {
   // SECURITY: Only return CORS headers for known origins. Never fall back to a default.
