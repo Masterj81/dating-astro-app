@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createHash } from "crypto";
+import { createHash, randomBytes, timingSafeEqual } from "crypto";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getResend, EMAIL_FROM } from "@/lib/resend";
 
@@ -40,6 +40,22 @@ export async function POST(request: Request) {
     const supabaseAdmin = getSupabaseAdmin();
     const resend = getResend();
 
+    // --- SECURITY: Verify the caller is authenticated and owns this account ---
+    const authHeader = request.headers.get("authorization");
+    const token = authHeader?.replace(/^Bearer\s+/i, "").trim();
+
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: { user: callerUser }, error: callerError } =
+      await supabaseAdmin.auth.getUser(token);
+
+    if (callerError || !callerUser || callerUser.id !== userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    // --- END auth check ---
+
     // Look up the current user directly; still return success if it doesn't match.
     const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
     const user = userData?.user;
@@ -48,8 +64,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    const { randomBytes } = await import("crypto");
-    const code = randomBytes(4).toString("hex").toUpperCase(); // 8 hex chars = 4 billion combinations
+    // SECURITY: Use 8 bytes (16 hex chars) for stronger entropy (2^64 combinations)
+    const code = randomBytes(8).toString("hex").toUpperCase();
     const codeHash = createHash("sha256").update(code).digest("hex");
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
@@ -66,7 +82,7 @@ export async function POST(request: Request) {
       );
 
     if (dbError) {
-      console.error("DB error:", dbError);
+      console.error("DB error saving deletion request");
       return NextResponse.json(
         { error: "Something went wrong" },
         { status: 500 }

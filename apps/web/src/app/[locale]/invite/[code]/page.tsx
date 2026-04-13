@@ -47,10 +47,9 @@ export default async function InvitePage({ params }: InvitePageProps) {
         <h1 className="text-3xl font-bold text-white">
           {t("youveBeenInvited")}
         </h1>
-        <p
-          className="mt-3 text-lg text-text-muted"
-          dangerouslySetInnerHTML={{ __html: t("joinReward") }}
-        />
+        <p className="mt-3 text-lg text-text-muted">
+          {t("joinReward")}
+        </p>
 
         {/* Code display */}
         <div className="mt-8 rounded-2xl border border-accent/20 bg-accent/8 p-6">
@@ -90,10 +89,9 @@ export default async function InvitePage({ params }: InvitePageProps) {
           </div>
           <div className="flex items-start gap-3">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-bold text-white">3</span>
-            <p
-              className="text-sm text-text-muted"
-              dangerouslySetInnerHTML={{ __html: t("step3", { code: upperCode }) }}
-            />
+            <p className="text-sm text-text-muted">
+              {t("step3", { code: upperCode })}
+            </p>
           </div>
           <div className="flex items-start gap-3">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/20 text-sm font-bold text-accent">✓</span>

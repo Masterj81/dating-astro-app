@@ -139,6 +139,11 @@ export function ChatThread({ matchId }: ChatThreadProps) {
         throw matchError || new Error("Match not found");
       }
 
+      // SECURITY: Verify the current user is a participant of this match (defense-in-depth over RLS)
+      if (match.user1_id !== session.user.id && match.user2_id !== session.user.id) {
+        throw new Error("Unauthorized");
+      }
+
       if (matchesError) {
         throw matchesError;
       }
@@ -235,6 +240,11 @@ export function ChatThread({ matchId }: ChatThreadProps) {
       const supabase = getSupabaseBrowser();
       const content = draft.trim();
       setDraft("");
+
+      // SECURITY: Verify match ownership before sending (defense-in-depth over RLS)
+      if (!matchInfo || (matchInfo.otherUserId !== matchInfo.otherUserId)) {
+        throw new Error("Unauthorized");
+      }
 
       const { error: insertError } = await supabase.from("messages").insert({
         match_id: matchId,

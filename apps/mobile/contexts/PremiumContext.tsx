@@ -54,7 +54,8 @@ type PremiumProviderProps = {
   children: ReactNode;
 };
 
-const FORCE_PREMIUM_FOR_TESTING = process.env.EXPO_PUBLIC_FORCE_PREMIUM === 'true';
+// SECURITY: never allow env-based premium bypass — use database-controlled feature flags only.
+const FORCE_PREMIUM_FOR_TESTING = false;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

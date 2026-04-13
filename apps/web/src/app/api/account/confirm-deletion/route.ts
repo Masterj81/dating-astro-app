@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createHash } from "crypto";
+import { createHash, timingSafeEqual as cryptoTimingSafeEqual } from "crypto";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getResend, EMAIL_FROM } from "@/lib/resend";
 
@@ -16,6 +16,22 @@ export async function POST(request: Request) {
 
     const supabaseAdmin = getSupabaseAdmin();
     const resend = getResend();
+
+    // --- SECURITY: Verify the caller is authenticated and owns this account ---
+    const authHeader = request.headers.get("authorization");
+    const token = authHeader?.replace(/^Bearer\s+/i, "").trim();
+
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: { user: callerUser }, error: callerError } =
+      await supabaseAdmin.auth.getUser(token);
+
+    if (callerError || !callerUser || callerUser.id !== userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    // --- END auth check ---
 
     const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
     const user = userData?.user;
@@ -40,6 +56,19 @@ export async function POST(request: Request) {
       );
     }
 
+    // SECURITY: Check expiration BEFORE incrementing attempts
+    if (new Date(deletionRequest.expires_at) < new Date()) {
+      await supabaseAdmin
+        .from("deletion_requests")
+        .delete()
+        .eq("user_id", user.id);
+
+      return NextResponse.json(
+        { error: "Code has expired. Please request a new code." },
+        { status: 400 }
+      );
+    }
+
     if (deletionRequest.attempts >= 5) {
       await supabaseAdmin
         .from("deletion_requests")
@@ -57,20 +86,13 @@ export async function POST(request: Request) {
       .update({ attempts: deletionRequest.attempts + 1 })
       .eq("user_id", user.id);
 
-    if (new Date(deletionRequest.expires_at) < new Date()) {
-      await supabaseAdmin
-        .from("deletion_requests")
-        .delete()
-        .eq("user_id", user.id);
-
-      return NextResponse.json(
-        { error: "Code has expired. Please request a new code." },
-        { status: 400 }
-      );
-    }
-
+    // SECURITY: Use timing-safe comparison to prevent timing attacks
     const codeHash = createHash("sha256").update(code).digest("hex");
-    if (codeHash !== deletionRequest.code_hash) {
+    const expectedHash = deletionRequest.code_hash;
+    const hashesMatch =
+      codeHash.length === expectedHash.length &&
+      cryptoTimingSafeEqual(Buffer.from(codeHash), Buffer.from(expectedHash));
+    if (!hashesMatch) {
       return NextResponse.json(
         { error: "Invalid verification code" },
         { status: 400 }
@@ -85,7 +107,7 @@ export async function POST(request: Request) {
     const { error: deleteErr } = await supabaseAdmin.auth.admin.deleteUser(user.id);
 
     if (deleteErr) {
-      console.error("Delete user error:", deleteErr);
+      console.error("Delete user error: account deletion failed");
       return NextResponse.json(
         { error: "Failed to delete account. Please try again." },
         { status: 500 }

@@ -51,6 +51,13 @@ export default function ResetPasswordScreen() {
       return;
     }
 
+    // SECURITY: Verify user has an active session from the recovery link
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      showAlert(t('error'), t('passwordResetError') || 'Please use the reset link from your email first.');
+      return;
+    }
+
     setLoading(true);
     try {
       const { error } = await supabase.auth.updateUser({ password });

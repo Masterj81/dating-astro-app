@@ -47,6 +47,12 @@ export function AccountDeletionFlow() {
     };
   }, []);
 
+  async function getAuthToken(): Promise<string | null> {
+    const supabase = getSupabaseBrowser();
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ?? null;
+  }
+
   async function requestCode(e: React.FormEvent) {
     e.preventDefault();
     if (!email || !userId) return;
@@ -55,9 +61,15 @@ export function AccountDeletionFlow() {
     setError("");
 
     try {
+      const token = await getAuthToken();
+      if (!token) throw new Error("You must be logged in");
+
       const res = await fetch("/api/account/request-deletion", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ email, userId }),
       });
 
@@ -82,9 +94,15 @@ export function AccountDeletionFlow() {
     setError("");
 
     try {
+      const token = await getAuthToken();
+      if (!token) throw new Error("You must be logged in");
+
       const res = await fetch("/api/account/confirm-deletion", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ email, userId, code }),
       });
 
@@ -178,11 +196,11 @@ export function AccountDeletionFlow() {
               id="delete-code"
               type="text"
               required
-              inputMode="numeric"
-              pattern="[0-9]{6}"
-              maxLength={6}
+              inputMode="text"
+              pattern="[A-Fa-f0-9]{16}"
+              maxLength={16}
               value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onChange={(e) => setCode(e.target.value.replace(/[^A-Fa-f0-9]/g, "").slice(0, 16).toUpperCase())}
               className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-center text-lg tracking-widest text-white placeholder-text-dim outline-none focus:border-purple-light"
               placeholder={t("codePlaceholder")}
             />

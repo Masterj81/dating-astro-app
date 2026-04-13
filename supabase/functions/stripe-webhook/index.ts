@@ -28,9 +28,15 @@ type PromoCampaign = {
 };
 
 Deno.serve(async (req) => {
+  // SECURITY: Validate webhook secret exists before processing
+  if (!webhookSecret) {
+    console.error('[Stripe Webhook] Missing STRIPE_WEBHOOK_SECRET');
+    return new Response('Server misconfiguration', { status: 500 });
+  }
+
   const signature = req.headers.get('stripe-signature');
   if (!signature) {
-    return new Response('No signature', { status: 400 });
+    return new Response('No signature', { status: 401 });
   }
 
   try {

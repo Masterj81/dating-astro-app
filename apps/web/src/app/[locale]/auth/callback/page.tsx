@@ -32,36 +32,14 @@ export default function AuthCallbackPage() {
 
         let sessionEstablished = false;
 
-        // For implicit flow: parse tokens from the URL hash
-        if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
-          const hashParams = new URLSearchParams(window.location.hash.substring(1));
-          const accessToken = hashParams.get("access_token");
-          const refreshToken = hashParams.get("refresh_token");
-          if (accessToken) {
-            const { error: setSessionError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken || "",
-            });
-            if (setSessionError) {
-              console.error("[AuthCallback] setSession error:", setSessionError);
-              setErrorMessage(setSessionError.message);
-              setStatus("error");
-              return;
-            }
-            sessionEstablished = true;
-            // Clean the hash from URL to prevent re-processing
-            window.history.replaceState(null, "", window.location.pathname + window.location.search);
-          }
-        }
-
-        // For PKCE flow: exchange code for session
-        if (!sessionEstablished && typeof window !== "undefined") {
+        // SECURITY: Use PKCE code exchange only (no implicit flow with tokens in URL hash)
+        if (typeof window !== "undefined") {
           const urlParams = new URLSearchParams(window.location.search);
           const code = urlParams.get("code");
           if (code) {
             const { error: codeError } = await supabase.auth.exchangeCodeForSession(code);
             if (codeError) {
-              console.error("[AuthCallback] exchangeCode error:", codeError);
+              console.error("[AuthCallback] exchangeCode error:", codeError.message);
               setErrorMessage(codeError.message);
               setStatus("error");
               return;

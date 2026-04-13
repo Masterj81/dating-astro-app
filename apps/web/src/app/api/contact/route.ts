@@ -97,7 +97,7 @@ export async function POST(request: Request) {
     await resend.emails.send({
       from: EMAIL_FROM,
       to: "support@astrodatingapp.com",
-      replyTo: email,
+      replyTo: sanitizeHeader(email),
       subject: `[${subjectCategory}] Contact form from ${subjectName}`,
       html: renderEmailShell({
         eyebrow: "Support inbox",
@@ -144,7 +144,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("Contact form error:", err);
+    console.error("Contact form error: failed to send");
     return NextResponse.json(
       { error: "Failed to send message. Please try again." },
       { status: 500 },

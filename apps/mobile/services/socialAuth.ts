@@ -93,23 +93,9 @@ export async function signInWithProvider(provider: 'google' | 'facebook') {
         return { error: exchangeError };
       }
 
-      // Fallback: implicit flow tokens in hash (less secure)
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
-      if (accessToken && refreshToken) {
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        if (sessionError) {
-          safeCaptureException(sessionError, {
-            extra: { provider, context: 'signInWithProvider.setSession' }
-          });
-        }
-        return { error: sessionError };
-      }
-
-      const noTokenError = new Error('No tokens found in callback');
+      // SECURITY: Implicit flow removed — PKCE code exchange is required.
+      // If no code was found, the auth flow failed.
+      const noTokenError = new Error('No authorization code found in callback');
       safeCaptureException(noTokenError, {
         extra: { provider, context: 'signInWithProvider.noTokens' }
       });
@@ -188,18 +174,8 @@ async function signInWithAppleWeb() {
         return { error: exchangeError };
       }
 
-      // Fallback: implicit flow
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
-      if (accessToken && refreshToken) {
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        return { error: sessionError };
-      }
-
-      return { error: new Error('No tokens found in callback') };
+      // SECURITY: Implicit flow removed — PKCE code exchange is required.
+      return { error: new Error('No authorization code found in callback') };
     }
 
     return { error: null };
