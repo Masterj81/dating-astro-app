@@ -2,6 +2,7 @@ import "dotenv/config";
 import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { ensurePublicUrl } from "./upload-image.js";
+import { schedulePostServer } from "./schedule-server.js";
 
 // ── Config ──────────────────────────────────────────────────────────
 const BANNED_WORDS = [
@@ -12,6 +13,19 @@ const BANNED_WORDS = [
   "it's worth noting", "in conclusion", "furthermore", "moreover",
   "comprehensive", "multifaceted", "pivotal", "transformative",
   "harness", "empower", "streamline", "cutting edge",
+];
+
+// Strict ban list for viral FB long-form posts
+const BANNED_WORDS_VIRAL = [
+  ...BANNED_WORDS,
+  "can", "may", "just", "very", "really", "literally", "actually", "certainly",
+  "probably", "basically", "could", "maybe", "enlightening", "esteemed",
+  "shed light", "craft", "crafting", "imagine", "game-changer", "unlock",
+  "discover", "skyrocket", "abyss", "you're not alone", "in a world where",
+  "revolutionize", "disruptive", "utilize", "utilizing", "dive deep",
+  "illuminate", "unveil", "enrich", "intricate", "elucidate", "hence",
+  "boost", "bustling", "opened up", "powerful", "inquiries", "ever-evolving",
+  "remarkable", "stark", "testament", "in summary", "glimpse into",
 ];
 
 const TOPICS = [
@@ -29,6 +43,7 @@ const TOPICS = [
 ];
 
 const MAX_RETRIES = 5;
+const ANTHROPIC_API_RETRIES = 4;
 const POSTS_FILE = "posts.json";
 const MEMORY_FILE = "memory.json";
 const BLOTATO_API_URL = "https://backend.blotato.com/v2/posts";
@@ -81,6 +96,48 @@ function scorePost(text: string): ScoreResult {
   };
 }
 
+// ── Viral FB long-form scorer ───────────────────────────────────────
+function scoreViralPost(text: string): ScoreResult {
+  const lower = text.toLowerCase();
+  const flagged = BANNED_WORDS_VIRAL.filter((w) => {
+    const pattern = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+    return pattern.test(lower);
+  });
+
+  let score = flagged.length * 15;
+
+  // Must have an opening hook (5-8 words on first line)
+  const firstLine = text.trim().split("\n")[0]?.trim() ?? "";
+  const firstLineWords = firstLine.split(/\s+/).filter(Boolean).length;
+  if (firstLineWords < 4 || firstLineWords > 12) score += 15;
+
+  // Must contain at least 3 emoji-bullet lines
+  const emojiBullets = (text.match(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}].+$/gmu) || []).length;
+  if (emojiBullets < 3) score += 10;
+
+  // Must use "you" or "your" (direct address)
+  if (!/\b(you|your|you're|you've|you'll)\b/i.test(text)) score += 10;
+
+  // Reject hashtags, asterisks, semicolons (per template rules)
+  if (/#\w+/.test(text)) score += 20;
+  if (/\*/.test(text)) score += 10;
+  if (/;/.test(text)) score += 5;
+
+  score = Math.min(score, 100);
+
+  return {
+    pass: score < 25 && flagged.length === 0,
+    score,
+    flagged,
+    details: {
+      bannedWords: flagged.length,
+      sentenceVariety: 0,
+      startsWithI: false,
+      tooLong: text.length > 2200,
+    },
+  };
+}
+
 // ── Short-term memory ───────────────────────────────────────────────
 interface Memory {
   recentTopics: string[];
@@ -103,6 +160,20 @@ function saveMemory(memory: Memory): void {
   writeFileSync(MEMORY_FILE, JSON.stringify(memory, null, 2));
 }
 
+function getAnthropicStatus(err: unknown): number | undefined {
+  if (typeof err !== "object" || err === null || !("status" in err)) {
+    return undefined;
+  }
+
+  const status = (err as { status?: number }).status;
+  return typeof status === "number" ? status : undefined;
+}
+
+function isRetryableAnthropicError(err: unknown): boolean {
+  const status = getAnthropicStatus(err);
+  return status === 429 || status === 529 || (status !== undefined && status >= 500);
+}
+
 // ── Anthropic generation ────────────────────────────────────────────
 async function generatePost(
   client: Anthropic,
@@ -113,7 +184,7 @@ async function generatePost(
     ? `\nRecent posts (DO NOT repeat similar ideas):\n${memory.recentPosts.slice(-5).map((p) => `- "${p}"`).join("\n")}`
     : "";
 
-  const msg = await client.messages.create({
+  const request = {
     model: "claude-sonnet-4-20250514",
     max_tokens: 300,
     messages: [
@@ -140,11 +211,108 @@ ${recentContext}
 Post:`,
       },
     ],
-  });
+  };
 
-  const block = msg.content[0];
-  if (block.type !== "text") throw new Error("Unexpected response type");
-  return block.text.trim().replace(/^["']|["']$/g, ""); // Strip wrapping quotes
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= ANTHROPIC_API_RETRIES; attempt++) {
+    try {
+      const msg = await client.messages.create(request);
+      const block = msg.content[0];
+      if (block.type !== "text") throw new Error("Unexpected response type");
+      return block.text.trim().replace(/^["']|["']$/g, "");
+    } catch (err) {
+      lastError = err;
+
+      if (!isRetryableAnthropicError(err) || attempt === ANTHROPIC_API_RETRIES) {
+        break;
+      }
+
+      const status = getAnthropicStatus(err);
+      const delayMs = (2 ** attempt) * 1000 + Math.floor(Math.random() * 400);
+      console.log(`   Anthropic temporarily unavailable (${status ?? "network"}). Retrying in ${Math.round(delayMs / 1000)}s...`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
+// ── Viral FB long-form generation ───────────────────────────────────
+async function generateViralPost(
+  client: Anthropic,
+  source: string,
+  memory: Memory,
+): Promise<string> {
+  const recentContext = memory.recentPosts.length > 0
+    ? `\nRecent posts (DO NOT repeat ideas or openings):\n${memory.recentPosts.slice(-3).map((p) => `- "${p.slice(0, 100)}"`).join("\n")}`
+    : "";
+
+  const request = {
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1500,
+    messages: [
+      {
+        role: "user" as const,
+        content: `You are an expert Facebook marketer for AstroDating — a dating app that matches people via real birth chart astrology (synastry).
+
+Write ONE viral Facebook post based on the source below. Follow this exact structure:
+
+1. OPENING HOOK (5-8 words, no emoji): challenge a belief, share a surprising fact, ask a direct question, or give a bold opinion. Use clear imagery, specific numbers, or timeframes. Do NOT give away the answer.
+2. Blank line
+3. 4-6 emoji-bullet lines (each starts with a relevant emoji, then a short benefit/symptom/insight)
+4. Blank line
+5. 3-5 short paragraphs telling a personal-feeling story or explanation. Use "you" and "your". Use frequent line breaks.
+6. Soft CTA at the end pointing to the AstroDating app or a free reading.
+
+WRITING STYLE (strict):
+- Spartan, informative, clear
+- Short impactful sentences
+- Active voice only
+- Use "you" and "your" to address the reader directly
+- Specific examples, no generalizations
+- No metaphors or clichés
+- No hashtags
+- No asterisks
+- No semicolons
+- No setup phrases ("in conclusion", "in closing")
+- No adjectives or adverbs unless absolutely necessary
+- NEVER use these words: ${BANNED_WORDS_VIRAL.slice(0, 40).join(", ")}
+
+CONTENT RULES:
+- Must be specific to astrology/dating/AstroDating
+- Casual, witty, human (not corporate)
+- Total length: 800-1800 chars
+${recentContext}
+
+SOURCE:
+"""
+${source}
+"""
+
+Output ONLY the post text, no preamble, no explanation, no quotes around it.`,
+      },
+    ],
+  };
+
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= ANTHROPIC_API_RETRIES; attempt++) {
+    try {
+      const msg = await client.messages.create(request);
+      const block = msg.content[0];
+      if (block.type !== "text") throw new Error("Unexpected response type");
+      return block.text.trim().replace(/^["']|["']$/g, "");
+    } catch (err) {
+      lastError = err;
+      if (!isRetryableAnthropicError(err) || attempt === ANTHROPIC_API_RETRIES) break;
+      const delayMs = (2 ** attempt) * 1000 + Math.floor(Math.random() * 400);
+      console.log(`   Anthropic temporarily unavailable. Retrying in ${Math.round(delayMs / 1000)}s...`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 
 // ── Blotato API ─────────────────────────────────────────────────────
@@ -208,6 +376,7 @@ async function postToBlotato(
             content: { text, mediaUrls: imageUrl ? [imageUrl] : [], platform },
             target,
           },
+          useNextFreeSlot: true,
         }),
       });
 
@@ -354,6 +523,7 @@ async function cmdPost(postId?: number) {
     memory.lastPosted = new Date().toISOString();
     saveMemory(memory);
     console.log(`✅ Posted! Blotato ID: ${result.postId}`);
+    return target;
   } else {
     target.status = "failed";
     target.blotato = {
@@ -384,8 +554,8 @@ async function cmdList() {
   }
 }
 
-async function cmdImage(postId?: number) {
-  if (!process.env.GEMINI_API_KEY) {
+async function cmdImage(postId?: number): Promise<SavedPost | undefined> {
+  if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
     console.log("⚠️  GEMINI_API_KEY not set — will use Pollinations.ai fallback");
   }
 
@@ -407,17 +577,79 @@ async function cmdImage(postId?: number) {
   if (result.success && result.filePath) {
     target.imagePath = result.filePath;
     savePosts(posts);
+    return target;
     console.log(`✅ Image saved: ${result.filePath}`);
   } else {
     console.error(`❌ Failed: ${result.error}`);
+  }
+  return undefined;
+}
+
+async function cmdViral(sourceArg: string) {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error("Error: Set ANTHROPIC_API_KEY environment variable");
+    process.exit(1);
+  }
+
+  // sourceArg can be a file path or raw text. If it ends with .md/.txt and exists, read it.
+  let source = sourceArg;
+  if (/\.(md|txt)$/i.test(sourceArg) && existsSync(sourceArg)) {
+    source = readFileSync(sourceArg, "utf-8");
+    console.log(`\n📖 Source loaded from: ${sourceArg} (${source.length} chars)\n`);
+  } else {
+    console.log(`\n📖 Source: inline text (${source.length} chars)\n`);
+  }
+
+  const client = new Anthropic();
+  const memory = loadMemory();
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    console.log(`⏳ Attempt ${attempt}/${MAX_RETRIES} — generating viral FB post...`);
+
+    const text = await generateViralPost(client, source, memory);
+    const result = scoreViralPost(text);
+
+    console.log(`\n   📝 Preview:\n${text.split("\n").map((l) => `      ${l}`).join("\n")}\n`);
+    console.log(`   📏 Length: ${text.length} chars`);
+    console.log(`   🔍 Score: ${result.score}/100 ${result.pass ? "✅" : "❌"}`);
+
+    if (result.pass) {
+      const topic = `[viral-fb] ${source.slice(0, 80).replace(/\s+/g, " ")}`;
+      const saved = savePost(topic, text, result.score);
+      memory.recentTopics.push(topic);
+      memory.recentPosts.push(text);
+      memory.totalGenerated++;
+      saveMemory(memory);
+      console.log(`\n✅ Approved! Saved as post #${saved.id} → ${POSTS_FILE}`);
+      return saved;
+    }
+
+    if (result.flagged.length > 0) {
+      console.log(`   ❌ Flagged words: [${result.flagged.join(", ")}]`);
+    }
+  }
+
+  console.error(`\n🚫 Failed after ${MAX_RETRIES} attempts.`);
+  process.exit(1);
+}
+
+async function cmdViralAndPost(sourceArg: string) {
+  const saved = await cmdViral(sourceArg);
+  if (saved) {
+    console.log("\n--- Auto-generating image ---");
+    await cmdImage(saved.id);
+    console.log("\n--- Auto-scheduling ---");
+    await schedulePostServer(saved.id, "next");
   }
 }
 
 async function cmdGenerateAndPost(topic: string) {
   const saved = await cmdGenerate(topic);
   if (saved) {
-    console.log("\n--- Auto-posting ---");
-    await cmdPost(saved.id);
+    console.log("\n--- Auto-generating image ---");
+    await cmdImage(saved.id);
+    console.log("\n--- Auto-scheduling ---");
+    await schedulePostServer(saved.id, "next");
   }
 }
 
@@ -455,6 +687,22 @@ async function main() {
       await cmdImage(arg ? parseInt(arg) : undefined);
       break;
 
+    case "viral":
+      if (!arg) {
+        console.error('Usage: npm run agent -- viral "<source-text-or-file.md>"');
+        process.exit(1);
+      }
+      await cmdViral(arg);
+      break;
+
+    case "viral-auto":
+      if (!arg) {
+        console.error('Usage: npm run agent -- viral-auto "<source-text-or-file.md>"');
+        process.exit(1);
+      }
+      await cmdViralAndPost(arg);
+      break;
+
     default:
       // Legacy: treat first arg as topic for backward compat
       if (command) {
@@ -464,11 +712,13 @@ async function main() {
 AstroDating Marketing Agent
 
 Commands:
-  npm run agent -- generate "<topic>"   Generate a post
-  npm run agent -- post [id]            Publish to Blotato (latest approved or by ID)
-  npm run agent -- image [id]           Generate image for a post (Gemini)
-  npm run agent -- auto "<topic>"       Generate + publish in one step
-  npm run agent -- list                 Show all posts
+  npm run agent -- generate "<topic>"        Generate short post (≤280 chars)
+  npm run agent -- viral "<source-or-file>"  Generate long-form viral FB post
+  npm run agent -- post [id]                 Publish to Blotato (latest approved or by ID)
+  npm run agent -- image [id]                Generate image for a post (Gemini)
+  npm run agent -- auto "<topic>"            Generate short + image + schedule
+  npm run agent -- viral-auto "<source>"     Generate viral + image + schedule
+  npm run agent -- list                      Show all posts
 `);
       }
   }
