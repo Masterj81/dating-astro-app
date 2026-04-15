@@ -408,6 +408,87 @@ async function postToBlotato(
   }
 }
 
+// ── Blotato native scheduling (no Supabase cron required) ──────────
+async function scheduleToBlotato(
+  text: string,
+  scheduledTime: Date,
+  platforms: string[] = ["facebook", "instagram"],
+  imageUrl?: string,
+): Promise<BlotaToResult> {
+  const apiKey = process.env.BLOTATO_API_KEY;
+  if (!apiKey) return { success: false, error: "BLOTATO_API_KEY not set" };
+
+  const fbPageId = process.env.BLOTATO_FB_PAGE_ID;
+  imageUrl = await ensurePublicUrl(imageUrl);
+
+  try {
+    const results: { platform: string; success: boolean; postId?: string; error?: string }[] = [];
+
+    for (const platform of platforms) {
+      const accountId = platform === 'instagram'
+        ? process.env.BLOTATO_IG_ACCOUNT_ID
+        : process.env.BLOTATO_FB_ACCOUNT_ID;
+      if (!accountId) {
+        results.push({ platform, success: false, error: `BLOTATO_${platform === 'instagram' ? 'IG' : 'FB'}_ACCOUNT_ID not set` });
+        continue;
+      }
+
+      if (platform === 'instagram' && !imageUrl) {
+        results.push({ platform, success: false, error: 'Instagram requires an image — skipped' });
+        continue;
+      }
+
+      const target: Record<string, string> = { targetType: platform };
+      if (platform === "facebook") {
+        if (!fbPageId) {
+          results.push({ platform, success: false, error: "BLOTATO_FB_PAGE_ID not set" });
+          continue;
+        }
+        target.pageId = fbPageId;
+      }
+
+      const response = await fetch(BLOTATO_API_URL, {
+        method: "POST",
+        headers: {
+          "blotato-api-key": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          post: {
+            accountId,
+            content: { text, mediaUrls: imageUrl ? [imageUrl] : [], platform },
+            target,
+          },
+          scheduledTime: scheduledTime.toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        results.push({ platform, success: false, error: `Blotato API ${response.status}: ${errorText}` });
+        continue;
+      }
+
+      const data = await response.json();
+      results.push({ platform, success: true, postId: data.postSubmissionId || data.id || data.postId || "unknown" });
+    }
+
+    const allFailed = results.every((r) => !r.success);
+    const firstSuccess = results.find((r) => r.success);
+    const errors = results.filter((r) => !r.success).map((r) => `${r.platform}: ${r.error}`);
+
+    if (allFailed) return { success: false, error: `All platforms failed — ${errors.join("; ")}` };
+
+    return {
+      success: true,
+      postId: firstSuccess?.postId,
+      ...(errors.length > 0 ? { error: `Partial failure — ${errors.join("; ")}` } : {}),
+    };
+  } catch (err) {
+    return { success: false, error: `Network error: ${(err as Error).message}` };
+  }
+}
+
 // ── Persistence ─────────────────────────────────────────────────────
 interface SavedPost {
   id: number;
@@ -415,7 +496,7 @@ interface SavedPost {
   text: string;
   aiScore: number;
   createdAt: string;
-  status: "draft" | "approved" | "posted" | "failed";
+  status: "draft" | "approved" | "scheduled" | "posted" | "failed";
   imagePath?: string;
   blotato?: {
     postId?: string;
@@ -547,6 +628,7 @@ async function cmdList() {
     const status = {
       draft: "📝",
       approved: "✅",
+      scheduled: "⏰",
       posted: "📤",
       failed: "❌",
     }[p.status];
@@ -554,7 +636,7 @@ async function cmdList() {
   }
 }
 
-async function cmdImage(postId?: number): Promise<SavedPost | undefined> {
+async function cmdImage(postId?: number, variantCount?: number): Promise<SavedPost | undefined> {
   if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
     console.log("⚠️  GEMINI_API_KEY not set — will use Pollinations.ai fallback");
   }
@@ -569,19 +651,31 @@ async function cmdImage(postId?: number): Promise<SavedPost | undefined> {
     process.exit(1);
   }
 
-  console.log(`\n🎨 Generating image for post #${target.id}: "${target.text.slice(0, 50)}..."\n`);
+  // Detect post type from topic prefix added by cmdViral
+  const isViral = target.topic.startsWith("[viral-fb]");
+  const postType: "short" | "viral" = isViral ? "viral" : "short";
+  const count = variantCount ?? (isViral ? 3 : 2);
 
-  const { generateImage } = await import("./.pi/extensions/image-generator.js");
-  const result = await generateImage(target.text);
+  console.log(`\n🎨 Generating image for post #${target.id} (${postType}, ${count} variants)`);
+  console.log(`   "${target.text.slice(0, 50)}..."\n`);
+
+  const { generateBestVariant, detectSignFromText } = await import("./.pi/extensions/image-generator.js");
+  const detectedSign = detectSignFromText(target.text);
+  if (detectedSign) console.log(`   ♈ Detected sign: ${detectedSign}\n`);
+
+  const result = await generateBestVariant(target.text, {
+    count,
+    postType,
+    signContext: detectedSign,
+  });
 
   if (result.success && result.filePath) {
     target.imagePath = result.filePath;
     savePosts(posts);
+    console.log(`\n✅ Image saved: ${result.filePath}`);
     return target;
-    console.log(`✅ Image saved: ${result.filePath}`);
-  } else {
-    console.error(`❌ Failed: ${result.error}`);
   }
+  console.error(`❌ Failed: ${result.error}`);
   return undefined;
 }
 
@@ -643,6 +737,58 @@ async function cmdViralAndPost(sourceArg: string) {
   }
 }
 
+async function cmdBlotatoSchedule(postId?: number, dateArg: string = "next") {
+  const posts = loadPosts();
+  const target = postId
+    ? posts.find((p) => p.id === postId)
+    : posts.filter((p) => p.status === "approved").pop();
+
+  if (!target) {
+    console.error("No approved post found to schedule.");
+    process.exit(1);
+  }
+
+  // Reuse parseDateTime from schedule-server
+  const { parseDateTime } = await import("./schedule-server.js");
+  const scheduledTime = parseDateTime(dateArg);
+
+  console.log(`\n📅 Scheduling post #${target.id} directly via Blotato`);
+  console.log(`   Text: "${target.text.slice(0, 60)}..."`);
+  console.log(`   When: ${scheduledTime.toLocaleString()}`);
+  console.log(`   Platforms: facebook, instagram`);
+
+  // Upload local image to a public URL if needed
+  let imageUrl: string | undefined = target.imagePath;
+
+  const result = await scheduleToBlotato(
+    target.text,
+    scheduledTime,
+    ["facebook", "instagram"],
+    imageUrl,
+  );
+
+  if (result.success) {
+    target.status = "scheduled";
+    target.blotato = {
+      postId: result.postId,
+      platforms: ["facebook", "instagram"],
+      postedAt: scheduledTime.toISOString(),
+      ...(result.error ? { error: result.error } : {}),
+    };
+    savePosts(posts);
+    console.log(`\n✅ Scheduled in Blotato! Submission ID: ${result.postId}`);
+    if (result.error) console.log(`   ⚠️  ${result.error}`);
+  } else {
+    target.status = "failed";
+    target.blotato = {
+      platforms: ["facebook", "instagram"],
+      error: result.error,
+    };
+    savePosts(posts);
+    console.error(`\n❌ Failed: ${result.error}`);
+  }
+}
+
 async function cmdGenerateAndPost(topic: string) {
   const saved = await cmdGenerate(topic);
   if (saved) {
@@ -683,9 +829,13 @@ async function main() {
       await cmdGenerateAndPost(arg);
       break;
 
-    case "image":
-      await cmdImage(arg ? parseInt(arg) : undefined);
+    case "image": {
+      // Usage: npm run agent -- image [id] [variant-count]
+      const variantArg = process.argv[4];
+      const variantCount = variantArg ? parseInt(variantArg) : undefined;
+      await cmdImage(arg ? parseInt(arg) : undefined, variantCount);
       break;
+    }
 
     case "viral":
       if (!arg) {
@@ -703,6 +853,16 @@ async function main() {
       await cmdViralAndPost(arg);
       break;
 
+    case "blotato-schedule": {
+      // Usage: npm run agent -- blotato-schedule <id> "<when>"
+      //        npm run agent -- blotato-schedule 21 "tomorrow 19:00"
+      //        npm run agent -- blotato-schedule 21 next
+      const postId = arg ? parseInt(arg) : undefined;
+      const when = process.argv[4] || "next";
+      await cmdBlotatoSchedule(postId, when);
+      break;
+    }
+
     default:
       // Legacy: treat first arg as topic for backward compat
       if (command) {
@@ -718,6 +878,7 @@ Commands:
   npm run agent -- image [id]                Generate image for a post (Gemini)
   npm run agent -- auto "<topic>"            Generate short + image + schedule
   npm run agent -- viral-auto "<source>"     Generate viral + image + schedule
+  npm run agent -- blotato-schedule <id> "<when>"  Schedule directly in Blotato (no Supabase cron)
   npm run agent -- list                      Show all posts
 `);
       }
