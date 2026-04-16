@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
+import {
+  clearPersistedAuthNext,
+  normalizeAuthNext,
+  readPersistedAuthNext,
+} from "@/lib/auth-redirect";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getProfileSetupState, isWebProfileSetupIncomplete } from "@/lib/web-account";
 
@@ -30,12 +35,17 @@ export default function AuthCallbackPage() {
           }
         }
 
-        let sessionEstablished = false;
-
-        // SECURITY: Use PKCE code exchange only (no implicit flow with tokens in URL hash)
+        // Support both PKCE (`?code=...`) and implicit (`#access_token=...`) return shapes.
         if (typeof window !== "undefined") {
           const urlParams = new URLSearchParams(window.location.search);
+          const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
           const code = urlParams.get("code");
+          const accessToken = hashParams.get("access_token");
+          const refreshToken = hashParams.get("refresh_token");
+
+          const tokenHash = urlParams.get("token_hash");
+          const otpType = urlParams.get("type");
+
           if (code) {
             const { error: codeError } = await supabase.auth.exchangeCodeForSession(code);
             if (codeError) {
@@ -44,19 +54,69 @@ export default function AuthCallbackPage() {
               setStatus("error");
               return;
             }
-            sessionEstablished = true;
+          } else if (tokenHash) {
+            // Supabase email link (signup confirmation, magic link, recovery, etc.)
+            const validTypes = ["signup", "magiclink", "recovery", "email_change", "invite"] as const;
+            const verifyType = (validTypes.includes(otpType as typeof validTypes[number])
+              ? otpType
+              : "signup") as typeof validTypes[number];
+
+            const { error: otpError } = await supabase.auth.verifyOtp({
+              token_hash: tokenHash,
+              type: verifyType,
+            });
+            if (otpError) {
+              console.error("[AuthCallback] verifyOtp error:", otpError.message);
+              setErrorMessage(otpError.message);
+              setStatus("error");
+              return;
+            }
+
+            // Clean token_hash from URL after verification
+            const cleanUrl = `${window.location.origin}${window.location.pathname}${
+              window.location.search
+                .replace(/[?&]token_hash=[^&]+/, "")
+                .replace(/[?&]type=[^&]+/, "")
+                .replace(/^&/, "?")
+                .replace(/^\?$/, "") || ""
+            }`;
+            window.history.replaceState({}, document.title, cleanUrl);
+          } else if (accessToken && refreshToken) {
+            const { error: setSessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+
+            if (setSessionError) {
+              console.error("[AuthCallback] setSession error:", setSessionError.message);
+              setErrorMessage(setSessionError.message);
+              setStatus("error");
+              return;
+            }
+
+            // Remove tokens from the address bar once we have stored the session.
+            const cleanUrl = `${window.location.origin}${window.location.pathname}${window.location.search}`;
+            window.history.replaceState({}, document.title, cleanUrl);
           }
         }
 
         const { data: { session } } = await supabase.auth.getSession();
+        const requestedNext =
+          typeof window !== "undefined"
+            ? normalizeAuthNext(
+                new URLSearchParams(window.location.search).get("next") || readPersistedAuthNext()
+              )
+            : "/app";
 
         if (session) {
           try {
             const profile = await getProfileSetupState(session.user.id);
-            const dest = isWebProfileSetupIncomplete(profile) ? "/app/setup" : "/app";
+            const dest = isWebProfileSetupIncomplete(profile) ? "/app/setup" : requestedNext;
+            clearPersistedAuthNext();
             router.replace(dest);
           } catch {
-            router.replace("/app");
+            clearPersistedAuthNext();
+            router.replace(requestedNext);
           }
           return;
         }
@@ -66,7 +126,8 @@ export default function AuthCallbackPage() {
         const { data: { session: retrySession } } = await supabase.auth.getSession();
 
         if (retrySession) {
-          router.replace("/app");
+          clearPersistedAuthNext();
+          router.replace(requestedNext);
         } else {
           setStatus("error");
         }
@@ -102,7 +163,12 @@ export default function AuthCallbackPage() {
             </p>
             <button
               type="button"
-              onClick={() => router.replace("/auth/login")}
+              onClick={() =>
+                router.replace({
+                  pathname: "/auth/login",
+                  query: { next: "/app" },
+                })
+              }
               className="mt-5 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
             >
               {t("signIn")}
