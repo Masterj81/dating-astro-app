@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
+import { getCurrentTier } from "@/lib/web-subscriptions";
 import { InstallPrompt } from "@/components/InstallPrompt";
 
 type AppShellProps = {
@@ -85,7 +86,10 @@ export function AppShell({
     } catch {
       // Sign-out network failures are non-critical; proceed with redirect
     }
-    router.replace("/auth/login");
+    router.replace({
+      pathname: "/auth/login",
+      query: { next: nextPath },
+    });
   };
 
   const switchLocale = (nextLocale: string) => {
@@ -99,13 +103,7 @@ export function AppShell({
     if (session) {
       const loadTier = async () => {
         try {
-          const supabase = getSupabaseBrowser();
-          const { data } = await supabase
-            .from("subscriptions")
-            .select("tier")
-            .eq("user_id", session.user.id)
-            .maybeSingle();
-          setUserTier(data?.tier ?? "free");
+          setUserTier(await getCurrentTier(session.user.id));
         } catch {
           setUserTier("free");
         }
@@ -385,7 +383,10 @@ export function AppShell({
               </button>
             ) : (
               <Link
-                href="/auth/login"
+                href={{
+                  pathname: "/auth/login",
+                  query: { next: nextPath },
+                }}
                 className="rounded-lg bg-accent/90 px-3 py-1.5 text-xs font-medium text-white"
               >
                 {t("signIn")}

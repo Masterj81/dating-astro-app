@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
+import { getCurrentTier } from "@/lib/web-subscriptions";
 import { createCheckoutSession, type WebCheckoutPlan } from "@/lib/web-checkout";
 import { formatPrice as formatBillingPrice, type PriceMap } from "@/lib/billingPriceFormat";
 
@@ -73,19 +74,13 @@ export function PlansCheckout() {
           return;
         }
 
-        const { data: subscription } = await supabase
-          .from("subscriptions")
-          .select("tier")
-          .eq("user_id", session.user.id)
-          .order("updated_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        const currentTier = await getCurrentTier(session.user.id);
 
         const [priceResponse, nextSessionState] = await Promise.all([
           fetch("/api/billing/prices", { cache: "no-store" }),
           Promise.resolve({
             userId: session.user.id,
-            currentTier: subscription?.tier || "free",
+            currentTier,
           }),
         ]);
 

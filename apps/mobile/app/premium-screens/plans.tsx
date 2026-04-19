@@ -20,6 +20,7 @@ import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { TierBadge } from '../../components/ui/TierBadge';
 import { CELESTIAL_FEATURE_KEYS, COSMIC_FEATURE_KEYS } from '../../constants/premiumCatalog';
 import { AppTheme } from '../../constants/theme';
+import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { usePremium } from '../../contexts/PremiumContext';
 import { getAllTierPackages, purchasePackage } from '../../services/purchases';
@@ -50,6 +51,7 @@ export default function PremiumPlansScreen() {
   const [applyingPromo, setApplyingPromo] = useState(false);
 
   const { t } = useLanguage();
+  const { user } = useAuth();
   const { refreshSubscription, tier } = usePremium();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
@@ -119,9 +121,19 @@ export default function PremiumPlansScreen() {
       return;
     }
 
+    if (!user?.id) {
+      Alert.alert(
+        t('error') || 'Error',
+        t('notSignedIn') || 'Please sign in before subscribing.',
+        [{ text: t('ok') || 'OK' }]
+      );
+      return;
+    }
+
     setPurchasingTier(targetTier);
     try {
       const result = await purchasePackage(pkg, {
+        expectedUserId: user.id,
         isUpgrade: tier === 'premium' && targetTier === 'cosmic',
         promoCode: promoClaimedCode,
         promoCampaignMetadata: promoClaimedCampaign?.metadata ?? null,

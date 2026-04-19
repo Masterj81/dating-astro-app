@@ -159,6 +159,10 @@ export async function getAllTierPackages() {
 }
 
 type PurchasePackageOptions = {
+  // Required: the Supabase auth.users.id we expect RevenueCat to be bound to.
+  // Prevents purchases being credited to the wrong account when RevenueCat
+  // hasn't finished logging in (or worse, is still on a previous user).
+  expectedUserId: string;
   isUpgrade?: boolean;
   promoCode?: string | null;
   promoCampaignMetadata?: Record<string, unknown> | null;
@@ -177,8 +181,33 @@ function getActiveSubscriptionIdentifier(
   return upgradeSource;
 }
 
-export async function purchasePackage(pkg: PurchasesPackage, options: PurchasePackageOptions = {}) {
+export async function purchasePackage(pkg: PurchasesPackage, options: PurchasePackageOptions) {
   try {
+    if (!options.expectedUserId) {
+      return {
+        success: false,
+        identityMismatch: true as const,
+        error: new Error('purchasePackage requires expectedUserId'),
+      };
+    }
+
+    let currentAppUserId: string | null = null;
+    try {
+      currentAppUserId = await Purchases.getAppUserID();
+    } catch (lookupError) {
+      return { success: false, identityMismatch: true as const, error: lookupError };
+    }
+
+    if (currentAppUserId !== options.expectedUserId) {
+      return {
+        success: false,
+        identityMismatch: true as const,
+        error: new Error(
+          `RevenueCat identity mismatch: expected ${options.expectedUserId}, got ${currentAppUserId ?? 'null'}`
+        ),
+      };
+    }
+
     const promoSubscriptionOption =
       Platform.OS === 'android'
         ? getPromoSubscriptionOption(

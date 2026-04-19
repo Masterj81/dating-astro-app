@@ -19,6 +19,7 @@ import { AppTheme } from '../../constants/theme';
 import { AppCard } from '../../components/ui/AppCard';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { TierBadge } from '../../components/ui/TierBadge';
+import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { usePremium } from '../../contexts/PremiumContext';
 import { getAllTierPackages, purchasePackage } from '../../services/purchases';
@@ -35,6 +36,7 @@ export default function PremiumPlusScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const { t } = useLanguage();
+  const { user } = useAuth();
   const { refreshSubscription, tier } = usePremium();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
@@ -141,9 +143,19 @@ export default function PremiumPlusScreen() {
       return;
     }
 
+    if (!user?.id) {
+      Alert.alert(
+        t('error') || 'Error',
+        t('notSignedIn') || 'Please sign in before subscribing.',
+        [{ text: t('ok') || 'OK' }]
+      );
+      return;
+    }
+
     setPurchasing(true);
     try {
       const result = await purchasePackage(currentCosmicPackage, {
+        expectedUserId: user.id,
         isUpgrade: isCelestialUpgrade,
       });
 

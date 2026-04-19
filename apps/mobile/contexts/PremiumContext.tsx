@@ -13,11 +13,13 @@ import { getUserTier, SubscriptionTier } from '../services/subscriptionService';
 
 let Purchases: typeof import('react-native-purchases').default | null = null;
 let initializePurchases: ((userId?: string) => Promise<void>) | null = null;
+let checkLocalEntitlement: (() => Promise<SubscriptionTier>) | null = null;
 
 if (Platform.OS !== 'web') {
   Purchases = require('react-native-purchases').default;
   const purchasesModule = require('../services/purchases');
   initializePurchases = purchasesModule.initializePurchases;
+  checkLocalEntitlement = purchasesModule.checkSubscriptionTier;
 }
 
 export type { SubscriptionTier };
@@ -160,7 +162,26 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
       const initialTier = await checkSubscriptionTier(userId);
       if (cancelled) return;
 
-      setTier(initialTier);
+      // If the server says `free` but RevenueCat has an active entitlement
+      // locally, trust the device — the webhook may simply be lagging.
+      // Server reconciliation runs in background via the listener below.
+      let effectiveTier = initialTier;
+      if (effectiveTier === 'free' && Platform.OS !== 'web' && checkLocalEntitlement) {
+        try {
+          const localTier = await checkLocalEntitlement();
+          if (!cancelled && localTier !== 'free') {
+            debugLog(
+              `[Premium] Server returned free, RevenueCat says ${localTier}; trusting local entitlement.`
+            );
+            effectiveTier = localTier;
+          }
+        } catch {
+          // Local lookup failed; keep the server value.
+        }
+      }
+      if (cancelled) return;
+
+      setTier(effectiveTier);
       setLoading(false);
 
       if (Platform.OS !== 'web' && initializePurchases && Purchases) {
@@ -189,6 +210,13 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
               }
 
               debugLog(`[Premium] RevenueCat signal: expectedTier=${expectedTier}`);
+
+              // Optimistic: trust the local entitlement immediately so the
+              // user never sees `free` after a confirmed purchase while the
+              // server-side webhook propagates.
+              if (expectedTier !== 'free') {
+                setTier(expectedTier);
+              }
 
               const confirmedTier = await checkSubscriptionTierWithRetry(userId, expectedTier);
               if (cancelled) return;

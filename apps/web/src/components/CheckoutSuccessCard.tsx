@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { getSupabaseBrowser } from "@/lib/supabase-browser";
+import { getCurrentTier } from "@/lib/web-subscriptions";
 
 export function CheckoutSuccessCard() {
   const t = useTranslations("webApp");
   const [showConfetti, setShowConfetti] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [tierConfirmed, setTierConfirmed] = useState(false);
+  const [pollingDone, setPollingDone] = useState(false);
+  const cancelledRef = useRef(false);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -23,6 +28,47 @@ export function CheckoutSuccessCard() {
     const timer = setTimeout(() => setShowConfetti(true), 100);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    cancelledRef.current = false;
+    const POLL_INTERVAL_MS = 2000;
+    const MAX_ATTEMPTS = 15;
+
+    const reconcile = async () => {
+      const supabase = getSupabaseBrowser();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        if (!cancelledRef.current) setPollingDone(true);
+        return;
+      }
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        if (cancelledRef.current) return;
+        try {
+          const tier = await getCurrentTier(session.user.id);
+          if (tier !== "free") {
+            if (!cancelledRef.current) {
+              setTierConfirmed(true);
+              setPollingDone(true);
+            }
+            return;
+          }
+        } catch {
+          // Ignore transient errors and keep polling.
+        }
+        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+      }
+      if (!cancelledRef.current) setPollingDone(true);
+    };
+
+    reconcile();
+    return () => {
+      cancelledRef.current = true;
+    };
+  }, []);
+
+  const ctasReady = tierConfirmed || pollingDone;
 
   const nextSteps = [
     { icon: "\u2728", label: t("successStepDiscover"), href: "/app/discover" },
@@ -117,18 +163,35 @@ export function CheckoutSuccessCard() {
                   }`
             }`}
           >
-            <Link
-              href="/app/discover"
-              className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)]"
-            >
-              {t("successCtaPrimary")}
-            </Link>
-            <Link
-              href="/app/profile"
-              className="rounded-full border border-border px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
-            >
-              {t("openProfile")}
-            </Link>
+            {ctasReady ? (
+              <>
+                <Link
+                  href="/app/discover"
+                  className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)]"
+                >
+                  {t("successCtaPrimary")}
+                </Link>
+                <Link
+                  href="/app/profile"
+                  className="rounded-full border border-border px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
+                >
+                  {t("openProfile")}
+                </Link>
+              </>
+            ) : (
+              <button
+                type="button"
+                disabled
+                aria-busy="true"
+                className="flex items-center gap-2 rounded-full bg-accent/70 px-6 py-3 text-sm font-semibold text-white opacity-80"
+              >
+                <span
+                  className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                  aria-hidden="true"
+                />
+                {t("successCtaPrimary")}
+              </button>
+            )}
           </div>
         </div>
       </div>
