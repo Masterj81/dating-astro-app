@@ -1,14 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import {
+  buildAuthCallbackUrl,
+  normalizeAuthNext,
+  persistAuthNext,
+  readPersistedAuthNext,
+} from "@/lib/auth-redirect";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 
 export function VerifyEmailCard() {
   const t = useTranslations("webApp");
   const locale = useLocale();
+  const searchParams = useSearchParams();
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [pendingNext, setPendingNext] = useState<string>("/app");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -19,8 +28,10 @@ export function VerifyEmailCard() {
     }
 
     const nextEmail = window.sessionStorage.getItem("pendingSignupEmail");
+    const storedNext = readPersistedAuthNext();
     setPendingEmail(nextEmail);
-  }, []);
+    setPendingNext(normalizeAuthNext(searchParams.get("next") || storedNext));
+  }, [searchParams]);
 
   const handleResend = async () => {
     if (!pendingEmail) {
@@ -32,12 +43,13 @@ export function VerifyEmailCard() {
     setLoading(true);
     setError(null);
     setSuccess(null);
+    const persistedNext = persistAuthNext(pendingNext);
 
     const { error: resendError } = await getSupabaseBrowser().auth.resend({
       type: "signup",
       email: pendingEmail,
       options: {
-        emailRedirectTo: `${window.location.origin}/${locale}/auth/login`,
+        emailRedirectTo: buildAuthCallbackUrl(locale, persistedNext),
       },
     });
 
@@ -83,7 +95,10 @@ export function VerifyEmailCard() {
           {loading ? t("loading") : t("verifyEmailResendButton")}
         </button>
         <Link
-          href="/auth/login"
+          href={{
+            pathname: "/auth/login",
+            query: pendingNext !== "/app" ? { next: pendingNext } : undefined,
+          }}
           className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
         >
           {t("signIn")}

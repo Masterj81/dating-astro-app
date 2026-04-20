@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
+import { useLocale } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { SITE } from "@/lib/constants";
 
 export default function DownloadPage() {
+  const locale = useLocale();
+
   useEffect(() => {
     // Detect platform and redirect to appropriate store
     const ua = navigator.userAgent.toLowerCase();
@@ -17,9 +20,9 @@ export default function DownloadPage() {
       window.location.href = SITE.links.appStore;
     } else {
       // Desktop — redirect to web app
-      window.location.href = "/app";
+      window.location.href = `/${locale}/app`;
     }
-  }, []);
+  }, [locale]);
 
   return (
     <div className="flex min-h-screen items-center justify-center">

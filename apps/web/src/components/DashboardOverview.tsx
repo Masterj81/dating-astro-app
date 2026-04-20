@@ -342,13 +342,19 @@ export function DashboardOverview() {
           <p className="mt-3 max-w-md text-sm text-text-muted">{t("dashboardSignedOutBody")}</p>
           <div className="mt-8 flex gap-3">
             <Link
-              href="/auth/login"
+              href={{
+                pathname: "/auth/login",
+                query: { next: "/app" },
+              }}
               className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
             >
               {t("signIn")}
             </Link>
             <Link
-              href="/auth/signup"
+              href={{
+                pathname: "/auth/signup",
+                query: { next: "/app" },
+              }}
               className="rounded-full border border-border px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
             >
               {t("createAccount")}

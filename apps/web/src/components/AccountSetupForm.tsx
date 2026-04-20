@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import type { Session } from "@supabase/supabase-js";
 
@@ -214,6 +214,7 @@ export function AccountSetupForm() {
   const t = useTranslations("webApp");
   const locale = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
   const monthOptions = useMemo(() => getMonthOptions(locale), [locale]);
   const yearOptions = useMemo(() => getYearOptions(), []);
 
@@ -262,7 +263,10 @@ export function AccountSetupForm() {
         }
 
         if (!session?.user?.id) {
-          router.replace("/auth/login");
+          router.replace({
+            pathname: "/auth/login",
+            query: { next: pathname.startsWith("/app") ? pathname : "/app/setup" },
+          });
           return;
         }
 

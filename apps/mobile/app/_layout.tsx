@@ -455,11 +455,14 @@ function RootLayout() {
     password: string,
     name: string
   ) => {
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedName = name.trim() || 'User';
+
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: normalizedEmail,
       password,
       options: {
-        data: { name, full_name: name },
+        data: { name: normalizedName, full_name: normalizedName },
         emailRedirectTo: getAuthCallbackRedirectUri(),
       },
     });
@@ -468,7 +471,7 @@ function RootLayout() {
     if (!error && data.user && data.session) {
       const { error: profileError } = await supabase
         .from('profiles')
-        .insert({ id: data.user.id, name });
+        .insert({ id: data.user.id, name: normalizedName });
 
       if (profileError) {
         console.warn('Profile creation failed, will retry on first sign-in:', profileError.message);
@@ -479,7 +482,8 @@ function RootLayout() {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const normalizedEmail = email.trim().toLowerCase();
+    const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
     return { error };
   };
 

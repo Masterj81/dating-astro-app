@@ -2,9 +2,16 @@
 
 import Image from "next/image";
 import { useMemo, useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Link, useRouter, usePathname } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
+import {
+  buildAuthCallbackUrl,
+  normalizeAuthNext,
+  persistAuthNext,
+} from "@/lib/auth-redirect";
+import { getPasswordStrength } from "@/lib/auth-password";
 import { getProfileSetupState, isWebProfileSetupIncomplete } from "@/lib/web-account";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 
@@ -21,6 +28,7 @@ export function AuthCard({ mode }: AuthCardProps) {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,6 +40,10 @@ export function AuthCard({ mode }: AuthCardProps) {
   const [langOpen, setLangOpen] = useState(false);
 
   const isSignup = mode === "signup";
+  const requestedNext = useMemo(
+    () => normalizeAuthNext(searchParams.get("next")),
+    [searchParams]
+  );
 
   const title = useMemo(
     () => (isSignup ? t("createAccountTitle") : t("signInTitle")),
@@ -44,14 +56,8 @@ export function AuthCard({ mode }: AuthCardProps) {
   );
 
   const passwordStrength = useMemo(() => {
-    if (!isSignup || !password) return 0;
-    let strength = 0;
-    if (password.length >= 8) strength += 1;
-    if (password.length >= 12) strength += 1;
-    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) strength += 1;
-    if (/\d/.test(password)) strength += 1;
-    if (/[^A-Za-z0-9]/.test(password)) strength += 1;
-    return Math.min(strength, 4);
+    if (!isSignup) return 0;
+    return getPasswordStrength(password);
   }, [isSignup, password]);
 
   const passwordStrengthLabel = useMemo(() => {
@@ -73,9 +79,9 @@ export function AuthCard({ mode }: AuthCardProps) {
   const routeAfterAuth = async (userId: string) => {
     try {
       const profile = await getProfileSetupState(userId);
-      router.replace(isWebProfileSetupIncomplete(profile) ? "/app/setup" : "/app");
+      router.replace(isWebProfileSetupIncomplete(profile) ? "/app/setup" : requestedNext);
     } catch {
-      router.replace("/app");
+      router.replace(requestedNext);
     }
   };
 
@@ -87,17 +93,19 @@ export function AuthCard({ mode }: AuthCardProps) {
 
     try {
       const supabase = getSupabaseBrowser();
+      const persistedNext = persistAuthNext(requestedNext);
+      const normalizedEmail = email.trim().toLowerCase();
 
       if (isSignup) {
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email,
+          email: normalizedEmail,
           password,
           options: {
             data: {
               full_name: name,
               name,
             },
-            emailRedirectTo: `${window.location.origin}/${locale}/auth/callback`,
+            emailRedirectTo: buildAuthCallbackUrl(locale, persistedNext),
           },
         });
 
@@ -114,23 +122,31 @@ export function AuthCard({ mode }: AuthCardProps) {
         }
 
         if (typeof window !== "undefined") {
-          window.sessionStorage.setItem("pendingSignupEmail", email);
+          window.sessionStorage.setItem("pendingSignupEmail", normalizedEmail);
         }
 
         setSuccess(t("checkEmail"));
-        router.replace("/auth/verify-email");
+        router.replace({
+          pathname: "/auth/verify-email",
+          query: requestedNext !== "/app" ? { next: requestedNext } : undefined,
+        });
         return;
       }
 
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
+        email: normalizedEmail,
         password,
       });
 
       setLoading(false);
 
       if (signInError) {
-        setError(signInError.message);
+        const normalizedMessage = signInError.message.toLowerCase();
+        setError(
+          normalizedMessage.includes("invalid login credentials")
+            ? t("invalidCredentials")
+            : signInError.message
+        );
         return;
       }
 
@@ -143,7 +159,7 @@ export function AuthCard({ mode }: AuthCardProps) {
         return;
       }
 
-      router.replace("/app");
+      router.replace(requestedNext);
     } catch (unexpectedError) {
       setLoading(false);
       setError(unexpectedError instanceof Error ? unexpectedError.message : t("unknownError"));
@@ -157,10 +173,11 @@ export function AuthCard({ mode }: AuthCardProps) {
 
     try {
       const origin = typeof window !== "undefined" ? window.location.origin : "https://app.astrodatingapp.com";
+      const persistedNext = persistAuthNext(requestedNext);
       const { error: oauthError } = await getSupabaseBrowser().auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${origin}/${locale}/auth/callback`,
+          redirectTo: buildAuthCallbackUrl(locale, persistedNext) || `${origin}/${locale}/auth/callback`,
         },
       });
 
@@ -312,6 +329,20 @@ export function AuthCard({ mode }: AuthCardProps) {
           </div>
         </label>
 
+        {!isSignup ? (
+          <div className="-mt-2 text-right">
+            <Link
+              href={{
+                pathname: "/auth/forgot-password",
+                query: requestedNext !== "/app" ? { next: requestedNext } : undefined,
+              }}
+              className="text-sm font-medium text-accent transition-colors hover:text-accent-hover"
+            >
+              {t("forgotPassword")}
+            </Link>
+          </div>
+        ) : null}
+
         {isSignup && password ? (
           <div className="space-y-2">
             <div
@@ -366,7 +397,10 @@ export function AuthCard({ mode }: AuthCardProps) {
       <div className="mt-6 text-center text-sm text-text-muted">
         {isSignup ? t("alreadyHaveAccount") : t("needAccount")}{" "}
         <Link
-          href={isSignup ? "/auth/login" : "/auth/signup"}
+          href={{
+            pathname: isSignup ? "/auth/login" : "/auth/signup",
+            query: requestedNext !== "/app" ? { next: requestedNext } : undefined,
+          }}
           className="font-medium text-accent hover:text-accent-hover"
         >
           {isSignup ? t("signIn") : t("createAccount")}

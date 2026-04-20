@@ -6,6 +6,7 @@ import { useRouter } from "@/i18n/navigation";
 import {
   clearPersistedAuthNext,
   normalizeAuthNext,
+  PASSWORD_RESET_FLOW,
   readPersistedAuthNext,
 } from "@/lib/auth-redirect";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
@@ -17,34 +18,35 @@ export default function AuthCallbackPage() {
   const t = useTranslations("webApp");
   const [status, setStatus] = useState<"loading" | "error">("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isRecoveryFlow, setIsRecoveryFlow] = useState(false);
 
   useEffect(() => {
     const handleCallback = async () => {
       try {
         const supabase = getSupabaseBrowser();
+        let passwordRecoveryFlow = false;
 
-        // Check for error params in the URL hash (e.g. OAuth denial)
         if (typeof window !== "undefined") {
+          const urlParams = new URLSearchParams(window.location.search);
+          const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+          const flow = urlParams.get("flow");
+          const otpType = urlParams.get("type") || hashParams.get("type");
+          passwordRecoveryFlow =
+            flow === PASSWORD_RESET_FLOW || otpType === "recovery";
+          setIsRecoveryFlow(passwordRecoveryFlow);
+
+          // Check for error params in the URL hash (e.g. OAuth denial)
           const hash = window.location.hash;
           if (hash.includes("error=")) {
-            const params = new URLSearchParams(hash.replace("#", ""));
-            const errorDesc = params.get("error_description") || params.get("error");
+            const errorDesc = hashParams.get("error_description") || hashParams.get("error");
             setErrorMessage(errorDesc);
             setStatus("error");
             return;
           }
-        }
-
-        // Support both PKCE (`?code=...`) and implicit (`#access_token=...`) return shapes.
-        if (typeof window !== "undefined") {
-          const urlParams = new URLSearchParams(window.location.search);
-          const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
           const code = urlParams.get("code");
           const accessToken = hashParams.get("access_token");
           const refreshToken = hashParams.get("refresh_token");
-
           const tokenHash = urlParams.get("token_hash");
-          const otpType = urlParams.get("type");
 
           if (code) {
             const { error: codeError } = await supabase.auth.exchangeCodeForSession(code);
@@ -109,6 +111,11 @@ export default function AuthCallbackPage() {
             : "/app";
 
         if (session) {
+          if (passwordRecoveryFlow) {
+            router.replace("/auth/reset-password");
+            return;
+          }
+
           try {
             const profile = await getProfileSetupState(session.user.id);
             const dest = isWebProfileSetupIncomplete(profile) ? "/app/setup" : requestedNext;
@@ -126,6 +133,11 @@ export default function AuthCallbackPage() {
         const { data: { session: retrySession } } = await supabase.auth.getSession();
 
         if (retrySession) {
+          if (passwordRecoveryFlow) {
+            router.replace("/auth/reset-password");
+            return;
+          }
+
           clearPersistedAuthNext();
           router.replace(requestedNext);
         } else {
@@ -165,13 +177,16 @@ export default function AuthCallbackPage() {
               type="button"
               onClick={() =>
                 router.replace({
-                  pathname: "/auth/login",
-                  query: { next: "/app" },
+                  pathname: isRecoveryFlow ? "/auth/forgot-password" : "/auth/login",
+                  query:
+                    readPersistedAuthNext() !== "/app"
+                      ? { next: readPersistedAuthNext() }
+                      : undefined,
                 })
               }
               className="mt-5 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
             >
-              {t("signIn")}
+              {isRecoveryFlow ? t("forgotPassword") : t("signIn")}
             </button>
           </>
         )}

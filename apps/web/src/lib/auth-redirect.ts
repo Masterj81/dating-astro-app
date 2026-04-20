@@ -1,6 +1,7 @@
 import { routing } from "@/i18n/routing";
 
 const DEFAULT_APP_PATH = "/app";
+export const PASSWORD_RESET_FLOW = "password-reset";
 
 export function normalizeAuthNext(value: string | null | undefined): string {
   if (!value) return DEFAULT_APP_PATH;
@@ -43,6 +44,16 @@ export function buildAuthCallbackUrl(locale: string, next?: string | null): stri
   }
 
   return new URL(`${callbackPath}${search}`, window.location.origin).toString();
+}
+
+export function buildPasswordResetCallbackUrl(locale: string): string {
+  const callbackPath = `/${locale}/auth/callback?flow=${PASSWORD_RESET_FLOW}`;
+
+  if (typeof window === "undefined") {
+    return callbackPath;
+  }
+
+  return new URL(callbackPath, window.location.origin).toString();
 }
 
 export function persistAuthNext(next?: string | null): string {

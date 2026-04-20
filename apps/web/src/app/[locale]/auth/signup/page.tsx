@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { AuthCard } from "@/components/AuthCard";
 import { StarField } from "@/components/StarField";
 
@@ -7,7 +8,9 @@ export default function SignupPage() {
       <StarField count={60} />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_50%_40%_at_50%_30%,rgba(232,93,117,0.08),transparent)]" aria-hidden="true" />
       <div className="relative mx-auto max-w-5xl">
-        <AuthCard mode="signup" />
+        <Suspense fallback={<div className="mx-auto h-[640px] w-full max-w-md rounded-[2rem] border border-border bg-card/90 p-8 shadow-2xl shadow-black/30 backdrop-blur-md" />}>
+          <AuthCard mode="signup" />
+        </Suspense>
       </div>
     </section>
   );
