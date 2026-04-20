@@ -73,24 +73,42 @@ Deno.serve(async (req) => {
       req.headers.get("authorization") ?? req.headers.get("Authorization");
     const token = authHeader?.replace(/^Bearer\s+/i, "").trim() ?? "";
 
+    // 401 before we even touch the body — no JWT, no service role, no notification.
     if (!token) {
       return new Response(
-        JSON.stringify({ error: "Missing auth token" }),
+        JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    const isServiceRole = supabaseServiceKey.length > 0 && token === supabaseServiceKey;
+    const isServiceRole =
+      supabaseServiceKey.length > 0 && token === supabaseServiceKey;
 
     const { userId, type, title, body, data } = await req.json();
 
-    if (!userId || !type || !title || !body) {
+    if (!userId || typeof userId !== "string") {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: userId, type, title, body" }),
+        JSON.stringify({ error: "Missing or invalid userId" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    if (!type || !title || !body) {
+      return new Response(
+        JSON.stringify({ error: "Missing required fields: type, title, body" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
+    // --- Authorization decision (P0-5):
+    //   service_role  → may target any user (webhooks, crons, server code).
+    //   user JWT      → may ONLY target themselves (user.id === userId).
+    //   unauthorized  → already returned 401 above.
+    //
+    // Previously the JWT-vs-userId check was nested inside `if (!isServiceRole)`
+    // only, which was correct but fragile: any refactor that skipped the branch
+    // (e.g. treating a bad token as "likely service role") would silently open
+    // cross-user targeting. We now validate both paths explicitly and reject
+    // anything that falls through.
     if (!isServiceRole) {
       const userSupabase = createClient(supabaseUrl, supabaseAnonKey);
       const {
@@ -106,8 +124,11 @@ Deno.serve(async (req) => {
       }
 
       if (user.id !== userId) {
+        console.warn(
+          `[send-notification] cross-user targeting blocked: caller=${user.id} target=${userId}`
+        );
         return new Response(
-          JSON.stringify({ error: "Forbidden: userId mismatch" }),
+          JSON.stringify({ error: "Forbidden: cannot send notifications for another user" }),
           { status: 403, headers: { "Content-Type": "application/json" } }
         );
       }

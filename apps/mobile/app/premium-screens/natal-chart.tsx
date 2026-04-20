@@ -68,10 +68,13 @@ const getModality = (sign: string): string => {
   return 'unknown';
 };
 
+type ServerGate = { allowed: boolean; reason: string | null };
+
 function NatalChartScreenContent() {
   const [chartData, setChartData] = useState<NatalChartData | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedSection, setExpandedSection] = useState<string | null>('sun');
+  const [serverGate, setServerGate] = useState<ServerGate>({ allowed: true, reason: null });
   const { user } = useAuth();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
@@ -105,6 +108,25 @@ function NatalChartScreenContent() {
     }
     setLoading(true);
     try {
+      // Server-side tier + quota enforcement. The RPC returns allowed=FALSE
+      // with a reason code if the caller is unauthorized, below the required
+      // tier, or over the daily quota. It also atomically bumps usage.
+      const { data: gateRow, error: gateError } = await supabase
+        .rpc('enforce_premium_feature', { p_feature_key: 'natal_chart' })
+        .maybeSingle<{ allowed: boolean; reason: string | null }>();
+
+      if (gateError || !gateRow || gateRow.allowed !== true) {
+        setServerGate({
+          allowed: false,
+          reason: gateRow?.reason ?? 'error',
+        });
+        setChartData(null);
+        setLoading(false);
+        return;
+      }
+
+      setServerGate({ allowed: true, reason: 'ok' });
+
       const { data, error } = await supabase
         .from('profiles')
         .select('sun_sign, moon_sign, rising_sign, birth_date, birth_time, birth_city')
@@ -292,6 +314,26 @@ function NatalChartScreenContent() {
           <ActivityIndicator size="large" color={AppTheme.colors.coral} />
           <Text style={{ color: AppTheme.colors.textMuted, marginTop: 12, fontSize: 14 }}>
             {t('loadingChart') || 'Mapping your cosmic blueprint...'}
+          </Text>
+        </View>
+      </LinearGradient>
+    );
+  }
+
+  if (!serverGate.allowed) {
+    const isQuota = serverGate.reason === 'quota_exceeded';
+    return (
+      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={{ color: AppTheme.colors.textPrimary, fontSize: 18, fontWeight: '600', textAlign: 'center', paddingHorizontal: 24 }}>
+            {isQuota
+              ? (t('dailyLimitReached') || 'Daily limit reached')
+              : (t('natalChartLockedTitle') || 'Premium feature')}
+          </Text>
+          <Text style={{ color: AppTheme.colors.textMuted, marginTop: 12, fontSize: 14, textAlign: 'center', paddingHorizontal: 32 }}>
+            {isQuota
+              ? (t('dailyLimitBody') || 'Come back tomorrow or upgrade for unlimited access.')
+              : (t('natalChartLockedBody') || 'Upgrade to unlock your full natal chart.')}
           </Text>
         </View>
       </LinearGradient>

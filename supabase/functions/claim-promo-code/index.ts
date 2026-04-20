@@ -182,70 +182,41 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Invalid promo code' }, 400, corsHeaders);
     }
 
-    // --- max_redemptions enforcement ---
-    if (campaign.max_redemptions !== null) {
-      const { count: totalRedemptions, error: countError } = await serviceSupabase
-        .from('promo_campaign_redemptions')
-        .select('*', { count: 'exact', head: true })
-        .eq('campaign_code', campaign.code)
-        .eq('platform', platform);
-
-      if (countError) {
-        console.error('[claim-promo-code] redemption count error', countError.message);
-        return jsonResponse({ error: 'Unable to verify promo code' }, 500, corsHeaders);
-      }
-
-      if ((totalRedemptions ?? 0) >= campaign.max_redemptions) {
-        return jsonResponse({ error: 'Promo code limit reached' }, 400, corsHeaders);
-      }
-    }
-
-    // --- Existing redemption check (block all non-terminal statuses) ---
-    const { data: existingRedemption, error: lookupError } = await serviceSupabase
-      .from('promo_campaign_redemptions')
-      .select('status')
-      .eq('user_id', userId)
-      .eq('campaign_code', campaign.code)
-      .eq('platform', platform)
-      .maybeSingle();
-
-    if (lookupError) {
-      console.error('[claim-promo-code] redemption lookup error', lookupError.message);
-      return jsonResponse({ error: 'Unable to verify promo code' }, 500, corsHeaders);
-    }
-
-    if (existingRedemption) {
-      if (existingRedemption.status === 'consumed') {
-        return jsonResponse({ error: 'Promo code already used' }, 400, corsHeaders);
-      }
-      // pending / checkout_completed — already claimed, waiting for processing
-      return jsonResponse({ error: 'Promo code already claimed' }, 400, corsHeaders);
-    }
-
-    // --- INSERT (not upsert) to prevent race conditions ---
-    const { error: insertError } = await serviceSupabase
-      .from('promo_campaign_redemptions')
-      .insert({
-        user_id: userId,
-        campaign_code: campaign.code,
-        platform,
-        status: 'pending',
-        metadata: {
+    // --- P0-3: atomic claim (max_redemptions + already_claimed under a row lock) ---
+    const { data: claimResult, error: claimError } = await serviceSupabase.rpc(
+      'claim_promo_campaign_redemption',
+      {
+        p_user_id: userId,
+        p_campaign_code: campaign.code,
+        p_platform: platform,
+        p_billing_cycle: campaign.billing_cycle,
+        p_metadata: {
           source: 'claim-promo-code',
           claimed_at: new Date().toISOString(),
-          billing_cycle: campaign.billing_cycle,
-          reward_type: campaign.reward_type,
         },
-        updated_at: new Date().toISOString(),
-      });
-
-    if (insertError) {
-      // Unique constraint violation = concurrent duplicate request
-      if (insertError.code === '23505') {
-        return jsonResponse({ error: 'Promo code already claimed' }, 400, corsHeaders);
       }
-      console.error('[claim-promo-code] insert error', insertError.message);
+    );
+
+    if (claimError) {
+      console.error('[claim-promo-code] claim RPC error', claimError.message);
       return jsonResponse({ error: 'Unable to apply promo code' }, 500, corsHeaders);
+    }
+
+    const claim = Array.isArray(claimResult) ? claimResult[0] : claimResult;
+    if (!claim?.ok) {
+      const reason = claim?.reason ?? 'unknown';
+      const userMessage =
+        reason === 'already_consumed'
+          ? 'Promo code already used'
+          : reason === 'already_claimed'
+          ? 'Promo code already claimed'
+          : reason === 'campaign_limit_reached'
+          ? 'Promo code limit reached'
+          : reason === 'campaign_not_found' || reason === 'campaign_inactive'
+          ? 'Invalid promo code'
+          : 'Unable to apply promo code';
+      console.warn('[claim-promo-code] claim denied', { userId, code: campaign.code, reason });
+      return jsonResponse({ error: userMessage }, 400, corsHeaders);
     }
 
     console.log('[claim-promo-code] claimed', {

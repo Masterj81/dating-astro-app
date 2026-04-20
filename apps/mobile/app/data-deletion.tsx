@@ -27,8 +27,12 @@ export default function DataDeletionScreen() {
               2. Go to your Profile tab{'\n'}
               3. Tap the Settings icon (gear){'\n'}
               4. Scroll down and tap {'"'}Delete Account{'"'}{'\n'}
-              5. Confirm your decision{'\n\n'}
-              Your account and all data will be permanently deleted.
+              5. Confirm your decision (you may be asked to sign in again){'\n\n'}
+              Your profile is hidden immediately. Your account and all
+              associated data are then permanently deleted 7 days later.
+              During the grace period you can cancel the deletion via the
+              link in the confirmation email we send you, or by signing back
+              in and tapping {'"'}Cancel account deletion{'"'} in Settings.
             </Text>
           </View>
 
@@ -46,9 +50,23 @@ export default function DataDeletionScreen() {
           </View>
 
           <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Grace Period & Cancellation</Text>
+            <Text style={styles.sectionText}>
+              For safety, deletions are not immediate. After you confirm, your
+              profile is hidden from other users, but the account itself stays
+              recoverable for 7 days. You can cancel the deletion any time
+              during that window:{'\n\n'}
+              - Use the {'"'}Cancel deletion{'"'} link in the email we sent you,{'\n'}
+              - Or sign back in and tap {'"'}Cancel account deletion{'"'} in Settings.{'\n\n'}
+              After the 7th day, the deletion becomes permanent and cannot be
+              reversed.
+            </Text>
+          </View>
+
+          <View style={styles.section}>
             <Text style={styles.sectionTitle}>What Data is Deleted</Text>
             <Text style={styles.sectionText}>
-              When you delete your account, we permanently remove:{'\n\n'}
+              Once the grace period expires, we permanently remove:{'\n\n'}
               - Your profile information{'\n'}
               - Photos and media{'\n'}
               - Birth date and astrological data{'\n'}

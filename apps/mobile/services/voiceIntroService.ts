@@ -84,15 +84,29 @@ export async function uploadVoiceIntro(
   userId: string,
   uri: string
 ): Promise<{ success: boolean; url?: string; error?: string }> {
-  if (!userId) {
-    return { success: false, error: 'uploadFailed' };
-  }
-
   try {
+    // SECURITY (P0-1): always resolve the uploader identity from the active session
+    // rather than trusting the caller-supplied `userId`. The Storage RLS policy
+    // `(storage.foldername(name))[1] = auth.uid()::text` will reject any attempt
+    // to upload into another user's folder, but we also guard client-side to
+    // avoid pointless round-trips and to keep the profile update consistent.
+    const { data: sessionData, error: sessionError } = await supabase.auth.getUser();
+    const authUserId = sessionData?.user?.id ?? null;
+    if (sessionError || !authUserId) {
+      return { success: false, error: 'unauthenticated' };
+    }
+
+    // Ignore any caller-supplied userId that doesn't match the active session.
+    if (userId && userId !== authUserId) {
+      return { success: false, error: 'uploadFailed' };
+    }
+
+    const effectiveUserId = authUserId;
+
     const { data: uploadBody, mimeType } = await readFileAsArrayBuffer(uri);
     const ext = getExtFromMime(mimeType);
     const fileName = `voice_intro_${Date.now()}.${ext}`;
-    const filePath = `${userId}/${fileName}`;
+    const filePath = `${effectiveUserId}/${fileName}`;
 
     // Upload to Supabase storage
     const { error: uploadError } = await supabase.storage
@@ -114,7 +128,7 @@ export async function uploadVoiceIntro(
 
     const publicUrl = urlData.publicUrl;
 
-    // Update profile with voice intro URL
+    // Update profile with voice intro URL (auth.uid() enforced by profiles RLS)
     const { error: updateError } = await supabase
       .from('profiles')
       .update({
@@ -122,7 +136,7 @@ export async function uploadVoiceIntro(
         has_voice_intro: true,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', userId);
+      .eq('id', effectiveUserId);
 
     if (updateError) {
       console.error('Profile update error:', updateError);
@@ -140,11 +154,22 @@ export async function deleteVoiceIntro(
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // SECURITY (P0-1): resolve identity from the session, ignore spoofed userId.
+    const { data: sessionData, error: sessionError } = await supabase.auth.getUser();
+    const authUserId = sessionData?.user?.id ?? null;
+    if (sessionError || !authUserId) {
+      return { success: false, error: 'unauthenticated' };
+    }
+    if (userId && userId !== authUserId) {
+      return { success: false, error: 'deleteFailed' };
+    }
+    const effectiveUserId = authUserId;
+
     // Get current voice intro URL to extract file path
     const { data: profile } = await supabase
       .from('profiles')
       .select('voice_intro_url')
-      .eq('id', userId)
+      .eq('id', effectiveUserId)
       .single();
 
     if (profile?.voice_intro_url) {
@@ -159,7 +184,7 @@ export async function deleteVoiceIntro(
         .remove([filePath]);
     }
 
-    // Update profile to remove voice intro
+    // Update profile to remove voice intro (auth.uid() enforced by profiles RLS)
     const { error: updateError } = await supabase
       .from('profiles')
       .update({
@@ -167,7 +192,7 @@ export async function deleteVoiceIntro(
         has_voice_intro: false,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', userId);
+      .eq('id', effectiveUserId);
 
     if (updateError) {
       return { success: false, error: 'profileUpdateFailed' };

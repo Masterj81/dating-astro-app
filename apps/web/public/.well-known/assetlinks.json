@@ -4,7 +4,9 @@
     "target": {
       "namespace": "android_app",
       "package_name": "com.astrodatingapp.mobile",
-      "sha256_cert_fingerprints": []
+      "sha256_cert_fingerprints": [
+        "TODO_REPLACE_WITH_PLAY_CONSOLE_APP_SIGNING_SHA256"
+      ]
     }
   }
 ]

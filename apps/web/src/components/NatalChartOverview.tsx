@@ -147,6 +147,8 @@ function buildPlanetPositions(profile: NatalProfile, t: ReturnType<typeof useTra
   })) satisfies PlanetPosition[];
 }
 
+type ServerGate = { allowed: boolean; reason: string | null };
+
 export function NatalChartOverview() {
   const t = useTranslations("webApp");
   const locale = useLocale();
@@ -154,6 +156,7 @@ export function NatalChartOverview() {
   const [profile, setProfile] = useState<NatalProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [serverGate, setServerGate] = useState<ServerGate>({ allowed: true, reason: null });
 
   useEffect(() => {
     const load = async () => {
@@ -170,6 +173,23 @@ export function NatalChartOverview() {
         }
 
         const supabase = getSupabaseBrowser();
+
+        // Server-side tier + quota enforcement.
+        const { data: gateRow, error: gateError } = await supabase
+          .rpc("enforce_premium_feature", { p_feature_key: "natal_chart" })
+          .maybeSingle<{ allowed: boolean; reason: string | null }>();
+
+        if (gateError || !gateRow || gateRow.allowed !== true) {
+          setServerGate({
+            allowed: false,
+            reason: gateRow?.reason ?? "error",
+          });
+          setProfile(null);
+          return;
+        }
+
+        setServerGate({ allowed: true, reason: "ok" });
+
         const { data, error: profileError } = await supabase
           .from("profiles")
           .select("*")
@@ -247,6 +267,17 @@ export function NatalChartOverview() {
       <div className="rounded-[2rem] border border-border bg-card/90 p-8">
         <h2 className="text-2xl font-semibold text-white">{t("notSignedIn")}</h2>
         <p className="mt-3 text-sm leading-7 text-text-muted">{t("natalChartSignIn")}</p>
+      </div>
+    );
+  }
+
+  if (!serverGate.allowed && serverGate.reason === "quota_exceeded") {
+    return (
+      <div className="rounded-[2rem] border border-border bg-card/90 p-8">
+        <h2 className="text-2xl font-semibold text-white">{t("dailyLimitReached") || "Daily limit reached"}</h2>
+        <p className="mt-3 text-sm leading-7 text-text-muted">
+          {t("dailyLimitBody") || "Come back tomorrow or upgrade for unlimited access."}
+        </p>
       </div>
     );
   }

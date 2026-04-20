@@ -222,45 +222,41 @@ Deno.serve(async (req) => {
     }
 
     if (promoCampaign) {
-      const { data: existingRedemption, error: redemptionLookupError } = await supabaseAdmin
-        .from('promo_campaign_redemptions')
-        .select('status')
-        .eq('user_id', userId)
-        .eq('campaign_code', promoCampaign.code)
-        .eq('platform', 'stripe')
-        .maybeSingle();
+      // P0-3 — use the atomic RPC so that max_redemptions cannot be bypassed
+      // by racing two concurrent checkouts. The RPC enforces the cap under a
+      // row-level lock on the campaign row and also handles the
+      // already-claimed / already-consumed cases.
+      const { data: claimResult, error: claimError } = await supabaseAdmin.rpc(
+        'claim_promo_campaign_redemption',
+        {
+          p_user_id: userId,
+          p_campaign_code: promoCampaign.code,
+          p_platform: 'stripe',
+          p_billing_cycle: promoCampaign.billing_cycle,
+          p_stripe_customer_id: customerId,
+          p_stripe_price_id: priceId,
+          p_metadata: { source: 'create-checkout-session' },
+        }
+      );
 
-      if (redemptionLookupError) {
-        throw new Error(`Failed to check promo redemption: ${redemptionLookupError.message}`);
+      if (claimError) {
+        throw new Error(`Failed to claim promo campaign: ${claimError.message}`);
       }
 
-      if (existingRedemption?.status === 'consumed') {
-        return jsonResponse({ error: 'Promo code already used' }, 400, corsHeaders);
-      }
-
-      const { error: redemptionUpsertError } = await supabaseAdmin
-        .from('promo_campaign_redemptions')
-        .upsert(
-          {
-            user_id: userId,
-            campaign_code: promoCampaign.code,
-            platform: 'stripe',
-            status: 'pending',
-            stripe_customer_id: customerId,
-            stripe_price_id: priceId,
-            metadata: {
-              source: 'create-checkout-session',
-              billing_cycle: promoCampaign.billing_cycle,
-              reward_type: promoCampaign.reward_type,
-              stripe_coupon_id: promoCampaign.stripe_coupon_id,
-            },
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id,campaign_code,platform' }
-        );
-
-      if (redemptionUpsertError) {
-        throw new Error(`Failed to store promo redemption: ${redemptionUpsertError.message}`);
+      const claim = Array.isArray(claimResult) ? claimResult[0] : claimResult;
+      if (!claim?.ok) {
+        const reason = claim?.reason ?? 'unknown';
+        const userMessage =
+          reason === 'already_consumed'
+            ? 'Promo code already used'
+            : reason === 'already_claimed'
+            ? 'Promo code already claimed'
+            : reason === 'campaign_limit_reached'
+            ? 'Promo code limit reached'
+            : reason === 'campaign_not_found' || reason === 'campaign_inactive'
+            ? 'Invalid promo code'
+            : 'Unable to apply promo code';
+        return jsonResponse({ error: userMessage }, 400, corsHeaders);
       }
     }
 

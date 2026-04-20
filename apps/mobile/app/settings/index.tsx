@@ -112,10 +112,39 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const { error } = await supabase.functions.invoke('delete-account', {
+              const { data, error } = await supabase.functions.invoke('delete-account', {
                 method: 'POST',
               });
-              if (error) throw error;
+              if (error) {
+                // The edge function now enforces a "recent auth" gate (<5 min
+                // since last sign-in) to prevent drive-by deletion. Surface
+                // that case clearly so the user knows to sign back in.
+                const errAny = error as unknown as {
+                  status?: number;
+                  context?: { status?: number };
+                };
+                const status = errAny?.context?.status ?? errAny?.status;
+                if (status === 401) {
+                  await signOut();
+                  Alert.alert(
+                    t('signInRequired') || 'Sign in required',
+                    t('deleteAccountRecentAuth')
+                      || 'For your security, please sign in again, then tap "Delete Account" within 5 minutes to confirm.',
+                  );
+                  router.replace('/auth/login');
+                  return;
+                }
+                throw error;
+              }
+              // Soft-delete succeeded: profile is hidden, 7-day grace window
+              // started, cancellation email sent.
+              const graceDays = (data as { grace_window_days?: number } | null)
+                ?.grace_window_days ?? 7;
+              Alert.alert(
+                t('accountDeletionScheduled') || 'Account deletion scheduled',
+                (t('accountDeletionScheduledMessage') as string | undefined)
+                  || `Your account will be permanently deleted in ${graceDays} days. Check your email for a link to cancel if you change your mind.`,
+              );
               await signOut();
               router.replace('/auth/login');
             } catch {

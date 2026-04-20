@@ -51,12 +51,24 @@ export async function uploadVerificationVideo(
   uri: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    debugLog('Starting video upload for user:', userId);
+    // SECURITY (P0-1): resolve identity from the active session, ignore spoofed userId.
+    // Storage RLS additionally enforces (storage.foldername(name))[1] = auth.uid()::text.
+    const { data: sessionData, error: sessionError } = await supabase.auth.getUser();
+    const authUserId = sessionData?.user?.id ?? null;
+    if (sessionError || !authUserId) {
+      return { success: false, error: 'unauthenticated' };
+    }
+    if (userId && userId !== authUserId) {
+      return { success: false, error: 'uploadFailed' };
+    }
+    const effectiveUserId = authUserId;
+
+    debugLog('Starting video upload for user:', effectiveUserId);
     debugLog('Video URI:', uri);
 
     const { data: uploadBody, mimeType } = await readFileAsArrayBuffer(uri);
     const ext = getExtFromMime(mimeType);
-    const filePath = `${userId}/verification_${Date.now()}.${ext}`;
+    const filePath = `${effectiveUserId}/verification_${Date.now()}.${ext}`;
 
     debugLog('Uploading to Supabase, size:', uploadBody.byteLength);
 
@@ -83,14 +95,14 @@ export async function uploadVerificationVideo(
       console.error('URL error:', urlError);
     }
 
-    // Update profile with verification video URL
+    // Update profile with verification video URL (auth.uid() enforced by profiles RLS)
     const { error: updateError } = await supabase
       .from('profiles')
       .update({
         verification_video_url: urlData?.signedUrl || filePath,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', userId);
+      .eq('id', effectiveUserId);
 
     if (updateError) {
       console.error('Profile update error:', updateError);
