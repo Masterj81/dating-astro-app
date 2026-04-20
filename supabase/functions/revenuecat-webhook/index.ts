@@ -531,28 +531,49 @@ Deno.serve(async (req) => {
       `[RC Webhook] ${eventType} user=${userId} source=${source} tier=${tier ?? 'null'} status=${status}`
     );
 
-    if (source === 'play_store' && isInitialPurchase(eventType)) {
-      await processPlayPromoRedemption(userId, event);
+    // --- P1-2: idempotence gate. Must run BEFORE any side-effect (Play defer,
+    //     subscription upsert, etc.). Duplicates return 200 OK so RevenueCat
+    //     does not retry. ---
+    if (!providerEventId) {
+      // Refuse events without a stable id — we cannot guarantee idempotence.
+      console.warn('[RC Webhook] missing provider event id, refusing');
+      return new Response(JSON.stringify({ error: 'missing_event_id' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    const { error: eventError } = await supabase
-      .from('subscription_events')
-      .upsert(
-        {
-          user_id: userId,
-          source,
-          event_type: eventType.toLowerCase(),
-          tier,
-          provider_event_id: providerEventId,
-          raw_payload: payload,
-        },
-        {
-          onConflict: 'source,provider_event_id',
-        }
-      );
+    const { data: gateRows, error: gateError } = await supabase.rpc('begin_webhook_event', {
+      p_source: source,
+      p_provider_event_id: providerEventId,
+      p_event_type: eventType,
+      p_payload: payload as unknown as Record<string, unknown>,
+      p_user_id: userId,
+      p_tier: tier,
+    });
 
-    if (eventError) {
-      console.error('[RC Webhook] Failed to log event', eventError);
+    if (gateError) {
+      console.error('[RC Webhook] begin_webhook_event failed', gateError);
+      return new Response(JSON.stringify({ error: 'idempotence_gate_failed' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const gate = Array.isArray(gateRows) ? gateRows[0] : gateRows;
+    if (!gate?.accepted) {
+      console.log('[RC Webhook] duplicate/invalid event skipped', {
+        id: providerEventId,
+        type: eventType,
+        reason: gate?.reason ?? 'unknown',
+      });
+      return new Response(JSON.stringify({ ok: true, duplicate: true }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (source === 'play_store' && isInitialPurchase(eventType)) {
+      await processPlayPromoRedemption(userId, event);
     }
 
     if (isTerminalEvent(eventType)) {

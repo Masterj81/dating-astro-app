@@ -145,9 +145,13 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
     }
 
     if (!user) {
-      debugLog('PremiumProvider: Auth ready, no user found');
+      debugLog('PremiumProvider: Auth ready, no user found — resetting');
+      // P1-5: explicit teardown so stale premium state does not leak into
+      // the next login on the same device.
       setTier('free');
       setLoading(false);
+      listenerRef.current?.remove();
+      listenerRef.current = null;
       return;
     }
 

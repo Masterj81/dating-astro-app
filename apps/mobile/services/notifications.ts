@@ -123,6 +123,20 @@ export async function savePushToken(userId: string, token: string): Promise<bool
     return false;
   }
 
+  // P1-6: scrub this token from any other profile that still owns it on the
+  // same device (account switch scenario). The RPC enforces auth.uid() = userId.
+  try {
+    const { error: claimError } = await supabase.rpc('claim_push_token', {
+      p_user_id: userId,
+      p_token: token,
+    });
+    if (claimError && __DEV__) {
+      console.warn('claim_push_token RPC error:', claimError.message);
+    }
+  } catch (err) {
+    if (__DEV__) console.warn('claim_push_token RPC threw:', err);
+  }
+
   const { error } = await supabase
     .from('profiles')
     .update({ push_token: token })

@@ -230,16 +230,33 @@ function RootLayout() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // Handle unexpected sign-out (e.g. expired token that could not be refreshed)
-      if (event === 'SIGNED_OUT' && !userInitiatedSignOut) {
-        Alert.alert(
-          'Session Expired',
-          'Your session has expired. Please log in again.',
-          [{ text: 'OK' }]
-        );
-      }
-      // Reset the flag after handling
+      // P1-5: explicitly clear *all* auth-dependent state and route to login so
+      // premium content does not flash while stale state tears down.
       if (event === 'SIGNED_OUT') {
+        setOnboardingCompleted(false);
+        setIsEmailVerified(false);
+        setSession(null);
+        setUser(null);
+        if (!userInitiatedSignOut) {
+          Alert.alert(
+            'Session Expired',
+            'Your session has expired. Please log in again.',
+            [{ text: 'OK' }]
+          );
+        }
+        try {
+          router.replace('/auth/login');
+        } catch {
+          // Router may not be mounted yet on cold start — safe to ignore.
+        }
         userInitiatedSignOut = false;
+        return;
+      }
+
+      // TOKEN_REFRESHED keeps the user signed in but the underlying access
+      // token rotated — refresh verified email flag so UI stays in sync.
+      if (event === 'TOKEN_REFRESHED' && session?.user) {
+        setIsEmailVerified(!!session.user.email_confirmed_at);
       }
 
       // Update state synchronously first to ensure UI updates
@@ -314,19 +331,45 @@ function RootLayout() {
       try {
         const parsed = new URL(event.url);
 
-        // Validate scheme
-        if (parsed.protocol !== 'https:' && parsed.protocol !== 'astrodating:') {
+        // 1. Scheme must be https or our custom app scheme.
+        const isCustomScheme = parsed.protocol === 'astrodating:';
+        const isHttps = parsed.protocol === 'https:';
+        if (!isHttps && !isCustomScheme) {
           return;
         }
 
-        // Validate host for https links
-        if (parsed.protocol === 'https:' && !ALLOWED_DEEP_LINK_HOSTS.includes(parsed.hostname)) {
+        // 2. Host must be one we trust. Custom scheme links don't have a
+        //    conventional host — we require it to be one of our known hosts
+        //    or empty (e.g. `astrodating:/auth/...`). For https, the hostname
+        //    must be in the allowlist. This is the critical check — we NEVER
+        //    let `type=recovery` substring bypass it (P1-7).
+        if (isHttps && !ALLOWED_DEEP_LINK_HOSTS.includes(parsed.hostname)) {
           return;
         }
+        if (isCustomScheme) {
+          const host = parsed.hostname;
+          if (host && !ALLOWED_DEEP_LINK_HOSTS.includes(host)) {
+            return;
+          }
+        }
 
-        // Validate path prefix
-        const pathAllowed = ALLOWED_DEEP_LINK_PATHS.some((prefix) => parsed.pathname.startsWith(prefix));
-        if (!pathAllowed && !event.url.includes('type=recovery')) {
+        // 3. Parse query params safely and check type=recovery explicitly.
+        //    URL.searchParams handles fragments incorrectly (Supabase puts
+        //    tokens after `#`), so also inspect the hash.
+        const params = new URLSearchParams(parsed.search);
+        let recoveryFlag = params.get('type') === 'recovery';
+        if (!recoveryFlag && parsed.hash) {
+          const hashParams = new URLSearchParams(parsed.hash.replace(/^#/, ''));
+          recoveryFlag = hashParams.get('type') === 'recovery';
+        }
+
+        // 4. Path must start with one of the allowed prefixes.
+        //    Recovery tokens may arrive on a root path — allow that ONLY
+        //    when the host check above has already passed.
+        const pathAllowed = ALLOWED_DEEP_LINK_PATHS.some((prefix) =>
+          parsed.pathname.startsWith(prefix)
+        );
+        if (!pathAllowed && !recoveryFlag) {
           return;
         }
 

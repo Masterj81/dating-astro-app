@@ -87,63 +87,68 @@ Deno.serve(async (req) => {
     const refereeId = user.id;
     const serviceSupabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check if referee already used a referral code
-    const { data: existingRedemption } = await serviceSupabase
-      .from('referral_redemptions')
-      .select('id')
-      .eq('referee_id', refereeId)
-      .maybeSingle();
-
-    if (existingRedemption) {
-      return jsonResponse({ error: 'You have already used a referral code' }, 400, corsHeaders);
-    }
-
-    // Find the referrer by code
-    const { data: referrerProfile } = await serviceSupabase
-      .from('profiles')
-      .select('id, referral_code')
-      .eq('referral_code', code)
-      .maybeSingle();
-
-    if (!referrerProfile) {
-      return jsonResponse({ error: 'Invalid referral code' }, 400, corsHeaders);
-    }
-
-    // Can't refer yourself
-    if (referrerProfile.id === refereeId) {
-      return jsonResponse({ error: 'You cannot use your own referral code' }, 400, corsHeaders);
-    }
-
-    // Record the referral
-    const { error: insertError } = await serviceSupabase
-      .from('referral_redemptions')
-      .insert({
-        referrer_id: referrerProfile.id,
-        referee_id: refereeId,
-        referral_code: code,
-        reward_type: 'free_month',
-      });
-
-    if (insertError) {
-      if (insertError.code === '23505') {
-        return jsonResponse({ error: 'You have already used a referral code' }, 400, corsHeaders);
+    // --- P1-4: rate limit (10/hour per user) ---
+    const { data: allowed, error: rlError } = await serviceSupabase.rpc(
+      'check_edge_rate_limit',
+      {
+        p_key: `claim-referral:uid:${refereeId}`,
+        p_max: 10,
+        p_window_seconds: 3600,
       }
-      console.error('[claim-referral] insert error', insertError.message);
+    );
+    if (rlError) {
+      console.warn('[claim-referral] rate limit RPC error', rlError.message);
+    } else if (allowed === false) {
+      return jsonResponse(
+        { error: 'Too many requests, try again later' },
+        429,
+        corsHeaders
+      );
+    }
+
+    // --- P1-3: atomic claim ---
+    // The RPC locks the referrer row, enforces "one redemption per referee"
+    // under that lock, catches unique_violation, and returns a machine-readable
+    // reason on failure. Rewards are granted ONLY when accepted=true.
+    const { data: claimRows, error: claimError } = await serviceSupabase.rpc(
+      'claim_referral_atomic',
+      {
+        p_referee_id: refereeId,
+        p_referrer_code: code,
+      }
+    );
+
+    if (claimError) {
+      console.error('[claim-referral] RPC error', claimError.message);
       return jsonResponse({ error: 'Unable to process referral' }, 500, corsHeaders);
     }
 
-    // Update referee's profile
-    await serviceSupabase
-      .from('profiles')
-      .update({ referred_by: referrerProfile.id })
-      .eq('id', refereeId);
+    const claim = Array.isArray(claimRows) ? claimRows[0] : claimRows;
+
+    if (!claim?.ok) {
+      const reason = claim?.reason ?? 'unknown';
+      const userMessage =
+        reason === 'already_claimed'
+          ? 'You have already used a referral code'
+          : reason === 'self_referral'
+          ? 'You cannot use your own referral code'
+          : reason === 'referrer_not_found'
+          ? 'Invalid referral code'
+          : reason === 'invalid_code'
+          ? 'Invalid referral code'
+          : 'Unable to process referral';
+      const status = reason === 'unknown' ? 500 : 400;
+      return jsonResponse({ error: userMessage }, status, corsHeaders);
+    }
+
+    const referrerId = claim.referrer_id as string;
 
     // Grant reward to both: extend or create premium subscription
     const now = new Date();
     const rewardExpiry = new Date(now.getTime() + REWARD_DAYS * 24 * 60 * 60 * 1000);
 
-    for (const userId of [refereeId, referrerProfile.id]) {
-      const isReferrer = userId === referrerProfile.id;
+    for (const userId of [refereeId, referrerId]) {
+      const isReferrer = userId === referrerId;
 
       // Check existing subscription
       const { data: existingSub } = await serviceSupabase
@@ -192,7 +197,7 @@ Deno.serve(async (req) => {
     }
 
     console.log('[claim-referral] success', {
-      referrer: referrerProfile.id,
+      referrer: referrerId,
       referee: refereeId,
       code,
     });

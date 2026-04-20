@@ -46,6 +46,45 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // --- P1-2: idempotence gate ---
+    // Call begin_webhook_event FIRST so a duplicate delivery is rejected
+    // before any email / coupon / tier change side-effect runs. Any non-error
+    // duplicate returns 200 OK so Stripe stops retrying.
+    const derivedUserId =
+      (event.data.object as any)?.metadata?.supabase_user_id ??
+      (event.data.object as any)?.subscription_details?.metadata?.supabase_user_id ??
+      null;
+
+    const { data: gateRows, error: gateError } = await supabase.rpc('begin_webhook_event', {
+      p_source: 'stripe',
+      p_provider_event_id: event.id,
+      p_event_type: event.type,
+      p_payload: event as unknown as Record<string, unknown>,
+      p_user_id: derivedUserId,
+      p_tier: null,
+    });
+
+    if (gateError) {
+      console.error('[Stripe Webhook] begin_webhook_event failed', gateError);
+      // Fail closed — 500 so Stripe retries on a transient DB error.
+      return new Response(JSON.stringify({ error: 'idempotence_gate_failed' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const gate = Array.isArray(gateRows) ? gateRows[0] : gateRows;
+    if (!gate?.accepted) {
+      console.log('[Stripe Webhook] skipping duplicate/invalid event', {
+        id: event.id,
+        type: event.type,
+        reason: gate?.reason ?? 'unknown',
+      });
+      return new Response(JSON.stringify({ received: true, duplicate: true }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;

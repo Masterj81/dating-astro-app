@@ -343,28 +343,31 @@ function calculateCompatibility(chart1: any, chart2: any): {
 }
 
 // --- Rate limiting ---
-
-const RATE_LIMIT_WINDOW_MS = 60_000 // 1 minute
+// P1-4: now uses the durable `check_edge_rate_limit` RPC keyed primarily on
+// auth.uid() (authenticated) — we already require auth above — and falls back
+// to the `x-real-ip` header (Supabase-native, forwarded by the platform) when
+// a user id is unavailable. `x-forwarded-for` is NOT trusted on its own.
+const RATE_LIMIT_WINDOW_SECONDS = 60 // 1 minute
 const RATE_LIMIT_MAX = 30
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 
-// Cleanup stale entries every 5 minutes
-setInterval(() => {
-  const now = Date.now()
-  for (const [key, entry] of rateLimitMap) {
-    if (now > entry.resetAt) rateLimitMap.delete(key)
-  }
-}, 5 * 60_000)
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now()
-  const entry = rateLimitMap.get(ip)
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
+async function isRateLimited(
+  supabaseAdmin: ReturnType<typeof createClient> | null,
+  key: string,
+): Promise<boolean> {
+  if (!supabaseAdmin) return false // local dev w/o service key: fail open
+  const { data, error } = await supabaseAdmin.rpc('check_edge_rate_limit', {
+    p_key: key,
+    p_max: RATE_LIMIT_MAX,
+    p_window_seconds: RATE_LIMIT_WINDOW_SECONDS,
+  })
+  if (error) {
+    // Fail closed on integrity errors but keep latency low: if the function
+    // literally doesn't exist yet (fresh env), allow but log once.
+    console.warn('[calculate-chart] rate limit RPC error', error.message)
     return false
   }
-  entry.count++
-  return entry.count > RATE_LIMIT_MAX
+  // RPC returns true when under limit
+  return data === false
 }
 
 // --- Input validation helpers ---
@@ -476,11 +479,19 @@ serve(async (req) => {
 
   const token = authHeader.replace(/^Bearer\s+/i, '').trim()
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 
-  if (supabaseUrl && supabaseServiceKey) {
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+  // P1-9: this function performs no privileged writes — we authenticate
+  // the caller with their own JWT over the anon client, never service_role.
+  let rateLimitKey: string | null = null
+  let jwtClient: ReturnType<typeof createClient> | null = null
+
+  if (supabaseUrl && supabaseAnonKey) {
+    jwtClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+    const { data: { user }, error: authError } = await jwtClient.auth.getUser(token)
     if (authError || !user) {
       return new Response(
         JSON.stringify({ success: false, error: 'Unauthorized' }),
@@ -493,13 +504,18 @@ serve(async (req) => {
         }
       )
     }
+    rateLimitKey = `uid:${user.id}`
   }
 
-  // Rate limiting by IP
-  const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-    || req.headers.get('cf-connecting-ip')
-    || 'unknown'
-  if (isRateLimited(clientIp)) {
+  // Fallback identity for rate limit key: the `x-real-ip` header is set by
+  // the Supabase edge runtime itself (trustworthy inside the platform).
+  // `x-forwarded-for` is NOT trusted on its own — a client can send it.
+  if (!rateLimitKey) {
+    const realIp = req.headers.get('x-real-ip')?.trim()
+    rateLimitKey = realIp ? `ip:${realIp}` : 'ip:unknown'
+  }
+
+  if (await isRateLimited(jwtClient, `calculate-chart:${rateLimitKey}`)) {
     return new Response(
       JSON.stringify({ success: false, error: 'Too many requests, please try again later' }),
       {

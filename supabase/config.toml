@@ -407,6 +407,14 @@ verify_jwt = false
 [functions.send-report-email]
 verify_jwt = false
 
+# Soft-delete cron target (auth via x-expired-deletions-secret header, not JWT)
+[functions.process-expired-deletions]
+verify_jwt = false
+
+# Email-link cancellation (GET path uses HMAC token; POST path does its own JWT check)
+[functions.cancel-account-deletion]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

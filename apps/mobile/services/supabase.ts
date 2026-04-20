@@ -36,49 +36,53 @@ const SecureStoreAdapter = {
   },
 };
 
-// Obfuscated localStorage adapter for web
-// Not true encryption (key is in client), but prevents casual token theft
-// from browser devtools, extensions, or simple XSS payloads
-const STORAGE_PREFIX = 'ad_s_';
+// Web storage adapter.
+//
+// SECURITY NOTE (P1-8): tokens in localStorage are vulnerable to any XSS in
+// the page. This is the Supabase default on web — base64 obfuscation does
+// NOT add security (the key lives in the bundle, one devtools tab defeats
+// it) and gives a false sense of protection. Migrating auth to httpOnly
+// cookies requires a Next.js BFF with a session table and is tracked as a
+// P2. Until then we stay on the default and keep the attack surface honest.
+//
+// Legacy keys: prior versions stored tokens with the `ad_s_` prefix + base64.
+// On read we transparently migrate them back to the canonical unprefixed
+// key Supabase expects, so existing sessions are not invalidated.
+const LEGACY_STORAGE_PREFIX = 'ad_s_';
 
-function obfuscate(value: string): string {
-  return btoa(encodeURIComponent(value));
-}
-
-function deobfuscate(value: string): string {
+function maybeMigrateLegacy(key: string): string | null {
+  if (typeof window === 'undefined') return null;
+  const legacy = window.localStorage.getItem(LEGACY_STORAGE_PREFIX + key);
+  if (legacy === null) return null;
   try {
-    return decodeURIComponent(atob(value));
+    const decoded = decodeURIComponent(atob(legacy));
+    window.localStorage.setItem(key, decoded);
+    window.localStorage.removeItem(LEGACY_STORAGE_PREFIX + key);
+    return decoded;
   } catch {
-    // Fallback for legacy unencoded values
-    return value;
+    // Corrupted legacy value — drop it silently.
+    window.localStorage.removeItem(LEGACY_STORAGE_PREFIX + key);
+    return null;
   }
 }
 
 const LocalStorageAdapter = {
   getItem: async (key: string): Promise<string | null> => {
     if (typeof window === 'undefined') return null;
-    const raw = window.localStorage.getItem(STORAGE_PREFIX + key);
-    if (raw === null) {
-      // Check for legacy unencoded key (migration)
-      const legacy = window.localStorage.getItem(key);
-      if (legacy !== null) {
-        // Migrate to obfuscated storage
-        window.localStorage.setItem(STORAGE_PREFIX + key, obfuscate(legacy));
-        window.localStorage.removeItem(key);
-        return legacy;
-      }
-      return null;
-    }
-    return deobfuscate(raw);
+    const direct = window.localStorage.getItem(key);
+    if (direct !== null) return direct;
+    return maybeMigrateLegacy(key);
   },
   setItem: async (key: string, value: string): Promise<void> => {
     if (typeof window === 'undefined') return;
-    window.localStorage.setItem(STORAGE_PREFIX + key, obfuscate(value));
+    window.localStorage.setItem(key, value);
+    // Clean up any stale legacy copy that may still be around.
+    window.localStorage.removeItem(LEGACY_STORAGE_PREFIX + key);
   },
   removeItem: async (key: string): Promise<void> => {
     if (typeof window === 'undefined') return;
-    window.localStorage.removeItem(STORAGE_PREFIX + key);
-    window.localStorage.removeItem(key); // Also clean legacy
+    window.localStorage.removeItem(key);
+    window.localStorage.removeItem(LEGACY_STORAGE_PREFIX + key);
   },
 };
 
