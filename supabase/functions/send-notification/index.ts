@@ -173,15 +173,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // No push token registered
-    if (!profile.push_token) {
-      return new Response(
-        JSON.stringify({ skipped: true, reason: "No push token" }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // Check notification preference for this type
+    // Check notification preference for this type BEFORE resolving tokens —
+    // avoids a needless table read when the user has disabled this category.
     const prefKey = TYPE_TO_PREF_KEY[type];
     if (prefKey && profile.notification_preferences) {
       const prefs = profile.notification_preferences;
@@ -193,73 +186,172 @@ Deno.serve(async (req) => {
       }
     }
 
+    // B1: resolve tokens from the multi-device push_tokens table first.
+    // Each user can have N rows (one per device). Fall back to the legacy
+    // profiles.push_token single-slot column only if push_tokens is empty.
+    type TokenRow = { device_id: string; token: string };
+
+    const tokenRows: TokenRow[] = [];
+    const { data: pushTokenRows, error: pushTokenErr } = await supabase
+      .from("push_tokens")
+      .select("device_id, token")
+      .eq("user_id", userId);
+
+    if (pushTokenErr) {
+      console.warn(
+        `[send-notification] push_tokens lookup failed for ${userId}:`,
+        pushTokenErr.message
+      );
+    } else if (pushTokenRows && pushTokenRows.length > 0) {
+      for (const row of pushTokenRows) {
+        if (row.token) tokenRows.push({ device_id: row.device_id, token: row.token });
+      }
+    }
+
+    if (tokenRows.length === 0 && profile.push_token) {
+      console.warn(
+        `[send-notification] legacy fallback used for user_id=${userId} (no push_tokens row)`
+      );
+      tokenRows.push({ device_id: `legacy:${userId}`, token: profile.push_token });
+    }
+
+    if (tokenRows.length === 0) {
+      return new Response(
+        JSON.stringify({ skipped: true, reason: "No push token" }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // Build the data payload — always include `type` so the client can deep-link
     const pushData = { type, ...(data || {}) };
 
     // Resolve Android channel
     const channelId = TYPE_TO_CHANNEL[type] ?? "default";
 
-    // Send via Expo Push API
+    // Expo Push API accepts an array of messages in a single POST — one
+    // message per (token, ...same payload). We batch all of this user's
+    // devices into one request.
+    const messages = tokenRows.map((row) => ({
+      to: row.token,
+      title,
+      body,
+      data: pushData,
+      sound: "default",
+      channelId,
+      priority: "high",
+    }));
+
     const pushResponse = await fetch(EXPO_PUSH_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify({
-        to: profile.push_token,
-        title,
-        body,
-        data: pushData,
-        sound: "default",
-        channelId,
-        priority: "high",
-      }),
+      body: JSON.stringify(messages.length === 1 ? messages[0] : messages),
     });
 
     const pushResult = await pushResponse.json();
 
-    // Handle Expo push errors (invalid/expired tokens)
+    // Handle Expo push errors per-ticket (invalid/expired tokens).
+    // Expo returns one ticket per message, in order, so we can map them back
+    // to the originating token row.
+    let sentCount = 0;
+    let errorCount = 0;
+    const invalidDeviceIds: string[] = [];
+    const successfulDeviceIds: string[] = [];
+
     if (pushResult?.data) {
       const tickets = Array.isArray(pushResult.data) ? pushResult.data : [pushResult.data];
-      for (const ticket of tickets) {
+      for (let i = 0; i < tickets.length; i++) {
+        const ticket = tickets[i];
+        const row = tokenRows[i];
+        if (!row) continue;
+
+        if (ticket.status === "ok") {
+          sentCount++;
+          successfulDeviceIds.push(row.device_id);
+          continue;
+        }
+
         if (ticket.status === "error") {
+          errorCount++;
           console.error(
-            `[send-notification] Expo push error for user ${userId}: ${ticket.message} (${ticket.details?.error})`
+            `[send-notification] Expo push error for user ${userId} device ${row.device_id}: ${ticket.message} (${ticket.details?.error})`
           );
 
-          // If the token is permanently invalid, clear it from the profile
           if (ticket.details?.error && INVALID_TOKEN_ERRORS.includes(ticket.details.error)) {
-            console.warn(
-              `[send-notification] Clearing invalid push token for user ${userId} (${ticket.details.error})`
-            );
-            const { error: clearError } = await supabase
-              .from("profiles")
-              .update({ push_token: null })
-              .eq("id", userId);
-
-            if (clearError) {
-              console.error(
-                `[send-notification] Failed to clear invalid token for ${userId}:`,
-                clearError.message
-              );
-            }
-
-            return new Response(
-              JSON.stringify({
-                sent: false,
-                reason: "Token invalid, cleared from profile",
-                error: ticket.details.error,
-              }),
-              { status: 200, headers: { "Content-Type": "application/json" } }
-            );
+            invalidDeviceIds.push(row.device_id);
           }
         }
       }
     }
 
+    // Purge invalid tokens per device_id.
+    // - For real device_ids, delete the row in push_tokens.
+    // - For the synthetic `legacy:<userId>` row, null out profiles.push_token.
+    for (const did of invalidDeviceIds) {
+      if (did.startsWith("legacy:")) {
+        const { error: clearErr } = await supabase
+          .from("profiles")
+          .update({ push_token: null })
+          .eq("id", userId);
+        if (clearErr) {
+          console.error(
+            `[send-notification] Failed to clear legacy push_token for ${userId}:`,
+            clearErr.message
+          );
+        } else {
+          console.warn(
+            `[send-notification] Cleared invalid legacy push_token for user ${userId}`
+          );
+        }
+      } else {
+        const { error: delErr } = await supabase
+          .from("push_tokens")
+          .delete()
+          .eq("device_id", did)
+          .eq("user_id", userId);
+        if (delErr) {
+          console.error(
+            `[send-notification] Failed to delete invalid push_tokens row device=${did}:`,
+            delErr.message
+          );
+        } else {
+          console.warn(
+            `[send-notification] Deleted invalid push_tokens row user=${userId} device=${did}`
+          );
+        }
+      }
+    }
+
+    // Bump last_seen_at for devices that successfully received the push —
+    // lets a future cron prune zombie tokens by last_seen_at age.
+    if (successfulDeviceIds.length > 0) {
+      const realDeviceIds = successfulDeviceIds.filter((d) => !d.startsWith("legacy:"));
+      if (realDeviceIds.length > 0) {
+        const { error: bumpErr } = await supabase
+          .from("push_tokens")
+          .update({ last_seen_at: new Date().toISOString() })
+          .in("device_id", realDeviceIds)
+          .eq("user_id", userId);
+        if (bumpErr) {
+          console.warn(
+            `[send-notification] last_seen_at bump failed for ${userId}:`,
+            bumpErr.message
+          );
+        }
+      }
+    }
+
     return new Response(
-      JSON.stringify({ sent: true, result: pushResult }),
+      JSON.stringify({
+        sent: sentCount > 0,
+        sent_count: sentCount,
+        error_count: errorCount,
+        total_devices: tokenRows.length,
+        invalid_removed: invalidDeviceIds.length,
+        result: pushResult,
+      }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (err) {

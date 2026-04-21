@@ -1,6 +1,63 @@
 import { Alert, AppState, Linking, Platform } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
+import * as Crypto from 'expo-crypto';
 import { supabase } from './supabase';
 import { t } from './i18n';
+
+// B1 — stable per-install device id used by the push_tokens table so a single
+// user can register N devices and a device never silently gets reassigned to
+// another user. Generated once, stored in SecureStore on native and in
+// localStorage on web (web currently has no native push but we keep the id
+// consistent for future use). The value is opaque — never parsed server-side.
+const DEVICE_ID_KEY = 'astrodating_device_id';
+
+function generateFallbackUuidV4(): string {
+  // RFC 4122 v4 fallback — used only if expo-crypto.randomUUID is missing
+  // (extremely unlikely on SDK 54+, but belt-and-suspenders).
+  const hex = '0123456789abcdef';
+  let out = '';
+  for (let i = 0; i < 36; i++) {
+    if (i === 8 || i === 13 || i === 18 || i === 23) {
+      out += '-';
+    } else if (i === 14) {
+      out += '4';
+    } else if (i === 19) {
+      out += hex[(Math.random() * 4) | 0 | 8];
+    } else {
+      out += hex[(Math.random() * 16) | 0];
+    }
+  }
+  return out;
+}
+
+async function getDeviceId(): Promise<string | null> {
+  try {
+    if (Platform.OS === 'web') {
+      // SecureStore is a no-op on web; use localStorage for parity.
+      if (typeof window === 'undefined') return null;
+      let id = window.localStorage.getItem(DEVICE_ID_KEY);
+      if (!id) {
+        id = typeof Crypto.randomUUID === 'function'
+          ? Crypto.randomUUID()
+          : generateFallbackUuidV4();
+        window.localStorage.setItem(DEVICE_ID_KEY, id);
+      }
+      return id;
+    }
+
+    let id = await SecureStore.getItemAsync(DEVICE_ID_KEY);
+    if (!id) {
+      id = typeof Crypto.randomUUID === 'function'
+        ? Crypto.randomUUID()
+        : generateFallbackUuidV4();
+      await SecureStore.setItemAsync(DEVICE_ID_KEY, id);
+    }
+    return id;
+  } catch (err) {
+    if (__DEV__) console.warn('getDeviceId failed:', err);
+    return null;
+  }
+}
 
 // Q-L5: track whether we've already shown the "permission denied" prompt so
 // users aren't nagged on every app launch. Reset when the process restarts.
@@ -149,25 +206,58 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
   }
 }
 
-// Save push token to user's profile
+// Save push token to the push_tokens table (multi-device) AND to the legacy
+// profiles.push_token column (single-device) as a fallback until
+// send-notification v2 is validated in prod.
+// TODO(P3): remove the legacy profiles.push_token write once send-notification
+//           is confirmed to read exclusively from push_tokens.
 export async function savePushToken(userId: string, token: string): Promise<boolean> {
   if (!isValidExpoPushToken(token)) {
     if (__DEV__) console.warn('Refusing to save invalid push token:', token);
     return false;
   }
 
-  // P1-6: scrub this token from any other profile that still owns it on the
-  // same device (account switch scenario). The RPC enforces auth.uid() = userId.
+  const deviceId = await getDeviceId();
+
+  // B1: preferred path — claim_push_token_v2 scrubs any other user who
+  // previously held this device_id and upserts into public.push_tokens.
+  let v2Ok = false;
+  if (deviceId) {
+    try {
+      const platform: 'ios' | 'android' | 'web' =
+        Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
+
+      const { error: claimV2Error } = await supabase.rpc('claim_push_token_v2', {
+        p_device_id: deviceId,
+        p_token: token,
+        p_platform: platform,
+      });
+
+      if (claimV2Error) {
+        if (__DEV__) console.warn('claim_push_token_v2 RPC error:', claimV2Error.message);
+      } else {
+        v2Ok = true;
+      }
+    } catch (err) {
+      if (__DEV__) console.warn('claim_push_token_v2 RPC threw:', err);
+    }
+  } else if (__DEV__) {
+    console.warn('getDeviceId returned null — falling back to legacy profiles.push_token only');
+  }
+
+  // Legacy path — kept for one cycle so send-notification can still reach
+  // this user via profiles.push_token if it hasn't been redeployed yet.
+  // The legacy RPC does its own cross-profile scrub.
   try {
     const { error: claimError } = await supabase.rpc('claim_push_token', {
       p_user_id: userId,
       p_token: token,
     });
     if (claimError && __DEV__) {
-      console.warn('claim_push_token RPC error:', claimError.message);
+      console.warn('claim_push_token (legacy) RPC error:', claimError.message);
     }
   } catch (err) {
-    if (__DEV__) console.warn('claim_push_token RPC threw:', err);
+    if (__DEV__) console.warn('claim_push_token (legacy) RPC threw:', err);
   }
 
   const { error } = await supabase
@@ -176,8 +266,9 @@ export async function savePushToken(userId: string, token: string): Promise<bool
     .eq('id', userId);
 
   if (error) {
-    if (__DEV__) console.warn('Failed to save push token:', error.message);
-    return false;
+    if (__DEV__) console.warn('Failed to save legacy push token:', error.message);
+    // If v2 succeeded, we're still fine — the new table is the source of truth.
+    return v2Ok;
   }
   return true;
 }
@@ -206,14 +297,32 @@ export async function registerAndSavePushToken(userId: string): Promise<void> {
 }
 
 // Clear push token on sign-out so the user stops receiving notifications
+// on THIS device. Other devices of the same user keep their rows.
 export async function clearPushToken(userId: string): Promise<void> {
+  // B1: delete this device's row from push_tokens.
+  const deviceId = await getDeviceId();
+  if (deviceId) {
+    try {
+      const { error: rpcError } = await supabase.rpc('clear_push_token_v2', {
+        p_device_id: deviceId,
+      });
+      if (rpcError && __DEV__) {
+        console.warn('clear_push_token_v2 RPC error:', rpcError.message);
+      }
+    } catch (err) {
+      if (__DEV__) console.warn('clear_push_token_v2 RPC threw:', err);
+    }
+  }
+
+  // Legacy: also null out profiles.push_token so the old single-slot
+  // fallback path in send-notification can't still deliver to us.
   const { error } = await supabase
     .from('profiles')
     .update({ push_token: null })
     .eq('id', userId);
 
   if (error) {
-    if (__DEV__) console.warn('Failed to clear push token:', error.message);
+    if (__DEV__) console.warn('Failed to clear legacy push token:', error.message);
   }
 }
 
