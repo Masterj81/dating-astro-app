@@ -142,15 +142,17 @@ export default function EditProfileScreen() {
           );
           uploadImage(manipulated.uri, index);
           return;
-        } catch {
-          // expo-image-manipulator not installed — warn the user
+        } catch (heicErr) {
+          // Q-L3: manipulator unavailable or failed. NEVER fall through with
+          // the raw HEIC URI — downstream consumers (discover image, Supabase
+          // storage clients) can't render HEIC and the upload would look
+          // broken. Block here and tell the user to pick a different image.
+          if (__DEV__) console.warn('[profile/edit] HEIC conversion failed:', heicErr);
           Alert.alert(
-            t('heicWarningTitle') || 'HEIC Image Detected',
-            t('heicWarningMessage') || 'Your photo is in HEIC format which may be very large. For best results, please select a JPEG or PNG image.',
-            [
-              { text: t('cancel'), style: 'cancel' },
-              { text: t('uploadAnyway') || 'Upload Anyway', onPress: () => uploadImage(uri, index) },
-            ]
+            t('heicUnsupportedTitle') || 'HEIC Image Not Supported',
+            t('heicUnsupportedMessage') ||
+              "We couldn't convert this HEIC photo. Please pick a JPEG or PNG image, or change your camera format to 'Most Compatible' in iOS Settings > Camera > Formats.",
+            [{ text: t('ok') || 'OK' }]
           );
           return;
         }

@@ -457,6 +457,10 @@ export default function DiscoverScreen() {
     refreshTrigger();
     setDeckExhausted(false);
     setSwipeError(null);
+    // Q-L1: clear the stale deck first so the list renders a proper empty
+    // loading state instead of flashing the previous profiles before the
+    // new batch arrives.
+    setProfiles([]);
     loadProfiles();
   };
 

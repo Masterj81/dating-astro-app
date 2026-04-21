@@ -114,18 +114,18 @@ export default function PremiumPlansScreen() {
 
     if (!pkg) {
       Alert.alert(
-        t('error') || 'Error',
-        t('packageNotAvailable') || 'Package not available. Please try again later.',
-        [{ text: t('ok') || 'OK' }]
+        t('error'),
+        t('packageNotAvailable'),
+        [{ text: t('ok') }]
       );
       return;
     }
 
     if (!user?.id) {
       Alert.alert(
-        t('error') || 'Error',
-        t('notSignedIn') || 'Please sign in before subscribing.',
-        [{ text: t('ok') || 'OK' }]
+        t('error'),
+        t('notSignedIn'),
+        [{ text: t('ok') }]
       );
       return;
     }
@@ -143,25 +143,25 @@ export default function PremiumPlansScreen() {
         await refreshSubscription();
         const successMessage =
           targetTier === 'cosmic'
-            ? t('premiumPlusActivated') || 'Subscription activated.'
-            : t('premiumActivated') || 'Subscription activated.';
+            ? t('premiumPlusActivated')
+            : t('premiumActivated');
 
-        Alert.alert(t('purchaseSuccess') || 'Success!', successMessage, [
-          { text: t('ok') || 'OK', onPress: () => router.replace('/(tabs)/premium' as any) },
+        Alert.alert(t('purchaseSuccess'), successMessage, [
+          { text: t('ok'), onPress: () => router.replace('/(tabs)/premium' as any) },
         ]);
       } else if (!result.cancelled) {
         Alert.alert(
-          t('purchaseFailed') || 'Purchase Failed',
-          t('purchaseError') || 'There was an error processing your purchase.',
-          [{ text: t('ok') || 'OK' }]
+          t('purchaseFailed'),
+          t('purchaseError'),
+          [{ text: t('ok') }]
         );
       }
     } catch (error) {
       console.error('[Plans] Purchase error:', error);
       Alert.alert(
-        t('error') || 'Error',
-        t('purchaseError') || 'There was an error processing your purchase.',
-        [{ text: t('ok') || 'OK' }]
+        t('error'),
+        t('purchaseError'),
+        [{ text: t('ok') }]
       );
     } finally {
       setPurchasingTier(null);

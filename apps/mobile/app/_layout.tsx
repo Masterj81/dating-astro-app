@@ -4,7 +4,7 @@ import * as Linking from 'expo-linking';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Alert, LogBox, Platform } from 'react-native';
+import { Alert, AppState, LogBox, Platform } from 'react-native';
 import { AuthContext } from '../contexts/AuthContext';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { PremiumProvider } from '../contexts/PremiumContext';
@@ -16,6 +16,7 @@ import { getAuthCallbackRedirectUri } from '../services/authRedirect';
 import { supabase } from '../services/supabase';
 import { syncWidgetWithProfile } from '../services/widgetService';
 import { registerServiceWorker, setupInstallPrompt } from '../services/pwa';
+import { t } from '../services/i18n';
 
 // Suppress known benign warnings on native only (LogBox is the proper API)
 // Only in dev - production builds don't show LogBox anyway
@@ -239,9 +240,9 @@ function RootLayout() {
         setUser(null);
         if (!userInitiatedSignOut) {
           Alert.alert(
-            'Session Expired',
-            'Your session has expired. Please log in again.',
-            [{ text: 'OK' }]
+            t('sessionExpiredTitle'),
+            t('sessionExpiredMessage'),
+            [{ text: t('ok') }]
           );
         }
         try {
@@ -401,6 +402,48 @@ function RootLayout() {
     }
   }, [user]);
 
+  // P2-8: re-verify the Supabase session whenever the app returns to
+  // foreground after more than 5 minutes in the background. If the refresh
+  // token has expired, Supabase will emit SIGNED_OUT (handled above) which
+  // tears down premium state and routes to /auth/login. This catches the
+  // case where a user comes back after a long break and we don't want them
+  // silently browsing with a stale session.
+  useEffect(() => {
+    const REAUTH_THRESHOLD_MS = 5 * 60 * 1000;
+    let lastBackgroundedAt: number | null = null;
+
+    const sub = AppState.addEventListener('change', async (nextState) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        lastBackgroundedAt = Date.now();
+        return;
+      }
+      if (nextState === 'active') {
+        const backgroundedAt = lastBackgroundedAt;
+        lastBackgroundedAt = null;
+        if (!backgroundedAt) return;
+        if (Date.now() - backgroundedAt < REAUTH_THRESHOLD_MS) return;
+
+        try {
+          const { data: { session: refreshed } } = await supabase.auth.getSession();
+          // If the session is gone, onAuthStateChange -> SIGNED_OUT will have
+          // already fired or will fire once supabase-js notices. Force the
+          // UI to the login screen defensively too.
+          if (!refreshed) {
+            try {
+              router.replace('/auth/login');
+            } catch {
+              // Router not mounted yet — safe to ignore.
+            }
+          }
+        } catch (err) {
+          safeSentry.captureException(err, { extra: { context: 'foreground-reauth' } });
+        }
+      }
+    });
+
+    return () => sub.remove();
+  }, []);
+
   // Register for push notifications and initialize purchases when user logs in
   useEffect(() => {
     if (!user) return;
@@ -433,6 +476,14 @@ function RootLayout() {
       'dailyHoroscope', 'retrogradeAlert', 'promotion',
     ];
 
+    // P2-2: prevent arbitrary deep link navigation if the push payload is
+    // forged or the backend is compromised. Any ID used to build a route
+    // MUST pass this strict UUID check; anything else is silently dropped
+    // (and logged in dev) and the user falls back to the default tab.
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const isValidUuid = (value: unknown): value is string =>
+      typeof value === 'string' && UUID_REGEX.test(value);
+
     const handleNotificationResponse = (response: any) => {
       const data = response?.notification?.request?.content?.data as NotificationPayload | undefined;
       if (!data || typeof data.type !== 'string') return;
@@ -441,19 +492,35 @@ function RootLayout() {
       // Don't navigate if user is not authenticated yet
       if (!user) return;
 
+      // Validate any routable ID fields before building a URL from them.
+      const safeMatchId = isValidUuid(data.matchId) ? data.matchId : null;
+      const safeChatId = isValidUuid(data.chatId) ? data.chatId : null;
+      if (__DEV__) {
+        if (data.matchId !== undefined && !safeMatchId) {
+          console.warn('[Notifications] Ignoring non-UUID matchId in push payload:', data.matchId);
+        }
+        if (data.chatId !== undefined && !safeChatId) {
+          console.warn('[Notifications] Ignoring non-UUID chatId in push payload:', data.chatId);
+        }
+      }
+
       switch (data.type) {
         case 'match':
         case 'like':
         case 'superLike':
-          if (data.matchId) {
-            router.push(`/match/${data.matchId}`);
+          if (safeMatchId) {
+            router.push(`/match/${safeMatchId}`);
           } else {
             router.push('/(tabs)/matches');
           }
           break;
         case 'message':
-          if (data.matchId) {
-            router.push(`/chat/${data.matchId}`);
+          // Prefer chatId if it's valid; otherwise fall back to a validated
+          // matchId; otherwise the default chat tab.
+          if (safeChatId) {
+            router.push(`/chat/${safeChatId}`);
+          } else if (safeMatchId) {
+            router.push(`/chat/${safeMatchId}`);
           } else {
             router.push('/(tabs)/chat');
           }

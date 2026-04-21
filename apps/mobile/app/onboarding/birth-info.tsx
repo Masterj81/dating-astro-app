@@ -23,6 +23,11 @@ import { supabase } from '../../services/supabase';
 import { AppTheme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { buttonPress, errorNotification } from '../../services/haptics';
+import {
+  saveOnboardingDraft,
+  loadOnboardingDraft,
+  clearOnboardingDraft,
+} from '../../utils/onboardingDraft';
 
 // Generate arrays for dropdowns
 const MONTHS = [
@@ -501,6 +506,31 @@ export default function BirthInfoScreen() {
             setGender(data.gender);
           }
         }
+
+        // P2-5: if the user killed the app mid-flow, a local draft takes
+        // precedence over the DB snapshot for fields the draft has set.
+        // DB has `birth_date` etc only if previously submitted once — a draft
+        // is always the more recent un-submitted state.
+        const draft = await loadOnboardingDraft(user.id);
+        if (draft) {
+          if (draft.birthMonth) setBirthMonth(String(draft.birthMonth));
+          if (draft.birthDay) setBirthDay(String(draft.birthDay));
+          if (draft.birthYear) setBirthYear(String(draft.birthYear));
+          if (draft.birthHour) setBirthHour(String(draft.birthHour));
+          if (draft.birthMinute) setBirthMinute(String(draft.birthMinute));
+          if (typeof draft.birthCity === 'string') setBirthCity(draft.birthCity);
+          if (typeof draft.gender === 'string') setGender(draft.gender);
+          if (
+            draft.showMe === 'men' ||
+            draft.showMe === 'women' ||
+            draft.showMe === 'everyone'
+          ) {
+            setShowMe(draft.showMe);
+          }
+          if (typeof draft.step === 'number' && draft.step >= 1 && draft.step <= TOTAL_STEPS) {
+            setStep(draft.step);
+          }
+        }
       } catch (_err) {
         // Silently fail - user can still enter new data
       } finally {
@@ -510,6 +540,36 @@ export default function BirthInfoScreen() {
 
     loadExistingData();
   }, [user?.id]);
+
+  // P2-5: persist draft on every meaningful change. Debounce with an effect
+  // (React coalesces the writes naturally since the state is the trigger).
+  useEffect(() => {
+    if (initialLoading) return;
+    if (!user?.id) return;
+    saveOnboardingDraft(user.id, {
+      step,
+      birthMonth,
+      birthDay,
+      birthYear,
+      birthHour,
+      birthMinute,
+      birthCity,
+      gender,
+      showMe,
+    });
+  }, [
+    initialLoading,
+    user?.id,
+    step,
+    birthMonth,
+    birthDay,
+    birthYear,
+    birthHour,
+    birthMinute,
+    birthCity,
+    gender,
+    showMe,
+  ]);
 
   // Clear inline errors when user changes values
   const handleBirthMonthChange = (v: string) => { setBirthMonth(v); if (birthDateError) setBirthDateError(''); };
@@ -659,6 +719,9 @@ export default function BirthInfoScreen() {
       } else {
         // Refresh the profile in auth context so onboardingCompleted is updated
         await refreshProfile();
+
+        // P2-5: server now has the data, drop the local draft.
+        await clearOnboardingDraft(user.id);
 
         setLoading(false);
         setCalculatingPhase('');

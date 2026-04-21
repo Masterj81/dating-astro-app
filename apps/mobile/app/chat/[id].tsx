@@ -31,6 +31,12 @@ type Message = {
   content: string;
   created_at: string;
   read: boolean;
+  // P2-4: UI-only status for optimistic/pending messages.
+  // Server-fetched messages have undefined pendingStatus and behave as before.
+  pendingStatus?: 'sending' | 'failed';
+  // Client-generated temp id so we can reconcile when the real row arrives
+  // via the realtime subscription.
+  clientId?: string;
 };
 
 type MatchInfo = {
@@ -56,9 +62,19 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false);
   const [matchInfo, setMatchInfo] = useState<MatchInfo | null>(null);
   const flatListRef = useRef<FlatList>(null);
+  // Q-L2: guard setState calls from the realtime subscription against writes
+  // after unmount (can happen while the channel is still draining).
+  const isMountedRef = useRef(true);
   const { user } = useAuth();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const markMessagesAsRead = useCallback(async () => {
     if (!matchId || !user) return;
@@ -165,9 +181,31 @@ export default function ChatScreen() {
           filter: `match_id=eq.${matchId}`,
         },
         (payload) => {
+          // Q-L2: drop events that arrive after unmount.
+          if (!isMountedRef.current) return;
           const newMsg = payload.new as Message;
           setMessages((prev) => {
             if (prev.some((m) => m.id === newMsg.id)) return prev;
+            // P2-4: reconcile optimistic pending messages with the real row.
+            // When our own echo comes back we drop ONE optimistic placeholder
+            // (the oldest sending bubble with matching content) so the list
+            // doesn't double up if the user sent the same text twice.
+            if (newMsg.sender_id === user?.id) {
+              let removed = false;
+              const withoutOptimistic = prev.filter((m) => {
+                if (
+                  !removed &&
+                  m.pendingStatus === 'sending' &&
+                  m.sender_id === user.id &&
+                  m.content === newMsg.content
+                ) {
+                  removed = true;
+                  return false;
+                }
+                return true;
+              });
+              return [...withoutOptimistic, newMsg];
+            }
             return [...prev, newMsg];
           });
           // Mark as read if the message is from the other user
@@ -183,44 +221,137 @@ export default function ChatScreen() {
     };
   };
 
+  // P2-4: core insert helper — returns true on success.
+  const insertMessage = useCallback(
+    async (content: string): Promise<boolean> => {
+      if (!user || !matchId) return false;
+      try {
+        await withRetry(async () => {
+          const { error } = await supabase.from('messages').insert({
+            match_id: matchId,
+            sender_id: user.id,
+            content,
+          });
+          if (error) throw error;
+        });
+        return true;
+      } catch (err) {
+        console.error('Error sending message:', err);
+        return false;
+      }
+    },
+    [user, matchId]
+  );
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !user || !matchId) return;
     if (!throttleAction('sendMessage', 1000)) return;
 
-    setSending(true);
     const messageContent = newMessage.trim();
+
+    // P2-4: keep an optimistic "sending" bubble in the list so users see
+    // immediate feedback, even offline. We clear the input right away so
+    // they can type the next message, but if the insert ultimately fails
+    // the bubble flips to "failed" and offers a retry.
+    const clientId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const optimistic: Message = {
+      id: clientId,
+      clientId,
+      match_id: matchId,
+      sender_id: user.id,
+      content: messageContent,
+      created_at: new Date().toISOString(),
+      read: false,
+      pendingStatus: 'sending',
+    };
+
+    setSending(true);
     setNewMessage('');
+    setMessages((prev) => [...prev, optimistic]);
 
-    try {
-      await withRetry(async () => {
-        const { error } = await supabase.from('messages').insert({
-          match_id: matchId,
-          sender_id: user.id,
-          content: messageContent,
-        });
+    const ok = await insertMessage(messageContent);
+    if (!isMountedRef.current) return;
 
-        if (error) {
-          throw error;
-        }
-      });
-    } catch (err) {
-      console.error('Error sending message:', err);
-      setNewMessage(messageContent);
+    if (!ok) {
+      // Flip the optimistic message to 'failed'. Keep it in the list so the
+      // user can retry without retyping, but keep the input empty so the
+      // next message isn't blocked.
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.clientId === clientId ? { ...m, pendingStatus: 'failed' } : m
+        )
+      );
     }
+    // On success, the realtime subscription swaps the optimistic row for
+    // the server row (see subscribeToMessages reconciliation).
 
     setSending(false);
   };
+
+  // P2-4: retry a single failed message by clientId.
+  const retryMessage = useCallback(
+    async (failedMessage: Message) => {
+      if (!failedMessage.clientId) return;
+      const clientId = failedMessage.clientId;
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.clientId === clientId ? { ...m, pendingStatus: 'sending' } : m
+        )
+      );
+
+      const ok = await insertMessage(failedMessage.content);
+      if (!isMountedRef.current) return;
+
+      if (!ok) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.clientId === clientId ? { ...m, pendingStatus: 'failed' } : m
+          )
+        );
+      }
+    },
+    [insertMessage]
+  );
 
   const formatTime = formatMessageTime;
 
   const renderMessage = ({ item }: { item: Message }) => {
     const isMe = item.sender_id === user?.id;
+    const isPending = item.pendingStatus === 'sending';
+    const isFailed = item.pendingStatus === 'failed';
 
     return (
       <View style={[styles.messageRow, isMe && styles.messageRowMe]}>
-        <View style={[styles.messageBubble, isMe ? styles.messageBubbleMe : styles.messageBubbleThem]}>
+        <View
+          style={[
+            styles.messageBubble,
+            isMe ? styles.messageBubbleMe : styles.messageBubbleThem,
+            isPending && styles.messageBubblePending,
+            isFailed && styles.messageBubbleFailed,
+          ]}
+        >
           <Text style={[styles.messageText, isMe && styles.messageTextMe]}>{item.content}</Text>
-          <Text style={[styles.messageTime, isMe && styles.messageTimeMe]}>{formatTime(item.created_at)}</Text>
+          <View style={styles.messageMetaRow}>
+            <Text style={[styles.messageTime, isMe && styles.messageTimeMe]}>
+              {isPending
+                ? t('sending') || 'Sending...'
+                : isFailed
+                ? t('messageFailed') || 'Not delivered'
+                : formatTime(item.created_at)}
+            </Text>
+            {isPending && <ActivityIndicator size="small" color="#fff" style={styles.messageSpinner} />}
+          </View>
+          {isFailed && (
+            <TouchableOpacity
+              style={styles.resendButton}
+              onPress={() => retryMessage(item)}
+              accessibilityRole="button"
+              accessibilityLabel={t('resend') || 'Resend'}
+            >
+              <Text style={styles.resendText}>{t('resend') || 'Resend'}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );
@@ -440,6 +571,37 @@ const styles = StyleSheet.create({
   messageBubbleMe: {
     backgroundColor: '#e94560',
     borderBottomRightRadius: 4,
+  },
+  messageBubblePending: {
+    opacity: 0.65,
+  },
+  messageBubbleFailed: {
+    backgroundColor: '#6b2a37',
+    borderColor: '#e94560',
+    borderWidth: 1,
+  },
+  messageMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 6,
+    marginTop: 4,
+  },
+  messageSpinner: {
+    marginLeft: 4,
+  },
+  resendButton: {
+    marginTop: 6,
+    alignSelf: 'flex-end',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+  },
+  resendText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   messageText: {
     fontSize: 15,

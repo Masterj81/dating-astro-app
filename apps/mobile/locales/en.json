@@ -1156,5 +1156,21 @@
   "matchDetailCelebration": "Your Cosmic Bond",
   "matchDetailCelebrationDesc": "The universe brought your paths together. Explore what the stars reveal about your connection.",
   "matchDetailIcebreaker": "Say something about their {{sign}} energy",
-  "matchDetailConversationHint": "Start the conversation \u2014 your charts suggest strong {{category}} compatibility"
+  "matchDetailConversationHint": "Start the conversation \u2014 your charts suggest strong {{category}} compatibility",
+
+  "sending": "Sending...",
+  "messageFailed": "Not delivered",
+  "resend": "Resend",
+  "heicUnsupportedTitle": "HEIC Image Not Supported",
+  "heicUnsupportedMessage": "We couldn't convert this HEIC photo. Please pick a JPEG or PNG image, or change your camera format to 'Most Compatible' in iOS Settings > Camera > Formats.",
+  "sessionExpiredTitle": "Session Expired",
+  "sessionExpiredMessage": "Your session has expired. Please log in again.",
+  "notificationsDisabledTitle": "Notifications Disabled",
+  "notificationsDisabledMessage": "You won't be notified when you match or get a message. You can enable notifications anytime in Settings.",
+  "openSettings": "Open Settings",
+  "signInRequired": "Sign in required",
+  "deleteAccountRecentAuth": "For your security, please sign in again, then tap \"Delete Account\" within 5 minutes to confirm.",
+  "accountDeletionScheduled": "Account deletion scheduled",
+  "accountDeletionScheduledMessage": "Your account will be permanently deleted in {{days}} days. Check your email for a link to cancel if you change your mind.",
+  "notSignedIn": "Please sign in before subscribing."
 }

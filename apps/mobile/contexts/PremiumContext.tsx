@@ -56,8 +56,13 @@ type PremiumProviderProps = {
   children: ReactNode;
 };
 
-// SECURITY: never allow env-based premium bypass — use database-controlled feature flags only.
-const FORCE_PREMIUM_FOR_TESTING = false;
+// SECURITY: this constant is ALWAYS `false` in production builds because
+// `__DEV__ === false` short-circuits the conjunction. It can only be flipped
+// to `true` by developers running a dev build with EXPO_PUBLIC_FORCE_PREMIUM
+// explicitly set. Missing env var, wrong value, or a prod bundle all resolve
+// to `false` at bundle time — no runtime flag and no config file can change it.
+const FORCE_PREMIUM_FOR_TESTING: boolean =
+  __DEV__ && process.env.EXPO_PUBLIC_FORCE_PREMIUM === 'true';
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

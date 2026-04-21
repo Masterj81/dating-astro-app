@@ -103,7 +103,13 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
     return featureNames[featureName] || featureName;
   };
 
-  // Unified Loading UI - combines gate checking and data loading
+  // Unified Loading UI - combines gate checking and data loading.
+  // P2-6: show a proper skeleton (spinner + grey placeholder blocks) while
+  // we don't yet know the user's tier. This prevents the "paywall flash"
+  // where `loading=true` with `tier='free'` briefly resolved to a denied UI
+  // on slow networks. We stay in `checking` until `loading === false`, then
+  // either `granted` or `denied` is rendered — never the paywall while the
+  // subscription state is still being fetched.
   if (accessState === 'checking' || isDataLoading) {
     return (
       <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
@@ -112,6 +118,11 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
           <Text style={styles.loadingText}>
             {isDataLoading ? t('consultingStars') || 'Consulting the stars...' : t('verifyingAccess') || 'Verifying access...'}
           </Text>
+          <View style={styles.skeletonWrapper}>
+            <View style={[styles.skeletonBlock, { width: '70%' }]} />
+            <View style={[styles.skeletonBlock, { width: '90%' }]} />
+            <View style={[styles.skeletonBlock, { width: '55%' }]} />
+          </View>
         </View>
       </LinearGradient>
     );
@@ -233,6 +244,18 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 20,
     fontSize: 12,
+  },
+  skeletonWrapper: {
+    marginTop: 32,
+    paddingHorizontal: 40,
+    width: '100%',
+    alignItems: 'center',
+    gap: 12,
+  },
+  skeletonBlock: {
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   // CRITICAL FOR WEB - let child component control its own height
   grantedWrapper: {

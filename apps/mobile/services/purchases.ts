@@ -312,15 +312,55 @@ export async function checkSubscriptionTier(): Promise<SubscriptionTier> {
   }
 }
 
-export async function restorePurchases() {
+type RestorePurchasesResult =
+  | { success: true; isPremium: boolean }
+  | { success: false; isPremium: false; identityMismatch: true; error: unknown }
+  | { success: false; isPremium: false; identityMismatch?: false; error?: unknown };
+
+// P2-3: same identity guard as purchasePackage — never let the store credit
+// or reveal entitlements that belong to a different Supabase account on this
+// device (e.g. after a user switch where RevenueCat.logIn() hasn't finished).
+export async function restorePurchases(expectedUserId: string): Promise<RestorePurchasesResult> {
+  if (!expectedUserId) {
+    return {
+      success: false,
+      isPremium: false,
+      identityMismatch: true,
+      error: new Error('restorePurchases requires expectedUserId'),
+    };
+  }
+
+  let currentAppUserId: string | null = null;
+  try {
+    currentAppUserId = await Purchases.getAppUserID();
+  } catch (lookupError) {
+    return {
+      success: false,
+      isPremium: false,
+      identityMismatch: true,
+      error: lookupError,
+    };
+  }
+
+  if (currentAppUserId !== expectedUserId) {
+    return {
+      success: false,
+      isPremium: false,
+      identityMismatch: true,
+      error: new Error(
+        `RevenueCat identity mismatch: expected ${expectedUserId}, got ${currentAppUserId ?? 'null'}`
+      ),
+    };
+  }
+
   try {
     const customerInfo = await Purchases.restorePurchases();
     const isPremium =
       customerInfo.entitlements.active['premium'] !== undefined ||
       customerInfo.entitlements.active['premium_plus'] !== undefined;
     return { success: true, isPremium };
-  } catch {
-    return { success: false, isPremium: false };
+  } catch (error) {
+    return { success: false, isPremium: false, error };
   }
 }
 

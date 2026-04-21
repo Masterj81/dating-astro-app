@@ -18,6 +18,7 @@ import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { rpcWithTimeout } from '../../utils/rpcWithTimeout';
 
 type PlanetPosition = {
   planet: string;
@@ -111,9 +112,13 @@ function NatalChartScreenContent() {
       // Server-side tier + quota enforcement. The RPC returns allowed=FALSE
       // with a reason code if the caller is unauthorized, below the required
       // tier, or over the daily quota. It also atomically bumps usage.
-      const { data: gateRow, error: gateError } = await supabase
-        .rpc('enforce_premium_feature', { p_feature_key: 'natal_chart' })
-        .maybeSingle<{ allowed: boolean; reason: string | null }>();
+      // P2-7: wrap in timeout+retry so a stalled network shows an error
+      // rather than an infinite spinner.
+      const { data: gateRow, error: gateError } = await rpcWithTimeout(() =>
+        supabase
+          .rpc('enforce_premium_feature', { p_feature_key: 'natal_chart' })
+          .maybeSingle<{ allowed: boolean; reason: string | null }>()
+      );
 
       if (gateError || !gateRow || gateRow.allowed !== true) {
         setServerGate({

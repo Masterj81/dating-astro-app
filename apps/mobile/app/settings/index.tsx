@@ -81,19 +81,19 @@ export default function SettingsScreen() {
       .then(({ error }) => {
         if (error) {
           setNotifications(snapshot);
-          Alert.alert(t('error'), t('notificationSaveFailed') || 'Could not save notification preference. Please try again.');
+          Alert.alert(t('error'), t('notificationSaveFailed'));
         }
       });
   };
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      t('deleteAccount') || 'Delete Account',
-      t('deleteAccountWarning') || 'This action cannot be undone. All your data, matches, and messages will be permanently deleted.',
+      t('deleteAccount'),
+      t('deleteAccountWarning'),
       [
         { text: t('cancel'), style: 'cancel' },
         {
-          text: t('delete') || 'Delete',
+          text: t('delete'),
           style: 'destructive',
           onPress: confirmDeleteAccount,
         },
@@ -103,12 +103,12 @@ export default function SettingsScreen() {
 
   const confirmDeleteAccount = () => {
     Alert.alert(
-      t('areYouSure') || 'Are you sure?',
-      t('typeDeleteConfirm') || 'Please confirm you want to delete your account.',
+      t('areYouSure'),
+      t('typeDeleteConfirm'),
       [
         { text: t('cancel'), style: 'cancel' },
         {
-          text: t('yesDelete') || 'Yes, Delete',
+          text: t('yesDelete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -127,9 +127,8 @@ export default function SettingsScreen() {
                 if (status === 401) {
                   await signOut();
                   Alert.alert(
-                    t('signInRequired') || 'Sign in required',
-                    t('deleteAccountRecentAuth')
-                      || 'For your security, please sign in again, then tap "Delete Account" within 5 minutes to confirm.',
+                    t('signInRequired'),
+                    t('deleteAccountRecentAuth'),
                   );
                   router.replace('/auth/login');
                   return;
@@ -141,16 +140,15 @@ export default function SettingsScreen() {
               const graceDays = (data as { grace_window_days?: number } | null)
                 ?.grace_window_days ?? 7;
               Alert.alert(
-                t('accountDeletionScheduled') || 'Account deletion scheduled',
-                (t('accountDeletionScheduledMessage') as string | undefined)
-                  || `Your account will be permanently deleted in ${graceDays} days. Check your email for a link to cancel if you change your mind.`,
+                t('accountDeletionScheduled'),
+                t('accountDeletionScheduledMessage', { days: graceDays }),
               );
               await signOut();
               router.replace('/auth/login');
             } catch {
               Alert.alert(
-                t('error') || 'Error',
-                t('deleteAccountError') || 'Failed to delete account. Please try again or contact support.',
+                t('error'),
+                t('deleteAccountError'),
               );
             }
           },
@@ -162,7 +160,7 @@ export default function SettingsScreen() {
   const handleLogout = async () => {
     Alert.alert(
       t('logOut'),
-      t('logoutConfirm') || 'Are you sure you want to log out?',
+      t('logoutConfirm'),
       [
         { text: t('cancel'), style: 'cancel' },
         {
@@ -179,7 +177,7 @@ export default function SettingsScreen() {
 
   const openLink = (url: string) => {
     Linking.openURL(url).catch(() => {
-      Alert.alert(t('error'), t('cantOpenLink') || "Couldn't open link");
+      Alert.alert(t('error'), t('cantOpenLink'));
     });
   };
 

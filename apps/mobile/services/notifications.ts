@@ -1,5 +1,10 @@
-import { AppState, Platform } from 'react-native';
+import { Alert, AppState, Linking, Platform } from 'react-native';
 import { supabase } from './supabase';
+import { t } from './i18n';
+
+// Q-L5: track whether we've already shown the "permission denied" prompt so
+// users aren't nagged on every app launch. Reset when the process restarts.
+let pushPermissionPromptShown = false;
 
 // Suppress expo-notifications warning on web BEFORE any require
 // This must happen before the module is loaded to catch the warning
@@ -66,6 +71,34 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
 
     if (finalStatus !== 'granted') {
       if (__DEV__) console.warn('Push notification permission not granted');
+      // Q-L5: once per process lifetime, offer a non-blocking shortcut to the
+      // OS settings screen. Only prompt when the user has actively rejected
+      // in this session (existingStatus !== 'granted' OR 'denied'), and never
+      // on subsequent foreground events within the same process.
+      if (!pushPermissionPromptShown) {
+        pushPermissionPromptShown = true;
+        try {
+          Alert.alert(
+            t('notificationsDisabledTitle'),
+            t('notificationsDisabledMessage'),
+            [
+              { text: t('notNow'), style: 'cancel' },
+              {
+                text: t('openSettings'),
+                onPress: () => {
+                  Linking.openSettings().catch(() => {
+                    // openSettings can reject if no Settings app is available
+                    // (rare). Fail quietly — we already told the user where
+                    // to look.
+                  });
+                },
+              },
+            ]
+          );
+        } catch {
+          // Alert is unavailable in some test environments — ignore.
+        }
+      }
       return null;
     }
 

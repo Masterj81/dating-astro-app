@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { debugLog } from '../utils/debug';
+import { rpcWithTimeout } from '../utils/rpcWithTimeout';
 
 export type SubscriptionTier = 'free' | 'premium' | 'premium_plus';
 export type SubscriptionSource = 'stripe' | 'app_store' | 'play_store';
@@ -53,9 +54,11 @@ export async function getUserTier(userId: string): Promise<SubscriptionTier> {
       return 'free';
     }
 
-    const { data, error } = await supabase.rpc('get_user_tier', {
-      p_user_id: userId,
-    });
+    // P2-7: wrap the RPC in a timeout+retry so the Premium context never
+    // hangs indefinitely on a stalled cellular connection.
+    const { data, error } = await rpcWithTimeout(() =>
+      supabase.rpc('get_user_tier', { p_user_id: userId })
+    );
 
     if (error) {
       debugLog('[SubscriptionService] get_user_tier error:', error);
@@ -83,9 +86,10 @@ export async function getEffectiveSubscription(
       return null;
     }
 
-    const { data, error } = await supabase.rpc('get_effective_subscription', {
-      p_user_id: userId,
-    });
+    // P2-7: same timeout+retry treatment for the richer subscription RPC.
+    const { data, error } = await rpcWithTimeout(() =>
+      supabase.rpc('get_effective_subscription', { p_user_id: userId })
+    );
 
     if (error) {
       debugLog('[SubscriptionService] get_effective_subscription error:', error);
