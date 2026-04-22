@@ -244,6 +244,7 @@ export default function SignupScreen() {
                   textContentType="name"
                   returnKeyType="next"
                   onSubmitEditing={() => emailInputRef.current?.focus()}
+                  testID="signup-name-input"
                   {...getTextInputA11yProps(t('a11y.nameInput') || t('name'), t('a11y.requiredField'))}
                   accessibilityLabelledBy="nameLabel"
                 />
@@ -265,6 +266,7 @@ export default function SignupScreen() {
                   textContentType="emailAddress"
                   returnKeyType="next"
                   onSubmitEditing={() => passwordInputRef.current?.focus()}
+                  testID="signup-email-input"
                   {...getTextInputA11yProps(t('a11y.emailInput') || t('email'), t('a11y.requiredField'))}
                   accessibilityLabelledBy="emailLabel"
                 />
@@ -286,6 +288,7 @@ export default function SignupScreen() {
                     textContentType="newPassword"
                     returnKeyType="done"
                     onSubmitEditing={handleSignup}
+                    testID="signup-password-input"
                     {...getTextInputA11yProps(t('a11y.passwordInput') || t('password'), t('a11y.requiredField'))}
                     accessibilityLabelledBy="passwordLabel"
                   />
@@ -313,6 +316,7 @@ export default function SignupScreen() {
                 onPress={handleSignup}
                 disabled={loading}
                 activeOpacity={0.8}
+                testID="signup-submit-button"
                 {...getButtonA11yProps(
                   t('createAccount'),
                   t('a11y.doubleTapHint'),

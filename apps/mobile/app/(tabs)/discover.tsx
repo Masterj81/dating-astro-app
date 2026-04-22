@@ -619,6 +619,7 @@ export default function DiscoverScreen() {
           <ReAnimated.View
             style={[styles.card, animatedCardStyle]}
             accessible={true}
+            testID="discover-card"
             accessibilityLabel={t('a11y.matchCard', {
               name: currentProfile.name ?? t('unknown'),
               age: currentProfile.age ?? '?',
@@ -766,6 +767,7 @@ export default function DiscoverScreen() {
           style={[styles.actionButton, styles.passButton]}
           onPress={handlePass}
           activeOpacity={0.7}
+          testID="discover-pass-button"
           {...getButtonA11yProps(
             t('a11y.passButton', { name: currentProfile.name ?? '' }),
             t('a11y.doubleTapHint')
@@ -797,6 +799,7 @@ export default function DiscoverScreen() {
           style={[styles.actionButton, styles.likeButton]}
           onPress={handleLike}
           activeOpacity={0.7}
+          testID="discover-like-button"
           {...getButtonA11yProps(
             t('a11y.likeButton', { name: currentProfile.name ?? '' }),
             t('a11y.doubleTapHint')

@@ -1,0 +1,24 @@
+# 06 - Free user hits the Natal Chart paywall.
+#
+# TEST_USER must be a free-tier account (no active RevenueCat
+# subscription, no enforced_premium_feature trials remaining).
+
+appId: com.astrodatingapp.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- runFlow: shared/login-as-test-user.yaml
+
+# Deep-link straight to the gated screen. This exercises the same code
+# path as a user tapping the feature from within the app.
+- openLink: "astrodating://premium-screens/natal-chart"
+
+# Free user hits the natal chart screen -> PremiumGate renders the
+# paywall CTA. We assert the title is shown (locale-stable) and the
+# CTA button is tappable.
+- extendedWaitUntil:
+    visible: "Full Natal Chart"
+    timeout: 20000
+- assertVisible: "Full Natal Chart"

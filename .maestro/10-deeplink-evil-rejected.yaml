@@ -1,0 +1,40 @@
+# 10 - Evil host deep link is rejected.
+#
+# Commit 81315d1 (P1-7) hardened the deep-link handler so URLs whose
+# host is NOT in the allowlist are silently ignored, even when they
+# include `type=recovery`. This flow launches the app with such a URL
+# and asserts we do NOT end up on the reset-password screen.
+#
+# Approach: after launchApp with the evil link, the app should fall
+# back to whatever screen it would naturally show (splash -> login
+# when logged out, or the last screen if logged in). We assert:
+#   - the reset-password input is NOT visible
+#   - the login email input IS visible (proves we're sitting on login,
+#     i.e. the evil link did not take us anywhere else either)
+
+appId: com.astrodatingapp.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+    arguments:
+      # Trigger the cold-start linking path with a malicious URL. The
+      # host is NOT in ALLOWED_DEEP_LINK_HOSTS and must be dropped.
+      link: "https://evil.com/auth/reset-password?type=recovery"
+
+# Give the layout's linking listener a moment to process the URL, then
+# confirm nothing navigational happened.
+- extendedWaitUntil:
+    visible:
+      id: "login-email-input"
+    timeout: 15000
+
+# Reset-password input must NOT be visible -- this is the core assertion.
+- assertNotVisible:
+    id: "reset-password-new-input"
+
+# And we must still be on the login screen.
+- assertVisible:
+    id: "login-email-input"
+- assertVisible:
+    id: "login-submit-button"

@@ -1,0 +1,78 @@
+# 05 - Offline message queue (pending -> sent).
+#
+# LIMITATION: Maestro has no native primitive to toggle airplane mode
+# or drop wifi. The flow encodes the asserts we care about and leaves
+# the connectivity toggle as a documented MANUAL step. Two options:
+#
+#   a) Run the flow interactively, turn on airplane mode when the flow
+#      pauses on `waitForAnimationToEnd`, send the message, then turn
+#      off airplane mode, then continue.
+#
+#   b) Wrap this flow in a shell script that calls `adb shell svc wifi
+#      disable && adb shell svc data disable` before the send step and
+#      re-enables both after. See docs/E2E.md for the snippet.
+#
+# The assertions below still prove the client-side behaviour (pending
+# bubble appears with testID "chat-message-pending", then flips to
+# "chat-message-sent" once connectivity is restored).
+
+appId: com.astrodatingapp.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- runFlow: shared/login-as-test-user.yaml
+
+- tapOn:
+    text: "Matches"
+    index: 0
+- extendedWaitUntil:
+    visible: "Matches"
+    timeout: 10000
+- tapOn:
+    index: 0
+    text: ".*"
+- extendedWaitUntil:
+    visible:
+      id: "chat-input"
+    timeout: 15000
+
+# --- MANUAL STEP: disable connectivity now (adb or device settings). ---
+# Maestro can't do this itself; tests run by CI should shell out to adb:
+#   adb shell svc wifi disable && adb shell svc data disable
+# Pause the flow here long enough for the operator (or a wrapper script)
+# to drop connectivity before we send the message.
+- waitForAnimationToEnd:
+    timeout: 8000
+
+- tapOn:
+    id: "chat-input"
+- inputText: "E2E offline test"
+- tapOn:
+    id: "chat-send-button"
+
+# Optimistic bubble appears with pending status.
+- extendedWaitUntil:
+    visible:
+      id: "chat-message-pending"
+    timeout: 10000
+- assertVisible:
+    id: "chat-message-pending"
+- assertVisible: "E2E offline test"
+
+# --- MANUAL STEP: re-enable connectivity now. ---
+# CI/wrapper script:
+#   adb shell svc wifi enable && adb shell svc data enable
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Once back online, the optimistic row is reconciled with the server row.
+- extendedWaitUntil:
+    visible:
+      id: "chat-message-sent"
+    timeout: 30000
+- assertVisible:
+    id: "chat-message-sent"
+- assertNotVisible:
+    id: "chat-message-pending"

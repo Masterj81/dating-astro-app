@@ -208,6 +208,7 @@ export default function LoginScreen() {
                   textContentType="emailAddress"
                   returnKeyType="next"
                   onSubmitEditing={() => passwordInputRef.current?.focus()}
+                  testID="login-email-input"
                   {...getTextInputA11yProps(t('a11y.emailInput'), t('a11y.requiredField'))}
                   accessibilityLabelledBy="emailLabel"
                 />
@@ -228,6 +229,7 @@ export default function LoginScreen() {
                     textContentType="password"
                     returnKeyType="done"
                     onSubmitEditing={handleLogin}
+                    testID="login-password-input"
                     {...getTextInputA11yProps(t('a11y.passwordInput'), t('a11y.requiredField'))}
                     accessibilityLabelledBy="passwordLabel"
                   />
@@ -251,6 +253,7 @@ export default function LoginScreen() {
                   router.push('/auth/forgot-password');
                 }}
                 style={styles.forgotPasswordContainer}
+                testID="login-forgot-password-link"
                 {...getButtonA11yProps(t('forgotPassword'))}
               >
                 <Text style={styles.forgotPasswordText}>{t('forgotPassword')}</Text>
@@ -261,6 +264,7 @@ export default function LoginScreen() {
                 onPress={handleLogin}
                 disabled={loading}
                 activeOpacity={0.8}
+                testID="login-submit-button"
                 {...getButtonA11yProps(
                   t('signIn'),
                   t('a11y.doubleTapHint'),
@@ -347,7 +351,7 @@ export default function LoginScreen() {
               <View style={styles.footer}>
                 <Text style={styles.footerText}>{t('dontHaveAccount')} </Text>
                 <Link href="/auth/signup" asChild>
-                  <TouchableOpacity {...getButtonA11yProps(t('signUp'))}>
+                  <TouchableOpacity testID="login-signup-link" {...getButtonA11yProps(t('signUp'))}>
                     <Text style={styles.linkText}>{t('signUp')}</Text>
                   </TouchableOpacity>
                 </Link>

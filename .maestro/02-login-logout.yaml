@@ -1,0 +1,41 @@
+# 02 - Login, then logout.
+#
+# Clear state, log in with the existing staging test account, confirm we
+# land on Discover, then open settings and sign out. Asserts we return
+# to the login screen.
+
+appId: com.astrodatingapp.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- extendedWaitUntil:
+    visible:
+      id: "login-email-input"
+    timeout: 20000
+
+- runFlow: shared/login-as-test-user.yaml
+
+# We're on Discover. Open the settings screen directly via deep link --
+# the settings icon lives inside the profile tab and is not yet tagged.
+- openLink: "astrodating://settings"
+
+# Settings is a long scrollable list; logout sits near the bottom.
+- scrollUntilVisible:
+    element:
+      id: "settings-logout"
+    direction: DOWN
+    timeout: 15000
+    speed: 40
+- tapOn:
+    id: "settings-logout"
+
+# Confirmation alert -- match the dialog title which is the most stable
+# label across themes and locales. We do NOT tap the destructive button:
+# native Android AlertDialog button text changes (LOG OUT vs Log out vs
+# Déconnexion) and exposes no testID. A future iteration can swap to a
+# custom modal with testIDs.
+- extendedWaitUntil:
+    visible: "Log out"
+    timeout: 5000

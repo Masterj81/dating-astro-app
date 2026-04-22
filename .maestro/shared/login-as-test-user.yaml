@@ -1,0 +1,31 @@
+# Reusable login flow.
+#
+# Signed-in flows (discover, chat, settings, premium paywall, delete account)
+# invoke this via `runFlow: shared/login-as-test-user.yaml`. The caller is
+# responsible for deciding whether to `clearState: true` first.
+#
+# Required env vars:
+#   TEST_USER_EMAIL
+#   TEST_USER_PASSWORD
+
+appId: com.astrodatingapp.mobile
+---
+- tapOn:
+    id: "login-email-input"
+- inputText: ${TEST_USER_EMAIL}
+- hideKeyboard
+- tapOn:
+    id: "login-password-input"
+- inputText: ${TEST_USER_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "login-submit-button"
+# Give the auth round-trip + navigation time to settle.
+- waitForAnimationToEnd:
+    timeout: 5000
+# Wait until we leave the login screen. Discover's action toolbar is the
+# canonical post-login anchor.
+- extendedWaitUntil:
+    visible:
+      id: "discover-like-button"
+    timeout: 30000

@@ -328,7 +328,7 @@ function NatalChartScreenContent() {
   if (!serverGate.allowed) {
     const isQuota = serverGate.reason === 'quota_exceeded';
     return (
-      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container} testID="natal-chart-server-gate-denied">
         <View style={styles.loadingContainer}>
           <Text style={{ color: AppTheme.colors.textPrimary, fontSize: 18, fontWeight: '600', textAlign: 'center', paddingHorizontal: 24 }}>
             {isQuota

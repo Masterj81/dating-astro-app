@@ -1,0 +1,50 @@
+# 03 - Swipe right on the first discoverable profile.
+#
+# Asserts the "Like" button produces one of:
+#   - a match modal ("It's a match" / "Chat now") -> tap Chat now and
+#     land on chat screen
+#   - the next profile card (no match this round) -> still valid, just
+#     assert we're still on Discover with a fresh card
+#
+# Note: for a deterministic match, seed the staging DB so the first
+# discoverable profile has pre-liked our test user. See docs/E2E.md.
+
+appId: com.astrodatingapp.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- runFlow: shared/login-as-test-user.yaml
+
+# Card is visible. Tap "Like".
+- extendedWaitUntil:
+    visible:
+      id: "discover-like-button"
+    timeout: 15000
+- tapOn:
+    id: "discover-like-button"
+
+# If a match modal appears, tap "Chat now" / "Start chatting" and assert
+# chat input. If no match, assert we still see the Discover like button
+# (next card is loaded).
+- runFlow:
+    when:
+      visible: "Chat now"
+    commands:
+      - tapOn: "Chat now"
+      - extendedWaitUntil:
+          visible:
+            id: "chat-input"
+          timeout: 10000
+      - assertVisible:
+          id: "chat-input"
+      - assertVisible:
+          id: "chat-send-button"
+
+- runFlow:
+    when:
+      notVisible: "Chat now"
+    commands:
+      - assertVisible:
+          id: "discover-like-button"

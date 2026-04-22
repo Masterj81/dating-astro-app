@@ -172,6 +172,7 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
           <TouchableOpacity
             style={styles.ctaButton}
             onPress={handleUnlock}
+            testID="premium-paywall-cta"
           >
             <LinearGradient
               colors={['#e94560', '#c23a51']}

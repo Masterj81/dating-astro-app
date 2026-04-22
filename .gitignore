@@ -64,3 +64,6 @@ packages/*/dist/
 .turbo/
 
 .vercel
+
+# Maestro test credentials
+.maestro/.env

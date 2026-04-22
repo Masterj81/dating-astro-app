@@ -100,6 +100,7 @@ export default function ForgotPasswordScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoFocus
+              testID="forgot-password-email-input"
             />
           </View>
 
@@ -107,6 +108,7 @@ export default function ForgotPasswordScreen() {
             style={styles.button}
             onPress={handleReset}
             disabled={loading}
+            testID="forgot-password-submit-button"
           >
             <LinearGradient
               colors={['#e94560', '#c23a51']}

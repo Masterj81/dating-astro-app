@@ -925,6 +925,7 @@ export default function BirthInfoScreen() {
                     style={styles.button}
                     onPress={handleStep1Next}
                     activeOpacity={0.8}
+                    testID="onboarding-step1-continue"
                   >
                     <LinearGradient
                       colors={[...AppTheme.gradients.cta]}
@@ -1004,6 +1005,7 @@ export default function BirthInfoScreen() {
                       value={birthCity}
                       onChangeText={setBirthCity}
                       autoCapitalize="words"
+                      testID="onboarding-birth-city-input"
                     />
                     <Text style={styles.hint}>
                       {t('birthCityFormatHint') || 'Include country if the city name is common (e.g., "Springfield, IL, USA")'}
@@ -1024,6 +1026,7 @@ export default function BirthInfoScreen() {
                       style={[styles.button, { flex: 1 }]}
                       onPress={handleStep2Next}
                       activeOpacity={0.8}
+                      testID="onboarding-step2-continue"
                     >
                       <LinearGradient
                         colors={[...AppTheme.gradients.cta]}
@@ -1120,6 +1123,7 @@ export default function BirthInfoScreen() {
                       onPress={handleSubmit}
                       disabled={loading}
                       activeOpacity={0.8}
+                      testID="onboarding-submit-button"
                     >
                       <LinearGradient
                         colors={[...AppTheme.gradients.cta]}

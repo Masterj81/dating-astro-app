@@ -321,9 +321,18 @@ export default function ChatScreen() {
     const isPending = item.pendingStatus === 'sending';
     const isFailed = item.pendingStatus === 'failed';
 
+    const bubbleTestID = isPending
+      ? 'chat-message-pending'
+      : isFailed
+      ? 'chat-message-failed'
+      : isMe
+      ? 'chat-message-sent'
+      : 'chat-message-received';
+
     return (
       <View style={[styles.messageRow, isMe && styles.messageRowMe]}>
         <View
+          testID={bubbleTestID}
           style={[
             styles.messageBubble,
             isMe ? styles.messageBubbleMe : styles.messageBubbleThem,
@@ -471,11 +480,13 @@ export default function ChatScreen() {
             onChangeText={setNewMessage}
             multiline
             maxLength={500}
+            testID="chat-input"
           />
           <TouchableOpacity
             style={[styles.sendButton, (!newMessage.trim() || sending) && styles.sendButtonDisabled]}
             onPress={sendMessage}
             disabled={!newMessage.trim() || sending}
+            testID="chat-send-button"
           >
             {sending ? (
               <ActivityIndicator size="small" color="#fff" />

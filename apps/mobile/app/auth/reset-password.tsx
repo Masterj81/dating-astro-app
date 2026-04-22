@@ -101,6 +101,7 @@ export default function ResetPasswordScreen() {
                 onChangeText={setPassword}
                 secureTextEntry
                 autoFocus
+                testID="reset-password-new-input"
               />
               <Text style={styles.hint}>{t('passwordHintStrong')}</Text>
             </View>
@@ -114,6 +115,7 @@ export default function ResetPasswordScreen() {
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
+                testID="reset-password-confirm-input"
               />
             </View>
 
@@ -121,6 +123,7 @@ export default function ResetPasswordScreen() {
               style={styles.button}
               onPress={handleReset}
               disabled={loading}
+              testID="reset-password-submit-button"
             >
               <LinearGradient
                 colors={['#e94560', '#c23a51']}

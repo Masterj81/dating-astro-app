@@ -17,6 +17,8 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test --continue",
+    "test:e2e": "maestro test .maestro/",
+    "test:e2e:studio": "maestro studio",
     "clean": "turbo clean && npx rimraf node_modules apps/*/node_modules packages/*/node_modules"
   },
   "devDependencies": {

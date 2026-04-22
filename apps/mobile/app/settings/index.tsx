@@ -491,14 +491,14 @@ export default function SettingsScreen() {
             {t('dangerZone') || 'Danger Zone'}
           </Text>
 
-          <TouchableOpacity style={styles.settingsRow} onPress={handleLogout}>
+          <TouchableOpacity style={styles.settingsRow} onPress={handleLogout} testID="settings-logout">
             <View style={styles.rowLeft}>
               <Text style={styles.rowIcon}>🚪</Text>
               <Text style={[styles.rowText, styles.logoutText]}>{t('logOut')}</Text>
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.settingsRow} onPress={handleDeleteAccount}>
+          <TouchableOpacity style={styles.settingsRow} onPress={handleDeleteAccount} testID="settings-delete-account">
             <View style={styles.rowLeft}>
               <Text style={styles.rowIcon}>🗑️</Text>
               <Text style={[styles.rowText, styles.deleteText]}>

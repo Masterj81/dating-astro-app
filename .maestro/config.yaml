@@ -1,0 +1,30 @@
+# Maestro workspace configuration.
+#
+# Maestro reads the `config.yaml` at the workspace root when running
+# `maestro test .maestro/`. Env vars defined here can be referenced
+# inside a flow as ${VAR_NAME}. Real secrets must NOT live here -- pass
+# them from the shell / CI instead:
+#
+#   TEST_USER_EMAIL=... TEST_USER_PASSWORD=... maestro test .maestro/
+#
+# The defaults below target the AstroDating Android dev build.
+
+app:
+  id: com.astrodatingapp.mobile
+
+env:
+  # Staging Supabase project -- override in the shell when running flows
+  # against another environment (local, preview, etc.)
+  SUPABASE_URL: ${SUPABASE_URL}
+  SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+
+  # Dedicated test accounts provisioned in Supabase staging.
+  # See docs/E2E.md for provisioning instructions.
+  TEST_USER_EMAIL: ${TEST_USER_EMAIL}
+  TEST_USER_PASSWORD: ${TEST_USER_PASSWORD}
+  TEST_USER2_EMAIL: ${TEST_USER2_EMAIL}
+  TEST_USER2_PASSWORD: ${TEST_USER2_PASSWORD}
+
+  # Account tagged as "safe to delete" for flow 09 (grace-window).
+  TEST_DELETABLE_EMAIL: ${TEST_DELETABLE_EMAIL}
+  TEST_DELETABLE_PASSWORD: ${TEST_DELETABLE_PASSWORD}

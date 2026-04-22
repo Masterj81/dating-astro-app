@@ -1,0 +1,54 @@
+# 04 - Send a message in an existing chat.
+#
+# Requires that the test account has at least one existing match so the
+# Matches tab has a conversation to open. See docs/E2E.md for seeding.
+
+appId: com.astrodatingapp.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- runFlow: shared/login-as-test-user.yaml
+
+# Jump to the matches tab. The bottom-tab label is localised; tab icon
+# has no testID yet so we use visible text. If your locale differs,
+# seed the test user with `language='en'` in staging.
+- tapOn:
+    text: "Matches"
+    index: 0
+
+# Open the first conversation. We don't have testIDs on the match list
+# rows yet -- tap the first row by index. If multiple matches exist,
+# this will always open the topmost (most recent) one.
+- extendedWaitUntil:
+    visible: "Matches"
+    timeout: 10000
+- tapOn:
+    index: 0
+    text: ".*"
+
+# We're on the chat screen.
+- extendedWaitUntil:
+    visible:
+      id: "chat-input"
+    timeout: 15000
+
+- tapOn:
+    id: "chat-input"
+- inputText: "E2E test message"
+- tapOn:
+    id: "chat-send-button"
+
+# After send, the optimistic bubble renders; the realtime subscription
+# swaps it for the server row within ~1-2s. Assert the "sent" bubble
+# is visible (non-pending).
+- extendedWaitUntil:
+    visible:
+      id: "chat-message-sent"
+    timeout: 15000
+- assertVisible: "E2E test message"
+- assertNotVisible:
+    id: "chat-message-pending"
+- assertNotVisible:
+    id: "chat-message-failed"
