@@ -1,7 +1,12 @@
 # 06 - Free user hits the Natal Chart paywall.
 #
-# TEST_USER must be a free-tier account (no active RevenueCat
-# subscription, no enforced_premium_feature trials remaining).
+# Uses login-as-free-user (e2e_free@example.com), seeded by
+# .maestro/seed-matches.sql with no subscription and pre-consumed
+# premium_usage rows so the gate hits the denied state on first visit.
+#
+# We assert the stable PremiumGate testIDs rather than the i18n title:
+#   - premium-paywall-cta visible
+#   - premium-gate-granted NOT visible
 
 appId: com.astrodatingapp.mobile
 ---
@@ -9,16 +14,18 @@ appId: com.astrodatingapp.mobile
     clearState: true
     clearKeychain: true
 
-- runFlow: shared/login-as-test-user.yaml
+- runFlow: shared/login-as-free-user.yaml
 
-# Deep-link straight to the gated screen. This exercises the same code
-# path as a user tapping the feature from within the app.
+# Deep-link straight into the gated Celestial screen. PremiumGate decides:
+# tier=free + trial used -> denied UI -> CTA testID matches.
 - openLink: "astrodating://premium-screens/natal-chart"
 
-# Free user hits the natal chart screen -> PremiumGate renders the
-# paywall CTA. We assert the title is shown (locale-stable) and the
-# CTA button is tappable.
 - extendedWaitUntil:
-    visible: "Full Natal Chart"
+    visible:
+      id: "premium-paywall-cta"
     timeout: 20000
-- assertVisible: "Full Natal Chart"
+
+- assertVisible:
+    id: "premium-paywall-cta"
+- assertNotVisible:
+    id: "premium-gate-granted"

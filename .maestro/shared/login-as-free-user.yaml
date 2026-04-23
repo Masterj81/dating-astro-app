@@ -1,0 +1,27 @@
+# Reusable login as the free-tier test user.
+#
+# Pairs with the seed in .maestro/seed-matches.sql which provisions
+# e2e_free@example.com with no subscription and pre-consumed
+# premium_usage rows for every feature, so paywall flows hit denied
+# state on first visit. Required env vars:
+#   TEST_FREE_EMAIL
+#   TEST_FREE_PASSWORD
+
+appId: com.astrodatingapp.mobile
+---
+- tapOn:
+    id: "login-email-input"
+- inputText: ${TEST_FREE_EMAIL}
+- hideKeyboard
+- tapOn:
+    id: "login-password-input"
+- inputText: ${TEST_FREE_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "login-submit-button"
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: "discover-like-button"
+    timeout: 30000

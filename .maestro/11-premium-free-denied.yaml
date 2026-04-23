@@ -1,0 +1,29 @@
+# 11 - Free user gets denied at every premium gate.
+#
+# Free user, deep-linked into a Celestial-tier screen (natal-chart). The
+# seed pre-consumes premium_usage so the 1-free-preview-per-day path is
+# already exhausted -> PremiumGate renders the denied state on first visit.
+#
+# Asserts:
+#   - premium-paywall-cta visible (denied screen + CTA)
+#   - premium-gate-granted NOT visible (no access)
+
+appId: com.astrodatingapp.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- runFlow: shared/login-as-free-user.yaml
+
+- openLink: "astrodating://premium-screens/natal-chart"
+
+- extendedWaitUntil:
+    visible:
+      id: "premium-paywall-cta"
+    timeout: 15000
+
+- assertVisible:
+    id: "premium-paywall-cta"
+- assertNotVisible:
+    id: "premium-gate-granted"

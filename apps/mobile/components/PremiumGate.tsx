@@ -199,8 +199,10 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
   }
 
   // Granted UI - Layout Fix
+  // testID `premium-gate-granted` is a stable anchor that lets E2E tests assert
+  // the user passed the gate without depending on per-screen content testIDs.
   return (
-    <View style={styles.grantedWrapper}>
+    <View style={styles.grantedWrapper} testID="premium-gate-granted">
       {children}
 
       {trialConsumed && tier === 'free' && (

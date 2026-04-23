@@ -1,0 +1,36 @@
+# 12 - Celestial (premium) user gets through a Celestial-tier gate.
+#
+# e2e_user2 has tier=premium and Celestial features (natal-chart) are not
+# pre-consumed in premium_usage, so canAccessFeature() returns true and the
+# gate renders children directly without burning a trial.
+#
+# Asserts:
+#   - premium-gate-granted visible (children rendered)
+#   - premium-paywall-cta NOT visible
+
+appId: com.astrodatingapp.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- runFlow: shared/login-as-celestial-user.yaml
+
+- openLink: "astrodating://premium-screens/natal-chart"
+
+- extendedWaitUntil:
+    visible:
+      id: "premium-gate-granted"
+    timeout: 20000
+
+- assertVisible:
+    id: "premium-gate-granted"
+- assertNotVisible:
+    id: "premium-paywall-cta"
+
+# natal-chart has a SECOND server-side gate (`enforce_premium_feature` RPC).
+# If the daily quota (5/day) is exhausted, the screen swaps in a server-gate
+# denied view -- the outer PremiumGate is still granted but the user sees a
+# wall of "quota exceeded". Assert the server-gate denied view is NOT shown.
+- assertNotVisible:
+    id: "natal-chart-server-gate-denied"

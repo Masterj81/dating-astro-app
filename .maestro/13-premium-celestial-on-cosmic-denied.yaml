@@ -1,0 +1,29 @@
+# 13 - Celestial (premium) user hits Cosmic upgrade paywall.
+#
+# e2e_user2 has tier=premium. Cosmic features (daily-horoscope) require
+# premium_plus -> canAccessFeature() returns false. The seed pre-consumes
+# the daily Cosmic trials so the gate hits denied state on first visit.
+#
+# Asserts:
+#   - premium-paywall-cta visible
+#   - premium-gate-granted NOT visible
+
+appId: com.astrodatingapp.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- runFlow: shared/login-as-celestial-user.yaml
+
+- openLink: "astrodating://premium-screens/daily-horoscope"
+
+- extendedWaitUntil:
+    visible:
+      id: "premium-paywall-cta"
+    timeout: 15000
+
+- assertVisible:
+    id: "premium-paywall-cta"
+- assertNotVisible:
+    id: "premium-gate-granted"

@@ -1,0 +1,56 @@
+# 15 - Premium Plus user smoke-tests four Cosmic screens in one run.
+#
+# Single login + repeated deep-links into different Cosmic features. Catches
+# regressions where a specific screen accidentally lost its PremiumGate
+# wrapper or rendered its own broken loader. Each screen must show the
+# premium-gate-granted anchor.
+#
+# Coverage:
+#   - daily-horoscope (premium_plus)
+#   - planetary-transits (premium_plus)
+#   - retrograde-alerts (premium_plus)
+#   - date-planner (premium_plus)
+
+appId: com.astrodatingapp.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- runFlow: shared/login-as-test-user.yaml
+
+# --- daily-horoscope ---
+- openLink: "astrodating://premium-screens/daily-horoscope"
+- extendedWaitUntil:
+    visible:
+      id: "premium-gate-granted"
+    timeout: 20000
+- assertNotVisible:
+    id: "premium-paywall-cta"
+
+# --- planetary-transits ---
+- openLink: "astrodating://premium-screens/planetary-transits"
+- extendedWaitUntil:
+    visible:
+      id: "premium-gate-granted"
+    timeout: 20000
+- assertNotVisible:
+    id: "premium-paywall-cta"
+
+# --- retrograde-alerts ---
+- openLink: "astrodating://premium-screens/retrograde-alerts"
+- extendedWaitUntil:
+    visible:
+      id: "premium-gate-granted"
+    timeout: 20000
+- assertNotVisible:
+    id: "premium-paywall-cta"
+
+# --- date-planner ---
+- openLink: "astrodating://premium-screens/date-planner"
+- extendedWaitUntil:
+    visible:
+      id: "premium-gate-granted"
+    timeout: 20000
+- assertNotVisible:
+    id: "premium-paywall-cta"

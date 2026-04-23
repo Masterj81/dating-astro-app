@@ -1,0 +1,28 @@
+# 14 - Premium Plus (Cosmic) user gets through a Cosmic-tier gate.
+#
+# e2e_user1 has tier=premium_plus -> canAccessFeature returns true for ALL
+# features. We hit daily-horoscope (Cosmic) and assert the gate is open.
+#
+# Asserts:
+#   - premium-gate-granted visible
+#   - premium-paywall-cta NOT visible
+
+appId: com.astrodatingapp.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- runFlow: shared/login-as-test-user.yaml
+
+- openLink: "astrodating://premium-screens/daily-horoscope"
+
+- extendedWaitUntil:
+    visible:
+      id: "premium-gate-granted"
+    timeout: 20000
+
+- assertVisible:
+    id: "premium-gate-granted"
+- assertNotVisible:
+    id: "premium-paywall-cta"

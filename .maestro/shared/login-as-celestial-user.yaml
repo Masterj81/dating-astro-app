@@ -1,0 +1,25 @@
+# Reusable login as the Celestial (premium) test user.
+#
+# Pairs with the seed in .maestro/seed-matches.sql which provisions
+# e2e_user2@example.com with a `premium` subscription. Required env vars:
+#   TEST_CELESTIAL_EMAIL
+#   TEST_CELESTIAL_PASSWORD
+
+appId: com.astrodatingapp.mobile
+---
+- tapOn:
+    id: "login-email-input"
+- inputText: ${TEST_CELESTIAL_EMAIL}
+- hideKeyboard
+- tapOn:
+    id: "login-password-input"
+- inputText: ${TEST_CELESTIAL_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "login-submit-button"
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: "discover-like-button"
+    timeout: 30000

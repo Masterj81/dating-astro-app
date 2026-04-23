@@ -88,80 +88,108 @@ so stick to development/debug for E2E.
 
 ## Environment variables
 
-Flows rely on env vars read by Maestro from the shell. Define them in
-your shell or a `.env.e2e` file that you source:
+Flows rely on env vars read by Maestro from the shell (or pre-set in
+`run-maestro.bat` for Windows). Three test accounts cover the three
+subscription tiers driven by `apps/mobile/services/premiumUsage.ts`:
 
 ```bash
 export SUPABASE_URL="https://<project>.supabase.co"
 export SUPABASE_ANON_KEY="<anon-key>"
 
-# Primary test account (used by flows 02-08).
-export TEST_USER_EMAIL="maestro-primary@astrodatingapp.test"
-export TEST_USER_PASSWORD="MaestroTest!123"
+# Premium Plus (Cosmic). Default test user for flows 02-09.
+export TEST_USER_EMAIL="e2e_user1@example.com"
+export TEST_USER_PASSWORD="TestPassword123!"
 
-# Second account (reserved for matching/chat flows where both sides
-# need to exist). Not used by the baseline 10 flows but wire it in
-# now so future flows don't need a config change.
-export TEST_USER2_EMAIL="maestro-secondary@astrodatingapp.test"
-export TEST_USER2_PASSWORD="MaestroTest!123"
+# Premium (Celestial). Used by premium flows 12 (granted) and 13 (Cosmic
+# upgrade paywall), and as match partner for flow 04.
+export TEST_CELESTIAL_EMAIL="e2e_user2@example.com"
+export TEST_CELESTIAL_PASSWORD="TestPassword123!"
 
-# Dedicated account for the destructive delete flow (09).
-# MUST be a throwaway -- soft-deleted at end of run.
-export TEST_DELETABLE_EMAIL="maestro-deletable-$(date +%s)@astrodatingapp.test"
-export TEST_DELETABLE_PASSWORD="MaestroTest!123"
+# Free tier. Used by flows 06 + 11. The seed pre-consumes
+# premium_usage so first visits hit the denied state directly.
+export TEST_FREE_EMAIL="e2e_free@example.com"
+export TEST_FREE_PASSWORD="TestPassword123!"
+
+# Dedicated throwaway for any future destructive flow. Flow 09 is
+# hardened to never tap the delete row, but the var is kept for
+# backward-compat.
+export TEST_DELETABLE_EMAIL="e2e_deletable@example.com"
+export TEST_DELETABLE_PASSWORD="TestPassword123!"
 ```
 
 The `.maestro/config.yaml` file wires these into each flow via
-`${VAR_NAME}` substitution.
+`${VAR_NAME}` substitution. On Windows, `run-maestro.bat` sets all six
+inline at the top — edit that file to change credentials.
 
 ## Test accounts
 
-Create these in Supabase staging (Auth > Users > Add user). For each,
-mark email_confirmed_at as now() so the signup flow doesn't require a
-manual verification step. Minimum profile shape (insert via SQL or the
-Table Editor):
+Create these in Supabase staging (Authentication → Users → Add user)
+with **Auto Confirm = ON** so flows can log in immediately:
 
-```sql
-insert into profiles (
-  id, name, birth_date, birth_time, birth_city,
-  sun_sign, moon_sign, rising_sign,
-  gender, looking_for,
-  age, onboarding_completed
-) values (
-  '<auth.users.id>',
-  'Maestro Primary',
-  '1995-03-15', '14:30:00', 'Paris, France',
-  'Pisces', 'Virgo', 'Cancer',
-  'female', ARRAY['male','female','non-binary','other'],
-  30, true
-);
+| Email                       | Tier         | Used by flows           |
+|-----------------------------|--------------|-------------------------|
+| `e2e_user1@example.com`     | premium_plus | 02, 03, 04, 05, 09, 14, 15 |
+| `e2e_user2@example.com`     | premium      | 12, 13 (also match partner for 04/05) |
+| `e2e_free@example.com`      | free         | 06, 11                  |
+| `e2e_deletable@example.com` | (any)        | (legacy, optional)      |
+
+All four use password `TestPassword123!` by convention.
+
+After creating the auth users, run the seed once:
+
+```bash
+# Open the SQL Editor on your staging project and paste:
+psql -f .maestro/seed-matches.sql   # or just copy/paste in the dashboard
 ```
 
-Make sure the `premium_subscription` row for this user is either absent
-or tier='free', so flow 06 (paywall) produces the denied UI.
+The seed (`.maestro/seed-matches.sql`) is **idempotent** and provisions:
 
-For flow 03 (swipe match), seed a second account that has already
-swiped right on your primary test user. That way a right-swipe from
-the primary user produces a match modal deterministically:
+1. **Trigger fix** — repairs `notify_new_match()` and `send_match_email()`
+   so any INSERT into `matches` works (real prod bug, see migration
+   `20260423_fix_notify_new_match_search_path.sql`).
+2. **Profiles** — fills name/age/sun/moon/gender, sets
+   `onboarding_completed = TRUE`, clears any soft-delete markers.
+3. **Subscriptions** — `premium_plus` for user1, `premium` for user2,
+   no row for the free user.
+4. **Match** — one active row between user1 and user2 (used by chat flows).
+5. **`premium_usage` priming** — pre-consumes today's free trial on
+   features that should hit the paywall, so flows 06/11/13 hit the
+   denied state on first visit (no flaky "first request grants 1 trial"
+   surprise). user1 (premium_plus) keeps its quota empty since the gate
+   skips the trial path entirely.
 
-```sql
-insert into swipes (swiper_id, swiped_id, action) values
-  ('<secondary-user-id>', '<primary-user-id>', 'like');
-```
+**Re-run the seed at the start of each test day** — the trial counter
+keys off `CURRENT_DATE` so yesterday's primed rows do not block today.
 
 ## Running the suite
 
-From the repo root:
+### Windows / PowerShell
+
+```powershell
+# Core suite (04 chat-send, 07 forgot, 09 delete row).
+.\run-maestro.bat
+
+# Premium suite (06 + 11..15) — requires today's seed to be applied.
+$env:RUN_PREMIUM=1; .\run-maestro.bat; Remove-Item Env:\RUN_PREMIUM
+
+# Everything except 05 (which needs manual airplane-mode toggle).
+$env:RUN_ALL=1; .\run-maestro.bat; Remove-Item Env:\RUN_ALL
+```
+
+Logs land in `.maestro\logs\last-run.log`; per-flow Maestro debug
+artifacts under `.maestro\logs\debug\<flow>\`.
+
+### macOS / Linux
 
 ```bash
-# Full suite.
-npm run test:e2e
-
 # Single flow.
-maestro test .maestro/01-signup-happy-path.yaml
+maestro test .maestro/01-signup-happy-path.yaml -e TEST_USER_EMAIL=... -e TEST_USER_PASSWORD=...
+
+# Whole folder.
+maestro test .maestro/
 
 # Interactive UI for recording / debugging selectors.
-npm run test:e2e:studio
+maestro studio
 
 # With verbose debug output on failure.
 maestro test .maestro/ --debug-output /tmp/maestro-debug
@@ -169,6 +197,25 @@ maestro test .maestro/ --debug-output /tmp/maestro-debug
 
 Maestro retries each flow up to 2 times by default; pass
 `--no-retry` to disable.
+
+## Premium flow matrix
+
+| Flow | Account | Screen | Expected gate state |
+|------|---------|--------|---------------------|
+| 06   | free    | natal-chart        | denied (paywall CTA) |
+| 11   | free    | natal-chart        | denied (paywall CTA) |
+| 12   | premium | natal-chart        | granted              |
+| 13   | premium | daily-horoscope    | denied (Cosmic upgrade) |
+| 14   | premium_plus | daily-horoscope | granted          |
+| 15   | premium_plus | daily-horoscope, planetary-transits, retrograde-alerts, date-planner | granted (smoke) |
+
+All premium flows assert one of two stable testIDs from
+`apps/mobile/components/PremiumGate.tsx`:
+
+- `premium-paywall-cta` — visible iff the gate denies access
+- `premium-gate-granted` — visible iff the gate renders children
+
+This avoids relying on i18n title strings or screen-specific content.
 
 ## Debugging tips
 
