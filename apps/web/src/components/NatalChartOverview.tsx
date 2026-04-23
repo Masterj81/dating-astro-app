@@ -274,9 +274,9 @@ export function NatalChartOverview() {
   if (!serverGate.allowed && serverGate.reason === "quota_exceeded") {
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-8">
-        <h2 className="text-2xl font-semibold text-white">{t("dailyLimitReached") || "Daily limit reached"}</h2>
+        <h2 className="text-2xl font-semibold text-white">{t("dailyLimitReached")}</h2>
         <p className="mt-3 text-sm leading-7 text-text-muted">
-          {t("dailyLimitBody") || "Come back tomorrow or upgrade for unlimited access."}
+          {t("dailyLimitBody")}
         </p>
       </div>
     );

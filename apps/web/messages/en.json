@@ -1266,7 +1266,6 @@
     "gotIt": "Got it",
     "openCard": "Open",
     "shareCompatibilityTitle": "AstroDating Compatibility",
-
     "dashboardGreetingMorning": "Good morning, {name}",
     "dashboardGreetingAfternoon": "Good afternoon, {name}",
     "dashboardGreetingEvening": "Good evening, {name}",
@@ -1284,7 +1283,6 @@
     "dashboardQuickStatLikes": "Likes sent",
     "dashboardQuickStatMatches": "Connections",
     "dashboardQuickStatCompatAvg": "Avg. compatibility",
-
     "discoverEmptyImproveTitle": "While you wait, improve your chances",
     "discoverEmptyImproveBody": "Profiles with a bio and photo get 4x more likes. Make sure yours stands out.",
     "discoverEmptyImproveCta": "Edit your profile",
@@ -1294,7 +1292,6 @@
     "discoverHighCompatAlert": "High compatibility -- take a closer look!",
     "discoverUnlockInsight": "Unlock deeper insight",
     "discoverPremiumInsightBody": "See passion, long-term, and values breakdowns for every profile.",
-
     "setupStepMotivation_name": "Every cosmic journey starts with a name.",
     "setupStepMotivation_gender": "Helping the stars tailor who you see.",
     "setupStepMotivation_birthDate": "Your birth date reveals your Sun sign -- the core of who you are.",
@@ -1305,7 +1302,6 @@
     "setupAllDone": "All fields complete. Your birth chart is ready to be calculated.",
     "setupWhyBirthTime": "Why birth time matters",
     "setupWhyBirthTimeBody": "Without it, your Rising sign stays unknown and compatibility drops by ~30%. Check your birth certificate if you can.",
-
     "successShareTitle": "Share your upgrade",
     "successShareBody": "Know someone who would love AstroDating? Invite them and both get 1 month free.",
     "successShareCta": "Invite a friend",
@@ -1314,7 +1310,6 @@
     "successFeatureHighlight_chart": "Full natal chart with all planetary positions",
     "successFeatureHighlight_compatibility": "Complete compatibility breakdowns on every profile",
     "successFeatureHighlight_horoscope": "Daily and monthly horoscopes tailored to your sign",
-
     "billingFreeValueProp": "Upgrade to see who liked you, unlock full compatibility, and get daily cosmic guidance.",
     "billingFeatureCompareTitle": "What you're missing",
     "billingFeatureCompare_likes": "See who liked you",
@@ -1323,11 +1318,12 @@
     "billingFeatureCompare_superLikes": "Super likes to stand out",
     "billingRenewalReminder": "Your plan renews soon. Keep your cosmic features active.",
     "billingPlanSince": "Member since {date}",
-
     "sidebarUpgradeLabel": "Upgrade",
     "sidebarUpgradeCta": "Go Celestial",
     "sidebarUpgradeHint": "Unlock charts, compatibility, and more",
-    "sidebarDashboard": "Dashboard"
+    "sidebarDashboard": "Dashboard",
+    "dailyLimitReached": "Daily limit reached",
+    "dailyLimitBody": "Come back tomorrow or upgrade for unlimited access."
   },
   "invite": {
     "invalidCode": "Invalid referral code",
