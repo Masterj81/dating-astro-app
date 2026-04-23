@@ -240,6 +240,8 @@ export default function SignupScreen() {
                   value={name}
                   onChangeText={handleNameChange}
                   autoCapitalize="words"
+                  autoCorrect={false}
+                  spellCheck={false}
                   autoComplete="name"
                   textContentType="name"
                   returnKeyType="next"
@@ -262,6 +264,8 @@ export default function SignupScreen() {
                   onChangeText={handleEmailChange}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  autoCorrect={false}
+                  spellCheck={false}
                   autoComplete="email"
                   textContentType="emailAddress"
                   returnKeyType="next"
@@ -284,6 +288,9 @@ export default function SignupScreen() {
                     value={password}
                     onChangeText={handlePasswordChange}
                     secureTextEntry={!showPassword}
+                    autoCorrect={false}
+                    spellCheck={false}
+                    autoCapitalize="none"
                     autoComplete="password-new"
                     textContentType="newPassword"
                     returnKeyType="done"

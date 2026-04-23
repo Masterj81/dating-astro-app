@@ -204,6 +204,8 @@ export default function LoginScreen() {
                   onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  autoCorrect={false}
+                  spellCheck={false}
                   autoComplete="email"
                   textContentType="emailAddress"
                   returnKeyType="next"
@@ -225,6 +227,9 @@ export default function LoginScreen() {
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
+                    autoCorrect={false}
+                    spellCheck={false}
+                    autoCapitalize="none"
                     autoComplete="password"
                     textContentType="password"
                     returnKeyType="done"

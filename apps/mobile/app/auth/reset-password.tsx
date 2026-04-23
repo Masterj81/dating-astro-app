@@ -100,6 +100,9 @@ export default function ResetPasswordScreen() {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
+                autoCorrect={false}
+                spellCheck={false}
+                autoCapitalize="none"
                 autoFocus
                 testID="reset-password-new-input"
               />
@@ -115,6 +118,9 @@ export default function ResetPasswordScreen() {
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
+                autoCorrect={false}
+                spellCheck={false}
+                autoCapitalize="none"
                 testID="reset-password-confirm-input"
               />
             </View>
