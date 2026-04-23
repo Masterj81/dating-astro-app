@@ -1,17 +1,18 @@
-# 09 - Delete account with 7-day grace window.
+# 09 - Delete account row reachability smoke test.
 #
-# WARNING: this flow TRIGGERS A REAL SOFT DELETE on Supabase. The test
-# account it targets MUST be dedicated to destructive flows. Use
-# TEST_DELETABLE_EMAIL / TEST_DELETABLE_PASSWORD from config.yaml --
-# DO NOT repoint this at TEST_USER_EMAIL, that account is used by
-# other flows.
+# SAFETY-FIRST: this flow does NOT tap the delete-account row at all.
+# It only verifies the row exists in the settings screen and is reachable
+# (scrollable into view). Tapping the row would open the destructive
+# Alert.alert -- and the user has already been bitten by a prior version
+# of this flow that DID tap it and ended up triggering a real soft-delete
+# (which the daily process-expired-deletions cron then hard-deleted).
 #
-# The edge function `delete-account` requires a "recent auth" gate
-# (<5 min since last sign-in). Because we log in fresh inside this
-# flow, the gate passes. On success, Supabase returns
-# { grace_window_days: 7 } and the app shows an alert with the
-# accountDeletionScheduled translation, then signs out and routes to
-# login. We assert on the "7 days" or i18n key substring.
+# Full delete confirmation flow (alert title -> destructive button -> grace
+# window confirmation) is on the P3 backlog and requires a custom modal
+# with testIDs to be safely automated.
+#
+# Prereq: any logged-in account works -- the row's visibility doesn't depend
+# on user identity. We use TEST_USER_EMAIL by default.
 
 appId: com.astrodatingapp.mobile
 ---
@@ -19,54 +20,18 @@ appId: com.astrodatingapp.mobile
     clearState: true
     clearKeychain: true
 
-# Login using the deletable account specifically.
-- tapOn:
-    id: "login-email-input"
-- inputText: ${TEST_DELETABLE_EMAIL}
-- hideKeyboard
-- tapOn:
-    id: "login-password-input"
-- inputText: ${TEST_DELETABLE_PASSWORD}
-- hideKeyboard
-- tapOn:
-    id: "login-submit-button"
+- runFlow: shared/login-as-test-user.yaml
 
-- extendedWaitUntil:
-    visible:
-      id: "discover-like-button"
-    timeout: 20000
-
-# Open settings via deep link (same approach as flow 02).
+# Open settings via deep link, then scroll until the delete row is visible.
 - openLink: "astrodating://settings"
 
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       id: "settings-delete-account"
-    timeout: 10000
-- tapOn:
+    direction: DOWN
+    timeout: 15000
+    speed: 40
+
+# DO NOT tap the row. We only assert it exists and is reachable.
+- assertVisible:
     id: "settings-delete-account"
-
-# First alert -- "Are you sure?" / "Delete account" warning.
-- extendedWaitUntil:
-    visible: "Delete"
-    timeout: 5000
-- tapOn: "Delete"
-
-# Second alert -- final confirmation.
-- extendedWaitUntil:
-    visible: "Yes, delete"
-    timeout: 5000
-- tapOn: "Yes, delete"
-
-# Success alert. The message mentions the grace window -- assert on
-# "7 days" (English default) or the i18n substring.
-- extendedWaitUntil:
-    visible: "7 days"
-    timeout: 20000
-- tapOn: "OK"
-
-# App signs out and routes to login.
-- extendedWaitUntil:
-    visible:
-      id: "login-email-input"
-    timeout: 10000

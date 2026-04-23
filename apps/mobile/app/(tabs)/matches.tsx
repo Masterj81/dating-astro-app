@@ -76,6 +76,7 @@ const MatchCard = React.memo(function MatchCard({ match, t }: { match: Match; t:
       accessibilityRole="button"
       accessibilityLabel={`${match.matched_profile.name}, ${match.matched_profile.sun_sign} sign, ${formatCompatibilityForA11y(compatibilityScore)}, matched ${formatRelativeTime(match.created_at, t)}`}
       accessibilityHint="Double tap to view profile"
+      testID="match-card"
     >
       <View style={styles.matchImageWrap}>
         <Image
@@ -130,6 +131,7 @@ const MatchCard = React.memo(function MatchCard({ match, t }: { match: Match; t:
             t('a11y.chatTab') + ' ' + match.matched_profile.name,
             'Double tap to start chatting'
           )}
+          testID="match-chat-button"
         >
           <Text style={styles.chatButtonText}>💬</Text>
         </TouchableOpacity>

@@ -1,7 +1,11 @@
 # 04 - Send a message in an existing chat.
 #
-# Requires that the test account has at least one existing match so the
-# Matches tab has a conversation to open. See docs/E2E.md for seeding.
+# Requires that TEST_USER has at least one existing match so the Matches
+# tab has a conversation to open. See docs/E2E.md for seeding.
+#
+# Strategy: tap the chat-button (testID="match-chat-button") on the first
+# MatchCard. The card itself is `match-card` and opens the profile, so we
+# must hit the dedicated chat affordance (the speech-bubble icon).
 
 appId: com.astrodatingapp.mobile
 ---
@@ -11,22 +15,20 @@ appId: com.astrodatingapp.mobile
 
 - runFlow: shared/login-as-test-user.yaml
 
-# Jump to the matches tab. The bottom-tab label is localised; tab icon
-# has no testID yet so we use visible text. If your locale differs,
-# seed the test user with `language='en'` in staging.
-- tapOn:
-    text: "Matches"
-    index: 0
+# Jump to the matches tab via deep link -- bottom-tab labels are localised
+# so a textual tap is fragile across staging users.
+- openLink: "astrodating://(tabs)/matches"
 
-# Open the first conversation. We don't have testIDs on the match list
-# rows yet -- tap the first row by index. If multiple matches exist,
-# this will always open the topmost (most recent) one.
+# Wait for either at least one match card OR the empty state. If we land on
+# empty state the test cannot proceed -- treat as expected partial.
 - extendedWaitUntil:
-    visible: "Matches"
-    timeout: 10000
+    visible:
+      id: "match-card"
+    timeout: 15000
+
 - tapOn:
+    id: "match-chat-button"
     index: 0
-    text: ".*"
 
 # We're on the chat screen.
 - extendedWaitUntil:
@@ -37,6 +39,10 @@ appId: com.astrodatingapp.mobile
 - tapOn:
     id: "chat-input"
 - inputText: "E2E test message"
+# Close the keyboard before tapping send -- the Android soft keyboard can
+# cover the send button and Maestro's element matcher then reports "not
+# found" even though the node exists in the hierarchy.
+- hideKeyboard
 - tapOn:
     id: "chat-send-button"
 

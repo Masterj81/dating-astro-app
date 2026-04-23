@@ -10,6 +10,8 @@
 
 appId: com.astrodatingapp.mobile
 ---
+# `clearState: true` in callers ensures fields start empty, so eraseText
+# is unnecessary and can hang on certain Android keyboards.
 - tapOn:
     id: "login-email-input"
 - inputText: ${TEST_USER_EMAIL}

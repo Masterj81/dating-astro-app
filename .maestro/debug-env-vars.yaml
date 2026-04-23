@@ -1,0 +1,28 @@
+# Diagnostic flow: verifies that TEST_USER_EMAIL / TEST_USER_PASSWORD reach
+# Maestro from the command line. Run with `-e TEST_USER_EMAIL=...
+# -e TEST_USER_PASSWORD=...`. If either var is empty/missing, Maestro will
+# substitute the literal `${VAR}` text and the assert below will fail with a
+# clear "expected ... got ..." mismatch.
+#
+# Not part of the regular suite -- run on demand:
+#   & 'C:\...\maestro.bat' test .maestro/debug-env-vars.yaml -e TEST_USER_EMAIL=foo -e TEST_USER_PASSWORD=bar
+
+appId: com.astrodatingapp.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- extendedWaitUntil:
+    visible:
+      id: "login-email-input"
+    timeout: 20000
+
+- tapOn:
+    id: "login-email-input"
+- inputText: ${TEST_USER_EMAIL}
+- hideKeyboard
+
+# Read back what is actually inside the email field. If env var was empty,
+# the field will contain nothing and this assertion will fail.
+- assertVisible: ${TEST_USER_EMAIL}

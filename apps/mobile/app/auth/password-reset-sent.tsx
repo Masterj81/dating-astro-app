@@ -30,9 +30,9 @@ export default function PasswordResetSentScreen() {
       colors={['#0f0f1a', '#1a1a2e', '#16213e']}
       style={styles.container}
     >
-      <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+      <Animated.View style={[styles.content, { opacity: fadeAnim }]} testID="password-reset-sent-screen">
         <Text style={styles.icon}>📧</Text>
-        <Text style={styles.title}>{t('resetEmailSent')}</Text>
+        <Text style={styles.title} testID="password-reset-sent-title">{t('resetEmailSent')}</Text>
         <Text style={styles.subtitle}>{t('resetEmailSentDesc')}</Text>
         {email && <Text style={styles.email}>{email}</Text>}
 

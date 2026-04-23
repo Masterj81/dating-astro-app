@@ -24,6 +24,10 @@ if (__DEV__ && Platform.OS !== 'web') {
   LogBox.ignoreLogs([
     'props.pointerEvents is deprecated',
     '[expo-av]',
+    // FCM not configured in the dev client -- expected, non-fatal, and the
+    // yellow LogBox banner otherwise covers the chat send button during E2E.
+    'Failed to get push token',
+    'FirebaseApp is not initialized',
   ]);
 }
 

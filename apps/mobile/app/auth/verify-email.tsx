@@ -104,7 +104,7 @@ export default function VerifyEmailScreen() {
       colors={[...AppTheme.gradients.screen]}
       style={styles.container}
     >
-      <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+      <Animated.View style={[styles.content, { opacity: fadeAnim }]} testID="verify-email-screen">
         <AuthBrandMark size={84} />
 
         {/* Progress context -- show where they are in the overall journey */}
@@ -119,7 +119,7 @@ export default function VerifyEmailScreen() {
           </Text>
         </View>
 
-        <Text style={styles.title}>{t('checkYourEmail')}</Text>
+        <Text style={styles.title} testID="verify-email-title">{t('checkYourEmail')}</Text>
         <Text style={styles.subtitle}>
           {t('verificationEmailSent')}
         </Text>
