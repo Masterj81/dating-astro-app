@@ -8,7 +8,8 @@
  * over historical content and marketing materials.
  */
 
-import { readFileSync, writeFileSync, existsSync } from "fs";
+import { readFileSync, existsSync } from "fs";
+import { atomicWriteJson } from "../../lib.js";
 
 const MEMORY_FILE = "memory.json";
 const MAX_SHORT_TERM = 50; // Keep last 50 entries
@@ -50,7 +51,7 @@ export function saveMemory(memory: ShortTermMemory): void {
   // Trim to prevent bloat
   memory.recentTopics = memory.recentTopics.slice(-MAX_SHORT_TERM);
   memory.recentPosts = memory.recentPosts.slice(-MAX_SHORT_TERM);
-  writeFileSync(MEMORY_FILE, JSON.stringify(memory, null, 2));
+  atomicWriteJson(MEMORY_FILE, memory);
 }
 
 export function recordGeneration(

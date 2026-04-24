@@ -1,7 +1,7 @@
 import "dotenv/config";
 import Anthropic from "@anthropic-ai/sdk";
-import { readFileSync, writeFileSync, existsSync, execSync } from "child_process";
-import { readFileSync as readFS, writeFileSync as writeFS, existsSync as existsFS } from "fs";
+import { readFileSync as readFS, existsSync as existsFS } from "fs";
+import { atomicWriteJson } from "./lib.js";
 
 /**
  * Writing Evolution Engine
@@ -127,7 +127,7 @@ function loadState(): EvolutionState {
 function saveState(state: EvolutionState): void {
   // Trim history to last 200
   if (state.history.length > 200) state.history = state.history.slice(-200);
-  writeFS(EVOLUTION_FILE, JSON.stringify(state, null, 2));
+  atomicWriteJson(EVOLUTION_FILE, state);
 }
 
 function getDefaultRules(): EvolutionRule[] {

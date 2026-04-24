@@ -13,6 +13,7 @@
 
 import { writeFileSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
+import { fetchWithTimeout, uniqueSuffix } from "../../lib.js";
 
 const IMAGES_DIR = "generated-images";
 
@@ -200,7 +201,7 @@ async function generateWithGemini(
         return { success: false, error: "Gemini image too small, generation may have failed" };
       }
 
-      const fileName = `post-${Date.now()}.png`;
+      const fileName = `post-${uniqueSuffix()}.png`;
       const filePath = join(IMAGES_DIR, fileName);
       writeFileSync(filePath, imageBuffer);
 
@@ -221,7 +222,7 @@ async function generateWithPollinations(
 
   console.log("   Downloading from Pollinations (fallback)...");
 
-  const response = await fetch(url);
+  const response = await fetchWithTimeout(url, { timeoutMs: 60_000 });
 
   if (!response.ok) {
     return { success: false, error: `Pollinations ${response.status}: ${response.statusText}` };

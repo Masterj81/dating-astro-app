@@ -8,8 +8,9 @@ import "dotenv/config";
  */
 
 import { createServer, IncomingMessage, ServerResponse } from "http";
-import { readFileSync, writeFileSync, existsSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { ensurePublicUrl } from "./upload-image.js";
+import { atomicWriteJson, fetchWithTimeout } from "./lib.js";
 
 const PORT = 4200;
 const POSTS_FILE = "posts.json";
@@ -50,7 +51,7 @@ function loadPosts(): Post[] {
 }
 
 function savePosts(posts: Post[]): void {
-  writeFileSync(POSTS_FILE, JSON.stringify(posts, null, 2));
+  atomicWriteJson(POSTS_FILE, posts);
 }
 
 function loadSchedule(): ScheduleEntry[] {
@@ -59,7 +60,95 @@ function loadSchedule(): ScheduleEntry[] {
 }
 
 function saveSchedule(schedule: ScheduleEntry[]): void {
-  writeFileSync(SCHEDULE_FILE, JSON.stringify(schedule, null, 2));
+  atomicWriteJson(SCHEDULE_FILE, schedule);
+}
+
+function getNextPostingWindow(from = new Date()): string {
+  // Always return a slot strictly in the future. The previous code returned
+  // "now" itself if called at exactly 11:00:00.000, which surprised the
+  // scheduler (it would publish in the same tick instead of the next window).
+  const next = new Date(from);
+  const hours = [11, 12, 19, 20];
+  for (const hour of hours) {
+    if (hour > next.getHours()) {
+      next.setHours(hour, 0, 0, 0);
+      return next.toISOString();
+    }
+  }
+  next.setDate(next.getDate() + 1);
+  next.setHours(11, 0, 0, 0);
+  return next.toISOString();
+}
+
+function upsertScheduleEntry(
+  postId: number,
+  scheduledFor: string,
+  platforms: string[] = ["facebook", "instagram"],
+): ScheduleEntry {
+  const schedule = loadSchedule();
+  const existing = schedule.find((entry) => entry.postId === postId && !entry.posted);
+
+  if (existing) {
+    existing.scheduledFor = scheduledFor;
+    existing.platforms = platforms;
+    saveSchedule(schedule);
+    return existing;
+  }
+
+  const entry: ScheduleEntry = {
+    postId,
+    scheduledFor,
+    platforms,
+    posted: false,
+  };
+  schedule.push(entry);
+  saveSchedule(schedule);
+  return entry;
+}
+
+function schedulePostLocally(
+  postId: number,
+  scheduledFor: string,
+  platforms: string[] = ["facebook", "instagram"],
+): Post {
+  const posts = loadPosts();
+  const post = posts.find((entry) => entry.id === postId);
+  if (!post) {
+    throw new Error("Post not found");
+  }
+
+  post.status = "scheduled";
+  post.scheduledFor = scheduledFor;
+  savePosts(posts);
+  upsertScheduleEntry(postId, scheduledFor, platforms);
+  return post;
+}
+
+function spreadScheduledPosts(): { updated: number; posts: Post[] } {
+  const posts = loadPosts();
+  const activeSchedule = loadSchedule()
+    .filter((entry) => !entry.posted)
+    .sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor));
+
+  let cursor = new Date();
+  let updated = 0;
+
+  for (const entry of activeSchedule) {
+    const post = posts.find((item) => item.id === entry.postId);
+    if (!post) continue;
+
+    const nextSlot = getNextPostingWindow(cursor);
+    entry.scheduledFor = nextSlot;
+    post.scheduledFor = nextSlot;
+    post.status = "scheduled";
+    cursor = new Date(nextSlot);
+    cursor.setMinutes(cursor.getMinutes() + 1);
+    updated++;
+  }
+
+  savePosts(posts);
+  saveSchedule(activeSchedule);
+  return { updated, posts };
 }
 
 // ── Blotato ──
@@ -100,8 +189,9 @@ async function publishToBlotato(text: string, platforms: string[], imageUrl?: st
         target.pageId = fbPageId;
       }
 
-      const res = await fetch(BLOTATO_API_URL, {
+      const res = await fetchWithTimeout(BLOTATO_API_URL, {
         method: "POST",
+        timeoutMs: 30_000,
         headers: { "blotato-api-key": apiKey, "Content-Type": "application/json" },
         body: JSON.stringify({
           post: {
@@ -253,25 +343,40 @@ async function handleAPI(req: IncomingMessage, res: ServerResponse): Promise<voi
   if (method === "POST" && path.match(/^\/api\/posts\/(\d+)\/schedule$/)) {
     const id = parseInt(path.split("/")[3]);
     const body = JSON.parse(await readBody(req));
-    const posts = loadPosts();
-    const post = posts.find((p) => p.id === id);
-    if (!post) { res.writeHead(404); res.end('{"error":"Not found"}'); return; }
+    try {
+      const scheduledFor = body.scheduledFor || getNextPostingWindow();
+      const post = schedulePostLocally(id, scheduledFor, body.platforms || ["facebook", "instagram"]);
+      res.end(JSON.stringify({ ...post, scheduledFor }));
+    } catch {
+      res.writeHead(404);
+      res.end('{"error":"Not found"}');
+    }
+    return;
+  }
 
-    const scheduledFor = body.scheduledFor || getNextPostingWindow();
-    post.status = "scheduled";
-    post.scheduledFor = scheduledFor;
-    savePosts(posts);
+  // POST /api/posts/:id/reschedule
+  if (method === "POST" && path.match(/^\/api\/posts\/(\d+)\/reschedule$/)) {
+    const id = parseInt(path.split("/")[3]);
+    const body = JSON.parse(await readBody(req));
+    if (!body.scheduledFor) {
+      res.writeHead(400);
+      res.end('{"error":"scheduledFor is required"}');
+      return;
+    }
+    try {
+      const post = schedulePostLocally(id, new Date(body.scheduledFor).toISOString(), body.platforms || ["facebook", "instagram"]);
+      res.end(JSON.stringify(post));
+    } catch {
+      res.writeHead(404);
+      res.end('{"error":"Not found"}');
+    }
+    return;
+  }
 
-    const schedule = loadSchedule();
-    schedule.push({
-      postId: id,
-      scheduledFor,
-      platforms: body.platforms || ["facebook", "instagram"],
-      posted: false,
-    });
-    saveSchedule(schedule);
-
-    res.end(JSON.stringify({ ...post, scheduledFor }));
+  // POST /api/schedule/spread
+  if (method === "POST" && path === "/api/schedule/spread") {
+    const result = spreadScheduledPosts();
+    res.end(JSON.stringify(result));
     return;
   }
 
@@ -298,20 +403,6 @@ async function handleAPI(req: IncomingMessage, res: ServerResponse): Promise<voi
 
   res.writeHead(404);
   res.end('{"error":"Not found"}');
-}
-
-function getNextPostingWindow(): string {
-  const now = new Date();
-  const hours = [11, 12, 19, 20];
-  for (const h of hours) {
-    if (h > now.getHours()) {
-      now.setHours(h, 0, 0, 0);
-      return now.toISOString();
-    }
-  }
-  now.setDate(now.getDate() + 1);
-  now.setHours(11, 0, 0, 0);
-  return now.toISOString();
 }
 
 // ── Dashboard HTML ──
@@ -357,6 +448,38 @@ function renderDashboard(): string {
     .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
     .empty { text-align: center; padding: 60px; color: #8e8a84; }
     .refresh { padding: 8px 16px; border-radius: 12px; background: rgba(255,255,255,0.06); color: #f7f4ee; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; font-size: 13px; }
+    .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .tabs { display: flex; gap: 10px; padding: 18px 32px 0; }
+    .tab { padding: 10px 16px; border-radius: 12px; background: rgba(255,255,255,0.04); color: #a8b0c2; border: 1px solid rgba(255,255,255,0.08); cursor: pointer; font-size: 13px; font-weight: 700; }
+    .tab.active { background: rgba(96,165,250,0.18); color: #dbeafe; border-color: rgba(96,165,250,0.35); }
+    .view { display: none; }
+    .view.active { display: block; }
+    .calendar-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 0 32px 16px; flex-wrap: wrap; }
+    .calendar-range { font-size: 13px; color: #cbd5e1; font-weight: 700; letter-spacing: 0.2px; }
+    .schedule-tools { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .datetime { padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); color: #f7f4ee; font-size: 13px; }
+    .schedule-editor { margin-top: 12px; padding: 14px; border-radius: 16px; background: rgba(96,165,250,0.08); border: 1px solid rgba(96,165,250,0.22); }
+    .schedule-editor-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #93c5fd; margin-bottom: 10px; }
+    .schedule-editor-fields { display: flex; gap: 8px; flex-wrap: wrap; }
+    .schedule-editor .datetime { min-width: 160px; }
+    .schedule-editor-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .calendar-wrap { padding: 0 32px 32px; }
+    .calendar-shell { overflow: auto; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); }
+    .calendar-header { display: grid; grid-template-columns: 72px repeat(7, minmax(160px, 1fr)); min-width: 1200px; border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); }
+    .calendar-corner { border-right: 1px solid rgba(255,255,255,0.06); }
+    .calendar-day-head { padding: 14px 12px; text-align: center; color: #aab6d3; font-size: 14px; border-right: 1px solid rgba(255,255,255,0.06); }
+    .calendar-day-head.today { color: #f7f4ee; background: rgba(96,165,250,0.08); }
+    .calendar-grid { position: relative; display: grid; grid-template-columns: 72px repeat(7, minmax(160px, 1fr)); min-width: 1200px; }
+    .calendar-times { position: relative; }
+    .calendar-time { height: 64px; padding-top: 4px; text-align: center; font-size: 12px; color: #6f7a91; border-top: 1px solid rgba(255,255,255,0.05); }
+    .calendar-day-col { position: relative; height: 1024px; border-left: 1px solid rgba(255,255,255,0.06); background-image: linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 100% 64px; }
+    .calendar-now { position: absolute; left: 72px; right: 0; height: 1px; background: #3b82f6; box-shadow: 0 0 0 1px rgba(59,130,246,0.2); z-index: 3; }
+    .calendar-event { position: absolute; left: 8px; right: 8px; border-radius: 14px; padding: 10px; background: linear-gradient(180deg, rgba(59,130,246,0.28), rgba(30,41,59,0.88)); border: 1px solid rgba(147,197,253,0.35); box-shadow: 0 10px 24px rgba(2,6,23,0.35); overflow: hidden; z-index: 4; cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease; }
+    .calendar-event:hover { transform: translateY(-1px); border-color: rgba(191,219,254,0.65); }
+    .calendar-event-time { font-size: 11px; color: #bfdbfe; margin-bottom: 6px; }
+    .calendar-event-title { font-size: 12px; font-weight: 700; line-height: 1.35; color: #eff6ff; }
+    .calendar-event-meta { font-size: 11px; color: #cbd5e1; margin-top: 6px; }
+    .calendar-empty { padding: 40px 20px; text-align: center; color: #8e8a84; }
   </style>
 </head>
 <body>
@@ -364,15 +487,39 @@ function renderDashboard(): string {
     <div>
       <h1>AstroDating Marketing</h1>
     </div>
-    <div style="display:flex;gap:12px;align-items:center;">
-      <span class="badge" id="auto-refresh">Auto-refresh: ON</span>
-      <button class="refresh" onclick="loadAll()">Refresh</button>
+    <div class="toolbar">
+      <span class="badge" id="auto-refresh">Rafraîchissement auto : ACTIF</span>
+      <button class="refresh" onclick="spreadScheduled()">Répartir les posts planifiés</button>
+      <button class="refresh" onclick="loadAll()">Rafraîchir</button>
     </div>
   </div>
   <div class="stats" id="stats"></div>
-  <div class="posts" id="posts"></div>
+  <div class="tabs">
+    <button class="tab active" id="tab-posts" onclick="setActiveView('posts')">Publications</button>
+    <button class="tab" id="tab-calendar" onclick="setActiveView('calendar')">Calendrier</button>
+  </div>
+  <div class="view active" id="view-posts">
+    <div class="posts" id="posts"></div>
+  </div>
+  <div class="view" id="view-calendar">
+    <div class="calendar-toolbar">
+      <div class="toolbar">
+        <button class="refresh" onclick="changeCalendarWeek(-1)">Semaine précédente</button>
+        <button class="refresh" onclick="jumpToCurrentWeek()">Aujourd'hui</button>
+        <button class="refresh" onclick="changeCalendarWeek(1)">Semaine suivante</button>
+      </div>
+      <div class="calendar-range" id="calendar-range"></div>
+    </div>
+    <div class="calendar-wrap">
+      <div id="calendar"></div>
+    </div>
+  </div>
 
   <script>
+    let scheduleEditorState = {};
+    let activeView = 'posts';
+    let currentWeekStart = getStartOfWeek(new Date());
+
     async function api(path, method = 'GET', body) {
       const opts = { method, headers: { 'Content-Type': 'application/json' } };
       if (body) opts.body = JSON.stringify(body);
@@ -384,57 +531,348 @@ function renderDashboard(): string {
       const s = await api('/api/stats');
       document.getElementById('stats').innerHTML = [
         { num: s.total, label: 'Total' },
-        { num: s.approved, label: 'Approved' },
-        { num: s.scheduled, label: 'Scheduled' },
-        { num: s.posted, label: 'Posted' },
-        { num: s.failed, label: 'Failed' },
-        { num: s.avgScore + '/100', label: 'Avg Score' },
+        { num: s.approved, label: 'Approuvés' },
+        { num: s.scheduled, label: 'Planifiés' },
+        { num: s.posted, label: 'Publiés' },
+        { num: s.failed, label: 'Échecs' },
+        { num: s.avgScore + '/100', label: 'Score moyen' },
       ].map(x => '<div class="stat"><div class="num">' + x.num + '</div><div class="label">' + x.label + '</div></div>').join('');
     }
 
     async function loadPosts() {
       const posts = await api('/api/posts');
       const el = document.getElementById('posts');
-      if (!posts.length) { el.innerHTML = '<div class="empty">No posts yet. Run: npm run agent -- generate "topic"</div>'; return; }
+      if (!posts.length) { el.innerHTML = '<div class="empty">Aucune publication pour le moment. Lance: npm run agent -- generate "topic"</div>'; return; }
 
       el.innerHTML = posts.sort((a,b) => b.id - a.id).map(p => {
-        const date = new Date(p.createdAt).toLocaleDateString('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const date = new Date(p.createdAt).toLocaleDateString('fr-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         const canApprove = ['draft'].includes(p.status);
         const canPublish = ['approved'].includes(p.status);
         const canSchedule = ['approved'].includes(p.status);
+        const canReschedule = ['scheduled'].includes(p.status);
         const canReject = ['draft', 'approved'].includes(p.status);
+        const scheduledValue = p.scheduledFor ? toDatetimeLocal(p.scheduledFor) : '';
+        const editorState = scheduleEditorState[p.id];
+        const isEditorOpen = Boolean(editorState && editorState.open);
 
         return '<div class="post">' +
           '<div class="post-header">' +
-            '<div class="post-meta">#' + p.id + ' · ' + date + ' · ' + (p.topic || 'no topic') + '</div>' +
-            '<span class="post-status status-' + p.status + '">' + p.status + '</span>' +
+            '<div class="post-meta">#' + p.id + ' · ' + date + ' · ' + (p.topic || 'sans sujet') + '</div>' +
+            '<span class="post-status status-' + p.status + '">' + formatStatusLabel(p.status) + '</span>' +
           '</div>' +
           '<div class="post-text">' + escHtml(p.text) + '</div>' +
-          '<div class="post-score">AI Score: ' + p.aiScore + '/100' +
-            (p.scheduledFor ? ' · Scheduled: ' + new Date(p.scheduledFor).toLocaleString() : '') +
-            (p.blotato?.postedAt ? ' · Posted: ' + new Date(p.blotato.postedAt).toLocaleString() : '') +
-            (p.blotato?.error ? ' · Error: ' + escHtml(p.blotato.error) : '') +
+          '<div class="post-score">Score IA : ' + p.aiScore + '/100' +
+            (p.scheduledFor ? ' · Planifié : ' + new Date(p.scheduledFor).toLocaleString('fr-CA') : '') +
+            (p.blotato?.postedAt ? ' · Publié : ' + new Date(p.blotato.postedAt).toLocaleString('fr-CA') : '') +
+            (p.blotato?.error ? ' · Erreur : ' + escHtml(p.blotato.error) : '') +
           '</div>' +
           '<div class="post-actions">' +
-            (canApprove ? '<button class="btn btn-approve" onclick="action(' + p.id + ',\\'approve\\')">Approve</button>' : '') +
-            (canPublish ? '<button class="btn btn-publish" onclick="action(' + p.id + ',\\'publish-now\\')">Publish Now</button>' : '') +
-            (canSchedule ? '<button class="btn btn-schedule" onclick="action(' + p.id + ',\\'schedule\\')">Schedule Next</button>' : '') +
-            (canReject ? '<button class="btn btn-reject" onclick="action(' + p.id + ',\\'reject\\')">Reject</button>' : '') +
+            (canApprove ? '<button class="btn btn-approve" onclick="action(' + p.id + ',\\'approve\\')">Approuver</button>' : '') +
+            (canPublish ? '<button class="btn btn-publish" onclick="action(' + p.id + ',\\'publish-now\\')">Publier maintenant</button>' : '') +
+            (canSchedule ? '<button class="btn btn-schedule" onclick="action(' + p.id + ',\\'schedule\\')">Planifier au prochain créneau</button>' : '') +
+            ((canReschedule || canSchedule) ? '<button class="btn btn-schedule" onclick="toggleScheduleEditor(' + p.id + ', \\''
+              + scheduledValue + '\\')">' + (isEditorOpen ? 'Fermer date et heure' : (canReschedule ? 'Changer date et heure' : 'Choisir date et heure')) + '</button>' : '') +
+            (canReject ? '<button class="btn btn-reject" onclick="action(' + p.id + ',\\'reject\\')">Refuser</button>' : '') +
           '</div>' +
+          renderScheduleEditor(p.id, canReschedule, canSchedule, scheduledValue) +
         '</div>';
       }).join('');
     }
 
+    async function loadCalendar() {
+      const posts = await api('/api/posts');
+      const el = document.getElementById('calendar');
+      const scheduledPosts = posts
+        .filter((p) => p.status === 'scheduled' && p.scheduledFor)
+        .sort((a, b) => new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime());
+
+      const start = new Date(currentWeekStart);
+      const days = Array.from({ length: 7 }, (_, index) => addDays(start, index));
+      const end = addDays(start, 7);
+      const scheduledPostsForWeek = scheduledPosts.filter((post) => {
+        const date = new Date(post.scheduledFor);
+        return date >= start && date < end;
+      });
+      updateCalendarRangeLabel(start, days[6]);
+      if (!scheduledPostsForWeek.length) {
+        el.innerHTML = '<div class="calendar-shell"><div class="calendar-empty">Aucune publication planifiée pour cette semaine.</div></div>';
+        return;
+      }
+      const hourStart = 6;
+      const hourEnd = 22;
+      const hourHeight = 64;
+      const totalHeight = (hourEnd - hourStart) * hourHeight;
+      const todayKey = formatDateKey(new Date());
+
+      const dayHeaders = days.map((day) => {
+        const key = formatDateKey(day);
+        const label = day.toLocaleDateString('fr-CA', { weekday: 'short', day: 'numeric' });
+        return '<div class="calendar-day-head' + (key === todayKey ? ' today' : '') + '">' + label + '</div>';
+      }).join('');
+
+      const timeLabels = Array.from({ length: hourEnd - hourStart }, (_, index) => {
+        const hour = hourStart + index;
+        return '<div class="calendar-time">' + formatHourLabel(hour) + '</div>';
+      }).join('');
+
+      const dayColumns = days.map((day) => {
+        const dayKey = formatDateKey(day);
+        const events = scheduledPostsForWeek
+          .filter((post) => formatDateKey(new Date(post.scheduledFor)) === dayKey)
+          .map((post) => renderCalendarEvent(post, hourStart, hourHeight, totalHeight))
+          .join('');
+
+        return '<div class="calendar-day-col">' + events + '</div>';
+      }).join('');
+
+      const nowLine = renderNowLine(start, hourStart, hourEnd, hourHeight);
+
+      el.innerHTML = '<div class="calendar-shell">' +
+        '<div class="calendar-header">' +
+          '<div class="calendar-corner"></div>' +
+          dayHeaders +
+        '</div>' +
+        '<div class="calendar-grid" style="height:' + totalHeight + 'px">' +
+          '<div class="calendar-times">' + timeLabels + '</div>' +
+          dayColumns +
+          nowLine +
+        '</div>' +
+      '</div>';
+    }
+
     function escHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+    function toDatetimeLocal(value) {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      const pad = (n) => String(n).padStart(2, '0');
+      return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + 'T' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+    }
+
+    function formatDateKey(value) {
+      const date = new Date(value);
+      const pad = (n) => String(n).padStart(2, '0');
+      return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
+    }
+
+    function getStartOfWeek(date) {
+      const start = new Date(date);
+      start.setHours(0, 0, 0, 0);
+      start.setDate(start.getDate() - start.getDay());
+      return start;
+    }
+
+    function addDays(date, count) {
+      const next = new Date(date);
+      next.setDate(next.getDate() + count);
+      return next;
+    }
+
+    function formatHourLabel(hour24) {
+      const suffix = hour24 >= 12 ? 'PM' : 'AM';
+      const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+      return hour12 + ' ' + suffix;
+    }
+
+    function formatTimeLabel(date) {
+      return new Date(date).toLocaleTimeString('fr-CA', { hour: 'numeric', minute: '2-digit' });
+    }
+
+    function formatStatusLabel(status) {
+      const labels = {
+        draft: 'brouillon',
+        approved: 'approuvé',
+        scheduled: 'planifié',
+        posted: 'publié',
+        failed: 'échec',
+        rejected: 'refusé',
+      };
+      return labels[status] || status;
+    }
+
+    function renderCalendarEvent(post, hourStart, hourHeight, totalHeight) {
+      const date = new Date(post.scheduledFor);
+      const minutes = (date.getHours() - hourStart) * 60 + date.getMinutes();
+      const minBlock = 44;
+      const top = Math.max(0, (minutes / 60) * hourHeight);
+      const height = minBlock;
+      const topic = escHtml(post.topic || 'Publication planifiée');
+      const text = escHtml((post.text || '').slice(0, 88));
+
+      if (top > totalHeight) return '';
+
+      return '<div class="calendar-event" onclick="openPostFromCalendar(' + post.id + ')" style="top:' + Math.min(top, totalHeight - height) + 'px;height:' + height + 'px">' +
+        '<div class="calendar-event-time">' + formatTimeLabel(date) + '</div>' +
+        '<div class="calendar-event-title">' + topic + '</div>' +
+        '<div class="calendar-event-meta">#' + post.id + ' · ' + text + '</div>' +
+      '</div>';
+    }
+
+    function renderNowLine(weekStart, hourStart, hourEnd, hourHeight) {
+      const now = new Date();
+      const nowKey = formatDateKey(now);
+      const days = Array.from({ length: 7 }, (_, index) => formatDateKey(addDays(weekStart, index)));
+      const dayIndex = days.indexOf(nowKey);
+      if (dayIndex === -1) return '';
+      if (now.getHours() < hourStart || now.getHours() >= hourEnd) return '';
+
+      const top = ((now.getHours() - hourStart) * 60 + now.getMinutes()) / 60 * hourHeight;
+      const left = 'calc(72px + ((100% - 72px) / 7) * ' + dayIndex + ')';
+      const width = 'calc((100% - 72px) / 7)';
+      return '<div class="calendar-now" style="top:' + top + 'px;left:' + left + ';width:' + width + '"></div>';
+    }
+
+    function updateCalendarRangeLabel(start, end) {
+      const el = document.getElementById('calendar-range');
+      if (!el) return;
+      const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+      const startLabel = start.toLocaleDateString('fr-CA', { month: 'long', day: 'numeric' });
+      const endLabel = end.toLocaleDateString('fr-CA', sameMonth ? { day: 'numeric', year: 'numeric' } : { month: 'long', day: 'numeric', year: 'numeric' });
+      el.textContent = startLabel + ' au ' + endLabel;
+    }
+
+    function getScheduleDraft(postId, fallbackValue) {
+      const current = scheduleEditorState[postId];
+      const source = current?.value || fallbackValue || toDatetimeLocal(new Date().toISOString());
+      const parts = source.split('T');
+      return {
+        date: parts[0] || '',
+        time: parts[1] || '11:00',
+      };
+    }
+
+    function renderScheduleEditor(postId, canReschedule, canSchedule, fallbackValue) {
+      const state = scheduleEditorState[postId];
+      if (!state?.open || (!canReschedule && !canSchedule)) return '';
+
+      const draft = getScheduleDraft(postId, fallbackValue);
+      const confirmLabel = canReschedule ? 'Confirmer la nouvelle heure' : 'Confirmer la planification';
+      const mode = canReschedule ? 'reschedule' : 'schedule';
+
+      return '<div class="schedule-editor">' +
+        '<div class="schedule-editor-title">Choisis une date et une heure, puis confirme</div>' +
+        '<div class="schedule-editor-fields">' +
+          '<input class="datetime" type="date" id="schedule-date-' + postId + '" value="' + draft.date + '" onchange="updateScheduleDraft(' + postId + ')">' +
+          '<input class="datetime" type="time" id="schedule-time-' + postId + '" value="' + draft.time + '" step="60" onchange="updateScheduleDraft(' + postId + ')">' +
+        '</div>' +
+        '<div class="schedule-editor-actions">' +
+          '<button class="btn btn-schedule" onclick="confirmSchedule(' + postId + ', \\''
+            + mode + '\\')">' + confirmLabel + '</button>' +
+          '<button class="btn btn-reject" onclick="closeScheduleEditor(' + postId + ')">Annuler</button>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function toggleScheduleEditor(postId, fallbackValue) {
+      const current = scheduleEditorState[postId];
+      if (current?.open) {
+        delete scheduleEditorState[postId];
+      } else {
+        scheduleEditorState[postId] = { open: true, value: current?.value || fallbackValue || '' };
+      }
+      updateAutoRefreshBadge();
+      loadPosts();
+    }
+
+    function closeScheduleEditor(postId) {
+      delete scheduleEditorState[postId];
+      updateAutoRefreshBadge();
+      loadPosts();
+    }
+
+    function updateScheduleDraft(postId) {
+      const dateInput = document.getElementById('schedule-date-' + postId);
+      const timeInput = document.getElementById('schedule-time-' + postId);
+      if (!dateInput || !timeInput) return;
+
+      scheduleEditorState[postId] = {
+        open: true,
+        value: dateInput.value && timeInput.value ? dateInput.value + 'T' + timeInput.value : '',
+      };
+    }
 
     async function action(id, act) {
       await api('/api/posts/' + id + '/' + act, 'POST', act === 'schedule' ? { scheduledFor: null } : undefined);
+      delete scheduleEditorState[id];
       loadAll();
     }
 
-    function loadAll() { loadStats(); loadPosts(); }
+    async function confirmSchedule(id, mode) {
+      updateScheduleDraft(id);
+      const value = scheduleEditorState[id]?.value;
+      if (!value) {
+        alert('Choisis une date et une heure d’abord.');
+        return;
+      }
+
+      await api('/api/posts/' + id + '/' + mode, 'POST', { scheduledFor: value });
+      delete scheduleEditorState[id];
+      loadAll();
+    }
+
+    async function spreadScheduled() {
+      await api('/api/schedule/spread', 'POST');
+      loadAll();
+    }
+
+    function hasOpenScheduleEditor() {
+      return Object.values(scheduleEditorState).some((state) => state && state.open);
+    }
+
+    function updateAutoRefreshBadge() {
+      const badge = document.getElementById('auto-refresh');
+      if (!badge) return;
+      badge.textContent = hasOpenScheduleEditor() ? 'Rafraîchissement auto : PAUSE' : 'Rafraîchissement auto : ACTIF';
+    }
+
+    function setActiveView(view) {
+      activeView = view;
+      document.getElementById('tab-posts').classList.toggle('active', view === 'posts');
+      document.getElementById('tab-calendar').classList.toggle('active', view === 'calendar');
+      document.getElementById('view-posts').classList.toggle('active', view === 'posts');
+      document.getElementById('view-calendar').classList.toggle('active', view === 'calendar');
+      if (view === 'calendar') loadCalendar();
+      if (view === 'posts') loadPosts();
+    }
+
+    function changeCalendarWeek(offset) {
+      currentWeekStart = addDays(currentWeekStart, offset * 7);
+      if (activeView === 'calendar') loadCalendar();
+    }
+
+    function jumpToCurrentWeek() {
+      currentWeekStart = getStartOfWeek(new Date());
+      if (activeView === 'calendar') loadCalendar();
+    }
+
+    function openPostFromCalendar(postId) {
+      setActiveView('posts');
+      scheduleEditorState[postId] = scheduleEditorState[postId] || { open: true, value: '' };
+      scheduleEditorState[postId].open = true;
+      updateAutoRefreshBadge();
+      loadPosts();
+      setTimeout(() => {
+        const target = document.getElementById('schedule-date-' + postId) || document.getElementById('posts');
+        if (target && typeof target.scrollIntoView === 'function') {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 30);
+    }
+
+    function loadAll() {
+      updateAutoRefreshBadge();
+      loadStats();
+      if (activeView === 'calendar') {
+        loadCalendar();
+        return;
+      }
+      loadPosts();
+    }
     loadAll();
-    setInterval(loadAll, 15000);
+    setInterval(() => {
+      if (hasOpenScheduleEditor()) return;
+      loadAll();
+    }, 15000);
   </script>
 </body>
 </html>`;

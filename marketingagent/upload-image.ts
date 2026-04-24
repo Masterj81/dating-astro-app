@@ -7,6 +7,7 @@
 
 import { readFileSync, existsSync } from "fs";
 import { basename, extname } from "path";
+import { fetchWithTimeout } from "./lib.js";
 
 const MIME_TYPES: Record<string, string> = {
   ".png": "image/png",
@@ -45,10 +46,11 @@ export async function uploadImageToSupabase(localPath: string): Promise<string |
     // Strip trailing slash from URL if present
     const baseUrl = supabaseUrl.replace(/\/$/, "");
 
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${baseUrl}/storage/v1/object/marketing-images/${uniqueName}`,
       {
         method: "POST",
+        timeoutMs: 30_000,
         headers: {
           Authorization: `Bearer ${serviceRoleKey}`,
           "Content-Type": mime,

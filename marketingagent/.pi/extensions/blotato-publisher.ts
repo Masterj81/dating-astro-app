@@ -10,6 +10,7 @@
  */
 
 import { ensurePublicUrl } from "../../upload-image.js";
+import { fetchWithTimeout } from "../../lib.js";
 
 const BLOTATO_API_URL = "https://backend.blotato.com/v2/posts";
 
@@ -79,8 +80,9 @@ export async function publish(options: PublishOptions): Promise<PublishResult> {
         (postBody.post as Record<string, unknown>).scheduledTime = options.scheduledFor;
       }
 
-      const response = await fetch(BLOTATO_API_URL, {
+      const response = await fetchWithTimeout(BLOTATO_API_URL, {
         method: "POST",
+        timeoutMs: 30_000,
         headers: {
           "blotato-api-key": apiKey,
           "Content-Type": "application/json",

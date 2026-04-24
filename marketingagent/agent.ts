@@ -1,8 +1,8 @@
 import "dotenv/config";
 import Anthropic from "@anthropic-ai/sdk";
-import { readFileSync, writeFileSync, existsSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { ensurePublicUrl } from "./upload-image.js";
-import { schedulePostServer } from "./schedule-server.js";
+import { atomicWriteJson, fetchWithTimeout } from "./lib.js";
 
 // ── Config ──────────────────────────────────────────────────────────
 const BANNED_WORDS = [
@@ -157,7 +157,7 @@ function saveMemory(memory: Memory): void {
   // Keep only last 20 entries to prevent bloat
   memory.recentTopics = memory.recentTopics.slice(-20);
   memory.recentPosts = memory.recentPosts.slice(-20);
-  writeFileSync(MEMORY_FILE, JSON.stringify(memory, null, 2));
+  atomicWriteJson(MEMORY_FILE, memory);
 }
 
 function getAnthropicStatus(err: unknown): number | undefined {
@@ -189,7 +189,7 @@ async function generatePost(
     max_tokens: 300,
     messages: [
       {
-        role: "user",
+        role: "user" as const,
         content: `You are a social media copywriter for AstroDating — a dating app that uses real birth chart astrology (synastry) to match people.
 
 Write ONE short, punchy social media post (max 280 chars) about: "${topic}"
@@ -322,10 +322,14 @@ interface BlotaToResult {
   error?: string;
 }
 
-async function postToBlotato(
+async function submitToBlotato(
   text: string,
-  platforms: string[] = ["facebook", "instagram"],
+  platforms: string[],
   imageUrl?: string,
+  options?: {
+    useNextFreeSlot?: boolean;
+    scheduledTime?: Date;
+  },
 ): Promise<BlotaToResult> {
   const apiKey = process.env.BLOTATO_API_KEY;
   if (!apiKey) {
@@ -364,8 +368,9 @@ async function postToBlotato(
         target.pageId = fbPageId;
       }
 
-      const response = await fetch(BLOTATO_API_URL, {
+      const response = await fetchWithTimeout(BLOTATO_API_URL, {
         method: "POST",
+        timeoutMs: 30_000,
         headers: {
           "blotato-api-key": apiKey,
           "Content-Type": "application/json",
@@ -376,7 +381,11 @@ async function postToBlotato(
             content: { text, mediaUrls: imageUrl ? [imageUrl] : [], platform },
             target,
           },
-          useNextFreeSlot: true,
+          ...(options?.scheduledTime
+            ? { scheduledTime: options.scheduledTime.toISOString() }
+            : options?.useNextFreeSlot
+              ? { useNextFreeSlot: true }
+              : {}),
         }),
       });
 
@@ -408,6 +417,22 @@ async function postToBlotato(
   }
 }
 
+async function postToBlotato(
+  text: string,
+  platforms: string[] = ["facebook", "instagram"],
+  imageUrl?: string,
+): Promise<BlotaToResult> {
+  return submitToBlotato(text, platforms, imageUrl);
+}
+
+async function sendDraftToBlotato(
+  text: string,
+  platforms: string[] = ["facebook", "instagram"],
+  imageUrl?: string,
+): Promise<BlotaToResult> {
+  return submitToBlotato(text, platforms, imageUrl, { useNextFreeSlot: true });
+}
+
 // ── Blotato native scheduling (no Supabase cron required) ──────────
 async function scheduleToBlotato(
   text: string,
@@ -415,78 +440,7 @@ async function scheduleToBlotato(
   platforms: string[] = ["facebook", "instagram"],
   imageUrl?: string,
 ): Promise<BlotaToResult> {
-  const apiKey = process.env.BLOTATO_API_KEY;
-  if (!apiKey) return { success: false, error: "BLOTATO_API_KEY not set" };
-
-  const fbPageId = process.env.BLOTATO_FB_PAGE_ID;
-  imageUrl = await ensurePublicUrl(imageUrl);
-
-  try {
-    const results: { platform: string; success: boolean; postId?: string; error?: string }[] = [];
-
-    for (const platform of platforms) {
-      const accountId = platform === 'instagram'
-        ? process.env.BLOTATO_IG_ACCOUNT_ID
-        : process.env.BLOTATO_FB_ACCOUNT_ID;
-      if (!accountId) {
-        results.push({ platform, success: false, error: `BLOTATO_${platform === 'instagram' ? 'IG' : 'FB'}_ACCOUNT_ID not set` });
-        continue;
-      }
-
-      if (platform === 'instagram' && !imageUrl) {
-        results.push({ platform, success: false, error: 'Instagram requires an image — skipped' });
-        continue;
-      }
-
-      const target: Record<string, string> = { targetType: platform };
-      if (platform === "facebook") {
-        if (!fbPageId) {
-          results.push({ platform, success: false, error: "BLOTATO_FB_PAGE_ID not set" });
-          continue;
-        }
-        target.pageId = fbPageId;
-      }
-
-      const response = await fetch(BLOTATO_API_URL, {
-        method: "POST",
-        headers: {
-          "blotato-api-key": apiKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          post: {
-            accountId,
-            content: { text, mediaUrls: imageUrl ? [imageUrl] : [], platform },
-            target,
-          },
-          scheduledTime: scheduledTime.toISOString(),
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        results.push({ platform, success: false, error: `Blotato API ${response.status}: ${errorText}` });
-        continue;
-      }
-
-      const data = await response.json();
-      results.push({ platform, success: true, postId: data.postSubmissionId || data.id || data.postId || "unknown" });
-    }
-
-    const allFailed = results.every((r) => !r.success);
-    const firstSuccess = results.find((r) => r.success);
-    const errors = results.filter((r) => !r.success).map((r) => `${r.platform}: ${r.error}`);
-
-    if (allFailed) return { success: false, error: `All platforms failed — ${errors.join("; ")}` };
-
-    return {
-      success: true,
-      postId: firstSuccess?.postId,
-      ...(errors.length > 0 ? { error: `Partial failure — ${errors.join("; ")}` } : {}),
-    };
-  } catch (err) {
-    return { success: false, error: `Network error: ${(err as Error).message}` };
-  }
+  return submitToBlotato(text, platforms, imageUrl, { scheduledTime });
 }
 
 // ── Persistence ─────────────────────────────────────────────────────
@@ -512,13 +466,18 @@ function loadPosts(): SavedPost[] {
 }
 
 function savePosts(posts: SavedPost[]): void {
-  writeFileSync(POSTS_FILE, JSON.stringify(posts, null, 2));
+  atomicWriteJson(POSTS_FILE, posts);
+}
+
+function nextPostId(posts: SavedPost[]): number {
+  // posts.length+1 collides if any post was deleted; use max(id)+1 instead.
+  return posts.reduce((max, p) => (p.id > max ? p.id : max), 0) + 1;
 }
 
 function savePost(topic: string, text: string, score: number): SavedPost {
   const posts = loadPosts();
   const entry: SavedPost = {
-    id: posts.length + 1,
+    id: nextPostId(posts),
     topic,
     text,
     aiScore: score,
@@ -530,9 +489,60 @@ function savePost(topic: string, text: string, score: number): SavedPost {
   return entry;
 }
 
+async function syncDraftToBlotatoNextSlot(
+  postId: number,
+  platforms?: string[],
+): Promise<SavedPost | undefined> {
+  const posts = loadPosts();
+  const target = posts.find((p) => p.id === postId);
+
+  if (!target) {
+    console.error(`Post #${postId} not found for Blotato sync.`);
+    return undefined;
+  }
+
+  if (!process.env.BLOTATO_API_KEY) {
+    console.log("⚠️  BLOTATO_API_KEY not set — keeping draft only in posts.json");
+    return target;
+  }
+
+  const draftPlatforms = platforms ?? (target.imagePath ? ["facebook", "instagram"] : ["facebook"]);
+
+  console.log(`\n🗂️ Sending draft #${target.id} to Blotato (next free slot)`);
+  console.log(`   Platforms: ${draftPlatforms.join(", ")}`);
+  if (!target.imagePath && draftPlatforms.includes("instagram")) {
+    console.log("   ⚠️  No image attached — Instagram may be skipped by Blotato");
+  }
+
+  const result = await sendDraftToBlotato(target.text, draftPlatforms, target.imagePath);
+
+  if (!result.success) {
+    console.log(`   ⚠️  Blotato sync skipped: ${result.error}`);
+    return target;
+  }
+
+  target.status = "scheduled";
+  target.blotato = {
+    postId: result.postId,
+    platforms: draftPlatforms,
+    ...(result.error ? { error: result.error } : {}),
+  };
+  savePosts(posts);
+
+  console.log(`   ✅ Draft queued in Blotato. Submission ID: ${result.postId}`);
+  if (result.error) {
+    console.log(`   ⚠️  ${result.error}`);
+  }
+
+  return target;
+}
+
 // ── Commands ────────────────────────────────────────────────────────
 
-async function cmdGenerate(topic: string) {
+async function cmdGenerate(
+  topic: string,
+  options?: { syncDraftToBlotato?: boolean },
+) {
   if (!process.env.ANTHROPIC_API_KEY) {
     console.error("Error: Set ANTHROPIC_API_KEY environment variable");
     process.exit(1);
@@ -559,6 +569,9 @@ async function cmdGenerate(topic: string) {
       memory.totalGenerated++;
       saveMemory(memory);
       console.log(`\n✅ Approved! Saved as post #${saved.id} → ${POSTS_FILE}`);
+      if (options?.syncDraftToBlotato !== false) {
+        return await syncDraftToBlotatoNextSlot(saved.id) ?? saved;
+      }
       return saved;
     }
 
@@ -588,7 +601,7 @@ async function cmdPost(postId?: number) {
     process.exit(1);
   }
 
-  console.log(`\n📤 Publishing post #${target.id}: "${target.text}"\n`);
+  console.log(`\n📤 Publishing immediately for post #${target.id}: "${target.text}"\n`);
 
   const result = await postToBlotato(target.text, ["facebook", "instagram"], target.imagePath);
 
@@ -603,7 +616,7 @@ async function cmdPost(postId?: number) {
     const memory = loadMemory();
     memory.lastPosted = new Date().toISOString();
     saveMemory(memory);
-    console.log(`✅ Posted! Blotato ID: ${result.postId}`);
+    console.log(`✅ Published now! Blotato ID: ${result.postId}`);
     return target;
   } else {
     target.status = "failed";
@@ -644,7 +657,7 @@ async function cmdImage(postId?: number, variantCount?: number): Promise<SavedPo
   const posts = loadPosts();
   const target = postId
     ? posts.find((p) => p.id === postId)
-    : posts.filter((p) => p.status === "approved" && !p.imagePath).pop();
+    : posts.filter((p) => ["approved", "scheduled"].includes(p.status) && !p.imagePath).pop();
 
   if (!target) {
     console.error("No approved post without image found.");
@@ -679,7 +692,10 @@ async function cmdImage(postId?: number, variantCount?: number): Promise<SavedPo
   return undefined;
 }
 
-async function cmdViral(sourceArg: string) {
+async function cmdViral(
+  sourceArg: string,
+  options?: { syncDraftToBlotato?: boolean },
+) {
   if (!process.env.ANTHROPIC_API_KEY) {
     console.error("Error: Set ANTHROPIC_API_KEY environment variable");
     process.exit(1);
@@ -715,6 +731,9 @@ async function cmdViral(sourceArg: string) {
       memory.totalGenerated++;
       saveMemory(memory);
       console.log(`\n✅ Approved! Saved as post #${saved.id} → ${POSTS_FILE}`);
+      if (options?.syncDraftToBlotato !== false) {
+        return await syncDraftToBlotatoNextSlot(saved.id) ?? saved;
+      }
       return saved;
     }
 
@@ -728,12 +747,12 @@ async function cmdViral(sourceArg: string) {
 }
 
 async function cmdViralAndPost(sourceArg: string) {
-  const saved = await cmdViral(sourceArg);
+  const saved = await cmdViral(sourceArg, { syncDraftToBlotato: false });
   if (saved) {
     console.log("\n--- Auto-generating image ---");
     await cmdImage(saved.id);
-    console.log("\n--- Auto-scheduling ---");
-    await schedulePostServer(saved.id, "next");
+    console.log("\n--- Syncing full draft to Blotato ---");
+    await syncDraftToBlotatoNextSlot(saved.id, ["facebook", "instagram"]);
   }
 }
 
@@ -790,12 +809,12 @@ async function cmdBlotatoSchedule(postId?: number, dateArg: string = "next") {
 }
 
 async function cmdGenerateAndPost(topic: string) {
-  const saved = await cmdGenerate(topic);
+  const saved = await cmdGenerate(topic, { syncDraftToBlotato: false });
   if (saved) {
     console.log("\n--- Auto-generating image ---");
     await cmdImage(saved.id);
-    console.log("\n--- Auto-scheduling ---");
-    await schedulePostServer(saved.id, "next");
+    console.log("\n--- Syncing full draft to Blotato ---");
+    await syncDraftToBlotatoNextSlot(saved.id, ["facebook", "instagram"]);
   }
 }
 
@@ -874,10 +893,10 @@ AstroDating Marketing Agent
 Commands:
   npm run agent -- generate "<topic>"        Generate short post (≤280 chars)
   npm run agent -- viral "<source-or-file>"  Generate long-form viral FB post
-  npm run agent -- post [id]                 Publish to Blotato (latest approved or by ID)
+  npm run agent -- post [id]                 Publish immediately to Blotato (latest approved or by ID)
   npm run agent -- image [id]                Generate image for a post (Gemini)
-  npm run agent -- auto "<topic>"            Generate short + image + schedule
-  npm run agent -- viral-auto "<source>"     Generate viral + image + schedule
+  npm run agent -- auto "<topic>"            Generate short + image + send draft to next Blotato slot
+  npm run agent -- viral-auto "<source>"     Generate viral + image + send draft to next Blotato slot
   npm run agent -- blotato-schedule <id> "<when>"  Schedule directly in Blotato (no Supabase cron)
   npm run agent -- list                      Show all posts
 `);
