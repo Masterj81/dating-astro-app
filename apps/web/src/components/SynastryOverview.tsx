@@ -202,9 +202,24 @@ export function SynastryOverview() {
           throw profileError;
         }
 
-        const response = payload as
-          | { success?: boolean; profile?: any; chart?: any; error?: string }
-          | null;
+        type ChartPlanet = { sign?: string | null };
+        type ChartPlanets = Record<"venus" | "mars" | "mercury" | "saturn", ChartPlanet | undefined>;
+        type ProfileChartResponse = {
+          success?: boolean;
+          profile?: {
+            id: string;
+            name?: string | null;
+            sun_sign?: string | null;
+            moon_sign?: string | null;
+            rising_sign?: string | null;
+            image_url?: string | null;
+            images?: string[] | null;
+          };
+          chart?: { planets?: ChartPlanets } | null;
+          error?: string;
+        };
+
+        const response = payload as ProfileChartResponse | null;
 
         if (!response?.success || !response.profile) {
           throw new Error(response?.error || t("unknownError"));
@@ -213,16 +228,16 @@ export function SynastryOverview() {
         const c = response.chart;
         setMatchProfile({
           id: response.profile.id,
-          name: response.profile.name,
-          sun_sign: response.profile.sun_sign,
-          moon_sign: response.profile.moon_sign,
-          rising_sign: response.profile.rising_sign,
+          name: response.profile.name ?? null,
+          sun_sign: response.profile.sun_sign ?? null,
+          moon_sign: response.profile.moon_sign ?? null,
+          rising_sign: response.profile.rising_sign ?? null,
           venus_sign: c?.planets?.venus?.sign ?? null,
           mars_sign: c?.planets?.mars?.sign ?? null,
           mercury_sign: c?.planets?.mercury?.sign ?? null,
           saturn_sign: c?.planets?.saturn?.sign ?? null,
-          image_url: response.profile.image_url,
-          images: response.profile.images,
+          image_url: response.profile.image_url ?? null,
+          images: response.profile.images ?? null,
         });
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : t("unknownError"));
