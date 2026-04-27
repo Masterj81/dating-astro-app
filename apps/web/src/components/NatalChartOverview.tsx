@@ -190,11 +190,9 @@ export function NatalChartOverview() {
 
         setServerGate({ allowed: true, reason: "ok" });
 
-        const { data, error: profileError } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", account.userId)
-          .maybeSingle();
+        // Phase 3-B: own profile via SECURITY DEFINER RPC (sensitive fields).
+        const { data: rows, error: profileError } = await supabase.rpc("get_my_full_profile");
+        const data = Array.isArray(rows) ? rows[0] : null;
 
         if (profileError) {
           throw profileError;

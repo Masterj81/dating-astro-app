@@ -159,7 +159,9 @@ export function DatePlannerOverview() {
         const supabase = getSupabaseBrowser();
         const { data, error: profileError } = await supabase
           .from("discoverable_profiles")
-          .select("*")
+          .select(
+            "id, name, age, sun_sign, moon_sign, rising_sign, bio, image_url, images, gender, interests, is_verified, has_voice_intro, voice_intro_url, last_active, created_at, current_city"
+          )
           .eq("id", activeMatch.matched_user_id)
           .maybeSingle();
 

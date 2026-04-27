@@ -1,0 +1,31 @@
+-- Drop the orphaned handle_new_user function and its auth.users trigger.
+--
+-- Audit (2026-04-27) found:
+--   - public.handle_new_user() exists in prod but NOT in this repo.
+--   - It is attached via trigger `on_auth_user_created` on auth.users.
+--   - Its body inserts (id, name, photos) into public.profiles.
+--   - This duplicates the work done by handle_new_auth_user_profile()
+--     (see 20260319_create_profiles_on_auth_signup.sql), which is a
+--     strict superset (also writes email + gender, with ON CONFLICT
+--     handling).
+--
+-- The drift was likely created via Studio SQL editor before the repo
+-- migration was authored, and never cleaned up. Removing it eliminates
+-- a SECURITY DEFINER function exposed to PUBLIC/anon/authenticated and
+-- lets the linter pass.
+--
+-- PRE-FLIGHT CHECK (run manually before applying this migration):
+--
+--   SELECT t.tgname, c.relname, p.proname
+--   FROM pg_trigger t
+--   JOIN pg_class c ON c.oid = t.tgrelid
+--   JOIN pg_proc  p ON p.oid = t.tgfoid
+--   WHERE NOT t.tgisinternal
+--     AND c.relname = 'users'
+--     AND t.tgname  = 'trigger_create_profile_on_auth_signup';
+--
+-- The repo trigger MUST be active in prod before dropping the drift —
+-- otherwise new signups would not get a profiles row.
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS public.handle_new_user();

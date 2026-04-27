@@ -65,11 +65,9 @@ export default function ProfileScreen() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user?.id)
-        .maybeSingle();
+      // Phase 3-B: own full profile via SECURITY DEFINER RPC.
+      const { data: rows, error } = await supabase.rpc('get_my_full_profile');
+      const data = Array.isArray(rows) ? rows[0] : null;
 
       if (error) {
         console.error('Error loading profile:', error);

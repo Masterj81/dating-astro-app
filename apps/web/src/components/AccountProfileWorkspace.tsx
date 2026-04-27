@@ -176,11 +176,9 @@ const getAgeFromBirthDate = (birthDate: string) => {
 async function ensureWebProfileExists(session: Session) {
   const supabase = getSupabaseBrowser();
 
-  const { data: existingProfile, error: selectError } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", session.user.id)
-    .maybeSingle();
+  // Phase 3-B: own profile via SECURITY DEFINER RPC.
+  const { data: rows, error: selectError } = await supabase.rpc("get_my_full_profile");
+  const existingProfile = Array.isArray(rows) ? rows[0] : null;
 
   if (selectError) {
     throw selectError;

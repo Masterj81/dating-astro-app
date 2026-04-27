@@ -14,8 +14,37 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PremiumGate from '../../components/PremiumGate';
 import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { calculateNatalChart } from '../../services/astrology';
+import { signDegreeToLongitude } from '../../services/astrologyCore';
+import { BirthChart, CompatibilityScore, calculateQuickCompatibility, calculateSynastry } from '../../services/astrologyService';
+import { buildSynastryAspects, buildSynastryCategories, SynastryAspect, SynastryCategory } from '../../services/synastryPresentation';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+
+type Profile = {
+  id: string;
+  name?: string | null;
+  sun_sign?: string | null;
+  moon_sign?: string | null;
+  rising_sign?: string | null;
+  venus_sign?: string | null;
+  mars_sign?: string | null;
+  mercury_sign?: string | null;
+  saturn_sign?: string | null;
+  image_url?: string | null;
+  images?: string[] | null;
+  birth_date?: string | null;
+  birth_time?: string | null;
+  birth_latitude?: number | null;
+  birth_longitude?: number | null;
+};
+
+type CompatibilityArea = {
+  area: string;
+  score: number;
+  emoji: string;
+  description: string;
+};
 
 type AspectType = {
   planet1Key: string;
@@ -27,13 +56,6 @@ type AspectType = {
   descriptionKey: string;
 };
 
-type CompatibilityArea = {
-  area: string;
-  score: number;
-  emoji: string;
-  description: string;
-};
-
 type SynastryContentProps = {
   onLoadingChange?: (loading: boolean) => void;
 };
@@ -41,8 +63,11 @@ type SynastryContentProps = {
 function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
   const { matchId } = useLocalSearchParams<{ matchId: string }>();
   const [loading, setLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [matchProfile, setMatchProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<Profile | null>(null);
+  const [matchProfile, setMatchProfile] = useState<Profile | null>(null);
+  const [userChart, setUserChart] = useState<BirthChart | null>(null);
+  const [matchChart, setMatchChart] = useState<BirthChart | null>(null);
+  const [compatibility, setCompatibility] = useState<CompatibilityScore | null>(null);
   const { user } = useAuth();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
@@ -79,35 +104,121 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
     setLoading(true);
 
     try {
-      // Load user's profile
-      const { data: userData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
+      const [ownResult, matchesResult] = await Promise.all([
+        supabase.rpc('get_my_full_profile'),
+        matchId ? Promise.resolve({ data: null, error: null }) : supabase.rpc('get_user_matches', { p_user_id: user.id }),
+      ]);
 
-      if (userData) {
-        setUserProfile(userData);
+      if (ownResult.error) throw ownResult.error;
+      if (matchesResult.error) throw matchesResult.error;
+
+      const ownData = Array.isArray(ownResult.data) ? ownResult.data[0] : null;
+      if (!ownData) {
+        setUserProfile(null);
+        setMatchProfile(null);
+        setCompatibility(null);
+        return;
       }
 
-      // Load match's profile if matchId provided
-      if (matchId) {
-        const { data: matchData } = await supabase
-          .from('discoverable_profiles')
-          .select('*')
-          .eq('id', matchId)
-          .maybeSingle();
+      setUserProfile(ownData as Profile);
 
-        if (matchData) {
-          setMatchProfile(matchData);
+      const fallbackMatchId =
+        !matchId && Array.isArray(matchesResult.data) && matchesResult.data.length > 0
+          ? matchesResult.data[0]?.matched_user_id
+          : null;
+      const targetUserId = matchId || fallbackMatchId;
+
+      if (!targetUserId) {
+        setMatchProfile(null);
+        setMatchChart(null);
+        setCompatibility(null);
+        return;
+      }
+
+      const { data: matchPayload, error: matchErr } = await supabase.functions.invoke(
+        'get-profile-chart',
+        { body: { targetUserId } },
+      );
+      if (matchErr) throw matchErr;
+
+      const payload = matchPayload as
+        | { success?: boolean; profile?: Profile; chart?: any; error?: string }
+        | null;
+      if (!payload?.success || !payload.profile) {
+        throw new Error(payload?.error || 'Match profile not found');
+      }
+
+      setMatchProfile(payload.profile);
+
+      let builtUserChart: BirthChart | null = null;
+      if (ownData.birth_date) {
+        const [year, month, day] = String(ownData.birth_date).split('-').map(Number);
+        if (year && month && day) {
+          const birthDate = new Date(year, month - 1, day);
+          const localChart = calculateNatalChart(
+            birthDate,
+            ownData.birth_time,
+            ownData.birth_latitude || 45.5,
+            ownData.birth_longitude || -73.5,
+          );
+          builtUserChart = {
+            sun: { longitude: localChart.sun.longitude ?? signDegreeToLongitude(localChart.sun), sign: localChart.sun.sign, degree: localChart.sun.degree },
+            moon: { longitude: localChart.moon.longitude ?? signDegreeToLongitude(localChart.moon), sign: localChart.moon.sign, degree: localChart.moon.degree },
+            rising: { longitude: localChart.rising.longitude ?? signDegreeToLongitude(localChart.rising), sign: localChart.rising.sign, degree: localChart.rising.degree },
+            planets: {
+              mercury: { longitude: localChart.mercury.longitude ?? signDegreeToLongitude(localChart.mercury), sign: localChart.mercury.sign, degree: localChart.mercury.degree },
+              venus: { longitude: localChart.venus.longitude ?? signDegreeToLongitude(localChart.venus), sign: localChart.venus.sign, degree: localChart.venus.degree },
+              mars: { longitude: localChart.mars.longitude ?? signDegreeToLongitude(localChart.mars), sign: localChart.mars.sign, degree: localChart.mars.degree },
+              jupiter: { longitude: localChart.jupiter.longitude ?? signDegreeToLongitude(localChart.jupiter), sign: localChart.jupiter.sign, degree: localChart.jupiter.degree },
+              saturn: { longitude: localChart.saturn.longitude ?? signDegreeToLongitude(localChart.saturn), sign: localChart.saturn.sign, degree: localChart.saturn.degree },
+            },
+            coordinates: {
+              latitude: ownData.birth_latitude || 45.5,
+              longitude: ownData.birth_longitude || -73.5,
+            },
+            julianDay: 0,
+          };
         }
+      }
+
+      let builtMatchChart: BirthChart | null = null;
+      if (payload.chart) {
+        const c = payload.chart;
+        builtMatchChart = {
+          sun: c.sun,
+          moon: c.moon,
+          rising: c.rising,
+          planets: {
+            mercury: c.planets?.mercury,
+            venus: c.planets?.venus,
+            mars: c.planets?.mars,
+            jupiter: c.planets?.jupiter,
+            saturn: c.planets?.saturn,
+          },
+          coordinates: c.coordinates ?? { latitude: 0, longitude: 0 },
+          julianDay: 0,
+        };
+      }
+
+      setUserChart(builtUserChart);
+      setMatchChart(builtMatchChart);
+
+      if (builtUserChart && builtMatchChart) {
+        const fullCompatibility = await calculateSynastry(builtUserChart, builtMatchChart);
+        setCompatibility(fullCompatibility);
       } else {
-        // Demo profile for display
-        setMatchProfile({
-          name: 'Luna',
-          sun_sign: 'Pisces',
-          moon_sign: 'Cancer',
-          rising_sign: 'Scorpio',
+        const quickScore = calculateQuickCompatibility(
+          ownData.sun_sign || 'Aries',
+          payload.profile.sun_sign || 'Aries',
+        );
+        setCompatibility({
+          overall: quickScore,
+          emotional: quickScore,
+          communication: quickScore,
+          passion: quickScore,
+          longTerm: quickScore,
+          values: quickScore,
+          growth: quickScore,
         });
       }
     } catch (err) {
@@ -127,8 +238,10 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
       Sagittarius: 'fire', Capricorn: 'earth', Aquarius: 'air', Pisces: 'water',
     };
 
-    const el1 = elements[userProfile.sun_sign] || 'fire';
-    const el2 = elements[matchProfile.sun_sign] || 'water';
+    const userSunSign = userProfile.sun_sign || 'Aries';
+    const matchSunSign = matchProfile.sun_sign || 'Pisces';
+    const el1 = elements[userSunSign] || 'fire';
+    const el2 = elements[matchSunSign] || 'water';
 
     const compatibility: Record<string, Record<string, number>> = {
       fire: { fire: 85, earth: 55, air: 92, water: 45 },
@@ -234,14 +347,41 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
   const getInfluenceColor = (influence: string): string => {
     switch (influence) {
       case 'harmonious': return '#4ade80';
+      case 'intense': return '#fbbf24';
       case 'challenging': return '#f87171';
       default: return '#fbbf24';
     }
   };
 
   // Memoize before any early returns to respect React hooks rules
-  const overallScore = useMemo(() => calculateOverallScore(), [userProfile, matchProfile]); // eslint-disable-line react-hooks/exhaustive-deps
-  const areas = useMemo(() => getCompatibilityAreas(), [t]); // eslint-disable-line react-hooks/exhaustive-deps
+  const overallScore = useMemo(() => compatibility?.overall ?? calculateOverallScore(), [compatibility, userProfile, matchProfile]); // eslint-disable-line react-hooks/exhaustive-deps
+  const areas = useMemo<SynastryCategory[]>(
+    () => {
+      const built = buildSynastryCategories(userChart, matchChart, compatibility, t);
+      return built.length > 0
+        ? built
+        : getCompatibilityAreas().map((area) => ({
+            name: area.area,
+            score: area.score,
+            icon: area.emoji,
+            description: area.description,
+          }));
+    },
+    [userChart, matchChart, compatibility, t],
+  ); // eslint-disable-line react-hooks/exhaustive-deps
+  const legacyAspects = useMemo<SynastryAspect[]>(
+    () => {
+      const built = buildSynastryAspects(userChart, matchChart, compatibility, t);
+      return built.length > 0
+        ? built
+        : getAspects().map((aspect) => ({
+            title: `${t(aspect.planet1Key)} (${t(aspect.sign1.toLowerCase()) || aspect.sign1}) • ${t(aspect.planet2Key)} (${t(aspect.sign2.toLowerCase()) || aspect.sign2})`,
+            type: aspect.influence === 'neutral' ? 'intense' : aspect.influence,
+            description: t(aspect.descriptionKey) || aspect.descriptionKey,
+          }));
+    },
+    [userChart, matchChart, compatibility, t, userProfile, matchProfile],
+  ); // eslint-disable-line react-hooks/exhaustive-deps
   const aspects = useMemo(() => getAspects(), [userProfile, matchProfile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fallbacks for web where SafeAreaProvider may not work
@@ -317,8 +457,8 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
         {areas.map((area, index) => (
           <View key={index} style={styles.areaCard}>
             <View style={styles.areaHeader}>
-              <Text style={styles.areaEmoji}>{area.emoji}</Text>
-              <Text style={styles.areaName}>{area.area}</Text>
+              <Text style={styles.areaEmoji}>{area.icon}</Text>
+              <Text style={styles.areaName}>{area.name}</Text>
               <Text style={styles.areaScore}>{area.score}%</Text>
             </View>
             <View style={styles.progressBar}>

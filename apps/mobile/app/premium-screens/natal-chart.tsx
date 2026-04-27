@@ -132,14 +132,19 @@ function NatalChartScreenContent() {
 
       setServerGate({ allowed: true, reason: 'ok' });
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('sun_sign, moon_sign, rising_sign, birth_date, birth_time, birth_city')
-        .eq('id', user.id)
-        .maybeSingle();
+      // Phase 3-B: own profile (with sensitive birth fields) via RPC.
+      const { data: rows, error } = await supabase.rpc('get_my_full_profile');
+      const data = Array.isArray(rows) ? rows[0] : null;
 
       if (!error && data) {
-        setChartData(data);
+        setChartData({
+          sun_sign: data.sun_sign,
+          moon_sign: data.moon_sign,
+          rising_sign: data.rising_sign,
+          birth_date: data.birth_date,
+          birth_time: data.birth_time,
+          birth_city: data.birth_city,
+        });
       }
     } catch (err) {
       console.error('Error loading natal chart data:', err);

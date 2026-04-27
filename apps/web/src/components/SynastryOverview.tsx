@@ -135,9 +135,12 @@ export function SynastryOverview() {
         }
 
         const supabase = getSupabaseBrowser();
-        const [{ data: me, error: meError }, { data: matchRows, error: matchesError }] =
+        // Phase 3-B: own profile via SECURITY DEFINER RPC (auth.uid() applied
+        // internally, robust to future column-level REVOKEs). Also fetch
+        // matches in parallel.
+        const [{ data: ownRows, error: meError }, { data: matchRows, error: matchesError }] =
           await Promise.all([
-            supabase.from("profiles").select("*").eq("id", account.userId).maybeSingle(),
+            supabase.rpc("get_my_full_profile"),
             supabase.rpc("get_user_matches", {
               p_user_id: account.userId,
             }),
@@ -150,8 +153,21 @@ export function SynastryOverview() {
           throw matchesError;
         }
 
+        const ownData = Array.isArray(ownRows) ? ownRows[0] : null;
         const nextMatches = (matchRows as MatchRow[]) || [];
-        setSelfProfile((me as SynastryProfile | null) || null);
+        setSelfProfile(
+          ownData
+            ? ({
+                id: ownData.id,
+                name: ownData.name,
+                sun_sign: ownData.sun_sign,
+                moon_sign: ownData.moon_sign,
+                rising_sign: ownData.rising_sign,
+                image_url: ownData.image_url,
+                images: ownData.images,
+              } as SynastryProfile)
+            : null
+        );
         setMatches(nextMatches);
         setSelectedMatchId(nextMatches[0]?.match_id || null);
       } catch (loadError) {
@@ -174,17 +190,40 @@ export function SynastryOverview() {
       try {
         setLoadingProfile(true);
         const supabase = getSupabaseBrowser();
-        const { data, error: profileError } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", activeMatch.matched_user_id)
-          .maybeSingle();
+        // Phase 3-B: match profile + chart via edge function. The function
+        // reads the target via service_role and returns a sanitized payload —
+        // birth_time, birth_date, raw lat/long, email are NEVER included.
+        const { data: payload, error: profileError } = await supabase.functions.invoke(
+          "get-profile-chart",
+          { body: { targetUserId: activeMatch.matched_user_id } }
+        );
 
         if (profileError) {
           throw profileError;
         }
 
-        setMatchProfile((data as SynastryProfile | null) || null);
+        const response = payload as
+          | { success?: boolean; profile?: any; chart?: any; error?: string }
+          | null;
+
+        if (!response?.success || !response.profile) {
+          throw new Error(response?.error || t("unknownError"));
+        }
+
+        const c = response.chart;
+        setMatchProfile({
+          id: response.profile.id,
+          name: response.profile.name,
+          sun_sign: response.profile.sun_sign,
+          moon_sign: response.profile.moon_sign,
+          rising_sign: response.profile.rising_sign,
+          venus_sign: c?.planets?.venus?.sign ?? null,
+          mars_sign: c?.planets?.mars?.sign ?? null,
+          mercury_sign: c?.planets?.mercury?.sign ?? null,
+          saturn_sign: c?.planets?.saturn?.sign ?? null,
+          image_url: response.profile.image_url,
+          images: response.profile.images,
+        });
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : t("unknownError"));
       } finally {

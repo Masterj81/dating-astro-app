@@ -478,11 +478,9 @@ export default function BirthInfoScreen() {
       }
 
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('birth_date, birth_time, birth_city, looking_for, gender')
-          .eq('id', user.id)
-          .maybeSingle();
+        // Phase 3-B: own profile via SECURITY DEFINER RPC.
+        const { data: rows, error } = await supabase.rpc('get_my_full_profile');
+        const data = Array.isArray(rows) ? rows[0] : null;
 
         if (data && !error) {
           if (data.birth_date) {

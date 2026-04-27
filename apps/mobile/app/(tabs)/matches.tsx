@@ -263,7 +263,9 @@ export default function MatchesScreen() {
 
         const { data: profile } = await supabase
           .from('discoverable_profiles')
-          .select('*')
+          .select(
+            'id, name, age, sun_sign, moon_sign, rising_sign, bio, image_url, images, gender, interests, is_verified, has_voice_intro, voice_intro_url, last_active, created_at, current_city'
+          )
           .eq('id', otherUserId)
           .maybeSingle();
 

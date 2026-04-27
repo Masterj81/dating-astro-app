@@ -183,16 +183,15 @@ function DatePlannerContent() {
     setLoading(true);
 
     try {
-      // Load user's birth chart
-      const { data: userProfile } = await supabase
-        .from('profiles')
-        .select('birth_date, birth_time, birth_latitude, birth_longitude')
-        .eq('id', user.id)
-        .maybeSingle();
+      // Phase 3-B: own profile via SECURITY DEFINER RPC; match chart via
+      // edge function (server computes the chart, never returns birth_*).
+      const { data: ownRows, error: ownErr } = await supabase.rpc('get_my_full_profile');
+      if (ownErr) throw ownErr;
+      const userProfile = Array.isArray(ownRows) ? ownRows[0] : null;
 
       let userChart: BirthChart | undefined;
       if (userProfile?.birth_date) {
-        const [year, month, day] = userProfile.birth_date.split('-').map(Number);
+        const [year, month, day] = String(userProfile.birth_date).split('-').map(Number);
         const birthDate = new Date(year, month - 1, day);
         const localChart = calculateNatalChart(
           birthDate,
@@ -216,38 +215,35 @@ function DatePlannerContent() {
         } as BirthChart;
       }
 
-      // Load match's birth chart if provided
+      // Match chart — server-computed via get-profile-chart edge function.
       let matchChart: BirthChart | undefined;
       if (matchId) {
-        const { data: matchProfile } = await supabase
-          .from('profiles')
-          .select('name, birth_date, birth_time, birth_latitude, birth_longitude')
-          .eq('id', matchId)
-          .maybeSingle();
+        const { data: matchPayload, error: matchErr } = await supabase.functions.invoke(
+          'get-profile-chart',
+          { body: { targetUserId: matchId } },
+        );
+        if (matchErr) throw matchErr;
 
-        if (matchProfile) {
-          setMatchName(matchProfile.name);
-          if (matchProfile.birth_date) {
-            const [year, month, day] = matchProfile.birth_date.split('-').map(Number);
-            const birthDate = new Date(year, month - 1, day);
-            const localChart = calculateNatalChart(
-              birthDate,
-              matchProfile.birth_time,
-              matchProfile.birth_latitude || 45.5,
-              matchProfile.birth_longitude || -73.5
-            );
+        const payload = matchPayload as
+          | { success?: boolean; profile?: { name?: string }; chart?: any; error?: string }
+          | null;
+
+        if (payload?.success && payload.profile) {
+          setMatchName(payload.profile.name ?? null);
+          if (payload.chart) {
+            const c = payload.chart;
             matchChart = {
-              sun: { ...localChart.sun, longitude: localChart.sun.longitude },
-              moon: { ...localChart.moon, longitude: localChart.moon.longitude },
-              rising: { ...localChart.rising, longitude: localChart.rising.longitude },
+              sun: c.sun,
+              moon: c.moon,
+              rising: c.rising,
               planets: {
-                mercury: { ...localChart.mercury, longitude: localChart.mercury.longitude },
-                venus: { ...localChart.venus, longitude: localChart.venus.longitude },
-                mars: { ...localChart.mars, longitude: localChart.mars.longitude },
-                jupiter: { ...localChart.jupiter, longitude: localChart.jupiter.longitude },
-                saturn: { ...localChart.saturn, longitude: localChart.saturn.longitude },
+                mercury: c.planets?.mercury,
+                venus: c.planets?.venus,
+                mars: c.planets?.mars,
+                jupiter: c.planets?.jupiter,
+                saturn: c.planets?.saturn,
               },
-              coordinates: { latitude: matchProfile.birth_latitude || 45.5, longitude: matchProfile.birth_longitude || -73.5 },
+              coordinates: c.coordinates ?? { latitude: 0, longitude: 0 },
               julianDay: 0,
             } as BirthChart;
           }

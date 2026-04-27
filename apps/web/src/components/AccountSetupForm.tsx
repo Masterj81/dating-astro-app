@@ -157,13 +157,10 @@ const getAgeFromBirthDate = (birthDate: string) => {
 async function ensureWebProfileExists(session: Session) {
   const supabase = getSupabaseBrowser();
 
-  const { data: existingProfile, error: selectError } = await supabase
-    .from("profiles")
-    .select(
-      "id, name, gender, birth_date, birth_time, birth_city, birth_chart, birth_latitude, birth_longitude, sun_sign, moon_sign, rising_sign, looking_for, min_age, max_age, max_distance, preferred_elements, onboarding_completed"
-    )
-    .eq("id", session.user.id)
-    .maybeSingle();
+  // Phase 3-B: own profile via SECURITY DEFINER RPC. Reads sensitive birth_*
+  // and survives Phase 3-C column-level REVOKEs.
+  const { data: rows, error: selectError } = await supabase.rpc("get_my_full_profile");
+  const existingProfile = Array.isArray(rows) ? rows[0] : null;
 
   if (selectError) {
     throw selectError;

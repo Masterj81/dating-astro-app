@@ -12,26 +12,32 @@ import {
   CompatibilityScore,
   getElement,
   getZodiacEmoji,
-  calculateQuickCompatibility
+  calculateQuickCompatibility,
+  calculateSynastry,
 } from '../../services/astrologyService';
 import { calculateNatalChart, calculateCompatibility } from '../../services/astrology';
 import { signDegreeToLongitude } from '../../services/astrologyCore';
+import { buildSynastryAspects, buildSynastryCategories } from '../../services/synastryPresentation';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
+// Profile is union-typed: own profile (from get_my_full_profile RPC) carries
+// birth_*; match profile (from get-profile-chart edge function) does NOT.
+// Birth fields are optional so the UI can accept either source. The natal
+// chart for the match is computed server-side and stored in `matchChart`.
 type Profile = {
   id: string;
   name: string;
   sun_sign: string;
   moon_sign: string;
   rising_sign: string;
-  birth_date: string;
-  birth_time: string;
-  birth_city: string;
-  birth_latitude: number;
-  birth_longitude: number;
-  birth_chart: BirthChart | null;
   image_url: string;
+  birth_date?: string;
+  birth_time?: string;
+  birth_city?: string;
+  birth_latitude?: number;
+  birth_longitude?: number;
+  birth_chart?: BirthChart | null;
 };
 
 type Category = {
@@ -315,58 +321,52 @@ export default function MatchDetailScreen() {
       setLoading(true);
       setError(null);
 
-      // Fetch both profiles
-      const [matchResult, userResult] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', id).maybeSingle(),
-        supabase.from('profiles').select('*').eq('id', user?.id).maybeSingle(),
+      // Phase 3-B: own profile via SECURITY DEFINER RPC (bypasses any
+      // future column-level REVOKEs, auth.uid() applied internally).
+      // Match profile + computed natal chart via the get-profile-chart
+      // edge function — never returns the target's birth_time / lat / long.
+      const [ownResult, matchResult] = await Promise.all([
+        supabase.rpc('get_my_full_profile'),
+        supabase.functions.invoke('get-profile-chart', {
+          body: { targetUserId: id },
+        }),
       ]);
 
+      if (ownResult.error) throw ownResult.error;
       if (matchResult.error) throw matchResult.error;
-      if (userResult.error) throw userResult.error;
-      if (!matchResult.data || !userResult.data) {
-        throw new Error('Profile not found');
+
+      const ownData = Array.isArray(ownResult.data) ? ownResult.data[0] : null;
+      const matchPayload = matchResult.data as
+        | { success?: boolean; profile?: any; chart?: any; error?: string }
+        | null;
+
+      if (!ownData) throw new Error('Own profile not found');
+      if (!matchPayload?.success || !matchPayload.profile) {
+        throw new Error(matchPayload?.error || 'Match profile not found');
       }
 
-      setMatchProfile(matchResult.data);
-      setUserProfile(userResult.data);
+      setUserProfile(ownData as Profile);
+      setMatchProfile(matchPayload.profile as Profile);
 
-      // Use local calculation (works offline, no Edge Function needed)
-      let localChart1 = null;
-      let localChart2 = null;
-
-      // User's chart - use local calculation
-      if (userResult.data.birth_date && typeof userResult.data.birth_date === 'string') {
-        const parts = userResult.data.birth_date.split('-').map(Number);
-        const [year, month, day] = parts;
+      // User's chart — calculate locally from own birth fields (offline-safe).
+      let localChart1: any = null;
+      let chart1: BirthChart | null = null;
+      let chart2: BirthChart | null = null;
+      if (ownData.birth_date && typeof ownData.birth_date === 'string') {
+        const [year, month, day] = String(ownData.birth_date).split('-').map(Number);
         if (year && month && day && !isNaN(year) && !isNaN(month) && !isNaN(day)) {
           const birthDate = new Date(year, month - 1, day);
           localChart1 = calculateNatalChart(
             birthDate,
-            userResult.data.birth_time,
-            userResult.data.birth_latitude || 45.5,
-            userResult.data.birth_longitude || -73.5
+            ownData.birth_time,
+            ownData.birth_latitude || 45.5,
+            ownData.birth_longitude || -73.5
           );
         }
       }
 
-      // Match's chart - use local calculation
-      if (matchResult.data.birth_date && typeof matchResult.data.birth_date === 'string') {
-        const parts = matchResult.data.birth_date.split('-').map(Number);
-        const [year, month, day] = parts;
-        if (year && month && day && !isNaN(year) && !isNaN(month) && !isNaN(day)) {
-          const birthDate = new Date(year, month - 1, day);
-          localChart2 = calculateNatalChart(
-            birthDate,
-            matchResult.data.birth_time,
-            matchResult.data.birth_latitude || 45.5,
-            matchResult.data.birth_longitude || -73.5
-          );
-        }
-      }
-
-      // Convert local chart format to BirthChart format for display
       if (localChart1) {
-        const chart1: BirthChart = {
+        chart1 = {
           sun: { longitude: localChart1.sun.longitude ?? signDegreeToLongitude(localChart1.sun), sign: localChart1.sun.sign, degree: localChart1.sun.degree },
           moon: { longitude: localChart1.moon.longitude ?? signDegreeToLongitude(localChart1.moon), sign: localChart1.moon.sign, degree: localChart1.moon.degree },
           rising: { longitude: localChart1.rising.longitude ?? signDegreeToLongitude(localChart1.rising), sign: localChart1.rising.sign, degree: localChart1.rising.degree },
@@ -377,54 +377,64 @@ export default function MatchDetailScreen() {
             jupiter: { longitude: localChart1.jupiter.longitude ?? signDegreeToLongitude(localChart1.jupiter), sign: localChart1.jupiter.sign, degree: localChart1.jupiter.degree },
             saturn: { longitude: localChart1.saturn.longitude ?? signDegreeToLongitude(localChart1.saturn), sign: localChart1.saturn.sign, degree: localChart1.saturn.degree },
           },
-          coordinates: { latitude: userResult.data.birth_latitude || 45.5, longitude: userResult.data.birth_longitude || -73.5 },
+          coordinates: { latitude: ownData.birth_latitude || 45.5, longitude: ownData.birth_longitude || -73.5 },
           julianDay: 0
         };
         setUserChart(chart1);
       }
 
-      if (localChart2) {
-        const chart2: BirthChart = {
-          sun: { longitude: localChart2.sun.longitude ?? signDegreeToLongitude(localChart2.sun), sign: localChart2.sun.sign, degree: localChart2.sun.degree },
-          moon: { longitude: localChart2.moon.longitude ?? signDegreeToLongitude(localChart2.moon), sign: localChart2.moon.sign, degree: localChart2.moon.degree },
-          rising: { longitude: localChart2.rising.longitude ?? signDegreeToLongitude(localChart2.rising), sign: localChart2.rising.sign, degree: localChart2.rising.degree },
+      // Match's chart — already computed server-side. Adapt to BirthChart for
+      // UI and to the flat planets format expected by calculateCompatibility.
+      let matchFlatChart: any = null;
+      if (matchPayload.chart) {
+        const c = matchPayload.chart;
+        matchFlatChart = {
+          sun: c.sun,
+          moon: c.moon,
+          rising: c.rising,
+          mercury: c.planets?.mercury,
+          venus: c.planets?.venus,
+          mars: c.planets?.mars,
+          jupiter: c.planets?.jupiter,
+          saturn: c.planets?.saturn,
+        };
+
+        chart2 = {
+          sun: c.sun,
+          moon: c.moon,
+          rising: c.rising,
           planets: {
-            mercury: { longitude: localChart2.mercury.longitude ?? signDegreeToLongitude(localChart2.mercury), sign: localChart2.mercury.sign, degree: localChart2.mercury.degree },
-            venus: { longitude: localChart2.venus.longitude ?? signDegreeToLongitude(localChart2.venus), sign: localChart2.venus.sign, degree: localChart2.venus.degree },
-            mars: { longitude: localChart2.mars.longitude ?? signDegreeToLongitude(localChart2.mars), sign: localChart2.mars.sign, degree: localChart2.mars.degree },
-            jupiter: { longitude: localChart2.jupiter.longitude ?? signDegreeToLongitude(localChart2.jupiter), sign: localChart2.jupiter.sign, degree: localChart2.jupiter.degree },
-            saturn: { longitude: localChart2.saturn.longitude ?? signDegreeToLongitude(localChart2.saturn), sign: localChart2.saturn.sign, degree: localChart2.saturn.degree },
+            mercury: c.planets?.mercury,
+            venus: c.planets?.venus,
+            mars: c.planets?.mars,
+            jupiter: c.planets?.jupiter,
+            saturn: c.planets?.saturn,
           },
-          coordinates: { latitude: matchResult.data.birth_latitude || 45.5, longitude: matchResult.data.birth_longitude || -73.5 },
+          coordinates: c.coordinates ?? { latitude: 0, longitude: 0 },
           julianDay: 0
         };
         setMatchChart(chart2);
       }
 
-      // Calculate compatibility using local function
-      if (localChart1 && localChart2) {
-        const overallScore = calculateCompatibility(localChart1, localChart2);
-        // Generate individual scores based on element compatibility
-        const emotional = calculateQuickCompatibility(localChart1.moon.sign, localChart2.moon.sign);
-        const communication = calculateQuickCompatibility(localChart1.mercury.sign, localChart2.mercury.sign);
-        const passion = calculateQuickCompatibility(localChart1.venus.sign, localChart2.mars.sign);
-        const longTerm = calculateQuickCompatibility(localChart1.saturn.sign, localChart2.saturn.sign);
-        const values = calculateQuickCompatibility(localChart1.venus.sign, localChart2.venus.sign);
-        const growth = calculateQuickCompatibility(localChart1.jupiter.sign, localChart2.jupiter.sign);
-
+      // Calculate compatibility from the two charts.
+      if (localChart1 && matchFlatChart && chart1 && chart2) {
+        const fullCompatibility = await calculateSynastry(chart1, chart2);
+        // Keep the existing local overall calculator as a fallback sanity
+        // anchor if the server returns an incomplete payload.
+        const localOverallScore = calculateCompatibility(localChart1, matchFlatChart);
         setCompatibility({
-          overall: overallScore,
-          emotional,
-          communication,
-          passion,
-          longTerm,
-          values,
-          growth
+          overall: fullCompatibility.overall ?? localOverallScore,
+          emotional: fullCompatibility.emotional ?? localOverallScore,
+          communication: fullCompatibility.communication ?? localOverallScore,
+          passion: fullCompatibility.passion ?? localOverallScore,
+          longTerm: fullCompatibility.longTerm ?? localOverallScore,
+          values: fullCompatibility.values ?? localOverallScore,
+          growth: fullCompatibility.growth ?? localOverallScore,
         });
       } else {
-        // Fallback: use sun signs only
-        const userSun = userResult.data.sun_sign || 'Aries';
-        const matchSun = matchResult.data.sun_sign || 'Aries';
+        // Fallback: sun signs only.
+        const userSun = ownData.sun_sign || 'Aries';
+        const matchSun = matchPayload.profile.sun_sign || 'Aries';
         const quickScore = calculateQuickCompatibility(userSun, matchSun);
         setCompatibility({
           overall: quickScore,
@@ -456,11 +466,11 @@ export default function MatchDetailScreen() {
   };
 
   const categories = useMemo(
-    () => generateCategoryDescriptions(userChart, matchChart, compatibility, t),
+    () => buildSynastryCategories(userChart, matchChart, compatibility, t),
     [userChart, matchChart, compatibility, t]
   );
   const aspects = useMemo(
-    () => generateAspectDescriptions(userChart, matchChart, compatibility, t),
+    () => buildSynastryAspects(userChart, matchChart, compatibility, t),
     [userChart, matchChart, compatibility, t]
   );
 

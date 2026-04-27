@@ -53,12 +53,14 @@ export default function SettingsScreen() {
     if (!user) return;
     (async () => {
       try {
+        // Phase 3-B: notification_preferences read via SECURITY DEFINER RPC.
         const [prefsResult, referralResult] = await Promise.all([
-          supabase.from('profiles').select('notification_preferences').eq('id', user.id).maybeSingle(),
+          supabase.rpc('get_my_full_profile'),
           getReferralStats(user.id),
         ]);
-        if (prefsResult.data?.notification_preferences) {
-          const prefs = prefsResult.data.notification_preferences;
+        const prefsRow = Array.isArray(prefsResult.data) ? prefsResult.data[0] : null;
+        if (prefsRow?.notification_preferences) {
+          const prefs = prefsRow.notification_preferences;
           setNotifications(prev => ({ ...prev, ...prefs }));
         }
         setReferralCode(referralResult.code);

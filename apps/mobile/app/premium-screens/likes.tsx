@@ -62,7 +62,9 @@ function LikesScreenContent() {
           try {
             const { data: profile } = await supabase
               .from('discoverable_profiles')
-              .select('*')
+              .select(
+                'id, name, age, sun_sign, moon_sign, rising_sign, bio, image_url, images, is_verified, has_voice_intro, voice_intro_url, last_active'
+              )
               .eq('id', swipe.swiper_id)
               .maybeSingle();
 

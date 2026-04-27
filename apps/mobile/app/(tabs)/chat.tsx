@@ -92,7 +92,9 @@ export default function ChatListScreen() {
       // Fetch all other user profiles in one query
       supabase
         .from('discoverable_profiles')
-        .select('*')
+        .select(
+          'id, name, age, sun_sign, moon_sign, rising_sign, bio, image_url, images, gender, interests, is_verified, has_voice_intro, voice_intro_url, last_active, created_at, current_city'
+        )
         .in('id', otherUserIds),
       // Fetch recent messages for all matches in one query (sorted newest first)
       supabase
