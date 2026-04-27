@@ -10,28 +10,63 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please check your .env.local file.');
 }
 
-// Secure storage adapter for native (iOS/Android)
+// Lazy/safe Sentry wrapper — only loaded on native, never crashes if Sentry
+// is missing. Used to surface SecureStore failures (see setItem below).
+const reportStorageFailure = (
+  op: 'getItem' | 'setItem' | 'removeItem',
+  key: string,
+  error: unknown,
+  valueBytes?: number,
+): void => {
+  try {
+    if (Platform.OS !== 'web') {
+      const Sentry = require('@sentry/react-native');
+      Sentry.captureException(error, {
+        tags: { area: 'auth-storage', op },
+        extra: { key, valueBytes },
+      });
+    }
+  } catch {
+    // Sentry not available — no-op.
+  }
+  if (__DEV__) {
+    console.warn(`[Storage] SecureStore.${op} FAILED`, {
+      key,
+      bytes: valueBytes,
+      error: (error as Error)?.message,
+    });
+  }
+};
+
+// Secure storage adapter for native (iOS/Android).
+//
+// IMPORTANT: iOS Keychain has a ~2KB limit per item. Supabase session
+// payloads can exceed this for users with large provider tokens (e.g.
+// Google Workspace accounts with many claims). Without surfacing the
+// failure, those users silently lose their session at next cold start.
+// We log to Sentry under the `auth-storage` tag so we can detect the
+// pattern in production.
 const SecureStoreAdapter = {
   getItem: async (key: string): Promise<string | null> => {
     try {
       return await SecureStore.getItemAsync(key);
-    } catch {
+    } catch (error) {
+      reportStorageFailure('getItem', key, error);
       return null;
     }
   },
   setItem: async (key: string, value: string): Promise<void> => {
     try {
       await SecureStore.setItemAsync(key, value);
-    } catch {
-      // SecureStore has a 2KB limit — silently fail in production
-      if (__DEV__) console.warn('SecureStore failed, value may be too large');
+    } catch (error) {
+      reportStorageFailure('setItem', key, error, value?.length);
     }
   },
   removeItem: async (key: string): Promise<void> => {
     try {
       await SecureStore.deleteItemAsync(key);
-    } catch {
-      // Ignore errors on delete
+    } catch (error) {
+      reportStorageFailure('removeItem', key, error);
     }
   },
 };
