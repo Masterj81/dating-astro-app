@@ -225,36 +225,29 @@ export default function DiscoverScreen() {
 
     try {
       const fetchedProfiles = await withRetry(async () => {
-        // Try to use the RPC function for filtered profiles first
-        if (user) {
-          const { data: rpcData, error: rpcError } = await supabase
-            .rpc('get_discoverable_profiles', { p_user_id: user.id, p_limit: 50 });
-
-          if (!rpcError && rpcData && rpcData.length > 0) {
-            return rpcData;
-          }
+        // Use the RPC function for filtered profiles. The RPC enforces
+        // gender preference matching (bidirectional) — see migration
+        // 20260428000001_fix_discover_gender_filter.sql. Falling back to a
+        // raw `discoverable_profiles` view query would silently leak profiles
+        // that do not match the viewer's looking_for, which is exactly the
+        // bug we are fixing. So: an RPC error is a hard failure, and an
+        // empty deck is a legitimate "no more profiles for this viewer".
+        if (!user) {
+          return [];
         }
 
-        // Fallback to direct table query
-        let query = supabase
-          .from('discoverable_profiles')
-          .select(
-            'id, name, age, sun_sign, moon_sign, rising_sign, bio, image_url, images, gender, interests, is_verified, has_voice_intro, voice_intro_url, last_active, created_at, current_city'
-          )
-          .order('created_at', { ascending: false });
+        const { data: rpcData, error: rpcError } = await supabase
+          .rpc('get_discoverable_profiles', { p_user_id: user.id, p_limit: 50 });
 
-        // Exclude current user's profile
-        if (user) {
-          query = query.neq('id', user.id);
+        if (rpcError) {
+          throw rpcError;
         }
 
-        const { data, error } = await query;
-
-        if (error) {
-          throw error;
-        }
-
-        return data || [];
+        // Defensive client-side guard: if a stale build of the server returns
+        // any profile equal to the current user, drop it. The RPC already
+        // excludes self, but we double-check to keep the deck safe across
+        // server/client deploy skew.
+        return (rpcData || []).filter((profile: { id: string }) => profile.id !== user.id);
       });
 
       setProfiles(fetchedProfiles);
