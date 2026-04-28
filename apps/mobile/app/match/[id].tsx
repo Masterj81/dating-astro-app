@@ -19,6 +19,7 @@ import { calculateNatalChart, calculateCompatibility } from '../../services/astr
 import { signDegreeToLongitude } from '../../services/astrologyCore';
 import { buildSynastryAspects, buildSynastryCategories } from '../../services/synastryPresentation';
 import { supabase } from '../../services/supabase';
+import { startConversationWith } from '../../services/conversations';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Profile is union-typed: own profile (from get_my_full_profile RPC) carries
@@ -455,14 +456,21 @@ export default function MatchDetailScreen() {
     }
   };
 
-  const handleSendMessage = () => {
-    // For premium feature, check access
-    if (!isPremium) {
-      triggerPaywall('priority-messages');
-      return;
+  // Conversation-first: messaging is free. We mint or fetch a conversation
+  // through the SECURITY DEFINER RPC and navigate to the chat.
+  const handleSendMessage = async () => {
+    if (!id) return;
+    try {
+      const conversationId = await startConversationWith(id);
+      router.push(`/chat/${conversationId}`);
+    } catch (err: any) {
+      console.error('Could not start conversation:', err);
+      setError(err?.message || t('startConversationFailed') || 'Could not start conversation.');
     }
-    // Navigate to chat or create match first
-    router.push(`/chat/${id}`);
+  };
+
+  const handleFindCompatibility = () => {
+    triggerPaywall('synastry');
   };
 
   const categories = useMemo(
@@ -544,7 +552,7 @@ export default function MatchDetailScreen() {
                   targetUserId={matchProfile.id}
                   targetUserName={matchProfile.name}
                   showUnmatch={false}
-                  onBlock={() => router.replace('/(tabs)/matches')}
+                  onBlock={() => router.replace('/(tabs)/discover')}
                 />
               )}
             </View>
@@ -562,12 +570,37 @@ export default function MatchDetailScreen() {
           </View>
         )}
 
-        {/* Overall Score */}
+        {/* Overall Score — premium-gated. Free users see a paywall CTA
+            instead of the % so the compatibility number is no longer
+            broadcast for free across the product. */}
         <View style={styles.scoreSection}>
-          <ScoreRing score={compatibility?.overall || 0} loading={loading} label={t('overallCompatibility')} t={t} />
-          <Text style={styles.subtitle}>
-            {t('synastrySubtitle')}
-          </Text>
+          {isPremium ? (
+            <>
+              <ScoreRing score={compatibility?.overall || 0} loading={loading} label={t('overallCompatibility')} t={t} />
+              <Text style={styles.subtitle}>
+                {t('synastrySubtitle')}
+              </Text>
+            </>
+          ) : (
+            <TouchableOpacity
+              style={styles.findCompatibilityCard}
+              onPress={handleFindCompatibility}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.findCompatibilityIcon}>{'✨'}</Text>
+              <Text style={styles.findCompatibilityTitle}>
+                {t('findYourCompatibility') || 'Find your compatibility'}
+              </Text>
+              <Text style={styles.findCompatibilitySubtitle}>
+                {t('findYourCompatibilitySubtitle') || 'Unlock the full synastry breakdown — emotional, communication, passion, long-term and more.'}
+              </Text>
+              <View style={styles.findCompatibilityButton}>
+                <Text style={styles.findCompatibilityButtonText}>
+                  {t('viewAllPlans') || 'See plans'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Category Breakdown */}
@@ -680,7 +713,7 @@ export default function MatchDetailScreen() {
         <View style={styles.actions}>
           <TouchableOpacity style={styles.messageButton} onPress={handleSendMessage}>
             <Text style={styles.messageButtonEmoji}>💬</Text>
-            <Text style={styles.messageButtonText}>{t('sendFirstMessage') || 'Send a Message'}</Text>
+            <Text style={styles.messageButtonText}>{t('sendMessage') || 'Send a Message'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.datePlannerButton}
@@ -1227,5 +1260,47 @@ const styles = StyleSheet.create({
     color: AppTheme.colors.textSecondary,
     lineHeight: 19,
     fontStyle: 'italic',
+  },
+  // Premium-gated compatibility CTA (replaces visible % for free users).
+  findCompatibilityCard: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+    borderRadius: AppTheme.radius.xl,
+    backgroundColor: 'rgba(124, 108, 255, 0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(124, 108, 255, 0.28)',
+  },
+  findCompatibilityIcon: {
+    fontSize: 36,
+    marginBottom: 10,
+  },
+  findCompatibilityTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: AppTheme.colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  findCompatibilitySubtitle: {
+    fontSize: 13,
+    color: AppTheme.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: 18,
+    maxWidth: 320,
+  },
+  findCompatibilityButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    borderRadius: AppTheme.radius.pill,
+    backgroundColor: AppTheme.colors.cosmic,
+  },
+  findCompatibilityButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+    letterSpacing: 0.3,
   },
 });

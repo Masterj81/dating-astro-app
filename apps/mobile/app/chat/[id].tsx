@@ -26,11 +26,13 @@ import { useAuth } from '../../contexts/AuthContext';
 
 type Message = {
   id: string;
-  match_id: string;
+  conversation_id?: string | null;
+  match_id?: string | null;
   sender_id: string;
   content: string;
   created_at: string;
-  read: boolean;
+  is_read?: boolean;
+  read?: boolean;
   // P2-4: UI-only status for optimistic/pending messages.
   // Server-fetched messages have undefined pendingStatus and behave as before.
   pendingStatus?: 'sending' | 'failed';
@@ -39,11 +41,13 @@ type Message = {
   clientId?: string;
 };
 
-type MatchInfo = {
+// In conversation-first messaging, the route id is now a conversation id.
+// We keep the variable name `conversationId` everywhere internally; the
+// match concept has no remaining product meaning.
+type ConversationInfo = {
   id: string;
-  user1_id: string;
-  user2_id: string;
-  compatibility_score?: number;
+  user_a: string;
+  user_b: string;
   other_user: {
     id: string;
     name: string;
@@ -55,12 +59,12 @@ type MatchInfo = {
 };
 
 export default function ChatScreen() {
-  const { id: matchId } = useLocalSearchParams<{ id: string }>();
+  const { id: conversationId } = useLocalSearchParams<{ id: string }>();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [matchInfo, setMatchInfo] = useState<MatchInfo | null>(null);
+  const [conversationInfo, setConversationInfo] = useState<ConversationInfo | null>(null);
   const flatListRef = useRef<FlatList>(null);
   // Q-L2: guard setState calls from the realtime subscription against writes
   // after unmount (can happen while the channel is still draining).
@@ -77,28 +81,30 @@ export default function ChatScreen() {
   }, []);
 
   const markMessagesAsRead = useCallback(async () => {
-    if (!matchId || !user) return;
+    if (!conversationId || !user) return;
     try {
+      // is_read is the canonical column on messages; older code wrote `read`
+      // but the schema column is is_read.
       await supabase
         .from('messages')
-        .update({ read: true })
-        .eq('match_id', matchId)
+        .update({ is_read: true, read_at: new Date().toISOString() })
+        .eq('conversation_id', conversationId)
         .neq('sender_id', user.id)
-        .eq('read', false);
+        .eq('is_read', false);
     } catch (err) {
       console.error('Error marking messages as read:', err);
     }
-  }, [matchId, user]);
+  }, [conversationId, user]);
 
   useEffect(() => {
-    if (matchId && user) {
-      loadMatchInfo();
+    if (conversationId && user) {
+      loadConversationInfo();
       loadMessages();
       const unsubscribe = subscribeToMessages();
       return () => { unsubscribe(); };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
-  }, [matchId, user]);
+  }, [conversationId, user]);
 
   // Mark messages as read when screen comes into focus (e.g. returning from background)
   useEffect(() => {
@@ -110,20 +116,19 @@ export default function ChatScreen() {
     return () => subscription.remove();
   }, [markMessagesAsRead]);
 
-  const loadMatchInfo = async () => {
+  const loadConversationInfo = async () => {
     try {
-      const { data: match, error } = await supabase
-        .from('matches')
-        .select('*')
-        .eq('id', matchId)
+      const { data: conv, error } = await supabase
+        .from('conversations')
+        .select('id, user_a, user_b')
+        .eq('id', conversationId)
         .maybeSingle();
 
-      if (error || !match) {
+      if (error || !conv) {
         return;
       }
 
-      // Get the other user's profile
-      const otherUserId = match.user1_id === user?.id ? match.user2_id : match.user1_id;
+      const otherUserId = conv.user_a === user?.id ? conv.user_b : conv.user_a;
 
       const { data: profile } = await supabase
         .from('discoverable_profiles')
@@ -133,8 +138,10 @@ export default function ChatScreen() {
         .eq('id', otherUserId)
         .maybeSingle();
 
-      setMatchInfo({
-        ...match,
+      setConversationInfo({
+        id: conv.id,
+        user_a: conv.user_a,
+        user_b: conv.user_b,
         other_user: profile || {
           id: otherUserId,
           name: t('unknown'),
@@ -143,7 +150,7 @@ export default function ChatScreen() {
         },
       });
     } catch (err) {
-      console.error('Error loading match info:', err);
+      console.error('Error loading conversation info:', err);
     }
   };
 
@@ -154,7 +161,7 @@ export default function ChatScreen() {
       const { data, error } = await supabase
         .from('messages')
         .select('*')
-        .eq('match_id', matchId)
+        .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
 
       if (error) {
@@ -173,14 +180,14 @@ export default function ChatScreen() {
 
   const subscribeToMessages = () => {
     const subscription = supabase
-      .channel(`messages:${matchId}`)
+      .channel(`messages:${conversationId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
-          filter: `match_id=eq.${matchId}`,
+          filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
           // Q-L2: drop events that arrive after unmount.
@@ -226,11 +233,11 @@ export default function ChatScreen() {
   // P2-4: core insert helper — returns true on success.
   const insertMessage = useCallback(
     async (content: string): Promise<boolean> => {
-      if (!user || !matchId) return false;
+      if (!user || !conversationId) return false;
       try {
         await withRetry(async () => {
           const { error } = await supabase.from('messages').insert({
-            match_id: matchId,
+            conversation_id: conversationId,
             sender_id: user.id,
             content,
           });
@@ -242,11 +249,11 @@ export default function ChatScreen() {
         return false;
       }
     },
-    [user, matchId]
+    [user, conversationId]
   );
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !user || !matchId) return;
+    if (!newMessage.trim() || !user || !conversationId) return;
     if (!throttleAction('sendMessage', 1000)) return;
 
     const messageContent = newMessage.trim();
@@ -259,11 +266,11 @@ export default function ChatScreen() {
     const optimistic: Message = {
       id: clientId,
       clientId,
-      match_id: matchId,
+      conversation_id: conversationId,
       sender_id: user.id,
       content: messageContent,
       created_at: new Date().toISOString(),
-      read: false,
+      is_read: false,
       pendingStatus: 'sending',
     };
 
@@ -386,40 +393,34 @@ export default function ChatScreen() {
         </TouchableOpacity>
 
         <Image
-          source={{ uri: resolveProfileImage(matchInfo?.other_user) }}
+          source={{ uri: resolveProfileImage(conversationInfo?.other_user) }}
           style={styles.headerImage}
         />
 
         <TouchableOpacity
           style={styles.headerInfo}
           onPress={() => {
-            if (matchInfo?.other_user?.id) {
-              router.push(`/match/${matchInfo.other_user.id}`);
+            if (conversationInfo?.other_user?.id) {
+              router.push(`/match/${conversationInfo.other_user.id}`);
             }
           }}
           activeOpacity={0.7}
         >
-          <Text style={styles.headerName}>{matchInfo?.other_user?.name || t('chat')}</Text>
+          <Text style={styles.headerName}>{conversationInfo?.other_user?.name || t('chat')}</Text>
           <View style={styles.headerMeta}>
-            <Text style={styles.headerSign}>☀️ {matchInfo?.other_user?.sun_sign || '?'}</Text>
-            {matchInfo?.compatibility_score && (
-              <View style={styles.headerCompatBadge}>
-                <Text style={styles.headerCompatText}>
-                  {t('chatCompatibility', { score: matchInfo.compatibility_score }) || `${matchInfo.compatibility_score}% compatible`}
-                </Text>
-              </View>
-            )}
+            <Text style={styles.headerSign}>☀️ {conversationInfo?.other_user?.sun_sign || '?'}</Text>
+            {/* Compatibility % is intentionally hidden in chat — replaced by a paywall CTA on the profile detail screen. */}
           </View>
         </TouchableOpacity>
 
-        {user && matchInfo?.other_user && (
+        {user && conversationInfo?.other_user && (
           <BlockReportMenu
             userId={user.id}
-            targetUserId={matchInfo.other_user.id}
-            targetUserName={matchInfo.other_user.name}
-            matchId={matchInfo.id}
-            onBlock={() => router.replace('/(tabs)/matches')}
-            onUnmatch={() => router.replace('/(tabs)/matches')}
+            targetUserId={conversationInfo.other_user.id}
+            targetUserName={conversationInfo.other_user.name}
+            onBlock={() => router.replace('/(tabs)/chat')}
+            onUnmatch={() => router.replace('/(tabs)/chat')}
+            showUnmatch={false}
           />
         )}
       </View>
@@ -434,15 +435,15 @@ export default function ChatScreen() {
           <View style={styles.emptyChat}>
             <Text style={styles.emptyChatEmoji}>💫</Text>
             <Text style={styles.emptyChatText}>{t('startCosmicConversation')}</Text>
-            <Text style={styles.emptyChatSubtext}>{t('sayHelloTo', { name: matchInfo?.other_user?.name || '' })}</Text>
+            <Text style={styles.emptyChatSubtext}>{t('sayHelloTo', { name: conversationInfo?.other_user?.name || '' })}</Text>
 
             {/* Icebreaker suggestions */}
             <View style={styles.icebreakersContainer}>
               <Text style={styles.icebreakersTitle}>{t('chatIcebreaker')}</Text>
               {[
                 t('icebreaker1') || 'What got you into astrology?',
-                t('icebreaker2', { sign: matchInfo?.other_user?.sun_sign || '' }) || `Do you feel like a typical ${matchInfo?.other_user?.sun_sign || ''}?`,
-                t('icebreaker3', { sign: matchInfo?.other_user?.sun_sign || '' }) || `What's the most ${matchInfo?.other_user?.sun_sign || ''} thing about you?`,
+                t('icebreaker2', { sign: conversationInfo?.other_user?.sun_sign || '' }) || `Do you feel like a typical ${conversationInfo?.other_user?.sun_sign || ''}?`,
+                t('icebreaker3', { sign: conversationInfo?.other_user?.sun_sign || '' }) || `What's the most ${conversationInfo?.other_user?.sun_sign || ''} thing about you?`,
               ].map((icebreaker, idx) => (
                 <TouchableOpacity
                   key={idx}
