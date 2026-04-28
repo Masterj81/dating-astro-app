@@ -71,12 +71,16 @@ CREATE INDEX IF NOT EXISTS idx_messages_conversation_unread
 DO $$
 BEGIN
   -- For every existing match, ensure a conversation exists with the
-  -- ordered pair. We do NOT trust matches.user1_id < user2_id to be
-  -- enforced — defensive ordering with LEAST / GREATEST. Self-matches
-  -- (user1_id = user2_id) are excluded because they violate the new
-  -- conversations_ordered_users strict-inequality check; their
-  -- (presumably test) messages stay readable via the fallback branch
-  -- of the SELECT policy below.
+  -- ordered pair. Defensive guards (the legacy matches table has
+  -- looser invariants than we'd like):
+  --   * LEAST / GREATEST: do not trust matches.user1_id < user2_id.
+  --   * user1_id <> user2_id: skip self-match rows; they violate the
+  --     new conversations_ordered_users strict-inequality check.
+  --   * EXISTS profile join on both sides: skip matches that reference
+  --     deleted users (legacy matches did not have ON DELETE CASCADE
+  --     wired symmetrically, so prod has orphans). Their messages
+  --     stay readable via the legacy match_id branch of the SELECT
+  --     policy below.
   INSERT INTO public.conversations (user_a, user_b, last_message_at, created_at)
   SELECT LEAST(m.user1_id, m.user2_id),
          GREATEST(m.user1_id, m.user2_id),
@@ -84,11 +88,14 @@ BEGIN
          COALESCE(m.matched_at, m.created_at, NOW())
   FROM public.matches m
   WHERE m.user1_id <> m.user2_id
+    AND EXISTS (SELECT 1 FROM public.profiles p1 WHERE p1.id = m.user1_id)
+    AND EXISTS (SELECT 1 FROM public.profiles p2 WHERE p2.id = m.user2_id)
   ON CONFLICT (user_a, user_b) DO NOTHING;
 
   -- Wire each existing message to the conversation matching its match.
-  -- Same defensive ordering. Self-match messages keep conversation_id
-  -- = NULL and stay readable via the legacy match_id fallback policy.
+  -- Same defensive filters. Messages tied to skipped matches keep
+  -- conversation_id NULL and remain readable via the legacy match_id
+  -- fallback.
   UPDATE public.messages msg
   SET conversation_id = c.id
   FROM public.matches m
