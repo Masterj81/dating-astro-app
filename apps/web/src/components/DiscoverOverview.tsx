@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
@@ -20,94 +21,17 @@ type DiscoverProfile = {
   images?: string[] | null;
 };
 
-const ELEMENTS: Record<string, string> = {
-  aries: "fire",
-  leo: "fire",
-  sagittarius: "fire",
-  taurus: "earth",
-  virgo: "earth",
-  capricorn: "earth",
-  gemini: "air",
-  libra: "air",
-  aquarius: "air",
-  cancer: "water",
-  scorpio: "water",
-  pisces: "water",
-};
-
-const COMPATIBLE: Record<string, string> = {
-  fire: "air",
-  air: "fire",
-  earth: "water",
-  water: "earth",
-};
-
-const MODALITIES: Record<string, string> = {
-  aries: "cardinal", cancer: "cardinal", libra: "cardinal", capricorn: "cardinal",
-  taurus: "fixed", leo: "fixed", scorpio: "fixed", aquarius: "fixed",
-  gemini: "mutable", virgo: "mutable", sagittarius: "mutable", pisces: "mutable",
-};
-
-function calculateQuickCompatibility(sign1?: string | null, sign2?: string | null) {
-  if (!sign1 || !sign2) return 55;
-
-  const el1 = ELEMENTS[sign1.toLowerCase()];
-  const el2 = ELEMENTS[sign2.toLowerCase()];
-  if (!el1 || !el2) return 55;
-
-  let score: number;
-  if (el1 === el2) {
-    score = 85;
-  } else {
-    score = COMPATIBLE[el1] === el2 ? 75 : 55;
-  }
-
-  const mod1 = MODALITIES[sign1.toLowerCase()];
-  const mod2 = MODALITIES[sign2.toLowerCase()];
-  if (mod1 && mod2) {
-    if (mod1 === mod2) score += 5;
-    else if ((mod1 === "cardinal" && mod2 === "mutable") || (mod1 === "mutable" && mod2 === "cardinal")) score += 3;
-  }
-
-  return Math.min(score, 100);
-}
-
-function getCompatibilityTone(score: number) {
-  if (score >= 75) {
-    return {
-      card: "border-[rgba(74,222,128,0.24)] bg-[rgba(74,222,128,0.10)]",
-      badge:
-        "border-[rgba(74,222,128,0.22)] bg-[rgba(74,222,128,0.10)] text-[#a7f3c0]",
-      overlay: "border-white/15 bg-[rgba(12,32,20,0.65)] text-[#d1fae5]",
-    };
-  }
-
-  if (score >= 45) {
-    return {
-      card: "border-[rgba(250,204,21,0.24)] bg-[rgba(250,204,21,0.10)]",
-      badge:
-        "border-[rgba(250,204,21,0.22)] bg-[rgba(250,204,21,0.10)] text-[#fde68a]",
-      overlay: "border-white/15 bg-[rgba(41,32,9,0.7)] text-[#fef3c7]",
-    };
-  }
-
-  return {
-    card: "border-[rgba(248,113,113,0.24)] bg-[rgba(248,113,113,0.10)]",
-    badge:
-      "border-[rgba(248,113,113,0.22)] bg-[rgba(248,113,113,0.10)] text-[#fecaca]",
-    overlay: "border-white/15 bg-[rgba(43,13,16,0.72)] text-[#fee2e2]",
-  };
-}
-
 export function DiscoverOverview() {
   const t = useTranslations("webApp");
   const locale = useLocale();
+  const router = useRouter();
   const [profiles, setProfiles] = useState<DiscoverProfile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
-  const [userSunSign, setUserSunSign] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<"like" | "pass" | null>(null);
+  // Conversation-first: the only mutating action from this screen is
+  // starting a conversation. Skip is purely client-side navigation.
+  const [actionLoading, setActionLoading] = useState<"message" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState("harassment");
@@ -141,15 +65,13 @@ export function DiscoverOverview() {
 
       setUserId(session.user.id);
 
-      const [{ data: me }, { data: discoverData, error: discoverError }] = await Promise.all([
-        supabase.from("profiles").select("sun_sign").eq("id", session.user.id).maybeSingle(),
-        supabase.rpc("get_discoverable_profiles", {
+      const { data: discoverData, error: discoverError } = await supabase.rpc(
+        "get_discoverable_profiles",
+        {
           p_user_id: session.user.id,
           p_limit: 50,
-        }),
-      ]);
-
-      setUserSunSign(me?.sun_sign || null);
+        }
+      );
 
       if (discoverError) {
         throw discoverError;
@@ -172,37 +94,41 @@ export function DiscoverOverview() {
     loadProfiles();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleSwipe = async (action: "like" | "pass") => {
-    if (!currentProfile || !userId) {
-      return;
+  // Skip: pure client-side navigation. Nothing is persisted; no signal is
+  // sent to the backend. The user simply moves to the next card.
+  const handleSkip = () => {
+    if (!currentProfile) return;
+    if (currentIndex < profiles.length - 1) {
+      setCurrentIndex((value) => value + 1);
+    } else {
+      setProfiles([]);
+      setCurrentIndex(0);
     }
+  };
+
+  // Free conversation start: SECURITY DEFINER RPC enforces auth.uid() and
+  // block guards server-side. The compatibility paywall is unrelated to
+  // entering a conversation.
+  const handleStartConversation = async () => {
+    if (!currentProfile || !userId) return;
 
     try {
-      setActionLoading(action);
+      setActionLoading("message");
       setError(null);
 
       const supabase = getSupabaseBrowser();
-      const { error: swipeError } = await supabase.from("swipes").upsert(
-        {
-          swiper_id: userId,
-          swiped_id: currentProfile.id,
-          action,
-        },
-        { onConflict: "swiper_id,swiped_id" }
+      const { data, error: rpcError } = await supabase.rpc(
+        "get_or_create_conversation",
+        { target_user_id: currentProfile.id }
       );
 
-      if (swipeError) {
-        throw swipeError;
+      if (rpcError || !data) {
+        throw rpcError || new Error(t("unknownError"));
       }
 
-      if (currentIndex < profiles.length - 1) {
-        setCurrentIndex((value) => value + 1);
-      } else {
-        setProfiles([]);
-        setCurrentIndex(0);
-      }
-    } catch (swipeFailure) {
-      setError(swipeFailure instanceof Error ? swipeFailure.message : t("unknownError"));
+      router.push(`/${locale}/app/chat/${String(data)}`);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : t("unknownError"));
     } finally {
       setActionLoading(null);
     }
@@ -258,16 +184,16 @@ export function DiscoverOverview() {
     }
   };
 
-  // Keyboard shortcut support for like/pass
+  // Keyboard shortcut: arrows navigate; M opens a conversation (free).
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!currentProfile || actionLoading || reportOpen) return;
-      if (e.key === "ArrowRight" || e.key === "l") {
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
         e.preventDefault();
-        handleSwipe("like");
-      } else if (e.key === "ArrowLeft" || e.key === "p") {
+        handleSkip();
+      } else if (e.key === "m" || e.key === "M") {
         e.preventDefault();
-        handleSwipe("pass");
+        handleStartConversation();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -325,8 +251,6 @@ export function DiscoverOverview() {
   }
 
   const profileImage = resolveImageSrc(currentProfile.image_url, currentProfile.images?.[0]);
-  const compatibility = calculateQuickCompatibility(userSunSign, currentProfile.sun_sign);
-  const compatibilityTone = getCompatibilityTone(compatibility);
 
   return (
     <div className="space-y-6">
@@ -336,26 +260,26 @@ export function DiscoverOverview() {
           <div className="relative min-h-[420px] bg-bg-secondary">
             <Image
               src={profileImage}
-              alt={`${currentProfile.name || t("unknownUser")} — ${currentProfile.sun_sign ? translateSign(currentProfile.sun_sign, locale) : ""}`}
+              alt={` — `}
               fill
               sizes="(max-width: 1024px) 100vw, 40vw"
               unoptimized={shouldBypassImageOptimization(profileImage)}
               className="object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-            <div className={`absolute left-5 top-5 flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold backdrop-blur-md ${compatibilityTone.overlay}`}>
-              {compatibility >= 80 && <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-400" />}
-              {compatibility}% {t("discoverMatch")}
-            </div>
-            {compatibility >= 80 && (
-              <div className="absolute right-5 top-5 rounded-full border border-emerald-400/30 bg-emerald-500/15 px-3 py-1.5 text-[11px] font-semibold text-emerald-300 backdrop-blur-md">
-                {t("discoverHighCompatAlert")}
-              </div>
-            )}
+            {/* Compatibility % is intentionally hidden everywhere now.
+                The premium-gated "Find your compatibility" CTA is the
+                single surface for the score breakdown. */}
+            <Link
+              href="/app/plans"
+              className="absolute left-5 top-5 flex items-center gap-2 rounded-full border border-purple/30 bg-[rgba(124,108,255,0.30)] px-4 py-2 text-sm font-semibold text-white backdrop-blur-md transition-colors hover:bg-[rgba(124,108,255,0.40)]"
+            >
+              ✨ {t("findYourCompatibility")}
+            </Link>
             <div className="absolute inset-x-0 bottom-0 p-6">
               <h2 className="text-3xl font-semibold text-white">
                 {currentProfile.name || t("unknownUser")}
-                {currentProfile.age ? `, ${currentProfile.age}` : ""}
+                {currentProfile.age ? `, ` : ""}
               </h2>
               <p className="mt-2 text-sm text-white/80">
                 {currentProfile.sun_sign ? translateSign(currentProfile.sun_sign, locale) : "?"}{" "}
@@ -369,15 +293,7 @@ export function DiscoverOverview() {
 
           <div className="flex flex-col justify-between p-6">
             <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-                  {t("discoverCompatibility")}
-                </p>
-                <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${compatibilityTone.badge}`}>
-                  {compatibility}% {t("discoverMatch")}
-                </span>
-              </div>
-              <h3 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white">
+              <h3 className="text-2xl font-semibold tracking-[-0.03em] text-white">
                 {t("discoverProfileTitle")}
               </h3>
               <p className="mt-3 text-sm leading-7 text-text-muted">
@@ -408,141 +324,76 @@ export function DiscoverOverview() {
                 </div>
               </div>
 
-              {/* Compatibility circle + breakdown */}
-              <div className="mt-6 rounded-2xl border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-5">
-                {/* Circle */}
-                <div className="flex flex-col items-center">
-                  <div className="relative flex h-28 w-28 items-center justify-center">
-                    <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90" role="img" aria-label={`${t("discoverCompatibility")} ${compatibility}%`}>
-                      <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
-                      <circle
-                        cx="50" cy="50" r="42" fill="none"
-                        stroke={compatibility >= 70 ? "#34d399" : compatibility >= 50 ? "#fbbf24" : "#f87171"}
-                        strokeWidth="6" strokeLinecap="round"
-                        strokeDasharray={`${(compatibility / 100) * 264} 264`}
-                      />
-                    </svg>
-                    <span className="absolute text-3xl font-bold text-white">{compatibility}<span className="text-lg text-text-muted">%</span></span>
-                  </div>
-                  <p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-text-dim">
-                    {t("discoverCompatibility")}
-                  </p>
-                </div>
-
-                {/* Breakdown */}
-                <div className="mt-5 space-y-3">
-                  {/* Emotional — free */}
-                  <div className="flex items-center gap-3 rounded-xl bg-white/[0.04] px-4 py-3">
-                    <span className="text-lg">💗</span>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-white">{t("discoverEmotional") || "Emotional"}</p>
-                      <p className="text-xs text-text-dim">
-                        {t("discoverMoon")}: {currentProfile.moon_sign ? translateSign(currentProfile.moon_sign, locale) : "?"}
-                      </p>
-                    </div>
-                    <span className="text-sm font-bold text-accent">
-                      {Math.max(40, Math.min(95, compatibility + (currentProfile.moon_sign === userSunSign ? 15 : -5)))}%
-                    </span>
-                  </div>
-                  {/* Communication — free */}
-                  <div className="flex items-center gap-3 rounded-xl bg-white/[0.04] px-4 py-3">
-                    <span className="text-lg">💬</span>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-white">{t("discoverCommunication") || "Communication"}</p>
-                      <p className="text-xs text-text-dim">
-                        {t("discoverSun")}: {currentProfile.sun_sign ? translateSign(currentProfile.sun_sign, locale) : "?"}
-                      </p>
-                    </div>
-                    <span className="text-sm font-bold text-accent">
-                      {Math.max(40, Math.min(95, compatibility + (compatibility > 70 ? 5 : -10)))}%
-                    </span>
-                  </div>
-                  {/* Passion — locked */}
-                  <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] px-4 py-3 opacity-50">
-                    <span className="text-lg">🔥</span>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-white">{t("discoverPassion") || "Passion"}</p>
-                    </div>
-                    <span className="text-sm font-bold text-text-dim">???</span>
-                  </div>
-                  {/* Long term — locked */}
-                  <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] px-4 py-3 opacity-50">
-                    <span className="text-lg">🏠</span>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-white">{t("discoverLongTerm") || "Long term"}</p>
-                    </div>
-                    <span className="text-sm font-bold text-text-dim">???</span>
-                  </div>
-                  {/* Values — locked */}
-                  <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] px-4 py-3 opacity-50">
-                    <span className="text-lg">💖</span>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-white">{t("discoverValues") || "Values"}</p>
-                    </div>
-                    <span className="text-sm font-bold text-text-dim">???</span>
-                  </div>
-                </div>
-
-                {/* Upgrade CTA -- contextual premium nudge */}
-                <div className="mt-4 rounded-xl border border-accent/15 bg-[linear-gradient(135deg,rgba(232,93,117,0.08),rgba(124,108,255,0.06))] p-4">
-                  <p className="text-xs font-medium text-white">{t("discoverUnlockInsight")}</p>
-                  <p className="mt-1 text-[11px] leading-5 text-text-muted">{t("discoverPremiumInsightBody")}</p>
-                  <Link
-                    href="/app/plans"
-                    className="mt-3 flex items-center justify-center gap-2 rounded-full bg-accent/90 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-accent hover:shadow-[0_0_16px_rgba(232,93,117,0.25)]"
-                  >
-                    ✨ {t("discoverUnlockFull")}
-                  </Link>
-                </div>
+              {/* Premium-gated compatibility CTA — replaces the visible
+                  % score + breakdown that used to live here. Compatibility
+                  detail is now a paid feature. */}
+              <div className="mt-6 rounded-2xl border border-purple/25 bg-[linear-gradient(135deg,rgba(124,108,255,0.10),rgba(232,93,117,0.06))] p-5">
+                <p className="text-2xl" aria-hidden="true">✨</p>
+                <h4 className="mt-2 text-base font-semibold text-white">
+                  {t("findYourCompatibility")}
+                </h4>
+                <p className="mt-1 text-sm leading-6 text-text-muted">
+                  {t("findYourCompatibilitySubtitle")}
+                </p>
+                <Link
+                  href="/app/plans"
+                  className="mt-4 inline-flex items-center gap-2 rounded-full bg-purple/90 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-purple hover:shadow-[0_0_18px_rgba(124,108,255,0.30)]"
+                >
+                  {t("viewAllPlans")}
+                </Link>
               </div>
             </div>
 
             <div className="mt-8 flex flex-wrap gap-3">
+              {/* Skip is purely client-side navigation. Nothing is
+                  persisted; the legacy 'pass' swipe is gone. */}
               <button
                 type="button"
-                onClick={() => handleSwipe("pass")}
-                disabled={actionLoading !== null}
-                className="group flex items-center gap-2 rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-all hover:border-white/30 hover:bg-card-hover disabled:cursor-not-allowed disabled:opacity-70"
-                title="Keyboard: Arrow Left or P"
+                onClick={handleSkip}
+                className="group flex items-center gap-2 rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-all hover:border-white/30 hover:bg-card-hover"
+                title="Keyboard: Arrow Left or Arrow Right"
               >
-                {actionLoading === "pass" ? (
-                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden="true" />
-                ) : (
-                  <span className="text-base" aria-hidden="true">&#10005;</span>
-                )}
-                {t("discoverPass")}
+                <span className="text-base" aria-hidden="true">&#10005;</span>
+                {t("discoverSkip")}
                 <kbd className="ml-1 hidden rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-[10px] text-text-dim lg:inline">&#8592;</kbd>
               </button>
+              {/* Free messaging: SECURITY DEFINER RPC handles auth, block
+                  guards, and rate limit server-side. */}
               <button
                 type="button"
-                onClick={() => handleSwipe("like")}
+                onClick={handleStartConversation}
                 disabled={actionLoading !== null}
                 className="group flex items-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
-                title="Keyboard: Arrow Right or L"
+                title="Keyboard: M"
               >
-                {actionLoading === "like" ? (
+                {actionLoading === "message" ? (
                   <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden="true" />
                 ) : (
-                  <span className="text-base" aria-hidden="true">&#10084;</span>
+                  <span className="text-base" aria-hidden="true">💬</span>
                 )}
-                {t("discoverLike")}
-                <kbd className="ml-1 hidden rounded border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px] text-white/60 lg:inline">&#8594;</kbd>
+                {t("sendMessage")}
+                <kbd className="ml-1 hidden rounded border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px] text-white/60 lg:inline">M</kbd>
               </button>
+              <Link
+                href="/app/plans"
+                className="group flex items-center gap-2 rounded-full border border-purple/30 bg-purple/10 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-purple/20"
+              >
+                ✨ {t("findYourCompatibility")}
+              </Link>
               <button
                 type="button"
                 onClick={() => {
                   if (!currentProfile) return;
-                  const sign = currentProfile.sun_sign || "someone";
-                  const text = `I'm ${compatibility}% compatible with a ${sign} on AstroDating! Find your cosmic match 🪐\nhttps://astrodatingapp.com`;
+                  const text = `Discovering cosmic connections on AstroDating 🪐\nhttps://astrodatingapp.com`;
                   if (navigator.share) {
-                    navigator.share({ text, title: t("shareCompatibilityTitle") }).catch(() => {});
+                    navigator.share({ text, title: t("shareTitle") }).catch(() => {});
                   } else if (navigator.clipboard) {
                     navigator.clipboard.writeText(text).catch(() => {});
                   }
                 }}
                 className="rounded-full border border-white/20 bg-white/[0.06] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/[0.1]"
               >
-                📤 {t("shareCompatibility")}
+                📤 {t("share")}
               </button>
               <button
                 type="button"
@@ -556,7 +407,6 @@ export function DiscoverOverview() {
                 {t("reportUser")}
               </button>
             </div>
-
             {reportOpen ? (
               <div role="region" aria-label={t("reportUser")} className="mt-5 rounded-[1.5rem] border border-[#6b3346] bg-[#241824]/85 p-5">
                 <p className="text-xs uppercase tracking-[0.24em] text-[#d69bab]">
@@ -648,9 +498,6 @@ export function DiscoverOverview() {
         <div className="mt-6 space-y-3">
           {queue.length > 0 ? (
             queue.map((profile) => {
-              const queueCompatibility = calculateQuickCompatibility(userSunSign, profile.sun_sign);
-              const queueTone = getCompatibilityTone(queueCompatibility);
-
               return (
                 <div
                   key={profile.id}
@@ -663,13 +510,9 @@ export function DiscoverOverview() {
                         {profile.age ? `, ${profile.age}` : ""}
                       </div>
                       <div className="mt-1 text-sm text-text-muted">
-                        {profile.sun_sign ? translateSign(profile.sun_sign, locale) : "?"} {"\u2022"}{" "}
-                        {profile.moon_sign ? translateSign(profile.moon_sign, locale) : "?"}
+                        {profile.sun_sign ? translateSign(profile.sun_sign, locale) : "?"}
                       </div>
                     </div>
-                    <span className={`whitespace-nowrap rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${queueTone.badge}`}>
-                      {queueCompatibility}%
-                    </span>
                   </div>
                 </div>
               );

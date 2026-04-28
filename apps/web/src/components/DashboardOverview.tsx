@@ -137,14 +137,6 @@ export function DashboardOverview() {
           span: "xl:col-span-1",
         },
         {
-          href: "/app/matches",
-          title: t("matchesPageTitle"),
-          body: t("matchesPageSubtitle"),
-          eyebrow: t("matchesNav"),
-          tone: "neutral",
-          icon: "matches",
-        },
-        {
           href: "/app/chat",
           title: t("chatHubTitle"),
           body: t("chatHubSubtitle"),
