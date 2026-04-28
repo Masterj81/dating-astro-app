@@ -71,24 +71,33 @@ CREATE INDEX IF NOT EXISTS idx_messages_conversation_unread
 DO $$
 BEGIN
   -- For every existing match, ensure a conversation exists with the
-  -- ordered pair. Match.user1_id < user2_id is already enforced by
-  -- the existing CHECK, so we map them straight across.
+  -- ordered pair. We do NOT trust matches.user1_id < user2_id to be
+  -- enforced — defensive ordering with LEAST / GREATEST. Self-matches
+  -- (user1_id = user2_id) are excluded because they violate the new
+  -- conversations_ordered_users strict-inequality check; their
+  -- (presumably test) messages stay readable via the fallback branch
+  -- of the SELECT policy below.
   INSERT INTO public.conversations (user_a, user_b, last_message_at, created_at)
-  SELECT m.user1_id,
-         m.user2_id,
+  SELECT LEAST(m.user1_id, m.user2_id),
+         GREATEST(m.user1_id, m.user2_id),
          m.last_message_at,
          COALESCE(m.matched_at, m.created_at, NOW())
   FROM public.matches m
+  WHERE m.user1_id <> m.user2_id
   ON CONFLICT (user_a, user_b) DO NOTHING;
 
   -- Wire each existing message to the conversation matching its match.
+  -- Same defensive ordering. Self-match messages keep conversation_id
+  -- = NULL and stay readable via the legacy match_id fallback policy.
   UPDATE public.messages msg
   SET conversation_id = c.id
   FROM public.matches m
   JOIN public.conversations c
-    ON c.user_a = m.user1_id AND c.user_b = m.user2_id
+    ON c.user_a = LEAST(m.user1_id, m.user2_id)
+   AND c.user_b = GREATEST(m.user1_id, m.user2_id)
   WHERE msg.match_id = m.id
-    AND msg.conversation_id IS NULL;
+    AND msg.conversation_id IS NULL
+    AND m.user1_id <> m.user2_id;
 END;
 $$;
 
