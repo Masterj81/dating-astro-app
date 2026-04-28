@@ -2,12 +2,12 @@
   "expo": {
     "name": "AstroDating",
     "slug": "astro-dating",
-    "version": "1.8.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "astrodating",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.astrodating.app",
@@ -40,7 +40,7 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.astrodatingapp.mobile",
-      "versionCode": 81,
+      "versionCode": 86,
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO"
