@@ -72,18 +72,20 @@ export default function TabsLayout() {
         }}
         listeners={{ tabPress: handleTabPress }}
       />
+      {/*
+        Matches tab is hidden in conversation-first product. The screen file
+        still exists (now redirects to Chat) so any deep links still work.
+      */}
       <Tabs.Screen
         name="matches"
         options={{
-          title: t('matches') || 'Matches',
-          tabBarIcon: ({ focused }) => <TabIcon emoji={'\u{1F49E}'} focused={focused} />,
+          href: null,
         }}
-        listeners={{ tabPress: handleTabPress }}
       />
       <Tabs.Screen
         name="chat"
         options={{
-          title: t('chat') || 'Chat',
+          title: t('conversations') || t('chat') || 'Chat',
           tabBarIcon: ({ focused }) => <TabIcon emoji={'\u{1F4AC}'} focused={focused} />,
         }}
         listeners={{ tabPress: handleTabPress }}

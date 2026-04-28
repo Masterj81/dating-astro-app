@@ -8,10 +8,10 @@ import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-util
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 
 type ChatThreadProps = {
-  matchId: string;
+  conversationId: string;
 };
 
-type MatchInfo = {
+type ConversationInfo = {
   id: string;
   otherUserId: string;
   otherUserName: string;
@@ -21,22 +21,22 @@ type MatchInfo = {
 
 type Message = {
   id: string;
-  match_id: string;
+  conversation_id: string;
   sender_id: string;
   content: string;
   created_at: string;
   is_read?: boolean;
 };
 
-type ConversationRow = {
-  match_id: string;
-  matched_user_id: string;
-  matched_user_name: string | null;
-  matched_user_image: string | null;
-  matched_user_sun_sign: string | null;
+type ConversationListRow = {
+  conversation_id: string;
+  other_user_id: string;
+  other_user_name: string | null;
+  other_user_image: string | null;
+  other_user_sun_sign: string | null;
   last_message: string | null;
   last_message_at: string | null;
-  matched_at: string | null;
+  created_at: string | null;
   unread_count: number | null;
 };
 
@@ -70,13 +70,13 @@ function formatRelativeDate(value: string | null, locale: string) {
   return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(-diffDays, "day");
 }
 
-export function ChatThread({ matchId }: ChatThreadProps) {
+export function ChatThread({ conversationId }: ChatThreadProps) {
   const t = useTranslations("webApp");
   const locale = useLocale();
   const [userId, setUserId] = useState<string | null>(null);
-  const [matchInfo, setMatchInfo] = useState<MatchInfo | null>(null);
+  const [conversationInfo, setConversationInfo] = useState<ConversationInfo | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [conversations, setConversations] = useState<ConversationRow[]>([]);
+  const [conversations, setConversations] = useState<ConversationListRow[]>([]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -114,7 +114,7 @@ export function ChatThread({ matchId }: ChatThreadProps) {
 
       if (!session?.user?.id) {
         setUserId(null);
-        setMatchInfo(null);
+        setConversationInfo(null);
         setMessages([]);
         setConversations([]);
         setLoading(false);
@@ -123,32 +123,35 @@ export function ChatThread({ matchId }: ChatThreadProps) {
 
       setUserId(session.user.id);
 
-      const [{ data: match, error: matchError }, { data: matchesData, error: matchesError }] =
+      // RLS on `conversations` already restricts SELECT to participants;
+      // an extra defense-in-depth check after the fetch validates the row.
+      const [{ data: conversation, error: conversationError }, { data: conversationsData, error: conversationsError }] =
         await Promise.all([
           supabase
-            .from("matches")
-            .select("id, user1_id, user2_id")
-            .eq("id", matchId)
+            .from("conversations")
+            .select("id, user_a, user_b")
+            .eq("id", conversationId)
             .maybeSingle(),
-          supabase.rpc("get_user_matches", {
-            p_user_id: session.user.id,
-          }),
+          supabase.rpc("get_user_conversations"),
         ]);
 
-      if (matchError || !match) {
-        throw matchError || new Error("Match not found");
+      if (conversationError || !conversation) {
+        throw conversationError || new Error("Conversation not found");
       }
 
-      // SECURITY: Verify the current user is a participant of this match (defense-in-depth over RLS)
-      if (match.user1_id !== session.user.id && match.user2_id !== session.user.id) {
+      if (
+        conversation.user_a !== session.user.id &&
+        conversation.user_b !== session.user.id
+      ) {
         throw new Error("Unauthorized");
       }
 
-      if (matchesError) {
-        throw matchesError;
+      if (conversationsError) {
+        throw conversationsError;
       }
 
-      const otherUserId = match.user1_id === session.user.id ? match.user2_id : match.user1_id;
+      const otherUserId =
+        conversation.user_a === session.user.id ? conversation.user_b : conversation.user_a;
 
       const [{ data: profile }, { data: threadMessages, error: messageError }] = await Promise.all([
         supabase
@@ -158,8 +161,8 @@ export function ChatThread({ matchId }: ChatThreadProps) {
           .maybeSingle(),
         supabase
           .from("messages")
-          .select("id, match_id, sender_id, content, created_at, is_read")
-          .eq("match_id", matchId)
+          .select("id, conversation_id, sender_id, content, created_at, is_read")
+          .eq("conversation_id", conversationId)
           .order("created_at", { ascending: true }),
       ]);
 
@@ -169,14 +172,14 @@ export function ChatThread({ matchId }: ChatThreadProps) {
 
       const nextMessages = (threadMessages as Message[]) || [];
 
-      setMatchInfo({
-        id: match.id,
+      setConversationInfo({
+        id: conversation.id,
         otherUserId,
         otherUserName: profile?.name || t("unknownUser"),
         otherUserImage: profile?.photos?.[0] || null,
         otherUserSunSign: profile?.sun_sign || null,
       });
-      setConversations((matchesData as ConversationRow[]) || []);
+      setConversations((conversationsData as ConversationListRow[]) || []);
       setMessages(nextMessages);
       await markMessagesRead(supabase, session.user.id, nextMessages);
     } catch (loadFailure) {
@@ -188,7 +191,7 @@ export function ChatThread({ matchId }: ChatThreadProps) {
 
   useEffect(() => {
     loadThread();
-  }, [matchId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -197,14 +200,14 @@ export function ChatThread({ matchId }: ChatThreadProps) {
   useEffect(() => {
     const supabase = getSupabaseBrowser();
     const channel = supabase
-      .channel(`web-chat-${matchId}`)
+      .channel(`web-chat-${conversationId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "messages",
-          filter: `match_id=eq.${matchId}`,
+          filter: `conversation_id=eq.${conversationId}`,
         },
         async (payload) => {
           const nextMessage = payload.new as Message;
@@ -226,10 +229,10 @@ export function ChatThread({ matchId }: ChatThreadProps) {
     return () => {
       channel.unsubscribe();
     };
-  }, [matchId, userId]);
+  }, [conversationId, userId]);
 
   const handleSend = async () => {
-    if (!draft.trim() || !userId) {
+    if (!draft.trim() || !userId || !conversationInfo) {
       return;
     }
 
@@ -241,13 +244,8 @@ export function ChatThread({ matchId }: ChatThreadProps) {
       const content = draft.trim();
       setDraft("");
 
-      // SECURITY: Verify match ownership before sending (defense-in-depth over RLS)
-      if (!matchInfo || (matchInfo.otherUserId !== matchInfo.otherUserId)) {
-        throw new Error("Unauthorized");
-      }
-
       const { error: insertError } = await supabase.from("messages").insert({
-        match_id: matchId,
+        conversation_id: conversationId,
         sender_id: userId,
         content,
       });
@@ -279,7 +277,7 @@ export function ChatThread({ matchId }: ChatThreadProps) {
     );
   }
 
-  if (!matchInfo) {
+  if (!conversationInfo) {
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-8">
         <h2 className="text-2xl font-semibold text-white">{t("chatUnavailableTitle")}</h2>
@@ -287,10 +285,10 @@ export function ChatThread({ matchId }: ChatThreadProps) {
           {t("chatUnavailableBody")}
         </p>
         <Link
-          href="/app/matches"
+          href="/app/chat"
           className="mt-6 inline-flex rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
         >
-          {t("matchesNav")}
+          {t("chatNav")}
         </Link>
       </div>
     );
@@ -317,16 +315,16 @@ export function ChatThread({ matchId }: ChatThreadProps) {
         <div className="mt-5 space-y-3">
           {conversations.length ? (
             conversations.map((conversation) => {
-              const isActive = conversation.match_id === matchId;
+              const isActive = conversation.conversation_id === conversationId;
               const relativeDate = formatRelativeDate(
-                conversation.last_message_at || conversation.matched_at,
+                conversation.last_message_at || conversation.created_at,
                 locale
               );
 
               return (
                 <Link
-                  key={conversation.match_id}
-                  href={`/app/chat/${conversation.match_id}`}
+                  key={conversation.conversation_id}
+                  href={`/app/chat/${conversation.conversation_id}`}
                   className={`block rounded-[1.25rem] border px-4 py-4 transition-colors ${
                     isActive
                       ? "border-accent/40 bg-accent/10"
@@ -336,18 +334,18 @@ export function ChatThread({ matchId }: ChatThreadProps) {
                   <div className="flex items-center gap-3">
                     <div className="relative h-12 w-12 overflow-hidden rounded-2xl bg-bg-secondary">
                       <Image
-                        src={resolveImageSrc(conversation.matched_user_image)}
-                        alt={conversation.matched_user_name || t("unknownUser")}
+                        src={resolveImageSrc(conversation.other_user_image)}
+                        alt={conversation.other_user_name || t("unknownUser")}
                         fill
                         sizes="48px"
-                        unoptimized={shouldBypassImageOptimization(resolveImageSrc(conversation.matched_user_image))}
+                        unoptimized={shouldBypassImageOptimization(resolveImageSrc(conversation.other_user_image))}
                         className="object-cover"
                       />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
                         <p className="truncate text-sm font-semibold text-white">
-                          {conversation.matched_user_name || t("unknownUser")}
+                          {conversation.other_user_name || t("unknownUser")}
                         </p>
                         {conversation.unread_count ? (
                           <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-white">
@@ -380,11 +378,11 @@ export function ChatThread({ matchId }: ChatThreadProps) {
             <div className="flex items-center gap-4">
               <div className="relative h-16 w-16 overflow-hidden rounded-2xl bg-bg-secondary">
                 <Image
-                  src={resolveImageSrc(matchInfo.otherUserImage)}
-                  alt={matchInfo.otherUserName}
+                  src={resolveImageSrc(conversationInfo.otherUserImage)}
+                  alt={conversationInfo.otherUserName}
                   fill
                   sizes="64px"
-                  unoptimized={shouldBypassImageOptimization(resolveImageSrc(matchInfo.otherUserImage))}
+                  unoptimized={shouldBypassImageOptimization(resolveImageSrc(conversationInfo.otherUserImage))}
                   className="object-cover"
                 />
               </div>
@@ -392,22 +390,22 @@ export function ChatThread({ matchId }: ChatThreadProps) {
                 <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
                   {t("chatWith")}
                 </p>
-                <h2 className="mt-2 text-2xl font-semibold text-white">{matchInfo.otherUserName}</h2>
+                <h2 className="mt-2 text-2xl font-semibold text-white">{conversationInfo.otherUserName}</h2>
                 <p className="mt-1 text-sm text-text-muted">
-                  {t("discoverSun")}: {matchInfo.otherUserSunSign || "?"}
+                  {t("discoverSun")}: {conversationInfo.otherUserSunSign || "?"}
                 </p>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-3">
               <Link
-                href="/app/matches"
+                href="/app/chat"
                 className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
               >
-                {t("backToMatches")}
+                {t("backToChat") || t("chatNav")}
               </Link>
               <Link
-                href={`/app/profile/${matchInfo.otherUserId}`}
+                href={`/app/profile/${conversationInfo.otherUserId}`}
                 className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
               >
                 {t("matchesViewProfile")}

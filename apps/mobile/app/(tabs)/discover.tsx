@@ -28,9 +28,8 @@ import VerifiedBadge from '../../components/VerifiedBadge';
 import VoiceIntroPlayer from '../../components/VoiceIntroPlayer';
 import PlanetGlyph from '../../components/ui/PlanetGlyph';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { calculateQuickCompatibility } from '../../services/astrologyService';
 import { supabase } from '../../services/supabase';
-import { throttleAction } from '../../utils/rateLimit';
+import { startConversationWith } from '../../services/conversations';
 import { withRetry } from '../../utils/retry';
 import { resolveProfileImage, DEFAULT_PROFILE_IMAGE } from '../../utils/profileImages';
 import { useAuth } from '../../contexts/AuthContext';
@@ -39,13 +38,10 @@ import {
   getButtonA11yProps,
   getImageA11yProps,
   announceForAccessibility,
-  formatCompatibilityForA11y,
   a11yColors,
 } from '../../utils/accessibility';
 import {
   swipeThreshold,
-  likeSwipe,
-  passSwipe,
   buttonPress,
   refreshTrigger,
 } from '../../services/haptics';
@@ -73,24 +69,18 @@ type Profile = {
   voice_intro_url?: string;
 };
 
-type UserProfile = {
-  sun_sign: string;
-  moon_sign: string;
-  rising_sign: string;
-};
-
 export default function DiscoverScreen() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [swipeError, setSwipeError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
   const [deckExhausted, setDeckExhausted] = useState(false);
-  // Use discrete direction state instead of raw dragX to avoid per-frame re-renders
+  // Use discrete direction state instead of raw dragX to avoid per-frame re-renders.
+  // Swipe is now purely navigational (next/previous card) — no like/pass meaning.
   const [swipeDirection, setSwipeDirection] = useState<'none' | 'left' | 'right'>('none');
   const dragXRef = useRef(0);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const hasReachedThresholdRef = useRef(false);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -99,6 +89,7 @@ export default function DiscoverScreen() {
   const navigation = useNavigation();
   const reduceMotion = useReduceMotion();
   const swipeInProgressRef = useRef(false);
+  const [startingChat, setStartingChat] = useState(false);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -106,9 +97,6 @@ export default function DiscoverScreen() {
       headerTitle: `✦ ${t('discover')}`,
     });
   }, [navigation, language]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Pulse animation for compatibility badge
-  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Card entrance animation
   const cardScale = useRef(new Animated.Value(reduceMotion ? 1 : 0.9)).current;
@@ -126,29 +114,14 @@ export default function DiscoverScreen() {
   const { tier } = usePremium();
   const isFreeUser = tier === 'free';
 
-  // Compute compatibility eagerly (before any early returns) to respect Rules of Hooks
+  // Compute card eagerly (before any early returns) to respect Rules of Hooks
   const currentProfile = profiles.length > 0 && currentIndex < profiles.length
     ? profiles[currentIndex]
     : null;
   const currentProfileImage = resolveProfileImage(currentProfile);
 
-  const getCompatibility = useCallback((profileSign: string | null | undefined): number => {
-    if (!profileSign) return 50; // safe fallback
-    const userSign = userProfile?.sun_sign || 'Sagittarius';
-    return calculateQuickCompatibility(userSign, profileSign);
-  }, [userProfile?.sun_sign]);
-
-  const compatibility = useMemo(
-    () => getCompatibility(currentProfile?.sun_sign),
-    [currentProfile?.sun_sign, getCompatibility]
-  );
-
   useEffect(() => {
     loadProfiles();
-    loadUserProfile();
-    if (!reduceMotion) {
-      startPulseAnimation();
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, [user, reduceMotion]);
 
@@ -180,43 +153,6 @@ export default function DiscoverScreen() {
     ]).start();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- animation refs are stable
   }, [currentIndex, reduceMotion]);
-
-  const startPulseAnimation = () => {
-    if (reduceMotion) return;
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.1,
-          duration: 1000,
-          useNativeDriver: Platform.OS !== 'web',
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: Platform.OS !== 'web',
-        }),
-      ])
-    ).start();
-  };
-
-  const loadUserProfile = async () => {
-    if (!user) return;
-
-    try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('sun_sign, moon_sign, rising_sign')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (data) {
-        setUserProfile(data);
-      }
-    } catch (err) {
-      console.error('Error loading user profile:', err);
-    }
-  };
 
   const loadProfiles = async () => {
     setLoading(true);
@@ -260,41 +196,18 @@ export default function DiscoverScreen() {
     setLoading(false);
   };
 
+  // Navigation-only "swipe": move to the next card.
+  // No like/pass/super-like meaning is persisted anywhere — this is now
+  // a pure card-deck UX. The `direction` argument is kept only to pick
+  // a haptic / overlay so the gesture still feels alive.
   const goToNextProfile = async (direction: 'left' | 'right') => {
     if (swipeInProgressRef.current) return;
     swipeInProgressRef.current = true;
 
     const currentProfiles = profilesRef.current;
-    const profile = currentProfiles[currentIndexRef.current];
 
-    // Trigger haptic feedback
-    if (direction === 'right') {
-      likeSwipe();
-    } else {
-      passSwipe();
-    }
-
-    // Persist swipe to backend
-    if (user && profile && throttleAction('swipe', 500)) {
-      try {
-        const { error } = await supabase.from('swipes').upsert({
-          swiper_id: user.id,
-          swiped_id: profile.id,
-          action: direction === 'right' ? 'like' : 'pass',
-        }, { onConflict: 'swiper_id,swiped_id' });
-
-        if (error) {
-          console.error('Swipe save error:', error);
-          setSwipeError(t('swipeFailed') || 'Could not save your choice. Please try again.');
-          // Auto-dismiss after 3 seconds
-          setTimeout(() => setSwipeError(null), 3000);
-        }
-      } catch (err) {
-        console.error('Swipe network error:', err);
-        setSwipeError(t('swipeFailed') || 'Could not save your choice. Please try again.');
-        setTimeout(() => setSwipeError(null), 3000);
-      }
-    }
+    // Subtle haptic so the gesture has presence; nothing is persisted.
+    swipeThreshold();
 
     // Check if we've reached the end of the deck
     const isLastProfile = currentIndexRef.current >= currentProfiles.length - 1;
@@ -330,16 +243,16 @@ export default function DiscoverScreen() {
     translateY.value = 0;
     rotation.value = 0;
 
-    // Announce for screen readers
+    // Announce for screen readers — compatibility intentionally hidden,
+    // free users see a "Find your compatibility" CTA instead.
     const nextProfile = currentProfiles[nextIndex];
     if (nextProfile) {
       announceForAccessibility(
-        t('a11y.matchCard', {
+        t('a11y.profileCard', {
           name: nextProfile.name || t('unknown'),
           age: nextProfile.age || '?',
           sign: nextProfile.sun_sign || t('unknown'),
-          score: getCompatibility(nextProfile.sun_sign),
-        })
+        }) || `${nextProfile.name || ''}, ${nextProfile.age || ''}, ${nextProfile.sun_sign || ''}`
       );
     }
 
@@ -398,7 +311,8 @@ export default function DiscoverScreen() {
     ],
   }));
 
-  const handleLike = () => {
+  // Navigate to next card via the right-arrow button (no like meaning).
+  const handleNext = () => {
     if (swipeInProgressRef.current || !currentProfile) return;
     buttonPress();
     dragXRef.current = 150;
@@ -413,21 +327,8 @@ export default function DiscoverScreen() {
     }
   };
 
-  const handleShare = async () => {
-    if (!currentProfile) return;
-    buttonPress();
-    const sign = currentProfile.sun_sign || 'someone';
-    const score = getCompatibility(sign);
-    const message = Platform.select({
-      android: `I'm ${score}% compatible with a ${sign} on AstroDating! Find your cosmic match \u{1F6F0}\nhttps://play.google.com/store/apps/details?id=com.astrodatingapp.mobile`,
-      default: `I'm ${score}% compatible with a ${sign} on AstroDating! Find your cosmic match \u{1F6F0}\nhttps://astrodatingapp.com`,
-    });
-    try {
-      await Share.share({ message, title: 'AstroDating Compatibility' });
-    } catch { /* user cancelled */ }
-  };
-
-  const handlePass = () => {
+  // Navigate to previous-looking card via the left-arrow button (no pass meaning).
+  const handleSkip = () => {
     if (swipeInProgressRef.current || !currentProfile) return;
     buttonPress();
     dragXRef.current = -150;
@@ -442,16 +343,53 @@ export default function DiscoverScreen() {
     }
   };
 
-  const handleViewChart = () => {
+  const handleShare = async () => {
+    if (!currentProfile) return;
+    buttonPress();
+    const message = Platform.select({
+      android: `Discovering cosmic connections on AstroDating \u{1F6F0}\nhttps://play.google.com/store/apps/details?id=com.astrodatingapp.mobile`,
+      default: `Discovering cosmic connections on AstroDating \u{1F6F0}\nhttps://astrodatingapp.com`,
+    });
+    try {
+      await Share.share({ message, title: 'AstroDating' });
+    } catch { /* user cancelled */ }
+  };
+
+  // View profile / synastry detail — premium gating happens inside that screen.
+  const handleViewProfile = () => {
     if (!currentProfile?.id) return;
     buttonPress();
     router.push(`/match/${currentProfile.id}`);
   };
 
+  // Free conversation start — no paywall on entering the chat.
+  const handleStartConversation = async () => {
+    if (!currentProfile?.id || startingChat) return;
+    buttonPress();
+    setStartingChat(true);
+    setActionError(null);
+    try {
+      const conversationId = await startConversationWith(currentProfile.id);
+      router.push(`/chat/${conversationId}`);
+    } catch (err: any) {
+      console.error('Could not start conversation:', err);
+      setActionError(err?.message || t('startConversationFailed') || 'Could not start conversation.');
+      setTimeout(() => setActionError(null), 4000);
+    } finally {
+      setStartingChat(false);
+    }
+  };
+
+  // Premium CTA: takes the user to the paywall. Compatibility % is hidden.
+  const handleFindCompatibility = () => {
+    buttonPress();
+    router.push('/premium-screens/synastry' as any);
+  };
+
   const handleRefresh = () => {
     refreshTrigger();
     setDeckExhausted(false);
-    setSwipeError(null);
+    setActionError(null);
     // Q-L1: clear the stale deck first so the list renders a proper empty
     // loading state instead of flashing the previous profiles before the
     // new batch arrives.
@@ -462,12 +400,6 @@ export default function DiscoverScreen() {
   const handleImageError = (_e: NativeSyntheticEvent<ImageErrorEventData>) => {
     setImageError(true);
   };
-
-  const compatibilityLabel = useMemo(() => {
-    if (compatibility >= 80) return t('compatibilityHigh') || 'Strong cosmic bond';
-    if (compatibility >= 55) return t('compatibilityMedium') || 'Promising alignment';
-    return t('compatibilityLow') || 'Different energies';
-  }, [compatibility, t]);
 
   // Rotating loading tips for engagement during load
   const loadingTips = useMemo(() => [
@@ -575,17 +507,19 @@ export default function DiscoverScreen() {
             </TouchableOpacity>
 
             <Text style={styles.exhaustedHint}>
-              {t('deckExhaustedCheckMatches')}
+              {t('deckExhaustedCheckChat') || 'Pick up where you left off in your conversations.'}
             </Text>
             <TouchableOpacity
               style={styles.exhaustedMatchesButton}
               onPress={() => {
                 buttonPress();
-                router.push('/(tabs)/matches');
+                router.push('/(tabs)/chat');
               }}
               activeOpacity={0.7}
             >
-              <Text style={styles.exhaustedMatchesText}>{t('goToMatches')}</Text>
+              <Text style={styles.exhaustedMatchesText}>
+                {t('goToConversations') || 'Open conversations'}
+              </Text>
             </TouchableOpacity>
             <Text style={styles.exhaustedCounter}>
               {profiles.length} {profiles.length === 1 ? 'profile' : 'profiles'} seen
@@ -599,11 +533,11 @@ export default function DiscoverScreen() {
   return (
     <WebTabWrapper>
     <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
-      {/* Swipe error toast */}
-      {swipeError && (
+      {/* Action error toast */}
+      {actionError && (
         <View style={styles.swipeErrorToast} accessibilityRole="alert">
-          <Text style={styles.swipeErrorText}>{swipeError}</Text>
-          <TouchableOpacity onPress={() => setSwipeError(null)}>
+          <Text style={styles.swipeErrorText}>{actionError}</Text>
+          <TouchableOpacity onPress={() => setActionError(null)}>
             <Text style={styles.swipeErrorDismiss}>{'\u2715'}</Text>
           </TouchableOpacity>
         </View>
@@ -615,13 +549,12 @@ export default function DiscoverScreen() {
             style={[styles.card, animatedCardStyle]}
             accessible={true}
             testID="discover-card"
-            accessibilityLabel={t('a11y.matchCard', {
+            accessibilityLabel={t('a11y.profileCard', {
               name: currentProfile.name ?? t('unknown'),
               age: currentProfile.age ?? '?',
               sign: currentProfile.sun_sign ?? t('unknown'),
-              score: compatibility,
-            })}
-            accessibilityHint={`${t('a11y.swipeLeftHint')}. ${t('a11y.swipeRightHint')}`}
+            }) || `${currentProfile.name ?? ''} ${currentProfile.age ?? ''} ${currentProfile.sun_sign ?? ''}`}
+            accessibilityHint={t('a11y.swipeNavigateHint') || 'Swipe to navigate between profiles.'}
             accessibilityRole="adjustable"
           >
           {/* Profile image with error fallback */}
@@ -643,39 +576,39 @@ export default function DiscoverScreen() {
             />
           )}
 
+          {/* Navigation overlays — purely visual feedback, no like/pass meaning */}
           {swipeDirection === 'right' && (
             <Animated.View
-              style={[styles.overlay, styles.likeOverlay]}
-              accessibilityLabel={t('like')}
+              style={[styles.overlay, styles.navOverlayRight]}
+              accessibilityLabel={t('nextProfile') || 'Next profile'}
             >
-              <Text style={[styles.overlayText, styles.likeText]}>{t('like')}</Text>
+              <Text style={[styles.overlayText, styles.navOverlayText]}>{'→'}</Text>
             </Animated.View>
           )}
 
           {swipeDirection === 'left' && (
             <Animated.View
-              style={[styles.overlay, styles.nopeOverlay]}
-              accessibilityLabel={t('nope')}
+              style={[styles.overlay, styles.navOverlayLeft]}
+              accessibilityLabel={t('skipProfile') || 'Skip profile'}
             >
-              <Text style={[styles.overlayText, styles.nopeText]}>{t('nope')}</Text>
+              <Text style={[styles.overlayText, styles.navOverlayText]}>{'←'}</Text>
             </Animated.View>
           )}
 
           <LinearGradient colors={['transparent', 'rgba(0,0,0,0.9)']} style={styles.cardGradient}>
-            {/* Pulsing Compatibility Badge */}
-            <Animated.View
-              style={[
-                styles.compatibilityBadge,
-                compatibility >= 80 && styles.compatBadgeHigh,
-                compatibility >= 55 && compatibility < 80 && styles.compatBadgeMedium,
-                { transform: [{ scale: reduceMotion ? 1 : pulseAnim }] }
-              ]}
-              accessibilityLabel={formatCompatibilityForA11y(compatibility)}
+            {/* Compatibility CTA replaces the % badge — premium gated */}
+            <TouchableOpacity
+              style={styles.compatibilityCta}
+              onPress={handleFindCompatibility}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={t('findYourCompatibility') || 'Find your compatibility'}
             >
-              <Text style={styles.compatibilityNumber}>{compatibility}%</Text>
-              <Text style={styles.compatibilityLabel}>{t('match')}</Text>
-              <Text style={styles.compatibilityHint}>{compatibilityLabel}</Text>
-            </Animated.View>
+              <Text style={styles.compatibilityCtaIcon}>{'✨'}</Text>
+              <Text style={styles.compatibilityCtaText}>
+                {t('findYourCompatibility') || 'Find your compatibility'}
+              </Text>
+            </TouchableOpacity>
 
             <View style={styles.cardContent}>
               <View style={styles.nameRow}>
@@ -725,10 +658,10 @@ export default function DiscoverScreen() {
 
               <TouchableOpacity
                 style={styles.viewChartButton}
-                onPress={handleViewChart}
-                {...getButtonA11yProps(t('viewSynastry'))}
+                onPress={handleViewProfile}
+                {...getButtonA11yProps(t('viewProfile') || 'View profile')}
               >
-                <Text style={styles.viewChartText}>{t('viewSynastry')}</Text>
+                <Text style={styles.viewChartText}>{t('viewProfile') || 'View profile'}</Text>
               </TouchableOpacity>
             </View>
           </LinearGradient>
@@ -739,68 +672,75 @@ export default function DiscoverScreen() {
       {/* Action Buttons */}
       {/* Score explainer + premium teaser — below card */}
       <View style={styles.belowCardInfo}>
-        <Text style={styles.scoreExplainerText}>{t('compatScoreExplainer')}</Text>
-        {isFreeUser && (
-          <TouchableOpacity
-            style={styles.deepInsightRow}
-            onPress={() => router.push('/premium-screens/plans' as any)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.deepInsightIcon}>{'\u2726'}</Text>
-            <Text style={styles.deepInsightTitle}>
-              {t('deeperCompatibility')}
-            </Text>
-            <Text style={styles.deepInsightCta}>
-              {t('unlockFullChart')}
-            </Text>
-          </TouchableOpacity>
-        )}
+        <Text style={styles.scoreExplainerText}>
+          {t('discoverNavigationHint') || 'Swipe or tap arrows to browse profiles'}
+        </Text>
       </View>
 
       <View style={styles.actions} accessibilityRole="toolbar">
         <TouchableOpacity
           style={[styles.actionButton, styles.passButton]}
-          onPress={handlePass}
+          onPress={handleSkip}
           activeOpacity={0.7}
-          testID="discover-pass-button"
+          testID="discover-skip-button"
           {...getButtonA11yProps(
             t('a11y.passButton', { name: currentProfile.name ?? '' }),
             t('a11y.doubleTapHint')
           )}
         >
-          <Text style={styles.passEmoji}>{'\u2715'}</Text>
+          <Text style={styles.passEmoji}>{'\u2190'}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.actionButton, styles.shareButton]}
-          onPress={handleShare}
-          activeOpacity={0.7}
-          {...getButtonA11yProps(t('shareCompatibility') || 'Share compatibility')}
+          style={styles.primaryMessageButton}
+          onPress={handleStartConversation}
+          activeOpacity={0.85}
+          disabled={startingChat}
+          testID="discover-message-button"
+          {...getButtonA11yProps(
+            t('a11y.messageButton', { name: currentProfile.name ?? '' }) || 'Send a message'
+          )}
         >
-          <Text style={styles.shareEmoji}>{'\u{1F4E4}'}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionButton, styles.superButton, isFreeUser && styles.superButtonPremium]}
-          onPress={isFreeUser ? () => router.push('/premium-screens/plans' as any) : handleViewChart}
-          activeOpacity={0.7}
-          {...getButtonA11yProps(isFreeUser ? (t('unlockSuperLikes') || 'Unlock Super Likes') : t('viewSynastry'))}
-        >
-          <Text style={styles.superEmoji}>{isFreeUser ? '\u2B50' : '\u2726'}</Text>
-          {isFreeUser && <View style={styles.premiumDot} />}
+          <Text style={styles.primaryMessageIcon}>{'\u{1F4AC}'}</Text>
+          <Text style={styles.primaryMessageText}>
+            {startingChat ? (t('starting') || '...') : (t('sendMessage') || 'Message')}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.actionButton, styles.likeButton]}
-          onPress={handleLike}
+          onPress={handleNext}
           activeOpacity={0.7}
-          testID="discover-like-button"
+          testID="discover-next-button"
           {...getButtonA11yProps(
-            t('a11y.likeButton', { name: currentProfile.name ?? '' }),
+            t('a11y.nextButton') || 'Next profile',
             t('a11y.doubleTapHint')
           )}
         >
-          <Text style={styles.likeEmoji}>{'\u2665'}</Text>
+          <Text style={styles.likeEmoji}>{'\u2192'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Secondary row: compatibility paywall + share */}
+      <View style={styles.secondaryActions}>
+        <TouchableOpacity
+          style={styles.compatibilityCtaSecondary}
+          onPress={handleFindCompatibility}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+        >
+          <Text style={styles.compatibilityCtaSecondaryIcon}>{'\u2728'}</Text>
+          <Text style={styles.compatibilityCtaSecondaryText}>
+            {t('findYourCompatibility') || 'Find your compatibility'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.shareSecondary}
+          onPress={handleShare}
+          activeOpacity={0.7}
+          {...getButtonA11yProps(t('share') || 'Share')}
+        >
+          <Text style={styles.shareEmoji}>{'\u{1F4E4}'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -1324,5 +1264,117 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 15,
     letterSpacing: 0.3,
+  },
+
+  // === Conversation-first additions ===
+  navOverlayRight: {
+    right: 20,
+    borderColor: AppTheme.colors.cosmic,
+    backgroundColor: 'rgba(124, 108, 255, 0.30)',
+    transform: [{ rotate: '15deg' }],
+  },
+  navOverlayLeft: {
+    left: 20,
+    borderColor: AppTheme.colors.cosmic,
+    backgroundColor: 'rgba(124, 108, 255, 0.30)',
+    transform: [{ rotate: '-15deg' }],
+  },
+  navOverlayText: {
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  compatibilityCta: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: 'rgba(124, 108, 255, 0.92)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.20)',
+    shadowColor: AppTheme.colors.cosmic,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.40,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+  compatibilityCtaIcon: {
+    fontSize: 14,
+  },
+  compatibilityCtaText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  primaryMessageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: AppTheme.radius.pill,
+    backgroundColor: AppTheme.colors.coral,
+    shadowColor: AppTheme.colors.coral,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.50,
+    shadowRadius: 16,
+    elevation: 10,
+    minWidth: 160,
+  },
+  primaryMessageIcon: {
+    fontSize: 20,
+  },
+  primaryMessageText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  secondaryActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 14,
+    paddingHorizontal: 20,
+  },
+  compatibilityCtaSecondary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: AppTheme.radius.pill,
+    backgroundColor: 'rgba(124, 108, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(124, 108, 255, 0.32)',
+  },
+  compatibilityCtaSecondaryIcon: {
+    fontSize: 14,
+  },
+  compatibilityCtaSecondaryText: {
+    color: AppTheme.colors.cosmic,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  shareSecondary: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
   },
 });

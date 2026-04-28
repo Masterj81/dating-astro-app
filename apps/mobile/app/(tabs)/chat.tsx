@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ScreenStates';
@@ -9,6 +9,7 @@ import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
+import { listMyConversations, type ConversationListRow } from '../../services/conversations';
 import { formatCompactTime } from '../../utils/dateFormatting';
 import { DEFAULT_PROFILE_IMAGE, resolveProfileImage } from '../../utils/profileImages';
 
@@ -21,19 +22,16 @@ const ICEBREAKER_KEYS = [
 ];
 
 type Conversation = {
-  match_id: string;
+  conversation_id: string;
   other_user: {
     id: string;
     name: string;
     image_url?: string | null;
-    photos?: Array<string | null>;
-    images?: Array<string | null>;
     sun_sign: string;
   };
   last_message: {
     content: string;
     created_at: string;
-    sender_id: string;
   } | null;
   unread_count: number;
 };
@@ -61,98 +59,45 @@ export default function ChatListScreen() {
     setLoading(true);
     setLoadError(null);
 
-    // 1. Fetch all matches in one query
-    const { data: matches, error: matchError } = await supabase
-      .from('matches')
-      .select('*')
-      .or(`user1_id.eq.${user?.id},user2_id.eq.${user?.id}`)
-      .order('created_at', { ascending: false })
-      .limit(50);
+    try {
+      const rows = await listMyConversations();
 
-    if (matchError) {
-      console.error('Error loading conversations:', matchError);
-      setLoadError(t('loadingFailed') || 'Failed to load conversations. Please try again.');
-      setLoading(false);
-      return;
-    }
-
-    if (!matches || matches.length === 0) {
-      setConversations([]);
-      setLoading(false);
-      return;
-    }
-
-    const otherUserIds = matches.map((m) =>
-      m.user1_id === user?.id ? m.user2_id : m.user1_id
-    );
-    const matchIds = matches.map((m) => m.id);
-
-    // 2. Batch fetch: profiles, last messages, and unread counts in parallel (~3 queries)
-    const [profilesResult, messagesResult, unreadResult] = await Promise.all([
-      // Fetch all other user profiles in one query
-      supabase
-        .from('discoverable_profiles')
-        .select(
-          'id, name, age, sun_sign, moon_sign, rising_sign, bio, image_url, images, gender, interests, is_verified, has_voice_intro, voice_intro_url, last_active, created_at, current_city'
-        )
-        .in('id', otherUserIds),
-      // Fetch recent messages for all matches in one query (sorted newest first)
-      supabase
-        .from('messages')
-        .select('*')
-        .in('match_id', matchIds)
-        .order('created_at', { ascending: false }),
-      // Fetch all unread messages in one query
-      supabase
-        .from('messages')
-        .select('match_id')
-        .in('match_id', matchIds)
-        .eq('read', false)
-        .neq('sender_id', user?.id),
-    ]);
-
-    // 3. Build lookup maps in JS
-    const profileMap = new Map<string, any>();
-    (profilesResult.data || []).forEach((p) => profileMap.set(p.id, p));
-
-    // Keep only the most recent message per match_id (already sorted newest first)
-    const lastMessageMap = new Map<string, any>();
-    (messagesResult.data || []).forEach((msg) => {
-      if (!lastMessageMap.has(msg.match_id)) {
-        lastMessageMap.set(msg.match_id, msg);
-      }
-    });
-
-    // Count unread messages per match_id
-    const unreadCountMap = new Map<string, number>();
-    (unreadResult.data || []).forEach((msg) => {
-      unreadCountMap.set(msg.match_id, (unreadCountMap.get(msg.match_id) || 0) + 1);
-    });
-
-    // 4. Assemble conversation data from maps
-    const conversationsData: Conversation[] = matches.map((match) => {
-      const otherUserId = match.user1_id === user?.id ? match.user2_id : match.user1_id;
-      return {
-        match_id: match.id,
-        other_user: profileMap.get(otherUserId) || {
-          id: otherUserId,
-          name: t('unknown'),
-          image_url: DEFAULT_PROFILE_IMAGE,
-          sun_sign: '?',
+      const conversationsData: Conversation[] = rows.map((row: ConversationListRow) => ({
+        conversation_id: row.conversation_id,
+        other_user: {
+          id: row.other_user_id,
+          name: row.other_user_name || t('unknown'),
+          image_url: row.other_user_image || DEFAULT_PROFILE_IMAGE,
+          sun_sign: row.other_user_sun_sign || '?',
         },
-        last_message: lastMessageMap.get(match.id) || null,
-        unread_count: unreadCountMap.get(match.id) || 0,
-      };
-    });
+        last_message: row.last_message
+          ? {
+              content: row.last_message,
+              created_at: row.last_message_at || row.created_at || new Date().toISOString(),
+            }
+          : null,
+        unread_count: Number(row.unread_count || 0),
+      }));
 
-    conversationsData.sort((a, b) => {
-      if (!a.last_message && !b.last_message) return 0;
-      if (!a.last_message) return 1;
-      if (!b.last_message) return -1;
-      return new Date(b.last_message.created_at).getTime() - new Date(a.last_message.created_at).getTime();
-    });
+      // Server already returns rows ordered by last_message_at desc, but
+      // re-sorting client-side keeps the UX deterministic if anything new
+      // arrived between fetch and render.
+      conversationsData.sort((a, b) => {
+        if (!a.last_message && !b.last_message) return 0;
+        if (!a.last_message) return 1;
+        if (!b.last_message) return -1;
+        return (
+          new Date(b.last_message.created_at).getTime() -
+          new Date(a.last_message.created_at).getTime()
+        );
+      });
 
-    setConversations(conversationsData);
+      setConversations(conversationsData);
+    } catch (err: any) {
+      console.error('Error loading conversations:', err);
+      setLoadError(err?.message || t('loadingFailed') || 'Failed to load conversations. Please try again.');
+    }
+
     setLoading(false);
   };
 
@@ -195,14 +140,14 @@ export default function ChatListScreen() {
   const formatTime = (dateString: string) => formatCompactTime(dateString, t('now'));
 
   const handleConversationPress = (conversation: Conversation) => {
-    router.push(`/chat/${conversation.match_id}`);
+    router.push(`/chat/${conversation.conversation_id}`);
   };
 
-  // Pick a stable icebreaker per conversation (based on match_id hash)
-  const getIcebreaker = useCallback((matchId: string) => {
+  // Pick a stable icebreaker per conversation (based on conversation_id hash)
+  const getIcebreaker = useCallback((conversationId: string) => {
     let hash = 0;
-    for (let i = 0; i < matchId.length; i++) {
-      hash = ((hash << 5) - hash) + matchId.charCodeAt(i);
+    for (let i = 0; i < conversationId.length; i++) {
+      hash = ((hash << 5) - hash) + conversationId.charCodeAt(i);
       hash |= 0;
     }
     const idx = Math.abs(hash) % ICEBREAKER_KEYS.length;
@@ -211,12 +156,11 @@ export default function ChatListScreen() {
 
   function ConversationRow({ conversation }: { conversation: Conversation }) {
     const isUnread = conversation.unread_count > 0;
-    const isFromMe = conversation.last_message?.sender_id === user?.id;
-    const isNewMatch = !conversation.last_message;
+    const isNewConversation = !conversation.last_message;
 
     return (
       <TouchableOpacity
-        style={[styles.conversationRow, isNewMatch && styles.conversationRowNew]}
+        style={[styles.conversationRow, isNewConversation && styles.conversationRowNew]}
         onPress={() => handleConversationPress(conversation)}
       >
         <View style={styles.avatarContainer}>
@@ -226,7 +170,7 @@ export default function ChatListScreen() {
               <Text style={styles.unreadText}>{conversation.unread_count}</Text>
             </View>
           ) : null}
-          {isNewMatch ? (
+          {isNewConversation ? (
             <View style={styles.newMatchDot} />
           ) : null}
         </View>
@@ -237,7 +181,7 @@ export default function ChatListScreen() {
             {conversation.last_message ? (
               <Text style={styles.timestamp}>{formatTime(conversation.last_message.created_at)}</Text>
             ) : (
-              <Text style={styles.newMatchLabel}>{t('newMatch') || 'New'}</Text>
+              <Text style={styles.newMatchLabel}>{t('newConversation') || t('newMatch') || 'New'}</Text>
             )}
           </View>
 
@@ -246,14 +190,13 @@ export default function ChatListScreen() {
               style={[styles.lastMessage, isUnread && styles.unreadMessage]}
               numberOfLines={1}
             >
-              {isFromMe ? `${t('you')} ` : ''}
               {conversation.last_message.content}
             </Text>
           ) : (
             <View>
               <Text style={styles.noMessages}>{'\u2728'} {t('sendFirstMessagePrompt') || 'Break the ice and say hello'}</Text>
               <Text style={styles.icebreakerSuggestion} numberOfLines={1}>
-                {'\u{1F4A1}'} {getIcebreaker(conversation.match_id)}
+                {'\u{1F4A1}'} {getIcebreaker(conversation.conversation_id)}
               </Text>
             </View>
           )}
@@ -290,7 +233,7 @@ export default function ChatListScreen() {
         {conversations.length > 0 ? (
           <FlatList
             data={conversations}
-            keyExtractor={(item) => item.match_id}
+            keyExtractor={(item) => item.conversation_id}
             renderItem={({ item }) => <ConversationRow conversation={item} />}
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
@@ -309,9 +252,9 @@ export default function ChatListScreen() {
           <EmptyState
             emoji={'\u{1F4AC}'}
             title={t('emptyChatTitle') || t('noConversations')}
-            subtitle={t('emptyChatSubtitle') || t('matchToChatCosmos')}
+            subtitle={t('emptyChatSubtitle') || t('startConversationFromDiscover') || 'Send the first message to anyone you discover.'}
             hint={t('emptyChatHint')}
-            actionLabel={t('emptyChatCta') || t('findMatches')}
+            actionLabel={t('emptyChatCta') || t('discover') || 'Discover people'}
             onAction={() => router.push('/(tabs)/discover')}
             testID="chat-empty"
           />

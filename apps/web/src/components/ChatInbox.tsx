@@ -8,16 +8,17 @@ import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 
-type MatchRow = {
-  match_id: string;
-  matched_user_id: string;
-  matched_user_name: string | null;
-  matched_user_image: string | null;
-  matched_user_sun_sign: string | null;
-  compatibility_overall: number | null;
+// Conversation-first: rows now come from `get_user_conversations` RPC.
+// Compatibility % is intentionally absent.
+type ConversationRow = {
+  conversation_id: string;
+  other_user_id: string;
+  other_user_name: string | null;
+  other_user_image: string | null;
+  other_user_sun_sign: string | null;
   last_message: string | null;
   last_message_at: string | null;
-  matched_at: string | null;
+  created_at: string | null;
   unread_count: number | null;
 };
 
@@ -38,20 +39,20 @@ function formatRelativeDate(value: string | null, locale: string) {
 export function ChatInbox() {
   const t = useTranslations("webApp");
   const locale = useLocale();
-  const [matches, setMatches] = useState<MatchRow[]>([]);
+  const [conversations, setConversations] = useState<ConversationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadMatches = async () => {
+  const loadConversations = async () => {
     setLoading(true);
     setError(null);
     try {
       const supabase = getSupabaseBrowser();
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user?.id) { setMatches([]); setLoading(false); return; }
-      const { data, error: rpcError } = await supabase.rpc("get_user_matches", { p_user_id: session.user.id });
+      if (!session?.user?.id) { setConversations([]); setLoading(false); return; }
+      const { data, error: rpcError } = await supabase.rpc("get_user_conversations");
       if (rpcError) throw rpcError;
-      setMatches((data as MatchRow[]) || []);
+      setConversations((data as ConversationRow[]) || []);
     } catch (loadFailure) {
       setError(loadFailure instanceof Error ? loadFailure.message : t("unknownError"));
     } finally {
@@ -59,7 +60,7 @@ export function ChatInbox() {
     }
   };
 
-  useEffect(() => { loadMatches(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadConversations(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (
@@ -69,7 +70,7 @@ export function ChatInbox() {
     );
   }
 
-  if (!matches.length) {
+  if (!conversations.length) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-purple/10 text-5xl" aria-hidden="true">
@@ -81,14 +82,8 @@ export function ChatInbox() {
         </p>
         <div className="mt-8 flex gap-3">
           <Link
-            href="/app/matches"
-            className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
-          >
-            {t("openMatches")}
-          </Link>
-          <Link
             href="/app/discover"
-            className="rounded-full border border-border px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
+            className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
           >
             {t("discoverNav")}
           </Link>
@@ -97,14 +92,14 @@ export function ChatInbox() {
     );
   }
 
-  const totalUnread = matches.reduce((sum, m) => sum + (m.unread_count || 0), 0);
+  const totalUnread = conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0);
 
   // Sort: unread first, then by last message date
-  const sorted = [...matches].sort((a, b) => {
+  const sorted = [...conversations].sort((a, b) => {
     if ((a.unread_count || 0) > 0 && !(b.unread_count || 0)) return -1;
     if ((b.unread_count || 0) > 0 && !(a.unread_count || 0)) return 1;
-    const aTime = new Date(a.last_message_at || a.matched_at || 0).getTime();
-    const bTime = new Date(b.last_message_at || b.matched_at || 0).getTime();
+    const aTime = new Date(a.last_message_at || a.created_at || 0).getTime();
+    const bTime = new Date(b.last_message_at || b.created_at || 0).getTime();
     return bTime - aTime;
   });
 
@@ -122,17 +117,17 @@ export function ChatInbox() {
         </div>
       )}
 
-      {/* Chat list — messenger style */}
+      {/* Chat list — messenger style. Compatibility % is intentionally absent. */}
       <div className="overflow-hidden rounded-2xl border border-border">
-        {sorted.map((match, index) => {
-          const profileImage = resolveImageSrc(match.matched_user_image);
-          const relativeDate = formatRelativeDate(match.last_message_at || match.matched_at, locale);
-          const hasUnread = (match.unread_count || 0) > 0;
+        {sorted.map((conversation, index) => {
+          const profileImage = resolveImageSrc(conversation.other_user_image);
+          const relativeDate = formatRelativeDate(conversation.last_message_at || conversation.created_at, locale);
+          const hasUnread = (conversation.unread_count || 0) > 0;
 
           return (
             <Link
-              key={match.match_id}
-              href={`/app/chat/${match.match_id}`}
+              key={conversation.conversation_id}
+              href={`/app/chat/${conversation.conversation_id}`}
               className={`flex items-center gap-4 px-5 py-4 transition-colors hover:bg-white/[0.06] ${
                 index > 0 ? "border-t border-white/6" : ""
               } ${hasUnread ? "bg-white/[0.03]" : ""}`}
@@ -142,7 +137,7 @@ export function ChatInbox() {
                 <div className="relative h-14 w-14 overflow-hidden rounded-full bg-bg-secondary ring-2 ring-transparent ring-offset-2 ring-offset-[#090b13]">
                   <Image
                     src={profileImage}
-                    alt={match.matched_user_name || t("unknownUser")}
+                    alt={conversation.other_user_name || t("unknownUser")}
                     fill
                     sizes="56px"
                     unoptimized={shouldBypassImageOptimization(profileImage)}
@@ -152,9 +147,9 @@ export function ChatInbox() {
                 {hasUnread && (
                   <span
                     className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white ring-2 ring-[#090b13]"
-                    aria-label={t("matchesUnread", { count: match.unread_count || 0 })}
+                    aria-label={t("matchesUnread", { count: conversation.unread_count || 0 })}
                   >
-                    {match.unread_count}
+                    {conversation.unread_count}
                   </span>
                 )}
               </div>
@@ -163,7 +158,7 @@ export function ChatInbox() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-2">
                   <h3 className={`truncate text-[15px] ${hasUnread ? "font-bold text-white" : "font-medium text-white/90"}`}>
-                    {match.matched_user_name || t("unknownUser")}
+                    {conversation.other_user_name || t("unknownUser")}
                   </h3>
                   {relativeDate && (
                     <span className={`shrink-0 text-xs ${hasUnread ? "font-semibold text-accent" : "text-text-dim"}`}>
@@ -173,20 +168,16 @@ export function ChatInbox() {
                 </div>
                 <div className="mt-1 flex items-center gap-2">
                   <p className={`truncate text-sm ${hasUnread ? "font-medium text-white/80" : "text-text-muted"}`}>
-                    {match.last_message || (
+                    {conversation.last_message || (
                       <span className="italic">{t("matchesNoMessage")}</span>
                     )}
                   </p>
                 </div>
                 <div className="mt-1.5 flex items-center gap-2">
                   <span className="text-xs text-text-dim">
-                    ☀️ {match.matched_user_sun_sign
-                      ? translateSign(match.matched_user_sun_sign, locale)
+                    ☀️ {conversation.other_user_sun_sign
+                      ? translateSign(conversation.other_user_sun_sign, locale)
                       : "?"}
-                  </span>
-                  <span className="text-text-dim">·</span>
-                  <span className="text-xs text-text-dim">
-                    {match.compatibility_overall || 85}% {t("discoverMatch")}
                   </span>
                 </div>
               </div>

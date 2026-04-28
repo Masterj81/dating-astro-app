@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
@@ -36,6 +37,7 @@ type Profile = {
 export function ProfileDetail({ profileId }: ProfileDetailProps) {
   const t = useTranslations("webApp");
   const locale = useLocale();
+  const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +46,29 @@ export function ProfileDetail({ profileId }: ProfileDetailProps) {
   const [reportDescription, setReportDescription] = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportFeedback, setReportFeedback] = useState<string | null>(null);
+  const [startingChat, setStartingChat] = useState(false);
+
+  // Conversation-first: messaging is free. We mint or fetch the
+  // conversation through the SECURITY DEFINER RPC and navigate.
+  const handleStartConversation = async () => {
+    if (!profile || startingChat) return;
+    try {
+      setStartingChat(true);
+      const supabase = getSupabaseBrowser();
+      const { data, error: rpcError } = await supabase.rpc(
+        "get_or_create_conversation",
+        { target_user_id: profile.id }
+      );
+      if (rpcError || !data) {
+        throw rpcError || new Error(t("unknownError"));
+      }
+      router.push(`/${locale}/app/chat/${String(data)}`);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : t("unknownError"));
+    } finally {
+      setStartingChat(false);
+    }
+  };
 
   const reportReasons: { value: ReportReason; label: string }[] = [
     { value: "inappropriate_photos", label: t("reportReasonPhotos") },
@@ -145,10 +170,10 @@ export function ProfileDetail({ profileId }: ProfileDetailProps) {
           {t("profileUnavailableBody")}
         </p>
         <Link
-          href="/app/matches"
+          href="/app/discover"
           className="mt-6 inline-flex rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
         >
-          {t("matchesNav")}
+          {t("discoverNav")}
         </Link>
       </div>
     );
@@ -212,15 +237,23 @@ export function ProfileDetail({ profileId }: ProfileDetailProps) {
         </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link
-            href="/app/matches"
-            className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
+          <button
+            type="button"
+            onClick={handleStartConversation}
+            disabled={startingChat}
+            className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {t("backToMatches")}
+            💬 {t("sendMessage")}
+          </button>
+          <Link
+            href="/app/plans"
+            className="rounded-full border border-purple/30 bg-purple/10 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-purple/20"
+          >
+            ✨ {t("findYourCompatibility")}
           </Link>
           <Link
             href="/app/discover"
-            className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+            className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
           >
             {t("discoverNav")}
           </Link>

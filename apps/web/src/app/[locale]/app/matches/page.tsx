@@ -1,13 +1,13 @@
-import { AppShell } from "@/components/AppShell";
-import { MatchesOverview } from "@/components/MatchesOverview";
-import { getTranslations } from "next-intl/server";
+import { redirect } from "next/navigation";
 
-export default async function MatchesPage() {
-  const t = await getTranslations("webApp");
-
-  return (
-    <AppShell title={t("matchesPageTitle")} subtitle={t("matchesPageSubtitle")}>
-      <MatchesOverview />
-    </AppShell>
-  );
+// Conversation-first product change: the legacy "Matches" tab no longer
+// exists. Any link to /app/matches forwards to the conversation list so
+// older bookmarks and external links still resolve.
+export default async function MatchesPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  redirect(`/${locale}/app/chat`);
 }

@@ -114,10 +114,11 @@ export function AppShell({
 
   const isFreeUser = userTier === "free" || userTier === null;
 
+  // Conversation-first nav: the Matches tab is gone. Chat is now the primary
+  // social inbox. Old /app/matches deep links still resolve via a redirect.
   const mainNav: NavLink[] = [
     { href: "/app", label: t("sidebarDashboard"), icon: "🏠" },
     { href: "/app/discover", label: t("discoverNav"), icon: "🔮", accent: "rose" },
-    { href: "/app/matches", label: t("matchesNav"), icon: "💫" },
     { href: "/app/chat", label: t("chatNav"), icon: "💬" },
     { href: "/app/premium/cosmic", label: t("premiumNav"), icon: "🌌", accent: "cosmic" },
     { href: "/app/premium/celestial", label: t("natalChartNav"), icon: "✨", accent: "celestial" },
@@ -127,7 +128,6 @@ export function AppShell({
   // Bottom tab bar uses a simplified set
   const bottomNav: NavLink[] = [
     { href: "/app/discover", label: t("discoverNav"), icon: "🔮", accent: "rose" },
-    { href: "/app/matches", label: t("matchesNav"), icon: "💫" },
     { href: "/app/chat", label: t("chatNav"), icon: "💬" },
     { href: "/app/premium/cosmic", label: t("premiumNav"), icon: "✨", accent: "cosmic" },
     { href: "/app/profile", label: t("profileNav"), icon: "👤" },
