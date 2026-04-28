@@ -1,9 +1,15 @@
+// Conversation-first product change: removed `seeWhoLikes`, `superLikes`,
+// `priorityMessages` from the Celestial tier. Messaging is free for
+// everyone now, so those upsells are gone. The compatibility-detail
+// surface (synastry) becomes the primary value prop for Celestial.
+//
+// The screen files for those routes still exist (super-likes.tsx,
+// likes.tsx, priority-messages.tsx) so any deep links / push-notification
+// payloads referring to them don't 404. They'll be cleaned up in a
+// follow-up.
 export const CELESTIAL_FEATURES = [
   { key: 'fullNatalChart', icon: '\u{1F31F}', route: '/premium-screens/natal-chart' },
   { key: 'advancedSynastry', icon: '\u{1F495}', route: '/premium-screens/synastry' },
-  { key: 'seeWhoLikes', icon: '\u{2764}\u{FE0F}', route: '/premium-screens/likes' },
-  { key: 'superLikes', icon: '\u{2B50}', route: '/premium-screens/super-likes' },
-  { key: 'priorityMessages', icon: '\u{1F4AC}', route: '/premium-screens/priority-messages' },
   { key: 'monthlyTarot', icon: '\u{1F0CF}', route: '/premium-screens/tarot' },
 ] as const;
 
@@ -17,8 +23,8 @@ export const COSMIC_FEATURES = [
 ] as const;
 
 export const PAYWALL_PREVIEW_FEATURES = [
-  { key: 'fullNatalChart', icon: '\u{1F31F}', fallback: 'Natal Chart' },
   { key: 'advancedSynastry', icon: '\u{1F495}', fallback: 'Synastry' },
+  { key: 'fullNatalChart', icon: '\u{1F31F}', fallback: 'Natal Chart' },
   { key: 'dailyHoroscope', icon: '\u{1F52E}', fallback: 'Horoscopes' },
   { key: 'luckyDays', icon: '\u{1F340}', fallback: 'Lucky Days' },
 ] as const;
