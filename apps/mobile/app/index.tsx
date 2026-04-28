@@ -95,7 +95,7 @@ export default function Index() {
 
   if (splashReady) {
     if (!user) {
-      return <Redirect href="/auth/login" />;
+      return <Redirect href="/welcome" />;
     }
     if (!isEmailVerified) {
       return <Redirect href="/auth/verify-email" />;

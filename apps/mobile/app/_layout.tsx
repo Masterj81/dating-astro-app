@@ -17,6 +17,12 @@ import { supabase } from '../services/supabase';
 import { syncWidgetWithProfile } from '../services/widgetService';
 import { registerServiceWorker, setupInstallPrompt } from '../services/pwa';
 import { t } from '../services/i18n';
+import {
+  clearPreSignupDraft,
+  loadOnboardingDraft,
+  loadPreSignupDraft,
+  saveOnboardingDraft,
+} from '../utils/onboardingDraft';
 
 // Suppress known benign warnings on native only (LogBox is the proper API)
 // Only in dev - production builds don't show LogBox anyway
@@ -295,6 +301,26 @@ function RootLayout() {
                       ? currentUser.user_metadata.gender
                       : undefined;
                   await ensureProfileExists(currentUser.id, displayName, profileGender);
+
+                  // Phase B: hand off the pre-signup welcome draft to the
+                  // user-keyed draft so the onboarding screens pre-fill
+                  // birth date / time / city. We never overwrite an
+                  // existing user-keyed draft (returning users signing in
+                  // again on the same device should keep their own draft),
+                  // and we always clear the pre-signup copy so it does not
+                  // leak across accounts on a shared device.
+                  try {
+                    const preSignup = await loadPreSignupDraft();
+                    if (preSignup) {
+                      const existing = await loadOnboardingDraft(currentUser.id);
+                      if (!existing) {
+                        await saveOnboardingDraft(currentUser.id, preSignup);
+                      }
+                      await clearPreSignupDraft();
+                    }
+                  } catch (handoffErr) {
+                    if (__DEV__) console.warn('[welcome] pre-signup hand-off failed:', handoffErr);
+                  }
                 }
                 await fetchProfile(currentUser.id);
               })(),
@@ -669,6 +695,7 @@ function RootLayout() {
             }}
           >
             <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="welcome" options={{ headerShown: false }} />
             <Stack.Screen name="auth" options={{ headerShown: false }} />
             <Stack.Screen name="onboarding" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
