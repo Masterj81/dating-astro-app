@@ -70,3 +70,46 @@ export async function clearOnboardingDraft(
     if (__DEV__) console.warn('[onboardingDraft] clear failed:', err);
   }
 }
+
+// =============================================================================
+// Pre-signup draft.
+//
+// The /welcome flow lets visitors enter birth info BEFORE creating an
+// account so the app can show their natal chart preview as the value
+// proposition. Since there is no userId yet we use a fixed key. Once
+// signup completes we copy this draft into the user-keyed draft above
+// (see signup.tsx) and clear the pre-signup copy.
+// =============================================================================
+
+const PRE_SIGNUP_DRAFT_KEY = 'onboarding_draft_pre_signup';
+
+export async function savePreSignupDraft(draft: OnboardingDraft): Promise<void> {
+  try {
+    await AsyncStorage.setItem(PRE_SIGNUP_DRAFT_KEY, JSON.stringify(draft));
+  } catch (err) {
+    if (__DEV__) console.warn('[onboardingDraft] pre-signup save failed:', err);
+  }
+}
+
+export async function loadPreSignupDraft(): Promise<OnboardingDraft | null> {
+  try {
+    const raw = await AsyncStorage.getItem(PRE_SIGNUP_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as OnboardingDraft;
+    }
+    return null;
+  } catch (err) {
+    if (__DEV__) console.warn('[onboardingDraft] pre-signup load failed:', err);
+    return null;
+  }
+}
+
+export async function clearPreSignupDraft(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(PRE_SIGNUP_DRAFT_KEY);
+  } catch (err) {
+    if (__DEV__) console.warn('[onboardingDraft] pre-signup clear failed:', err);
+  }
+}
