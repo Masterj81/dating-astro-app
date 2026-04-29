@@ -26,7 +26,6 @@ type NotificationSettings = {
   newMatches: boolean;
   messages: boolean;
   likes: boolean;
-  superLikes: boolean;
   dailyHoroscope: boolean;
   promotions: boolean;
 };
@@ -44,7 +43,6 @@ export default function SettingsScreen() {
     newMatches: true,
     messages: true,
     likes: true,
-    superLikes: true,
     dailyHoroscope: false,
     promotions: false,
   });
@@ -373,20 +371,6 @@ export default function SettingsScreen() {
             <Switch
               value={notifications.likes}
               onValueChange={() => toggleNotification('likes')}
-              disabled={loadingPrefs}
-              trackColor={{ false: '#333', true: AppTheme.colors.coral }}
-              thumbColor="#fff"
-            />
-          </View>
-
-          <View style={[styles.settingsRow, loadingPrefs && styles.rowDisabled]}>
-            <View style={styles.rowLeft}>
-              <Text style={styles.rowIcon}>⭐</Text>
-              <Text style={styles.rowText}>{t('superLikes')}</Text>
-            </View>
-            <Switch
-              value={notifications.superLikes}
-              onValueChange={() => toggleNotification('superLikes')}
               disabled={loadingPrefs}
               trackColor={{ false: '#333', true: AppTheme.colors.coral }}
               thumbColor="#fff"

@@ -162,7 +162,7 @@ export default function PremiumScreen() {
       { icon: '\u{1F495}', label: t('paywallBenefitLabel1') || 'See Who\u2019s Drawn to You', desc: t('paywallBenefitDesc1') || 'Reveal every person who swiped right on your profile' },
       { icon: '\u{1F31F}', label: t('paywallBenefitLabel2') || 'Your Complete Star Map', desc: t('paywallBenefitDesc2') || 'All 10 planets, 12 houses \u2014 your full cosmic blueprint' },
       { icon: '\u{1F52E}', label: t('paywallBenefitLabel3') || 'Daily Cosmic Guidance', desc: t('paywallBenefitDesc3') || 'Personalized love insights based on today\u2019s transits' },
-      { icon: '\u{2B50}', label: t('paywallBenefitLabel4') || '3x More Matches', desc: t('paywallBenefitDesc4') || '5 daily super likes \u2014 profiles with super likes match 3x more' },
+      { icon: '\u{2B50}', label: t('paywallBenefitLabel4') || 'Unlimited Likes & Swipes', desc: t('paywallBenefitDesc4') || 'No daily limit \u2014 keep matching as long as the stars align' },
     ];
 
     return (

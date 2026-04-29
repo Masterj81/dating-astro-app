@@ -61,7 +61,7 @@ export function CelestialLikesOverview() {
         .from("swipes")
         .select("swiper_id, created_at")
         .eq("swiped_id", session.user.id)
-        .in("action", ["like", "super_like"])
+        .eq("action", "like")
         .order("created_at", { ascending: false });
 
       if (swipesError) {

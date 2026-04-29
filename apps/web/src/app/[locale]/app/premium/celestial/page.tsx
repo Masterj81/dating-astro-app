@@ -44,13 +44,6 @@ export default async function CelestialHubPage() {
       available: true,
     },
     {
-      href: "/app/premium/celestial/super-likes",
-      title: t("celestialHubOpenSuperLikes"),
-      body: t("celestialHubItem_superLikes"),
-      badge: t("hubBadge_live"),
-      available: true,
-    },
-    {
       href: "/app/premium/celestial/priority-messages",
       title: t("celestialHubOpenPriorityMessages"),
       body: t("celestialHubItem_priorityMessages"),

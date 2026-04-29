@@ -27,7 +27,6 @@ function isRateLimited(userId: string): boolean {
 const TYPE_TO_PREF_KEY: Record<string, string> = {
   match: "newMatches",
   like: "likes",
-  superLike: "superLikes",
   message: "messages",
   dailyHoroscope: "dailyHoroscope",
   retrogradeAlert: "dailyHoroscope", // falls under horoscope prefs
@@ -36,7 +35,6 @@ const TYPE_TO_PREF_KEY: Record<string, string> = {
   newMatches: "newMatches",
   messages: "messages",
   likes: "likes",
-  superLikes: "superLikes",
   promotions: "promotions",
 };
 
@@ -44,10 +42,8 @@ const TYPE_TO_PREF_KEY: Record<string, string> = {
 const TYPE_TO_CHANNEL: Record<string, string> = {
   match: "matches",
   like: "matches",
-  superLike: "matches",
   newMatches: "matches",
   likes: "matches",
-  superLikes: "matches",
   message: "messages",
   messages: "messages",
   dailyHoroscope: "horoscope",

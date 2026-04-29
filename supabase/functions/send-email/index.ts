@@ -203,7 +203,7 @@ function onboardingDay5Email(name: string): { subject: string; html: string } {
           <strong style="color:#ffffff;">Daily horoscope</strong> — personalized cosmic guidance every morning.
         </p>
         <p style="margin:0;font-size:16px;line-height:1.65;">
-          <strong style="color:#ffffff;">Unlimited likes & super likes</strong> — connect without limits.
+          <strong style="color:#ffffff;">Unlimited likes</strong> — connect without limits.
         </p>
       `,
       footer:

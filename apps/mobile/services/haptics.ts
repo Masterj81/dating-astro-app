@@ -119,19 +119,6 @@ export async function passSwipe(): Promise<void> {
 }
 
 /**
- * Super like pattern - extra special feedback
- * Pattern: Heavy-Light-Heavy sequence
- */
-export async function superLike(): Promise<void> {
-  if (!isHapticsSupported()) return;
-  await heavyImpact();
-  await delay(100);
-  await lightImpact();
-  await delay(100);
-  await heavyImpact();
-}
-
-/**
  * New match celebration - when two users match
  * Pattern: 4-pulse celebration pattern
  */
@@ -265,7 +252,6 @@ export const HapticPatterns = {
   swipeThreshold,
   likeSwipe,
   passSwipe,
-  superLike,
   matchCelebration,
   compatibilityReveal,
   buttonPress,

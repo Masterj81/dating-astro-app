@@ -10,7 +10,6 @@ const FEATURE_KEYS = [
   { key: "discovery", icon: "🔮" },
   { key: "horoscope", icon: "⭐" },
   { key: "transits", icon: "🌙" },
-  { key: "superLikes", icon: "✨" },
 ] as const;
 
 const STEP_KEYS = ["step1", "step2", "step3"] as const;

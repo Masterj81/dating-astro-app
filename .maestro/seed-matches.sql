@@ -104,7 +104,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
 -- "first request grants 1 free trial" surprise).
 --
 -- Feature keys come from apps/mobile/services/premiumUsage.ts:
---   Premium (Celestial): synastry, super-likes, likes, priority-messages,
+--   Premium (Celestial): synastry, likes, priority-messages,
 --                        natal-chart, monthly-tarot
 --   Premium Plus (Cosmic): daily-horoscope, monthly-horoscope, planetary-transits,
 --                          retrograde-alerts, lucky-days, date-planner, weekly-tarot
@@ -119,7 +119,7 @@ DECLARE
   v_match_id      uuid;
   v_today         date := CURRENT_DATE;
   v_celestial     TEXT[] := ARRAY[
-    'synastry','super-likes','likes','priority-messages','natal-chart','monthly-tarot'
+    'synastry','likes','priority-messages','natal-chart','monthly-tarot'
   ];
   v_cosmic        TEXT[] := ARRAY[
     'daily-horoscope','monthly-horoscope','planetary-transits',
@@ -127,7 +127,7 @@ DECLARE
   ];
   v_all_features  TEXT[] := ARRAY[
     -- Mobile/client-side keys (PremiumGate, dashes) -----------------------
-    'synastry','super-likes','likes','priority-messages','natal-chart',
+    'synastry','likes','priority-messages','natal-chart',
     'monthly-tarot','daily-horoscope','monthly-horoscope','planetary-transits',
     'retrograde-alerts','lucky-days','date-planner','weekly-tarot',
     -- Server-side keys (enforce_premium_feature RPC, underscores) ---------
@@ -137,7 +137,7 @@ DECLARE
     'natal_chart','daily_horoscope','synastry','compatibility_details',
     'monthly_horoscope','tarot','date_planner','lucky_days',
     'retrograde_alerts','planetary_transits','priority_messages',
-    'super_likes','likes_you_see_who'
+    'likes_you_see_who'
   ];
   v_feature       TEXT;
 BEGIN

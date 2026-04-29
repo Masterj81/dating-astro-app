@@ -4,7 +4,6 @@ import { supabase } from './supabase';
 export type FeatureKey =
   // Premium tier features (Celestial)
   | 'synastry'
-  | 'super-likes'
   | 'likes'
   | 'priority-messages'
   | 'natal-chart'
@@ -23,7 +22,6 @@ export type FeatureKey =
 export const FEATURE_TIERS: Record<FeatureKey, 'premium' | 'premium_plus'> = {
   // Premium tier features (Celestial)
   'synastry': 'premium',
-  'super-likes': 'premium',
   'likes': 'premium',
   'priority-messages': 'premium',
   'natal-chart': 'premium',

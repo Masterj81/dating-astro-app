@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import { formatPrice, type PriceMap } from "@/lib/billingPriceFormat";
 
 // Conversation-first product change: messaging is free, so we removed
-// the like/super-like/priority/see-who-liked-you bullets that no longer
-// have product meaning. Premium value is now compatibility detail and
+// the like/priority/see-who-liked-you bullets that no longer have
+// product meaning. Premium value is now compatibility detail and
 // astro insights.
 const FREE_FEATURES = [
   "featureBasicChart",

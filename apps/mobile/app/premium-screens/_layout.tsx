@@ -36,7 +36,6 @@ export default function PremiumLayout() {
       <Stack.Screen name="lucky-days" />
       <Stack.Screen name="synastry" />
       <Stack.Screen name="likes" />
-      <Stack.Screen name="super-likes" />
       <Stack.Screen name="priority-messages" />
       <Stack.Screen name="date-planner" />
       <Stack.Screen name="tarot" />

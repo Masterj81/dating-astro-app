@@ -3,10 +3,9 @@
 // everyone now, so those upsells are gone. The compatibility-detail
 // surface (synastry) becomes the primary value prop for Celestial.
 //
-// The screen files for those routes still exist (super-likes.tsx,
-// likes.tsx, priority-messages.tsx) so any deep links / push-notification
-// payloads referring to them don't 404. They'll be cleaned up in a
-// follow-up.
+// `super-likes` was deleted in full (it was never wired to a swipe
+// action or visibility boost). `likes.tsx` and `priority-messages.tsx`
+// still exist so deep links don't 404, pending a follow-up cleanup.
 export const CELESTIAL_FEATURES = [
   { key: 'fullNatalChart', icon: '\u{1F31F}', route: '/premium-screens/natal-chart' },
   { key: 'advancedSynastry', icon: '\u{1F495}', route: '/premium-screens/synastry' },

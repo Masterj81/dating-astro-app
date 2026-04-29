@@ -50,7 +50,6 @@ export default function PremiumSuccessScreen() {
               <Text style={styles.featureItem}>✨ {t('unlimitedSwipes')}</Text>
               <Text style={styles.featureItem}>🌙 {t('fullNatalChart')}</Text>
               <Text style={styles.featureItem}>💫 {t('advancedSynastry')}</Text>
-              <Text style={styles.featureItem}>⭐ {t('superLikes')}</Text>
             </View>
 
             <TouchableOpacity

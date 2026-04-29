@@ -67,7 +67,6 @@ export default function PaywallModal() {
 
     const featureNames: Record<FeatureKey, string> = {
       'synastry': t('advancedSynastry') || 'Advanced Synastry',
-      'super-likes': t('superLikes') || 'Super Likes',
       'likes': t('seeWhoLikes') || 'See Who Likes You',
       'priority-messages': t('priorityMessages') || 'Priority Messages',
       'natal-chart': t('fullNatalChart') || 'Full Natal Chart',

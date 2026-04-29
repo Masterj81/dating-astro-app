@@ -26,14 +26,12 @@ const CELESTIAL_FEATURES = [
   "planFeatureSynastry",
   "planFeatureAdvancedFilters",
   "planFeatureSeeWhoLiked",
-  "planFeature5SuperLikes",
   "planFeatureWeeklyHoroscopes",
 ] as const;
 
 const COSMIC_FEATURES = [
   "planFeatureEverythingCelestial",
   "planFeatureMonthlyYearlyHoroscopes",
-  "planFeatureUnlimitedSuperLikes",
   "planFeatureTransitAlerts",
   "planFeaturePriority",
   "planFeatureReadReceipts",

@@ -24,7 +24,7 @@ const CATEGORIES = [
   },
   {
     nameKey: "catMatching",
-    questions: ["compatibility", "fewMatches", "superLike"],
+    questions: ["compatibility", "fewMatches"],
   },
   {
     nameKey: "catBilling",

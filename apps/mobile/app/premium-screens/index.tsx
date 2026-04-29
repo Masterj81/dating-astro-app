@@ -13,7 +13,6 @@ const CELESTIAL_FEATURES = [
   { key: 'fullNatalChart', icon: '🌟', route: '/premium-screens/natal-chart' },
   { key: 'advancedSynastry', icon: '💕', route: '/premium-screens/synastry' },
   { key: 'seeWhoLikes', icon: '❤️', route: '/premium-screens/likes' },
-  { key: 'superLikes', icon: '⭐', route: '/premium-screens/super-likes' },
   { key: 'priorityMessages', icon: '💬', route: '/premium-screens/priority-messages' },
 ];
 

@@ -502,7 +502,7 @@ function RootLayout() {
     const Notifications = require('expo-notifications');
 
     const VALID_TYPES: NotificationType[] = [
-      'match', 'message', 'like', 'superLike',
+      'match', 'message', 'like',
       'dailyHoroscope', 'retrogradeAlert', 'promotion',
     ];
 
@@ -537,7 +537,6 @@ function RootLayout() {
       switch (data.type) {
         case 'match':
         case 'like':
-        case 'superLike':
           if (safeMatchId) {
             router.push(`/match/${safeMatchId}`);
           } else {
