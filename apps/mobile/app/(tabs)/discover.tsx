@@ -380,10 +380,12 @@ export default function DiscoverScreen() {
     }
   };
 
-  // Premium CTA: takes the user to the paywall. Compatibility % is hidden.
+  // Premium CTA: takes the user to synastry for the currently viewed profile.
+  // Compatibility % is hidden from the card itself.
   const handleFindCompatibility = () => {
+    if (!currentProfile?.id) return;
     buttonPress();
-    router.push('/premium-screens/synastry' as any);
+    router.push(`/premium-screens/synastry?matchId=${currentProfile.id}` as any);
   };
 
   const handleRefresh = () => {

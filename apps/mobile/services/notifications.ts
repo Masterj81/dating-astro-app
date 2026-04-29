@@ -206,9 +206,9 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
   }
 }
 
-// Save push token to the push_tokens table (multi-device) AND to the legacy
-// profiles.push_token column (single-device) as a fallback until
-// send-notification v2 is validated in prod.
+// Save push token to the push_tokens table (multi-device) AND mirror it to the
+// legacy profiles.push_token column while send-notification still supports that
+// fallback path for users on older app/server combinations.
 // TODO(P3): remove the legacy profiles.push_token write once send-notification
 //           is confirmed to read exclusively from push_tokens.
 export async function savePushToken(userId: string, token: string): Promise<boolean> {
@@ -245,20 +245,9 @@ export async function savePushToken(userId: string, token: string): Promise<bool
     console.warn('getDeviceId returned null — falling back to legacy profiles.push_token only');
   }
 
-  // Legacy path — kept for one cycle so send-notification can still reach
-  // this user via profiles.push_token if it hasn't been redeployed yet.
-  // The legacy RPC does its own cross-profile scrub.
-  try {
-    const { error: claimError } = await supabase.rpc('claim_push_token', {
-      p_user_id: userId,
-      p_token: token,
-    });
-    if (claimError && __DEV__) {
-      console.warn('claim_push_token (legacy) RPC error:', claimError.message);
-    }
-  } catch (err) {
-    if (__DEV__) console.warn('claim_push_token (legacy) RPC threw:', err);
-  }
+  // The v2 RPC already scrubs any stale legacy profiles.push_token rows that
+  // hold this token, so we only need to mirror the current user's token into
+  // the legacy single-slot column for the fallback delivery path.
 
   const { error } = await supabase
     .from('profiles')
@@ -365,7 +354,6 @@ export type NotificationType =
   | 'match'
   | 'message'
   | 'like'
-  | 'superLike'
   | 'dailyHoroscope'
   | 'retrogradeAlert'
   | 'promotion';
@@ -383,7 +371,6 @@ export function getChannelForType(type: NotificationType): string {
   switch (type) {
     case 'match':
     case 'like':
-    case 'superLike':
       return 'matches';
     case 'message':
       return 'messages';
