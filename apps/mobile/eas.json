@@ -35,6 +35,9 @@
     },
     "production": {
       "autoIncrement": true,
+      "android": {
+        "gradleCommand": ":app:bundleRelease --stacktrace --info"
+      },
       "env": {
         "APP_ENV": "production",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"

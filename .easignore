@@ -1,0 +1,28 @@
+# Reduce EAS upload size (was 1.3 GB without this).
+# Anything not needed for Android/iOS native build.
+
+# Marketing agent (separate Node project, not part of mobile build)
+marketingagent/
+
+# Maestro E2E artifacts
+.maestro/
+
+# Local logs and caches
+.expo-mobile-dev.err.log
+.expo-mobile-dev.out.log
+.gradle-local/
+test-run.log
+test.log
+
+# Generated/uploaded media that EAS rebuilds anyway
+posts.json
+generate-post.ts
+evolve.ts
+test-extensions.ts
+
+# Scripts not used by mobile build
+scripts/
+
+# Other apps in the monorepo (only mobile builds via EAS)
+apps/web/
+docs/
