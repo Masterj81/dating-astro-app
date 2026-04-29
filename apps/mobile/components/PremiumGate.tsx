@@ -103,20 +103,16 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
     return featureNames[featureName] || featureName;
   };
 
-  // Unified Loading UI - combines gate checking and data loading.
-  // P2-6: show a proper skeleton (spinner + grey placeholder blocks) while
-  // we don't yet know the user's tier. This prevents the "paywall flash"
-  // where `loading=true` with `tier='free'` briefly resolved to a denied UI
-  // on slow networks. We stay in `checking` until `loading === false`, then
-  // either `granted` or `denied` is rendered — never the paywall while the
-  // subscription state is still being fetched.
-  if (accessState === 'checking' || isDataLoading) {
+  // Access still being verified — pure loader, children not yet mounted.
+  // P2-6 anti-flash: stay here until tier resolution completes so that
+  // `loading=true` with `tier='free'` does not briefly render the paywall.
+  if (accessState === 'checking') {
     return (
       <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#e94560" />
           <Text style={styles.loadingText}>
-            {isDataLoading ? t('consultingStars') || 'Consulting the stars...' : t('verifyingAccess') || 'Verifying access...'}
+            {t('verifyingAccess') || 'Verifying access...'}
           </Text>
           <View style={styles.skeletonWrapper}>
             <View style={[styles.skeletonBlock, { width: '70%' }]} />
@@ -198,14 +194,33 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
     );
   }
 
-  // Granted UI - Layout Fix
+  // Granted UI - children must mount so they can call onLoadingChange(false).
+  // The consultingStars overlay covers them while isDataLoading is true.
   // testID `premium-gate-granted` is a stable anchor that lets E2E tests assert
   // the user passed the gate without depending on per-screen content testIDs.
   return (
     <View style={styles.grantedWrapper} testID="premium-gate-granted">
       {children}
 
-      {trialConsumed && tier === 'free' && (
+      {isDataLoading && (
+        <View style={styles.dataLoadingOverlay} pointerEvents="auto">
+          <LinearGradient
+            colors={['#0f0f1a', '#1a1a2e', '#16213e']}
+            style={StyleSheet.absoluteFill}
+          />
+          <ActivityIndicator size="large" color="#e94560" />
+          <Text style={styles.loadingText}>
+            {t('consultingStars') || 'Consulting the stars...'}
+          </Text>
+          <View style={styles.skeletonWrapper}>
+            <View style={[styles.skeletonBlock, { width: '70%' }]} />
+            <View style={[styles.skeletonBlock, { width: '90%' }]} />
+            <View style={[styles.skeletonBlock, { width: '55%' }]} />
+          </View>
+        </View>
+      )}
+
+      {trialConsumed && tier === 'free' && !isDataLoading && (
         <TouchableOpacity style={styles.trialBanner} onPress={() => triggerPaywall(feature)}>
           <Text style={styles.trialBannerIcon}>✨</Text>
           <Text style={styles.trialBannerText}>
@@ -269,6 +284,12 @@ const styles = StyleSheet.create({
       width: '100vw' as any,
       overflow: 'hidden' as any,
     } : {}),
+  },
+  dataLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
   },
   deniedContainer: {
     flex: 1,
