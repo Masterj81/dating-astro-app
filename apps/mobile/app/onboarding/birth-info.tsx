@@ -121,7 +121,7 @@ function ProgressBar({ step, total }: { step: number; total: number }) {
   return (
     <View style={progressStyles.container}>
       <Text style={progressStyles.label}>
-        {t('onboardingStep')?.replace('{{current}}', String(step)).replace('{{total}}', String(total)) || `Step ${step} of ${total}`}
+        {t('onboardingStep', { current: step, total }) || `Step ${step} of ${total}`}
       </Text>
       <View style={progressStyles.track}>
         {Array.from({ length: total }, (_, i) => (

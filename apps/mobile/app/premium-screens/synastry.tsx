@@ -61,7 +61,7 @@ type SynastryContentProps = {
 };
 
 function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
-  const { matchId } = useLocalSearchParams<{ matchId: string }>();
+  const { matchId: rawMatchId } = useLocalSearchParams<{ matchId?: string }>();
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [matchProfile, setMatchProfile] = useState<Profile | null>(null);
@@ -71,6 +71,7 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
   const { user } = useAuth();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
+  const matchId = typeof rawMatchId === 'string' && rawMatchId.length > 0 ? rawMatchId : null;
 
   // Fade animation for smooth entry
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -104,13 +105,9 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
     setLoading(true);
 
     try {
-      const [ownResult, matchesResult] = await Promise.all([
-        supabase.rpc('get_my_full_profile'),
-        matchId ? Promise.resolve({ data: null, error: null }) : supabase.rpc('get_user_matches', { p_user_id: user.id }),
-      ]);
+      const ownResult = await supabase.rpc('get_my_full_profile');
 
       if (ownResult.error) throw ownResult.error;
-      if (matchesResult.error) throw matchesResult.error;
 
       const ownData = Array.isArray(ownResult.data) ? ownResult.data[0] : null;
       if (!ownData) {
@@ -122,13 +119,7 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
 
       setUserProfile(ownData as Profile);
 
-      const fallbackMatchId =
-        !matchId && Array.isArray(matchesResult.data) && matchesResult.data.length > 0
-          ? matchesResult.data[0]?.matched_user_id
-          : null;
-      const targetUserId = matchId || fallbackMatchId;
-
-      if (!targetUserId) {
+      if (!matchId) {
         setMatchProfile(null);
         setMatchChart(null);
         setCompatibility(null);
@@ -137,7 +128,7 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
 
       const { data: matchPayload, error: matchErr } = await supabase.functions.invoke(
         'get-profile-chart',
-        { body: { targetUserId } },
+        { body: { targetUserId: matchId } },
       );
       if (matchErr) throw matchErr;
 
@@ -223,9 +214,9 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
       }
     } catch (err) {
       console.error('Error loading synastry profiles:', err);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const calculateOverallScore = (): number => {
@@ -395,15 +386,37 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
 
   const renderContent = () => {
     // If we are here, loading is false, but data might still be missing
-    if (!userProfile || !matchProfile) {
+    if (!userProfile) {
       return (
         <View style={styles.errorContainer}>
           <Text style={styles.errorEmoji}>🔮</Text>
           <Text style={styles.errorText}>
-            {!userProfile ? t('profileDataMissing') || 'Your profile data is missing.' : t('matchDataMissing') || 'Match profile data is missing.'}
+            {t('profileDataMissing') || 'Your profile data is missing.'}
           </Text>
           <TouchableOpacity style={styles.retryButton} onPress={loadProfiles}>
             <Text style={styles.retryText}>{t('retryLoading') || 'Retry Loading'}</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (!matchProfile) {
+      const needsTargetSelection = !matchId;
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorEmoji}>{needsTargetSelection ? '✨' : '🔮'}</Text>
+          <Text style={styles.errorText}>
+            {needsTargetSelection
+              ? 'Choose someone from Discover or from a profile to open their synastry.'
+              : t('matchDataMissing') || 'Match profile data is missing.'}
+          </Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={needsTargetSelection ? () => router.push('/(tabs)/discover') : loadProfiles}
+          >
+            <Text style={styles.retryText}>
+              {needsTargetSelection ? t('discover') || 'Discover' : t('retryLoading') || 'Retry Loading'}
+            </Text>
           </TouchableOpacity>
         </View>
       );
