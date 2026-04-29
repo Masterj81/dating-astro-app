@@ -132,7 +132,8 @@
           "microphonePermission": "AstroDating needs microphone access to record your voice intro."
         }
       ],
-      "expo-video"
+      "expo-video",
+      "./plugins/withMonorepoNativePaths"
     ],
     "experiments": {
       "typedRoutes": true,
