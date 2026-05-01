@@ -22,6 +22,15 @@ export type PromptDef = {
   labelKey: string;
 };
 
+// Order = display order in the picker. Each entry has its i18n labelKey.
+export const PROMPT_CATEGORIES: readonly { id: PromptCategory; labelKey: string }[] = [
+  { id: 'humor',      labelKey: 'prompt_cat_humor' },
+  { id: 'vulnerable', labelKey: 'prompt_cat_vulnerable' },
+  { id: 'astro',      labelKey: 'prompt_cat_astro' },
+  { id: 'fun',        labelKey: 'prompt_cat_fun' },
+  { id: 'values',     labelKey: 'prompt_cat_values' },
+] as const;
+
 export const PROMPTS: readonly PromptDef[] = [
   // Humor — light, self-aware
   { key: 'red_flag_assumed',     category: 'humor',      labelKey: 'prompt_red_flag_assumed' },
@@ -197,6 +206,12 @@ export const findLifestyleTag = (key: string): LifestyleTagDef | undefined =>
 
 export const findIntent = (key: string | null | undefined): IntentDef | undefined =>
   RELATIONSHIP_INTENTS.find(i => i.key === key);
+
+// Type guard for stored relationship_intent strings — pairs with the DB
+// CHECK constraint vocabulary so callers can narrow `unknown` from a Supabase
+// response to the strict union type without an unsafe cast.
+export const isRelationshipIntent = (v: unknown): v is RelationshipIntent =>
+  typeof v === 'string' && RELATIONSHIP_INTENTS.some(i => i.key === v);
 
 // Stored shape of `prompts` JSONB column: array of {key, response}.
 export type PromptResponse = {

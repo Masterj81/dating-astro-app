@@ -15,9 +15,18 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ProfileMVPSections from '../../components/profile/ProfileMVPSections';
 import VoiceIntroRecorder from '../../components/VoiceIntroRecorder';
 import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
+import {
+  isRelationshipIntent,
+  sanitizeLifestyleTags,
+  sanitizePersonalValues,
+  sanitizePromptResponses,
+  type PromptResponse,
+  type RelationshipIntent,
+} from '../../data/profile-fields';
 import { readFileAsArrayBuffer, getExtFromMime } from '../../services/fileUtils';
 import { pickImage as pickImageCrossPlatform } from '../../services/imagePicker';
 import { supabase } from '../../services/supabase';
@@ -49,6 +58,13 @@ export default function EditProfileScreen() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [voiceIntroUrl, setVoiceIntroUrl] = useState<string | null>(null);
   const [_hasVoiceIntro, setHasVoiceIntro] = useState(false);
+  // MVP profile fields
+  const [personalValues, setPersonalValues] = useState<string[]>([]);
+  const [lifestyleTags, setLifestyleTags] = useState<string[]>([]);
+  const [intent, setIntent] = useState<RelationshipIntent | null>(null);
+  const [lookingForText, setLookingForText] = useState('');
+  const [prompts, setPrompts] = useState<PromptResponse[]>([]);
+  const [icebreaker, setIcebreaker] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
@@ -86,6 +102,14 @@ export default function EditProfileScreen() {
       setPhotos(data.photos || []);
       setVoiceIntroUrl(data.voice_intro_url || null);
       setHasVoiceIntro(data.has_voice_intro || false);
+      // MVP fields — sanitize before populating in case stale clients
+      // wrote unknown keys or oversize responses.
+      setPersonalValues(sanitizePersonalValues(data.personal_values));
+      setLifestyleTags(sanitizeLifestyleTags(data.interests));
+      setIntent(isRelationshipIntent(data.relationship_intent) ? data.relationship_intent : null);
+      setLookingForText(data.looking_for_text || '');
+      setPrompts(sanitizePromptResponses(data.prompts));
+      setIcebreaker(data.icebreaker_question || '');
     }
     setLoading(false);
   };
@@ -190,6 +214,7 @@ export default function EditProfileScreen() {
       const newPhotos = [...photos];
       newPhotos[index] = urlData.publicUrl;
       setPhotos(newPhotos.filter(Boolean));
+      setIsDirty(true);
     } catch (error: any) {
       console.error('Image upload failed:', error);
       if (error?.message === 'FILE_TOO_LARGE') {
@@ -217,6 +242,7 @@ export default function EditProfileScreen() {
           onPress: () => {
             const newPhotos = photos.filter((_, i) => i !== index);
             setPhotos(newPhotos);
+            setIsDirty(true);
           },
         },
       ]
@@ -238,7 +264,20 @@ export default function EditProfileScreen() {
       return;
     }
 
+    if (!intent) {
+      Alert.alert(t('error'), t('relationshipIntentRequired') || 'Pick an intent to continue');
+      return;
+    }
+
     setSaving(true);
+
+    // Re-sanitize MVP fields right before persist so any stale client state
+    // can't trip the DB CHECK constraints with an opaque error.
+    const sanitizedPrompts = sanitizePromptResponses(prompts).filter(
+      p => p.response.trim().length > 0
+    );
+    const sanitizedValues = sanitizePersonalValues(personalValues);
+    const sanitizedTags = sanitizeLifestyleTags(lifestyleTags);
 
     const { error } = await supabase
       .from('profiles')
@@ -248,6 +287,12 @@ export default function EditProfileScreen() {
         gender: gender || null,
         occupation: occupation.trim(),
         photos,
+        personal_values: sanitizedValues,
+        interests: sanitizedTags,
+        relationship_intent: intent,
+        looking_for_text: lookingForText.trim() || null,
+        prompts: sanitizedPrompts,
+        icebreaker_question: icebreaker.trim() || null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id);
@@ -270,10 +315,14 @@ export default function EditProfileScreen() {
       photos.length > 0,
       !!gender,
       !!occupation.trim(),
+      !!intent,
+      personalValues.length > 0,
+      lifestyleTags.length > 0,
+      prompts.some(p => p.response.trim().length > 0),
     ];
     const filled = fields.filter(Boolean).length;
     return Math.round((filled / fields.length) * 100);
-  }, [name, bio, photos.length, gender, occupation]);
+  }, [name, bio, photos.length, gender, occupation, intent, personalValues.length, lifestyleTags.length, prompts]);
 
   const handleBack = () => {
     if (isDirty) {
@@ -453,6 +502,24 @@ export default function EditProfileScreen() {
             </Text>
           </View>
 
+          {/* MVP profile sections — values, lifestyle, intent, looking-for,
+              prompts, icebreaker. State + save logic owned by this screen;
+              the component is purely controlled. */}
+          <ProfileMVPSections
+            values={personalValues}
+            onValuesChange={(v) => { setPersonalValues(v); setIsDirty(true); }}
+            lifestyleTags={lifestyleTags}
+            onLifestyleTagsChange={(v) => { setLifestyleTags(v); setIsDirty(true); }}
+            intent={intent}
+            onIntentChange={(v) => { setIntent(v); setIsDirty(true); }}
+            lookingForText={lookingForText}
+            onLookingForTextChange={(v) => { setLookingForText(v); setIsDirty(true); }}
+            prompts={prompts}
+            onPromptsChange={(v) => { setPrompts(v); setIsDirty(true); }}
+            icebreaker={icebreaker}
+            onIcebreakerChange={(v) => { setIcebreaker(v); setIsDirty(true); }}
+          />
+
           {/* Tips */}
           <View style={styles.tipsCard}>
             <Text style={styles.tipsTitle}>{t('profileTips') || 'Profile Tips'}</Text>
@@ -492,12 +559,12 @@ export default function EditProfileScreen() {
         </TouchableOpacity>
         <Text style={styles.title}>{t('editProfile') || 'Edit Profile'}</Text>
         <TouchableOpacity
-          style={[styles.saveButton, (saving || !isDirty) && styles.saveButtonDisabled]}
+          style={[styles.saveButton, (saving || (!isDirty && !!intent)) && styles.saveButtonDisabled]}
           onPress={handleSave}
-          disabled={saving || !isDirty}
+          disabled={saving || (!isDirty && !!intent)}
           accessibilityRole="button"
           accessibilityLabel={t('save') || 'Save'}
-          accessibilityState={{ disabled: saving || !isDirty }}
+          accessibilityState={{ disabled: saving || (!isDirty && !!intent) }}
         >
           {saving ? (
             <ActivityIndicator size="small" color="#fff" />
