@@ -1208,6 +1208,12 @@
   "icebreakerSection": "Icebreaker",
   "icebreakerHint": "A question you'd love to be asked first",
   "icebreakerPlaceholder": "e.g. What's the last thing that made you laugh out loud?",
+  "publicLookingFor": "Looking for",
+  "publicValues": "Values",
+  "publicLifestyle": "Lifestyle",
+  "publicIcebreakerLabel": "Ask me this",
+  "publicIcebreakerCta": "Tap to start chat →",
+  "tagsInCommon": "{{count}} in common",
 
   "intent_serious": "Serious relationship",
   "intent_serious_desc": "I'm looking for something lasting",

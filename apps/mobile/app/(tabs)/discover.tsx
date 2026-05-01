@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useNavigation } from 'expo-router';
 import { ErrorState, LoadingState, EmptyState } from '../../components/ScreenStates';
+import ProfilePublicMVPSections from '../../components/profile/ProfilePublicMVPSections';
 import WebTabWrapper from '../../components/WebTabWrapper';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -11,12 +12,14 @@ import {
   NativeSyntheticEvent,
   PanResponder,
   Platform,
+  ScrollView,
   Share,
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
+import { sanitizeLifestyleTags } from '../../data/profile-fields';
 import ReAnimated, {
   cancelAnimation,
   useAnimatedStyle,
@@ -67,6 +70,15 @@ type Profile = {
   is_verified?: boolean;
   has_voice_intro?: boolean;
   voice_intro_url?: string;
+  // MVP profile additions (surfaced via get_discoverable_profiles since
+  // 20260430000002). All optional / nullable — legacy profiles may not
+  // have any of these.
+  relationship_intent?: string | null;
+  personal_values?: string[] | null;
+  interests?: string[] | null;
+  looking_for_text?: string | null;
+  prompts?: unknown;
+  icebreaker_question?: string | null;
 };
 
 export default function DiscoverScreen() {
@@ -90,6 +102,10 @@ export default function DiscoverScreen() {
   const reduceMotion = useReduceMotion();
   const swipeInProgressRef = useRef(false);
   const [startingChat, setStartingChat] = useState(false);
+  // Viewer's own lifestyle tags — used to highlight shared tags on the
+  // public card. Fetched once on mount via get_my_full_profile (the same
+  // RPC the edit screen uses). Empty array on failure / no tags.
+  const [viewerInterests, setViewerInterests] = useState<string[]>([]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -124,6 +140,23 @@ export default function DiscoverScreen() {
     loadProfiles();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, [user, reduceMotion]);
+
+  // Fetch the viewer's own lifestyle tags so the card can highlight
+  // shared tags on profiles they discover. Read-only one-shot — failure
+  // is silent (the highlight just won't show).
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const { data: rows } = await supabase.rpc('get_my_full_profile');
+      const row = Array.isArray(rows) ? rows[0] : null;
+      if (cancelled || !row) return;
+      setViewerInterests(sanitizeLifestyleTags(row.interests));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   useEffect(() => {
     // Reset image error when profile changes
@@ -263,10 +296,16 @@ export default function DiscoverScreen() {
   goToNextProfileRef.current = goToNextProfile;
 
   const panResponder = useRef(PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onStartShouldSetPanResponderCapture: () => true,
-    onMoveShouldSetPanResponderCapture: () => true,
+    // Only claim the gesture for horizontal-dominant moves so the inner
+    // ScrollView (used to surface MVP profile sections inside the card)
+    // can capture vertical scrolls. Threshold of 6px avoids stealing tiny
+    // accidental moves from taps on inner buttons.
+    onStartShouldSetPanResponder: () => false,
+    onMoveShouldSetPanResponder: (_, gesture) =>
+      Math.abs(gesture.dx) > Math.abs(gesture.dy) && Math.abs(gesture.dx) > 6,
+    onStartShouldSetPanResponderCapture: () => false,
+    onMoveShouldSetPanResponderCapture: (_, gesture) =>
+      Math.abs(gesture.dx) > Math.abs(gesture.dy) && Math.abs(gesture.dx) > 6,
     onPanResponderMove: (_, gestureState) => {
       translateX.value = gestureState.dx;
       translateY.value = gestureState.dy * 0.3;
@@ -658,6 +697,26 @@ export default function DiscoverScreen() {
                 </View>
               )}
 
+              {/* MVP profile sections — display-only. Sanitization happens
+                  inside the component so we can pass the raw RPC payload. */}
+              <ScrollView
+                style={styles.mvpScroll}
+                contentContainerStyle={styles.mvpScrollContent}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled
+              >
+                <ProfilePublicMVPSections
+                  relationshipIntent={currentProfile.relationship_intent}
+                  personalValues={currentProfile.personal_values}
+                  interests={currentProfile.interests}
+                  lookingForText={currentProfile.looking_for_text}
+                  prompts={currentProfile.prompts}
+                  icebreakerQuestion={currentProfile.icebreaker_question}
+                  viewerInterests={viewerInterests}
+                  onSendIcebreaker={handleStartConversation}
+                />
+              </ScrollView>
+
               <TouchableOpacity
                 style={styles.viewChartButton}
                 onPress={handleViewProfile}
@@ -925,6 +984,16 @@ const styles = StyleSheet.create({
     color: AppTheme.colors.textSecondary,
     fontSize: 15,
     lineHeight: 22,
+  },
+  // Inner vertical scroll for the MVP profile sections (intent, values,
+  // tags, prompts, icebreaker). Capped so the View profile button stays
+  // visible at the bottom of the card.
+  mvpScroll: {
+    maxHeight: 220,
+    marginTop: 8,
+  },
+  mvpScrollContent: {
+    paddingBottom: 8,
   },
   viewChartButton: {
     marginTop: 8,
