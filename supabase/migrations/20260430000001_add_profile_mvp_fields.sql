@@ -55,6 +55,34 @@ END $$;
 --      MAX_VALUES                  = 5   (personal_values)
 --      MAX_LIFESTYLE_TAGS          = 12  (interests)
 -- ───────────────────────────────────────────────────────────────────────────
+
+-- Helper for the prompts JSONB shape CHECK. Postgres CHECK constraints can
+-- not contain subqueries, but they CAN call scalar functions — so we wrap
+-- the per-element validation in an IMMUTABLE function and the constraint
+-- becomes a single function call. Pure JSONB ops, no side effects, no
+-- catalog reads → IMMUTABLE is honest.
+CREATE OR REPLACE FUNCTION public.profiles_prompts_shape_valid(p jsonb)
+RETURNS boolean
+LANGUAGE plpgsql
+IMMUTABLE
+AS $func$
+DECLARE
+  elem jsonb;
+BEGIN
+  IF p IS NULL THEN RETURN TRUE; END IF;
+  IF jsonb_typeof(p) <> 'array' THEN RETURN FALSE; END IF;
+  IF jsonb_array_length(p) > 3 THEN RETURN FALSE; END IF;
+  FOR elem IN SELECT * FROM jsonb_array_elements(p) LOOP
+    IF jsonb_typeof(elem) <> 'object' THEN RETURN FALSE; END IF;
+    IF jsonb_typeof(elem->'key') <> 'string' THEN RETURN FALSE; END IF;
+    IF jsonb_typeof(elem->'response') <> 'string' THEN RETURN FALSE; END IF;
+    IF length(elem->>'key') > 64 THEN RETURN FALSE; END IF;
+    IF length(elem->>'response') > 200 THEN RETURN FALSE; END IF;
+  END LOOP;
+  RETURN TRUE;
+END;
+$func$;
+
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -104,11 +132,9 @@ BEGIN
       VALIDATE CONSTRAINT profiles_interests_size_check;
   END IF;
 
-  -- prompts JSONB shape:
-  --   - top-level must be an array
-  --   - max 3 entries (MAX_PROMPTS)
-  --   - each entry: object with string `key` (≤64 char) and string
-  --     `response` (≤200 char = MAX_PROMPT_RESPONSE_LENGTH)
+  -- prompts JSONB shape: validation delegated to the IMMUTABLE function
+  -- defined above (CHECK can't contain a subquery, but it can call a
+  -- scalar function).
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint
     WHERE conname = 'profiles_prompts_shape_check'
@@ -116,21 +142,7 @@ BEGIN
   ) THEN
     ALTER TABLE public.profiles
       ADD CONSTRAINT profiles_prompts_shape_check
-      CHECK (
-        prompts IS NULL
-        OR (
-          jsonb_typeof(prompts) = 'array'
-          AND jsonb_array_length(prompts) <= 3
-          AND NOT EXISTS (
-            SELECT 1 FROM jsonb_array_elements(prompts) AS elem
-            WHERE jsonb_typeof(elem) <> 'object'
-               OR jsonb_typeof(elem->'key') <> 'string'
-               OR jsonb_typeof(elem->'response') <> 'string'
-               OR length(elem->>'key') > 64
-               OR length(elem->>'response') > 200
-          )
-        )
-      );
+      CHECK (public.profiles_prompts_shape_valid(prompts));
   END IF;
 END $$;
 
