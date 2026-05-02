@@ -51,9 +51,12 @@ import {
 import { usePremium } from '../../contexts/PremiumContext';
 import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = Math.min(width - 40, 400);
-const CARD_HEIGHT = Math.min(CARD_WIDTH * 1.2, 500);
+const { width, height } = Dimensions.get('window');
+// Full-bleed card. ~220px reserved below for the action button row + tab
+// bar + the navigation hint text. Above the card: header + small breathing
+// room. Tweak the reserved amount if either edge feels cramped.
+const CARD_WIDTH = width;
+const CARD_HEIGHT = Math.max(height - 220, 540);
 const SWIPE_THRESHOLD = 100;
 
 type Profile = {
@@ -762,10 +765,11 @@ export default function DiscoverScreen() {
             t('a11y.messageButton', { name: currentProfile.name ?? '' }) || 'Send a message'
           )}
         >
-          <Text style={styles.primaryMessageIcon}>{'\u{1F4AC}'}</Text>
-          <Text style={styles.primaryMessageText}>
-            {startingChat ? (t('starting') || '...') : (t('sendMessage') || 'Message')}
-          </Text>
+          {startingChat ? (
+            <Text style={styles.primaryMessageText}>{t('starting') || '...'}</Text>
+          ) : (
+            <Text style={styles.primaryMessageIcon}>{'\u{1F4AC}'}</Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -817,8 +821,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 20,
+    justifyContent: 'flex-start',
+    paddingTop: 8,
+    paddingBottom: 0,
     ...(Platform.OS === 'web' && {
       minHeight: '100vh',
     }),
@@ -831,11 +836,11 @@ const styles = StyleSheet.create({
   card: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
-    borderRadius: 28,
+    // Edge-to-edge — no border radius, no border. The full-bleed photo
+    // becomes the visual frame of the screen.
+    borderRadius: 0,
     overflow: 'hidden',
     backgroundColor: a11yColors.background.primary,
-    borderWidth: 1.5,
-    borderColor: AppTheme.colors.cardBorderElevated,
     shadowColor: AppTheme.colors.coral,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.35,
@@ -1384,13 +1389,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   primaryMessageButton: {
-    flexDirection: 'row',
+    width: 74,
+    height: 74,
+    borderRadius: 37,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderRadius: AppTheme.radius.pill,
     backgroundColor: AppTheme.colors.coral,
     shadowColor: AppTheme.colors.coral,
     shadowOffset: { width: 0, height: 6 },
@@ -1400,7 +1403,7 @@ const styles = StyleSheet.create({
     minWidth: 160,
   },
   primaryMessageIcon: {
-    fontSize: 20,
+    fontSize: 28,
   },
   primaryMessageText: {
     color: '#FFFFFF',
