@@ -320,16 +320,7 @@ export default function PreferencesScreen() {
             <Text style={s.backText}>{'<'}</Text>
           </TouchableOpacity>
           <Text style={s.title}>{t('discoveryPreferences') || 'Preferences'}</Text>
-          <TouchableOpacity
-            style={[s.saveBtn, saving && { opacity: 0.6 }]}
-            onPress={handleSave}
-            disabled={saving}
-          >
-            {saving
-              ? <ActivityIndicator size="small" color="#fff" />
-              : <Text style={s.saveText}>{t('save') || 'Save'}</Text>
-            }
-          </TouchableOpacity>
+          <View style={s.headerSpacer} />
         </View>
 
         {/* Age Range */}
@@ -466,6 +457,18 @@ export default function PreferencesScreen() {
             </Text>
           </View>
         )}
+
+        {/* Save Button (bottom) */}
+        <TouchableOpacity
+          style={[s.saveBtnBottom, saving && { opacity: 0.6 }]}
+          onPress={handleSave}
+          disabled={saving}
+        >
+          {saving
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <Text style={s.saveTextBottom}>{t('save') || 'Save'}</Text>
+          }
+        </TouchableOpacity>
       </ScrollView>
     </LinearGradient>
   );
@@ -481,8 +484,11 @@ const s = StyleSheet.create({
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
   backText: { color: '#fff', fontSize: 20, fontWeight: '600' },
   title: { fontSize: 20, fontWeight: '600', color: '#fff' },
-  saveBtn: { backgroundColor: '#e94560', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, minWidth: 70, alignItems: 'center' },
-  saveText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  headerSpacer: { width: 40, height: 40 },
+
+  // Save button (bottom)
+  saveBtnBottom: { backgroundColor: '#e94560', paddingVertical: 16, borderRadius: 16, alignItems: 'center', marginTop: 12, marginBottom: 8 },
+  saveTextBottom: { color: '#fff', fontWeight: '700', fontSize: 16 },
 
   // Section
   section: { marginBottom: 28 },

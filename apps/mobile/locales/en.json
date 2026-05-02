@@ -1024,6 +1024,8 @@
   "addBioPrompt": "Add a bio to tell others about yourself",
   "profileCompleteness": "Profile Completeness",
   "completeProfileHint": "Complete profiles get up to 3x more matches",
+  "completeProfileLow": "Add more details to attract better matches",
+  "completeProfileHigh": "Almost there! Just a few more details.",
   "sunSignExplainer": "Core personality",
   "moonSignExplainer": "Emotional side",
   "risingSignExplainer": "First impression",

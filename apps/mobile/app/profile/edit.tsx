@@ -300,7 +300,11 @@ export default function EditProfileScreen() {
     setSaving(false);
 
     if (error) {
-      Alert.alert(t('error'), t('somethingWrong'));
+      // Expose the actual Postgres error so the user can see CHECK
+      // constraint violations / RLS denials instead of a generic "something
+      // went wrong" — that message hides the real cause and we can't fix
+      // what we can't see.
+      Alert.alert(t('error'), error.message || t('somethingWrong'));
     } else {
       Alert.alert(t('success'), t('profileUpdated') || 'Profile updated successfully', [
         { text: t('ok'), onPress: () => router.back() },

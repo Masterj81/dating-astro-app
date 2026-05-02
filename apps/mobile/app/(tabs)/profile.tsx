@@ -123,12 +123,14 @@ export default function ProfileScreen() {
     try {
       const { data: uploadBody, mimeType } = await readFileAsArrayBuffer(uri);
       const ext = getExtFromMime(mimeType);
-      const filePath = `${user.id}/avatar.${ext}`;
+      // Unique filename per upload — the avatars bucket RLS allows owner
+      // INSERT but denies UPDATE, so a fixed name + upsert trips the
+      // UPDATE branch and 400s with "row violates row-level security policy".
+      const filePath = `${user.id}/avatar-${Date.now()}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, uploadBody, {
-          upsert: true,
           contentType: mimeType,
         });
 

@@ -1015,6 +1015,8 @@
   "addBioPrompt": "Ajoute une bio pour te présenter aux autres",
   "profileCompleteness": "Complétion du profil",
   "completeProfileHint": "Les profils complets obtiennent jusqu'à 3x plus de matchs",
+  "completeProfileLow": "Ajoute plus de détails pour attirer de meilleurs matchs",
+  "completeProfileHigh": "Presque ! Encore quelques détails.",
   "compatScoreExplainer": "Basé sur vos signes solaires",
   "sunSignExplainer": "Personnalité",
   "moonSignExplainer": "Émotions",
