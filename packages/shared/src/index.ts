@@ -3,6 +3,11 @@
 // Export types
 export * from './types';
 
+// Profile MVP catalog + sanitizers (relationship intent, prompts, lifestyle
+// tags, personal values, looking-for, icebreaker) — single source of truth
+// for both mobile and web.
+export * from './profile';
+
 // Export API clients (to be migrated from apps/mobile/services)
 // export * from './api';
 
