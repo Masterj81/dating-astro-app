@@ -10,6 +10,15 @@ import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-util
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { BillingSettingsPanel } from "@/components/BillingSettingsPanel";
 import { AccountDeletionFlow } from "@/components/AccountDeletionFlow";
+import { AccountProfileMvpSections } from "@/components/AccountProfileMvpSections";
+import {
+  isRelationshipIntent,
+  sanitizeLifestyleTags,
+  sanitizePersonalValues,
+  sanitizePromptResponses,
+  type PromptResponse,
+  type RelationshipIntent,
+} from "@astro/shared/profile";
 import type { Session } from "@supabase/supabase-js";
 
 type AccountProfile = {
@@ -33,6 +42,23 @@ type AccountProfile = {
   max_distance?: number | null;
   preferred_elements?: string[] | null;
   onboarding_completed?: boolean | null;
+  // MVP profile fields — same source-of-truth as mobile, persisted in
+  // profiles columns added by 20260430000001.
+  relationship_intent?: string | null;
+  personal_values?: string[] | null;
+  interests?: string[] | null;
+  looking_for_text?: string | null;
+  prompts?: unknown;
+  icebreaker_question?: string | null;
+};
+
+type MvpFormState = {
+  intent: RelationshipIntent | null;
+  lookingForText: string;
+  values: string[];
+  lifestyleTags: string[];
+  prompts: PromptResponse[];
+  icebreaker: string;
 };
 
 type FormState = {
@@ -73,7 +99,7 @@ type PasswordFormState = {
   confirmPassword: string;
 };
 
-type EditingSection = "summary" | "birth" | "preferences" | "security" | null;
+type EditingSection = "summary" | "birth" | "preferences" | "mvp" | "security" | null;
 
 const MAX_BIO_LENGTH = 500;
 const ALL_PROFILE_ELEMENTS = ["fire", "earth", "air", "water"] as const;
@@ -230,6 +256,14 @@ async function ensureWebProfileExists(session: Session) {
     max_age: 99,
     max_distance: 100,
     preferred_elements: [...ALL_PROFILE_ELEMENTS],
+    // MVP fields default to null/empty for fresh profiles. Will be filled
+    // in by the user via AccountProfileMvpSections.
+    relationship_intent: null,
+    personal_values: null,
+    interests: null,
+    looking_for_text: null,
+    prompts: null,
+    icebreaker_question: null,
   } satisfies AccountProfile;
 }
 
@@ -308,6 +342,15 @@ export function AccountProfileWorkspace({
     nextPassword: "",
     confirmPassword: "",
   });
+  const [mvpForm, setMvpForm] = useState<MvpFormState>({
+    intent: null,
+    lookingForText: "",
+    values: [],
+    lifestyleTags: [],
+    prompts: [],
+    icebreaker: "",
+  });
+  const [savingMvp, setSavingMvp] = useState(false);
   const [editingSection, setEditingSection] = useState<EditingSection>(
     mode === "setup" ? "summary" : null
   );
@@ -374,6 +417,18 @@ export function AccountProfileWorkspace({
         maxAge: nextProfile.max_age ?? 99,
         maxDistance: nextProfile.max_distance ?? 100,
         elementFilter: mapPreferredElementsToFilter(nextProfile.preferred_elements),
+      });
+      // MVP fields — sanitized at the boundary so unknown / oversize values
+      // from a stale write can't render or trip a DB CHECK on next save.
+      setMvpForm({
+        intent: isRelationshipIntent(nextProfile.relationship_intent)
+          ? nextProfile.relationship_intent
+          : null,
+        lookingForText: nextProfile.looking_for_text || "",
+        values: sanitizePersonalValues(nextProfile.personal_values),
+        lifestyleTags: sanitizeLifestyleTags(nextProfile.interests),
+        prompts: sanitizePromptResponses(nextProfile.prompts),
+        icebreaker: nextProfile.icebreaker_question || "",
       });
       setEditingSection(null);
 
@@ -605,6 +660,53 @@ export function AccountProfileWorkspace({
       setError(saveFailure instanceof Error ? saveFailure.message : t("unknownError"));
     } finally {
       setSavingPreferences(false);
+    }
+  };
+
+  const handleMvpSave = async () => {
+    if (!profile?.id) return;
+
+    if (!mvpForm.intent) {
+      setError(t("relationshipIntentRequired"));
+      return;
+    }
+
+    try {
+      setSavingMvp(true);
+      resetMessages();
+
+      // Re-sanitize at the boundary so a stale state cannot trip the DB
+      // CHECK constraints (mirrors the mobile save flow exactly).
+      const sanitizedPrompts = sanitizePromptResponses(mvpForm.prompts).filter(
+        (p) => p.response.trim().length > 0
+      );
+      const sanitizedValues = sanitizePersonalValues(mvpForm.values);
+      const sanitizedTags = sanitizeLifestyleTags(mvpForm.lifestyleTags);
+
+      const payload = {
+        relationship_intent: mvpForm.intent,
+        looking_for_text: mvpForm.lookingForText.trim() || null,
+        personal_values: sanitizedValues,
+        interests: sanitizedTags,
+        prompts: sanitizedPrompts,
+        icebreaker_question: mvpForm.icebreaker.trim() || null,
+      };
+
+      const supabase = getSupabaseBrowser();
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update(payload)
+        .eq("id", profile.id);
+
+      if (updateError) throw updateError;
+
+      setProfile((current) => (current ? { ...current, ...payload } : current));
+      setEditingSection(null);
+      setSuccess(t("profileMvpSaveSuccess"));
+    } catch (saveFailure) {
+      setError(saveFailure instanceof Error ? saveFailure.message : t("unknownError"));
+    } finally {
+      setSavingMvp(false);
     }
   };
 
@@ -1241,6 +1343,71 @@ export function AccountProfileWorkspace({
             </>
           ) : null}
         </div>
+
+        {/* MVP profile sections — relationship intent, values, lifestyle,
+            prompts, icebreaker. Editable post-setup; the setup wizard
+            doesn't surface them yet to keep the onboarding flow lean. */}
+        {!isSetupMode ? (
+        <div className="rounded-[1.5rem] border border-border bg-bg/70 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+                {t("profileMvpSectionLabel")}
+              </p>
+              <h3 className="mt-3 text-xl font-semibold text-white">
+                {t("profileMvpSectionTitle")}
+              </h3>
+              <p className="mt-2 text-sm leading-7 text-text-muted">
+                {t("profileMvpSectionBody")}
+              </p>
+            </div>
+            <SectionAction
+              editing={editingSection === "mvp"}
+              onClick={() => {
+                resetMessages();
+                setEditingSection(editingSection === "mvp" ? null : "mvp");
+              }}
+              label={t("profileEditLabel")}
+              cancelLabel={t("cancel")}
+            />
+          </div>
+
+          {editingSection === "mvp" ? (
+            <div className="mt-6">
+              <AccountProfileMvpSections
+                values={mvpForm.values}
+                onValuesChange={(v) => setMvpForm((s) => ({ ...s, values: v }))}
+                lifestyleTags={mvpForm.lifestyleTags}
+                onLifestyleTagsChange={(v) =>
+                  setMvpForm((s) => ({ ...s, lifestyleTags: v }))
+                }
+                intent={mvpForm.intent}
+                onIntentChange={(v) => setMvpForm((s) => ({ ...s, intent: v }))}
+                lookingForText={mvpForm.lookingForText}
+                onLookingForTextChange={(v) =>
+                  setMvpForm((s) => ({ ...s, lookingForText: v }))
+                }
+                prompts={mvpForm.prompts}
+                onPromptsChange={(v) => setMvpForm((s) => ({ ...s, prompts: v }))}
+                icebreaker={mvpForm.icebreaker}
+                onIcebreakerChange={(v) =>
+                  setMvpForm((s) => ({ ...s, icebreaker: v }))
+                }
+              />
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={handleMvpSave}
+                  disabled={savingMvp || !mvpForm.intent}
+                  className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {savingMvp ? t("loading") : t("profileMvpSave")}
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+        ) : null}
 
         {!isSetupMode ? (
         <div className="rounded-[1.5rem] border border-border bg-bg/70 p-5">
