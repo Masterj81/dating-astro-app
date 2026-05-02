@@ -1414,7 +1414,13 @@
     "profileMvpSectionTitle": "Make your profile unique",
     "profileMvpSectionBody": "Add depth — your relationship intent, values, lifestyle, three prompts, and a conversation icebreaker.",
     "profileMvpSave": "Save profile",
-    "profileMvpSaveSuccess": "Profile updated successfully"
+    "profileMvpSaveSuccess": "Profile updated successfully",
+    "publicLookingFor": "Looking for",
+    "publicValues": "Values",
+    "publicLifestyle": "Lifestyle",
+    "publicIcebreakerLabel": "Ask me this",
+    "publicIcebreakerCta": "Tap to start chat →",
+    "tagsInCommon": "{count} in common"
   },
   "invite": {
     "invalidCode": "Invalid referral code",

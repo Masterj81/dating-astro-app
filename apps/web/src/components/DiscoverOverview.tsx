@@ -8,6 +8,11 @@ import { Link } from "@/i18n/navigation";
 import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
+import {
+  findIntent,
+  findLifestyleTag,
+  sanitizeLifestyleTags,
+} from "@astro/shared/profile";
 
 type DiscoverProfile = {
   id: string;
@@ -19,6 +24,14 @@ type DiscoverProfile = {
   bio: string | null;
   image_url: string | null;
   images?: string[] | null;
+  // MVP profile fields (returned by get_discoverable_profiles since
+  // 20260430000002). All optional / nullable for legacy profiles.
+  relationship_intent?: string | null;
+  personal_values?: string[] | null;
+  interests?: string[] | null;
+  looking_for_text?: string | null;
+  prompts?: unknown;
+  icebreaker_question?: string | null;
 };
 
 export function DiscoverOverview() {
@@ -28,6 +41,7 @@ export function DiscoverOverview() {
   const [profiles, setProfiles] = useState<DiscoverProfile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+  const [viewerInterests, setViewerInterests] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   // Conversation-first: the only mutating action from this screen is
   // starting a conversation. Skip is purely client-side navigation.
@@ -65,13 +79,19 @@ export function DiscoverOverview() {
 
       setUserId(session.user.id);
 
-      const { data: discoverData, error: discoverError } = await supabase.rpc(
-        "get_discoverable_profiles",
-        {
+      // Discover deck + viewer's own lifestyle tags in parallel. The viewer
+      // tags power the shared-tag highlight on each card; on failure the
+      // highlight is silently absent.
+      const [
+        { data: discoverData, error: discoverError },
+        { data: viewerRows },
+      ] = await Promise.all([
+        supabase.rpc("get_discoverable_profiles", {
           p_user_id: session.user.id,
           p_limit: 50,
-        }
-      );
+        }),
+        supabase.rpc("get_my_full_profile"),
+      ]);
 
       if (discoverError) {
         throw discoverError;
@@ -80,6 +100,9 @@ export function DiscoverOverview() {
       const safeProfiles = ((discoverData as DiscoverProfile[]) || []).filter(
         (profile) => profile.id !== session.user.id
       );
+
+      const viewerRow = Array.isArray(viewerRows) ? viewerRows[0] : null;
+      setViewerInterests(sanitizeLifestyleTags(viewerRow?.interests));
 
       setProfiles(safeProfiles);
       setCurrentIndex(0);
@@ -108,8 +131,10 @@ export function DiscoverOverview() {
 
   // Free conversation start: SECURITY DEFINER RPC enforces auth.uid() and
   // block guards server-side. The compatibility paywall is unrelated to
-  // entering a conversation.
-  const handleStartConversation = async () => {
+  // entering a conversation. When `prefill` is provided (icebreaker CTA),
+  // append it as a query param so ChatThread can prefill the composer
+  // without auto-sending.
+  const handleStartConversation = async (prefill?: string) => {
     if (!currentProfile || !userId) return;
 
     try {
@@ -126,7 +151,12 @@ export function DiscoverOverview() {
         throw rpcError || new Error(t("unknownError"));
       }
 
-      router.push(`/${locale}/app/chat/${String(data)}`);
+      const conversationId = String(data);
+      const trimmedPrefill = prefill?.trim();
+      const target = trimmedPrefill
+        ? `/${locale}/app/chat/${conversationId}?prefill=${encodeURIComponent(trimmedPrefill)}`
+        : `/${locale}/app/chat/${conversationId}`;
+      router.push(target);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : t("unknownError"));
     } finally {
@@ -324,6 +354,79 @@ export function DiscoverOverview() {
                 </div>
               </div>
 
+              {/* MVP teasers — compact preview of the new profile fields.
+                  Full version lives on /app/profile/[id] (ProfileDetail). */}
+              {(() => {
+                const cardIntent = findIntent(currentProfile.relationship_intent);
+                const cardTags = sanitizeLifestyleTags(currentProfile.interests);
+                const cardIcebreaker = (currentProfile.icebreaker_question || "").trim();
+                const viewerSet = new Set(viewerInterests);
+                const visibleTags = cardTags.slice(0, 5);
+                const hiddenCount = cardTags.length - visibleTags.length;
+                const sharedCount = cardTags.filter((k) => viewerSet.has(k)).length;
+                if (!cardIntent && !cardTags.length && !cardIcebreaker) return null;
+                return (
+                  <div className="mt-5 space-y-3">
+                    {cardIntent ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold text-accent">
+                        <span>{cardIntent.emoji}</span>
+                        <span>{t(cardIntent.labelKey)}</span>
+                      </span>
+                    ) : null}
+                    {visibleTags.length > 0 ? (
+                      <div>
+                        {sharedCount > 0 ? (
+                          <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-gold">
+                            {t("tagsInCommon", { count: sharedCount })}
+                          </p>
+                        ) : null}
+                        <div className="flex flex-wrap gap-1.5">
+                          {visibleTags.map((key) => {
+                            const tag = findLifestyleTag(key);
+                            if (!tag) return null;
+                            const shared = viewerSet.has(key);
+                            return (
+                              <span
+                                key={key}
+                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] ${
+                                  shared
+                                    ? "border border-gold/60 bg-gold/15 text-gold"
+                                    : "border border-border bg-bg/70 text-white"
+                                }`}
+                              >
+                                <span>{tag.emoji}</span>
+                                <span>{t(tag.labelKey)}</span>
+                              </span>
+                            );
+                          })}
+                          {hiddenCount > 0 ? (
+                            <span className="inline-flex items-center rounded-full border border-border bg-bg/70 px-2.5 py-1 text-[11px] text-text-muted">
+                              +{hiddenCount}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
+                    {cardIcebreaker ? (
+                      <button
+                        type="button"
+                        onClick={() => handleStartConversation(cardIcebreaker)}
+                        disabled={actionLoading !== null}
+                        className="block w-full rounded-2xl border border-purple/40 bg-purple/10 p-3 text-left transition-colors hover:bg-purple/15 disabled:cursor-not-allowed"
+                      >
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-purple-light">
+                          {t("publicIcebreakerLabel")}
+                        </p>
+                        <p className="mt-1 text-sm italic text-white">“{cardIcebreaker}”</p>
+                        <p className="mt-1 text-[11px] font-semibold text-purple-light">
+                          {t("publicIcebreakerCta")}
+                        </p>
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })()}
+
               {/* Premium-gated compatibility CTA — replaces the visible
                   % score + breakdown that used to live here. Compatibility
                   detail is now a paid feature. */}
@@ -361,7 +464,7 @@ export function DiscoverOverview() {
                   guards, and rate limit server-side. */}
               <button
                 type="button"
-                onClick={handleStartConversation}
+                onClick={() => handleStartConversation()}
                 disabled={actionLoading !== null}
                 className="group flex items-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
                 title="Keyboard: M"

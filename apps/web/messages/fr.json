@@ -1416,7 +1416,13 @@
     "profileMvpSectionTitle": "Rends ton profil unique",
     "profileMvpSectionBody": "Ajoute de la profondeur — intention relationnelle, valeurs, lifestyle, trois prompts et un brise-glace pour amorcer la conversation.",
     "profileMvpSave": "Enregistrer le profil",
-    "profileMvpSaveSuccess": "Profil mis à jour avec succès"
+    "profileMvpSaveSuccess": "Profil mis à jour avec succès",
+    "publicLookingFor": "Cherche",
+    "publicValues": "Valeurs",
+    "publicLifestyle": "Lifestyle",
+    "publicIcebreakerLabel": "Pose-moi cette question",
+    "publicIcebreakerCta": "Tape pour démarrer →",
+    "tagsInCommon": "{count} en commun"
   },
   "socialProof": {
     "proofDownloads": "Downloads",

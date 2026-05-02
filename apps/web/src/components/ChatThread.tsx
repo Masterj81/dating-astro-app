@@ -9,6 +9,10 @@ import { getSupabaseBrowser } from "@/lib/supabase-browser";
 
 type ChatThreadProps = {
   conversationId: string;
+  // Optional prefill string sourced from `?prefill=` on the chat URL —
+  // used by the icebreaker CTA to seed the composer with the target's
+  // icebreaker question. Never auto-sends; user always confirms.
+  initialPrefill?: string;
 };
 
 type ConversationInfo = {
@@ -70,14 +74,17 @@ function formatRelativeDate(value: string | null, locale: string) {
   return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(-diffDays, "day");
 }
 
-export function ChatThread({ conversationId }: ChatThreadProps) {
+export function ChatThread({ conversationId, initialPrefill }: ChatThreadProps) {
   const t = useTranslations("webApp");
   const locale = useLocale();
   const [userId, setUserId] = useState<string | null>(null);
   const [conversationInfo, setConversationInfo] = useState<ConversationInfo | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<ConversationListRow[]>([]);
-  const [draft, setDraft] = useState("");
+  // Seed the composer once with the icebreaker prefill (if any). Plain
+  // useState initializer so navigating away and back without the param
+  // doesn't clobber a draft the user has been typing.
+  const [draft, setDraft] = useState<string>(initialPrefill ?? "");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -8,6 +8,8 @@ import { Link } from "@/i18n/navigation";
 import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
+import { ProfilePublicMvpDisplay } from "@/components/ProfilePublicMvpDisplay";
+import { sanitizeLifestyleTags } from "@astro/shared/profile";
 
 type ProfileDetailProps = {
   profileId: string;
@@ -32,6 +34,14 @@ type Profile = {
   image_url: string | null;
   images?: string[] | null;
   current_city?: string | null;
+  // MVP fields surfaced via the discoverable_profiles view (extended in
+  // 20260502000001). All optional / nullable for legacy profiles.
+  relationship_intent?: string | null;
+  personal_values?: string[] | null;
+  interests?: string[] | null;
+  looking_for_text?: string | null;
+  prompts?: unknown;
+  icebreaker_question?: string | null;
 };
 
 export function ProfileDetail({ profileId }: ProfileDetailProps) {
@@ -47,10 +57,16 @@ export function ProfileDetail({ profileId }: ProfileDetailProps) {
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportFeedback, setReportFeedback] = useState<string | null>(null);
   const [startingChat, setStartingChat] = useState(false);
+  // Viewer's own lifestyle tags — used by ProfilePublicMvpDisplay to
+  // highlight tags both profiles share. Fetched once via
+  // get_my_full_profile (RPC already returns the new MVP columns).
+  const [viewerInterests, setViewerInterests] = useState<string[]>([]);
 
   // Conversation-first: messaging is free. We mint or fetch the
-  // conversation through the SECURITY DEFINER RPC and navigate.
-  const handleStartConversation = async () => {
+  // conversation through the SECURITY DEFINER RPC and navigate. When
+  // `prefill` is provided (icebreaker CTA), append it as a query param so
+  // ChatThread can prefill the composer without auto-sending.
+  const handleStartConversation = async (prefill?: string) => {
     if (!profile || startingChat) return;
     try {
       setStartingChat(true);
@@ -62,7 +78,12 @@ export function ProfileDetail({ profileId }: ProfileDetailProps) {
       if (rpcError || !data) {
         throw rpcError || new Error(t("unknownError"));
       }
-      router.push(`/${locale}/app/chat/${String(data)}`);
+      const conversationId = String(data);
+      const trimmedPrefill = prefill?.trim();
+      const target = trimmedPrefill
+        ? `/${locale}/app/chat/${conversationId}?prefill=${encodeURIComponent(trimmedPrefill)}`
+        : `/${locale}/app/chat/${conversationId}`;
+      router.push(target);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : t("unknownError"));
     } finally {
@@ -86,17 +107,28 @@ export function ProfileDetail({ profileId }: ProfileDetailProps) {
 
       try {
         const supabase = getSupabaseBrowser();
-        const { data, error: loadError } = await supabase
-          .from("discoverable_profiles")
-          .select("id, name, age, bio, sun_sign, moon_sign, rising_sign, image_url, images, current_city")
-          .eq("id", profileId)
-          .maybeSingle();
+        // Load target profile + viewer's own interests in parallel. The
+        // viewer fetch failure is silent — the shared-tag highlight just
+        // doesn't appear.
+        const [{ data: profileData, error: loadError }, { data: viewerRows }] =
+          await Promise.all([
+            supabase
+              .from("discoverable_profiles")
+              .select(
+                "id, name, age, bio, sun_sign, moon_sign, rising_sign, image_url, images, current_city, relationship_intent, personal_values, interests, looking_for_text, prompts, icebreaker_question"
+              )
+              .eq("id", profileId)
+              .maybeSingle(),
+            supabase.rpc("get_my_full_profile"),
+          ]);
 
         if (loadError) {
           throw loadError;
         }
 
-        setProfile((data as Profile) || null);
+        setProfile((profileData as Profile) || null);
+        const viewerRow = Array.isArray(viewerRows) ? viewerRows[0] : null;
+        setViewerInterests(sanitizeLifestyleTags(viewerRow?.interests));
       } catch (failure) {
         setError(failure instanceof Error ? failure.message : t("unknownError"));
       } finally {
@@ -236,10 +268,26 @@ export function ProfileDetail({ profileId }: ProfileDetailProps) {
           </p>
         </div>
 
+        {/* MVP profile sections — sanitization happens inside the component
+            so we pass the raw view payload. The icebreaker CTA reuses the
+            existing conversation-start flow with a prefill query param. */}
+        <div className="mt-6">
+          <ProfilePublicMvpDisplay
+            relationshipIntent={profile.relationship_intent}
+            personalValues={profile.personal_values}
+            interests={profile.interests}
+            lookingForText={profile.looking_for_text}
+            prompts={profile.prompts}
+            icebreakerQuestion={profile.icebreaker_question}
+            viewerInterests={viewerInterests}
+            onSendIcebreaker={(question) => handleStartConversation(question)}
+          />
+        </div>
+
         <div className="mt-6 flex flex-wrap gap-3">
           <button
             type="button"
-            onClick={handleStartConversation}
+            onClick={() => handleStartConversation()}
             disabled={startingChat}
             className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
           >
