@@ -52,11 +52,12 @@ import { usePremium } from '../../contexts/PremiumContext';
 import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 
 const { width, height } = Dimensions.get('window');
-// Full-bleed card. ~220px reserved below for the action button row + tab
-// bar + the navigation hint text. Above the card: header + small breathing
-// room. Tweak the reserved amount if either edge feels cramped.
+// Full-bleed card. ~280px reserved below for the action button row + tab
+// bar + the navigation hint text + safe-area on devices with rounded
+// corners. Was 220 but the card felt cramped at the bottom on Samsung
+// devices. Tweak if either edge feels off.
 const CARD_WIDTH = width;
-const CARD_HEIGHT = Math.max(height - 220, 540);
+const CARD_HEIGHT = Math.max(height - 280, 540);
 const SWIPE_THRESHOLD = 100;
 
 type Profile = {
@@ -723,9 +724,9 @@ export default function DiscoverScreen() {
               <TouchableOpacity
                 style={styles.viewChartButton}
                 onPress={handleViewProfile}
-                {...getButtonA11yProps(t('viewProfile') || 'View profile')}
+                {...getButtonA11yProps(t('findYourCompatibility') || 'Find your compatibility')}
               >
-                <Text style={styles.viewChartText}>{t('viewProfile') || 'View profile'}</Text>
+                <Text style={styles.viewChartText}>{'✨ '}{t('findYourCompatibility') || 'Find your compatibility'}</Text>
               </TouchableOpacity>
             </View>
           </LinearGradient>
