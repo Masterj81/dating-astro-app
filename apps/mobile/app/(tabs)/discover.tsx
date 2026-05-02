@@ -398,11 +398,14 @@ export default function DiscoverScreen() {
     } catch { /* user cancelled */ }
   };
 
-  // View profile / synastry detail — premium gating happens inside that screen.
+  // View profile — opens the public profile detail screen with the full
+  // MVP block. Synastry/compatibility is a separate route reached via
+  // `handleFindCompatibility` (top CTA on the card + bottom CTA on the
+  // profile detail screen).
   const handleViewProfile = () => {
     if (!currentProfile?.id) return;
     buttonPress();
-    router.push(`/match/${currentProfile.id}`);
+    router.push(`/profile/${currentProfile.id}` as any);
   };
 
   // Free conversation start — no paywall on entering the chat.
@@ -724,9 +727,9 @@ export default function DiscoverScreen() {
               <TouchableOpacity
                 style={styles.viewChartButton}
                 onPress={handleViewProfile}
-                {...getButtonA11yProps(t('findYourCompatibility') || 'Find your compatibility')}
+                {...getButtonA11yProps(t('viewProfile') || 'View profile')}
               >
-                <Text style={styles.viewChartText}>{'✨ '}{t('findYourCompatibility') || 'Find your compatibility'}</Text>
+                <Text style={styles.viewChartText}>{'👤 '}{t('viewProfile') || 'View profile'}</Text>
               </TouchableOpacity>
             </View>
           </LinearGradient>
