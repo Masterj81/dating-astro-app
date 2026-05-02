@@ -3,10 +3,13 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
+import { ProfilePublicMvpDisplay } from "@/components/ProfilePublicMvpDisplay";
+import { sanitizeLifestyleTags } from "@astro/shared/profile";
 
 type ProfileOverviewProps = {
   profileId: string;
@@ -22,11 +25,20 @@ type DiscoverProfile = {
   bio: string | null;
   image_url: string | null;
   images?: string[] | null;
+  // MVP fields surfaced via the discoverable_profiles view (extended in
+  // 20260502000001). All optional / nullable for legacy profiles.
+  relationship_intent?: string | null;
+  personal_values?: string[] | null;
+  interests?: string[] | null;
+  looking_for_text?: string | null;
+  prompts?: unknown;
+  icebreaker_question?: string | null;
 };
 
 export function ProfileOverview({ profileId }: ProfileOverviewProps) {
   const t = useTranslations("webApp");
   const locale = useLocale();
+  const router = useRouter();
   const [profile, setProfile] = useState<DiscoverProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +47,8 @@ export function ProfileOverview({ profileId }: ProfileOverviewProps) {
   const [reportDescription, setReportDescription] = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportFeedback, setReportFeedback] = useState<string | null>(null);
+  const [startingChat, setStartingChat] = useState(false);
+  const [viewerInterests, setViewerInterests] = useState<string[]>([]);
 
   const loadProfile = async () => {
     setLoading(true);
@@ -42,21 +56,54 @@ export function ProfileOverview({ profileId }: ProfileOverviewProps) {
 
     try {
       const supabase = getSupabaseBrowser();
-      const { data, error: profileError } = await supabase
-        .from("discoverable_profiles")
-        .select("id, name, age, sun_sign, moon_sign, rising_sign, bio, image_url, images")
-        .eq("id", profileId)
-        .maybeSingle();
+      const [{ data, error: profileError }, { data: viewerRows }] =
+        await Promise.all([
+          supabase
+            .from("discoverable_profiles")
+            .select(
+              "id, name, age, sun_sign, moon_sign, rising_sign, bio, image_url, images, relationship_intent, personal_values, interests, looking_for_text, prompts, icebreaker_question"
+            )
+            .eq("id", profileId)
+            .maybeSingle(),
+          supabase.rpc("get_my_full_profile"),
+        ]);
 
       if (profileError) {
         throw profileError;
       }
 
       setProfile((data as DiscoverProfile | null) || null);
+      const viewerRow = Array.isArray(viewerRows) ? viewerRows[0] : null;
+      setViewerInterests(sanitizeLifestyleTags(viewerRow?.interests));
     } catch (loadFailure) {
       setError(loadFailure instanceof Error ? loadFailure.message : t("unknownError"));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStartConversation = async (prefill?: string) => {
+    if (!profile || startingChat) return;
+    try {
+      setStartingChat(true);
+      const supabase = getSupabaseBrowser();
+      const { data, error: rpcError } = await supabase.rpc(
+        "get_or_create_conversation",
+        { target_user_id: profile.id }
+      );
+      if (rpcError || !data) {
+        throw rpcError || new Error(t("unknownError"));
+      }
+      const conversationId = String(data);
+      const trimmedPrefill = prefill?.trim();
+      const target = trimmedPrefill
+        ? `/${locale}/app/chat/${conversationId}?prefill=${encodeURIComponent(trimmedPrefill)}`
+        : `/${locale}/app/chat/${conversationId}`;
+      router.push(target);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : t("unknownError"));
+    } finally {
+      setStartingChat(false);
     }
   };
 
@@ -198,10 +245,34 @@ export function ProfileOverview({ profileId }: ProfileOverviewProps) {
           </div>
         </div>
 
+        {/* MVP profile sections — sanitization happens inside the component
+            so we pass the raw view payload. The icebreaker CTA reuses the
+            conversation-start flow with a prefill query param. */}
+        <div className="mt-6">
+          <ProfilePublicMvpDisplay
+            relationshipIntent={profile.relationship_intent}
+            personalValues={profile.personal_values}
+            interests={profile.interests}
+            lookingForText={profile.looking_for_text}
+            prompts={profile.prompts}
+            icebreakerQuestion={profile.icebreaker_question}
+            viewerInterests={viewerInterests}
+            onSendIcebreaker={(question) => handleStartConversation(question)}
+          />
+        </div>
+
         <div className="mt-8 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => handleStartConversation()}
+            disabled={startingChat}
+            className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            💬 {t("sendMessage")}
+          </button>
           <Link
             href="/app/discover"
-            className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+            className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
           >
             {t("backToDiscover")}
           </Link>

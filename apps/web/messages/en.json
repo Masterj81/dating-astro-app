@@ -738,6 +738,8 @@
     "profilePhotoUpload": "Change photo",
     "profilePhotoUpdated": "Profile photo updated.",
     "profilePhotoError": "Unable to update your profile photo right now.",
+    "fileTooLarge": "File must be smaller than 5MB.",
+    "invalidFileType": "Only JPEG, PNG, and WebP images are allowed.",
     "profileBirthSectionLabel": "Birth information",
     "profileBirthSectionTitle": "Complete your birth details",
     "profileBirthSectionBody": "Add your birth date, birth time, and birth city so we can calculate your natal chart accurately.",

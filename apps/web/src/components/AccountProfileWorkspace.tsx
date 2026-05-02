@@ -517,16 +517,23 @@ export function AccountProfileWorkspace({
 
       const supabase = getSupabaseBrowser();
       const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
-      const filePath = `${profile.id}/avatar-web.${extension}`;
+      // Unique filename per upload mirrors the mobile pattern in
+      // apps/mobile/app/profile/edit.tsx so every upload is an INSERT.
+      // The avatars bucket RLS allows owner INSERT but denies UPDATE — a
+      // fixed filename like `avatar-web.jpg` would trip the UPDATE branch
+      // of upsert and 400 with "row violates row-level security policy".
+      const filePath = `${profile.id}/avatar-web-${Date.now()}.${extension}`;
 
       const { error: uploadError } = await supabase.storage
         .from("avatars")
         .upload(filePath, file, {
-          upsert: true,
           contentType: file.type || "image/jpeg",
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("[avatar upload]", uploadError);
+        throw uploadError;
+      }
 
       const { data: publicUrlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
       const photoUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;

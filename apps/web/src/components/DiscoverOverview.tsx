@@ -55,8 +55,13 @@ export function DiscoverOverview() {
 
   const currentProfile = profiles[currentIndex] ?? null;
 
+  // All profiles except the one currently shown in the main card. Was
+  // previously a sliced "next up to 3" preview that drained as you clicked
+  // through, which made selecting a profile feel like a skip. Now it's a
+  // stable browse list — clicking just jumps to that profile, the total
+  // never shrinks unless we refresh.
   const queue = useMemo(
-    () => profiles.slice(currentIndex + 1, currentIndex + 4),
+    () => profiles.filter((_, idx) => idx !== currentIndex),
     [currentIndex, profiles]
   );
 
@@ -100,6 +105,14 @@ export function DiscoverOverview() {
       const safeProfiles = ((discoverData as DiscoverProfile[]) || []).filter(
         (profile) => profile.id !== session.user.id
       );
+
+      // Fisher-Yates shuffle so the deck order varies between sessions and
+      // refreshes — without this, get_discoverable_profiles always returns
+      // the same ordering and the user keeps seeing the same first profiles.
+      for (let i = safeProfiles.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [safeProfiles[i], safeProfiles[j]] = [safeProfiles[j], safeProfiles[i]];
+      }
 
       const viewerRow = Array.isArray(viewerRows) ? viewerRows[0] : null;
       setViewerInterests(sanitizeLifestyleTags(viewerRow?.interests));
@@ -478,6 +491,12 @@ export function DiscoverOverview() {
                 <kbd className="ml-1 hidden rounded border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px] text-white/60 lg:inline">M</kbd>
               </button>
               <Link
+                href={`/app/profile/${currentProfile.id}`}
+                className="group flex items-center gap-2 rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
+              >
+                👤 {t("matchesViewProfile")}
+              </Link>
+              <Link
                 href="/app/plans"
                 className="group flex items-center gap-2 rounded-full border border-purple/30 bg-purple/10 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-purple/20"
               >
@@ -594,17 +613,24 @@ export function DiscoverOverview() {
         </h3>
         <p className="mt-2 text-sm leading-6 text-text-muted">
           {profiles.length > 1
-            ? t("discoverQueueBody", { count: profiles.length - currentIndex - 1 })
+            ? t("discoverQueueBody", { count: profiles.length - 1 })
             : t("discoverQueueEmpty")}
         </p>
 
         <div className="mt-6 space-y-3">
           {queue.length > 0 ? (
             queue.map((profile) => {
+              const targetIndex = profiles.findIndex((p) => p.id === profile.id);
+              const queueIntent = findIntent(profile.relationship_intent);
+              const queueTags = sanitizeLifestyleTags(profile.interests).slice(0, 2);
               return (
-                <div
+                <button
                   key={profile.id}
-                  className="rounded-[1.4rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] px-4 py-4"
+                  type="button"
+                  onClick={() => {
+                    if (targetIndex >= 0) setCurrentIndex(targetIndex);
+                  }}
+                  className="block w-full rounded-[1.4rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] px-4 py-4 text-left transition-colors hover:border-accent/40 hover:bg-card-hover"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -615,9 +641,32 @@ export function DiscoverOverview() {
                       <div className="mt-1 text-sm text-text-muted">
                         {profile.sun_sign ? translateSign(profile.sun_sign, locale) : "?"}
                       </div>
+                      {(queueIntent || queueTags.length > 0) ? (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {queueIntent ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent">
+                              <span>{queueIntent.emoji}</span>
+                              <span>{t(queueIntent.labelKey)}</span>
+                            </span>
+                          ) : null}
+                          {queueTags.map((key) => {
+                            const tag = findLifestyleTag(key);
+                            if (!tag) return null;
+                            return (
+                              <span
+                                key={key}
+                                className="inline-flex items-center gap-1 rounded-full border border-border bg-bg/70 px-2 py-0.5 text-[11px] text-white"
+                              >
+                                <span>{tag.emoji}</span>
+                                <span>{t(tag.labelKey)}</span>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
-                </div>
+                </button>
               );
             })
           ) : (
