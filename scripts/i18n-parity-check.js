@@ -126,12 +126,11 @@ const VAGUE_1 = {
 };
 
 // Vague 2 matches the @astro/shared catalog: 12 values + 36 lifestyle tags.
-// Detection: keys starting with `value_` or `lifestyle_(food|sport|music)_`.
+// Detection: `value_*` for personal values, `tag_(food|sport|music)_*` for
+// lifestyle tags. The labelKey naming in catalog.ts is the source of truth.
 function isVague2(key) {
   const bare = key.replace(/^webApp\./, "");
-  return /^value_/.test(bare) ||
-    /^(food|sport|music)_/.test(bare) ||
-    /^lifestyle_(food|sport|music)_/.test(bare);
+  return /^value_/.test(bare) || /^tag_(food|sport|music)_/.test(bare);
 }
 
 // Vague 3: prompt question text. Detection: `prompt_<id>` (not the category
