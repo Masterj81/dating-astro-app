@@ -975,10 +975,10 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   // Inner vertical scroll for the MVP profile sections (intent, values,
-  // tags, prompts, icebreaker). Capped so the View profile button stays
-  // visible at the bottom of the card.
+  // tags, prompts, icebreaker). Capped so the action row at the bottom
+  // of the card stays visible without scrolling.
   mvpScroll: {
-    maxHeight: 220,
+    maxHeight: 360,
     marginTop: 8,
   },
   mvpScrollContent: {
@@ -1392,7 +1392,7 @@ const styles = StyleSheet.create({
   },
   compatibilityCta: {
     position: 'absolute',
-    top: 16,
+    top: 56,
     right: 16,
     flexDirection: 'row',
     alignItems: 'center',
