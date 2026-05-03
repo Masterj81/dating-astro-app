@@ -52,12 +52,12 @@ import { usePremium } from '../../contexts/PremiumContext';
 import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 
 const { width, height } = Dimensions.get('window');
-// Full-bleed card. ~280px reserved below for the action button row + tab
-// bar + the navigation hint text + safe-area on devices with rounded
-// corners. Was 220 but the card felt cramped at the bottom on Samsung
-// devices. Tweak if either edge feels off.
+// Full-bleed card. Action buttons are now overlaid INSIDE the card at
+// the bottom (prev / view profile / message / next), so we only reserve
+// space for the tab bar + a thin safe-area margin. ~100px is enough on
+// Samsung devices with rounded corners.
 const CARD_WIDTH = width;
-const CARD_HEIGHT = Math.max(height - 280, 540);
+const CARD_HEIGHT = Math.max(height - 100, 600);
 const SWIPE_THRESHOLD = 100;
 
 type Profile = {
@@ -724,13 +724,57 @@ export default function DiscoverScreen() {
                 />
               </ScrollView>
 
-              <TouchableOpacity
-                style={styles.viewChartButton}
-                onPress={handleViewProfile}
-                {...getButtonA11yProps(t('viewProfile') || 'View profile')}
-              >
-                <Text style={styles.viewChartText}>{'👤 '}{t('viewProfile') || 'View profile'}</Text>
-              </TouchableOpacity>
+              {/* Action row overlaid inside the card. 4 buttons:
+                  ← prev / 👤 view profile / 💬 message / → next */}
+              <View style={styles.cardActions} accessibilityRole="toolbar">
+                <TouchableOpacity
+                  style={styles.cardActionButton}
+                  onPress={handleSkip}
+                  activeOpacity={0.7}
+                  testID="discover-skip-button"
+                  {...getButtonA11yProps(
+                    t('a11y.passButton', { name: currentProfile.name ?? '' }),
+                  )}
+                >
+                  <Text style={styles.cardActionEmoji}>{'←'}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.cardActionButton}
+                  onPress={handleViewProfile}
+                  activeOpacity={0.85}
+                  {...getButtonA11yProps(t('viewProfile') || 'View profile')}
+                >
+                  <Text style={styles.cardActionEmoji}>{'\u{1F464}'}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.cardActionMessageButton}
+                  onPress={handleStartConversation}
+                  activeOpacity={0.85}
+                  disabled={startingChat}
+                  testID="discover-message-button"
+                  {...getButtonA11yProps(
+                    t('a11y.messageButton', { name: currentProfile.name ?? '' }) || 'Send a message',
+                  )}
+                >
+                  {startingChat ? (
+                    <Text style={styles.cardActionMessageText}>{'…'}</Text>
+                  ) : (
+                    <Text style={styles.cardActionMessageEmoji}>{'\u{1F4AC}'}</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.cardActionButton}
+                  onPress={handleNext}
+                  activeOpacity={0.7}
+                  testID="discover-next-button"
+                  {...getButtonA11yProps(t('a11y.nextButton') || 'Next profile')}
+                >
+                  <Text style={styles.cardActionEmoji}>{'→'}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </LinearGradient>
           </ReAnimated.View>
@@ -739,79 +783,15 @@ export default function DiscoverScreen() {
 
       {/* Action Buttons */}
       {/* Score explainer + premium teaser — below card */}
-      <View style={styles.belowCardInfo}>
-        <Text style={styles.scoreExplainerText}>
-          {t('discoverNavigationHint') || 'Swipe or tap arrows to browse profiles'}
-        </Text>
-      </View>
+      {/* Below-card chrome removed. Action buttons (skip / view profile /
+          message / next) are now overlaid INSIDE the card via
+          styles.cardActions, leaving the full-bleed photo to breathe. */}
 
-      <View style={styles.actions} accessibilityRole="toolbar">
-        <TouchableOpacity
-          style={[styles.actionButton, styles.passButton]}
-          onPress={handleSkip}
-          activeOpacity={0.7}
-          testID="discover-skip-button"
-          {...getButtonA11yProps(
-            t('a11y.passButton', { name: currentProfile.name ?? '' }),
-            t('a11y.doubleTapHint')
-          )}
-        >
-          <Text style={styles.passEmoji}>{'\u2190'}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.primaryMessageButton}
-          onPress={handleStartConversation}
-          activeOpacity={0.85}
-          disabled={startingChat}
-          testID="discover-message-button"
-          {...getButtonA11yProps(
-            t('a11y.messageButton', { name: currentProfile.name ?? '' }) || 'Send a message'
-          )}
-        >
-          {startingChat ? (
-            <Text style={styles.primaryMessageText}>{t('starting') || '...'}</Text>
-          ) : (
-            <Text style={styles.primaryMessageIcon}>{'\u{1F4AC}'}</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionButton, styles.likeButton]}
-          onPress={handleNext}
-          activeOpacity={0.7}
-          testID="discover-next-button"
-          {...getButtonA11yProps(
-            t('a11y.nextButton') || 'Next profile',
-            t('a11y.doubleTapHint')
-          )}
-        >
-          <Text style={styles.likeEmoji}>{'\u2192'}</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Secondary row: compatibility paywall + share */}
-      <View style={styles.secondaryActions}>
-        <TouchableOpacity
-          style={styles.compatibilityCtaSecondary}
-          onPress={handleFindCompatibility}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-        >
-          <Text style={styles.compatibilityCtaSecondaryIcon}>{'\u2728'}</Text>
-          <Text style={styles.compatibilityCtaSecondaryText}>
-            {t('findYourCompatibility') || 'Find your compatibility'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.shareSecondary}
-          onPress={handleShare}
-          activeOpacity={0.7}
-          {...getButtonA11yProps(t('share') || 'Share')}
-        >
-          <Text style={styles.shareEmoji}>{'\u{1F4E4}'}</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Secondary row removed: the top-of-card "Find your compatibility"
+          CTA is the single canonical entry to synastry, and the share
+          button was rarely tapped \u2014 both deleted to declutter the action
+          surface. handleShare and handleFindCompatibility remain available
+          if we want them back somewhere else. */}
 
       <Text style={styles.counter} accessibilityLabel={`Profile ${currentIndex + 1} of ${profiles.length}`}>
         {currentIndex + 1} of {profiles.length}
@@ -1003,6 +983,52 @@ const styles = StyleSheet.create({
   },
   mvpScrollContent: {
     paddingBottom: 8,
+  },
+  // In-card action row: prev / view profile / message / next.
+  // Sits at the bottom of the gradient overlay so the photo stays
+  // edge-to-edge. Message button gets coral primary treatment, others
+  // are translucent circles to read against the photo.
+  cardActions: {
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  cardActionButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  cardActionEmoji: {
+    fontSize: 22,
+    color: '#fff',
+  },
+  cardActionMessageButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: AppTheme.colors.coral,
+    shadowColor: AppTheme.colors.coral,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  cardActionMessageEmoji: {
+    fontSize: 26,
+  },
+  cardActionMessageText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
   },
   viewChartButton: {
     marginTop: 8,
@@ -1393,9 +1419,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   primaryMessageButton: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: AppTheme.colors.coral,
