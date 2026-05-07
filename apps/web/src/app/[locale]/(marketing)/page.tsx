@@ -59,8 +59,20 @@ export default function LandingPage({
         <StarField />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_40%,rgba(232,93,117,0.12),transparent)]" aria-hidden="true" />
         <div className="relative mx-auto max-w-4xl px-4 text-center">
-          <div className="mx-auto mb-6 flex h-28 w-28 items-center justify-center rounded-full border border-accent/40 bg-accent/8 text-5xl shadow-[0_0_60px_rgba(232,93,117,0.2)]" aria-hidden="true">
-            ✦
+          <div className="mx-auto mb-6 flex h-28 w-28 items-center justify-center rounded-full border border-accent/40 bg-accent/8 shadow-[0_0_60px_rgba(232,93,117,0.2)]" aria-hidden="true">
+            <svg width="64" height="64" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M64 98 C40 82 24 66 24 48 C24 36 33 28 44 28 C53 28 60 33 64 40 C68 33 75 28 84 28 C95 28 104 36 104 48 C104 66 88 82 64 98Z"
+                fill="none"
+                stroke="#E94560"
+                strokeWidth="2.5"
+                strokeOpacity="0.6"
+              />
+              <path
+                d="M64 26 L74.3 51.7 L104 51.7 L80 69.1 L89.4 97 L64 80.2 L38.6 97 L48 69.1 L24 51.7 L53.7 51.7 Z"
+                fill="#F7F4EE"
+              />
+            </svg>
           </div>
           <p className="mb-3 text-sm font-medium uppercase tracking-[0.3em] text-accent">
             {hero("badge")}
