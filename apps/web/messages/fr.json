@@ -44,14 +44,14 @@
   },
   "howItWorks": {
     "title": "Comment ça marche",
-    "subtitle": "Trois étapes vers votre âme sœur cosmique.",
-    "step1Title": "Créez votre profil",
-    "step1Desc": "Entrez votre date, heure et lieu de naissance. Nous calculons automatiquement votre thème natal complet.",
-    "step2Title": "Découvrez vos matchs",
-    "step2Desc": "Parcourez les profils classés par compatibilité astrologique réelle. Consultez les analyses de synastrie détaillées pour chaque match.",
-    "step3Title": "Connectez-vous et discutez",
-    "step3Desc": "Faites connaissance avec des personnes qui partagent votre alchimie cosmique. Lancez des conversations et voyez où les étoiles vous mènent.",
-    "badge": "Simple Start"
+    "subtitle": "Trois étapes vers une vraie conversation.",
+    "step1Title": "Construisez un profil qui vous ressemble",
+    "step1Desc": "Thème natal, prompts, intro vocale, valeurs, lifestyle. Plus que des photos — un profil que les gens peuvent vraiment lire.",
+    "step2Title": "Découvrez de vrais profils",
+    "step2Desc": "Lisez les prompts, écoutez les intros vocales, voyez ce que vous avez en commun. Pas de boucle de swipe — des vraies personnes à connaître.",
+    "step3Title": "Lancez la conversation, gratuitement",
+    "step3Desc": "Envoyez le premier message à n'importe qui — gratuit, sans paywall. Fini le piège du swipe, on parle d'abord.",
+    "badge": "Conversation First"
   },
   "premium": {
     "title": "Choisissez votre forfait",

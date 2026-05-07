@@ -48,15 +48,15 @@
     "transitsDesc": "Get notified when planetary transits affect your love life. Venus retrograde? We'll let you know."
   },
   "howItWorks": {
-    "badge": "Simple Start",
+    "badge": "Conversation First",
     "title": "How It Works",
-    "subtitle": "Three steps to your cosmic match.",
-    "step1Title": "Create Your Profile",
-    "step1Desc": "Enter your birth date, time, and location. We calculate your complete natal chart automatically.",
-    "step2Title": "Discover Matches",
-    "step2Desc": "Browse profiles ranked by real astrological compatibility. See detailed synastry breakdowns for every match.",
-    "step3Title": "Connect & Chat",
-    "step3Desc": "Match with people who share your cosmic chemistry. Start conversations and see where the stars take you."
+    "subtitle": "Three steps to a real conversation.",
+    "step1Title": "Build a Profile That's Actually You",
+    "step1Desc": "Birth chart, prompts, voice intro, values, lifestyle. More than photos — a profile people can actually read.",
+    "step2Title": "Discover Real Profiles",
+    "step2Desc": "Read prompts, hear voice intros, see what you have in common. No swipe loop — real people you can actually get to know.",
+    "step3Title": "Start the Conversation, Free",
+    "step3Desc": "Send the first message to anyone — free, no paywall. Skip the swipe trap and talk first."
   },
   "premium": {
     "badge": "Premium Plans",
