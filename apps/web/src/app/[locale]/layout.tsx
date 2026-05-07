@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { routing } from "@/i18n/routing";
 import { LocaleProviders } from "@/components/LocaleProviders";
 import { SITE } from "@/lib/constants";
@@ -89,6 +91,8 @@ export default async function LocaleLayout({
         <LocaleProviders locale={locale} messages={messages}>
           {children}
         </LocaleProviders>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
