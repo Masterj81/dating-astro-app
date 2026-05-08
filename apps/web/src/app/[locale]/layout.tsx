@@ -7,6 +7,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { routing } from "@/i18n/routing";
 import { LocaleProviders } from "@/components/LocaleProviders";
+import { IOSInstallGuideModal } from "@/components/IOSInstallGuideModal";
 import { SITE } from "@/lib/constants";
 
 export function generateStaticParams() {
@@ -90,6 +91,7 @@ export default async function LocaleLayout({
       <body className="min-h-screen flex flex-col">
         <LocaleProviders locale={locale} messages={messages}>
           {children}
+          <IOSInstallGuideModal />
         </LocaleProviders>
         <Analytics />
         <SpeedInsights />
