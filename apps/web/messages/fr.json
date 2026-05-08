@@ -20,12 +20,19 @@
     "contact": "Contact"
   },
   "hero": {
-    "tagline": "Écrit dans les étoiles",
-    "description": "Trouvez votre âme sœur cosmique. AstroDating utilise l'astrologie authentique — thèmes astraux, synastrie et transits planétaires — pour vous connecter avec des personnes véritablement compatibles.",
+    "tagline": "Rencontres en profondeur.",
+    "description": "Astrologie, valeurs et vraies conversations — pour celles et ceux qui en ont assez du swipe superficiel.",
     "appStore": "App Store",
     "playStore": "Google Play",
     "webApp": "Ouvrir l'appli web",
-    "badge": "Astro authentique. Vraies rencontres."
+    "badge": "Astro authentique. Vraies rencontres.",
+    "installWebApp": "Installer l'appli web",
+    "iOSInstallHint": "Sur iPhone ? Ajoutez à l'écran d'accueil — fonctionne comme une vraie app."
+  },
+  "socialProof": {
+    "proofRating": "sur Google Play",
+    "proofTags": "tags valeurs & lifestyle",
+    "proofEngine": "Vrai moteur de synastrie"
   },
   "features": {
     "title": "Fonctionnalités",
@@ -103,8 +110,8 @@
     "trustTrial": "Essai gratuit de 7 jours sur tous les forfaits"
   },
   "cta": {
-    "title": "Prêt(e) à trouver votre âme sœur cosmique ?",
-    "subtitle": "Téléchargez AstroDating et découvrez des connexions écrites dans les étoiles."
+    "title": "Prêt(e) à rencontrer des personnes qui vous correspondent vraiment ?",
+    "subtitle": "Téléchargez AstroDating et découvrez des connexions ancrées dans de vrais thèmes et de vraies valeurs."
   },
   "footer": {
     "links": "Liens",

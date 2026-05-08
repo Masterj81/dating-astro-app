@@ -20,12 +20,19 @@
     "contact": "Kontakt"
   },
   "hero": {
-    "tagline": "In den Sternen geschrieben",
-    "description": "Finde dein kosmisches Match. AstroDating nutzt echte Astrologie — Geburtshoroskope, Synastrie und Planetentransite — um dich mit wirklich kompatiblen Menschen zu verbinden.",
+    "tagline": "Dating mit Tiefe.",
+    "description": "Astrologie, Werte und echte Gespräche — für alle, die genug vom oberflächlichen Swipen haben.",
     "appStore": "App Store",
     "playStore": "Google Play",
     "webApp": "Web-App öffnen",
-    "badge": "Echte Astrologie. Echte Verbindungen."
+    "badge": "Echte Astrologie. Echte Verbindungen.",
+    "installWebApp": "Web-App installieren",
+    "iOSInstallHint": "iPhone? Zum Startbildschirm hinzufügen — funktioniert wie eine native App."
+  },
+  "socialProof": {
+    "proofRating": "auf Google Play",
+    "proofTags": "Werte- & Lifestyle-Tags",
+    "proofEngine": "Echte Synastrie-Engine"
   },
   "features": {
     "title": "Funktionen",
@@ -103,8 +110,8 @@
     "trustTrial": "7 Tage kostenlos testen bei allen Tarifen"
   },
   "cta": {
-    "title": "Bereit, dein kosmisches Match zu finden?",
-    "subtitle": "Lade AstroDating herunter und entdecke Verbindungen, die in den Sternen geschrieben stehen."
+    "title": "Bereit, Menschen zu treffen, die wirklich zu dir passen?",
+    "subtitle": "Lade AstroDating herunter und entdecke Verbindungen, die auf echten Horoskopen und echten Werten basieren."
   },
   "footer": {
     "links": "Links",

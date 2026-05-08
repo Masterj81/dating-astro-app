@@ -9,7 +9,9 @@ export default function DownloadPage() {
   const locale = useLocale();
 
   useEffect(() => {
-    // Detect platform and redirect to appropriate store
+    // Detect platform and redirect to appropriate destination.
+    // iOS App Store version was rejected — iOS users go to the web app
+    // (PWA install guide is surfaced on the marketing page itself).
     const ua = navigator.userAgent.toLowerCase();
     const isAndroid = ua.includes("android");
     const isIOS = /iphone|ipad|ipod/.test(ua);
@@ -17,7 +19,7 @@ export default function DownloadPage() {
     if (isAndroid) {
       window.location.href = SITE.links.playStore;
     } else if (isIOS) {
-      window.location.href = SITE.links.appStore;
+      window.location.href = `/${locale}/app`;
     } else {
       // Desktop — redirect to web app
       window.location.href = `/${locale}/app`;

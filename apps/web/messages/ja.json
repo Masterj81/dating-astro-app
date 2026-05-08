@@ -20,12 +20,19 @@
     "contact": "お問い合わせ"
   },
   "hero": {
-    "tagline": "星に記された運命",
-    "description": "宇宙が導く運命の相手を見つけましょう。AstroDatingは、出生図、シナストリー、惑星トランジットといった本格的な占星術を活用し、真に相性の合う人とあなたをつなぎます。",
+    "tagline": "深く出会う。",
+    "description": "占星術、価値観、そして本物の会話を — 表面的なスワイプに疲れた人へ。",
     "appStore": "App Store",
     "playStore": "Google Play",
     "webApp": "Webアプリを開く",
-    "badge": "本物の占星術。本物のつながり。"
+    "badge": "本物の占星術。本物のつながり。",
+    "installWebApp": "Webアプリをインストール",
+    "iOSInstallHint": "iPhone をお使いですか？ホーム画面に追加 — ネイティブアプリのように動作します。"
+  },
+  "socialProof": {
+    "proofRating": "Google Play で",
+    "proofTags": "価値観 & ライフスタイル タグ",
+    "proofEngine": "本物のシナストリー エンジン"
   },
   "features": {
     "title": "機能",
@@ -103,8 +110,8 @@
     "trustTrial": "全プランで7日間無料トライアル"
   },
   "cta": {
-    "title": "運命の相手を見つける準備はできましたか？",
-    "subtitle": "AstroDatingをダウンロードして、星に記された出会いを見つけましょう。"
+    "title": "あなたに本当に合う人と出会う準備はできましたか？",
+    "subtitle": "AstroDating をダウンロードして、本物のチャートと本物の価値観に基づいたつながりを見つけましょう。"
   },
   "footer": {
     "links": "リンク",

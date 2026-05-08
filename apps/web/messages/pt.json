@@ -20,12 +20,19 @@
     "contact": "Contato"
   },
   "hero": {
-    "tagline": "Escrito nas Estrelas",
-    "description": "Encontre sua alma gêmea cósmica. O AstroDating usa astrologia real — mapa astral, sinastria e trânsitos planetários — para conectar você a pessoas verdadeiramente compatíveis.",
+    "tagline": "Encontros com profundidade.",
+    "description": "Astrologia, valores e conversas reais — para quem está cansado do swipe superficial.",
     "appStore": "App Store",
     "playStore": "Google Play",
     "webApp": "Abrir app web",
-    "badge": "Astrologia real. Conexões reais."
+    "badge": "Astrologia real. Conexões reais.",
+    "installWebApp": "Instalar app web",
+    "iOSInstallHint": "iPhone? Adicione à tela inicial — funciona como um app nativo."
+  },
+  "socialProof": {
+    "proofRating": "no Google Play",
+    "proofTags": "tags de valores e estilo de vida",
+    "proofEngine": "Motor de sinastria real"
   },
   "features": {
     "title": "Recursos",
@@ -103,8 +110,8 @@
     "trustTrial": "7 dias de teste grátis em todos os planos"
   },
   "cta": {
-    "title": "Pronto(a) para Encontrar Sua Alma Gêmea Cósmica?",
-    "subtitle": "Baixe o AstroDating e descubra conexões escritas nas estrelas."
+    "title": "Pronto(a) para conhecer pessoas que realmente combinam com você?",
+    "subtitle": "Baixe o AstroDating e descubra conexões baseadas em mapas astrais reais e valores reais."
   },
   "footer": {
     "links": "Links",

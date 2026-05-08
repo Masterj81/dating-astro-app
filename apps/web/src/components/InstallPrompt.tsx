@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { OPEN_INSTALL_GUIDE_EVENT } from "@/components/DownloadButtons";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -43,6 +44,27 @@ export function InstallPrompt() {
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
+  // Allow the marketing hero CTA to open the install guide directly,
+  // even if the user has previously dismissed the inline banner.
+  useEffect(() => {
+    const open = () => {
+      const standalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+      if (standalone) return;
+      if (deferredPrompt) {
+        deferredPrompt.prompt().catch(() => {
+          /* user gesture exhausted — fall back to guide */
+          setShowIOSGuide(true);
+        });
+        return;
+      }
+      setShowIOSGuide(true);
+    };
+    window.addEventListener(OPEN_INSTALL_GUIDE_EVENT, open);
+    return () => window.removeEventListener(OPEN_INSTALL_GUIDE_EVENT, open);
+  }, [deferredPrompt]);
+
   const handleInstall = async () => {
     if (deferredPrompt) {
       await deferredPrompt.prompt();
@@ -59,15 +81,17 @@ export function InstallPrompt() {
     setShowIOSGuide(false);
   };
 
-  // Don't show if already installed or dismissed
-  if (isStandalone || dismissed) return null;
+  // Hide everything if already installed as PWA
+  if (isStandalone) return null;
 
-  // Don't show if no install prompt and not iOS
-  if (!deferredPrompt && !isIOS) return null;
+  // Banner only renders if not dismissed AND there's an install path on this device.
+  // Modal can still be opened by the marketing hero CTA via OPEN_INSTALL_GUIDE_EVENT.
+  const showBanner = !dismissed && (deferredPrompt !== null || isIOS);
 
   return (
     <>
       {/* Install banner */}
+      {showBanner && (
       <div className="flex items-center gap-3 rounded-2xl border border-accent/20 bg-accent/8 px-4 py-3" role="region" aria-label={t("installTitle") || "Install AstroDating"}>
         <span className="text-2xl" aria-hidden="true">📲</span>
         <div className="min-w-0 flex-1">
@@ -106,6 +130,7 @@ export function InstallPrompt() {
           </button>
         </div>
       </div>
+      )}
 
       {/* iOS install guide modal */}
       {showIOSGuide && (

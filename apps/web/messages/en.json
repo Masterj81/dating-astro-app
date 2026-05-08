@@ -21,16 +21,18 @@
   },
   "hero": {
     "badge": "Real Astrology. Real Connections.",
-    "tagline": "Written in the Stars",
-    "description": "Find your cosmic match. AstroDating uses real astrology — birth charts, synastry, and planetary transits — to connect you with truly compatible people.",
+    "tagline": "Dating with depth.",
+    "description": "Astrology, values, and real conversations — for people tired of shallow swiping.",
     "appStore": "App Store",
     "playStore": "Google Play",
-    "webApp": "Open Web App"
+    "webApp": "Open Web App",
+    "installWebApp": "Install Web App",
+    "iOSInstallHint": "iPhone? Add to your home screen — works like a native app."
   },
   "socialProof": {
-    "proofDownloads": "Downloads",
-    "proofCharts": "Charts calculated",
-    "proofRating": "App Store rating"
+    "proofRating": "on Google Play",
+    "proofTags": "values & lifestyle tags",
+    "proofEngine": "Real synastry engine"
   },
   "features": {
     "badge": "What Makes Us Different",
@@ -101,8 +103,8 @@
     "featureWeeklyTarot": "Weekly tarot reading"
   },
   "cta": {
-    "title": "Ready to Find Your Cosmic Match?",
-    "subtitle": "Download AstroDating and discover connections written in the stars."
+    "title": "Ready to meet people who actually fit?",
+    "subtitle": "Download AstroDating and discover connections backed by real charts and real values."
   },
   "footer": {
     "links": "Links",

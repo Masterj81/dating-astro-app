@@ -20,12 +20,19 @@
     "contact": "Contacto"
   },
   "hero": {
-    "tagline": "Escrito en las estrellas",
-    "description": "Encuentra tu pareja cósmica. AstroDating utiliza astrología real — cartas astrales, sinastría y tránsitos planetarios — para conectarte con personas verdaderamente compatibles.",
+    "tagline": "Citas con profundidad.",
+    "description": "Astrología, valores y conversaciones reales — para quienes están cansados del swipe superficial.",
     "appStore": "App Store",
     "playStore": "Google Play",
     "webApp": "Abrir app web",
-    "badge": "Astrología real. Conexiones reales."
+    "badge": "Astrología real. Conexiones reales.",
+    "installWebApp": "Instalar app web",
+    "iOSInstallHint": "¿Tienes iPhone? Añádela a tu pantalla de inicio — funciona como una app nativa."
+  },
+  "socialProof": {
+    "proofRating": "en Google Play",
+    "proofTags": "etiquetas de valores y estilo de vida",
+    "proofEngine": "Motor de sinastría real"
   },
   "features": {
     "title": "Funciones",
@@ -103,8 +110,8 @@
     "trustTrial": "Prueba gratis de 7 días en todos los planes"
   },
   "cta": {
-    "title": "¿Listo/a para encontrar tu pareja cósmica?",
-    "subtitle": "Descarga AstroDating y descubre conexiones escritas en las estrellas."
+    "title": "¿Listo/a para conocer a personas que realmente encajan contigo?",
+    "subtitle": "Descarga AstroDating y descubre conexiones basadas en cartas astrales reales y valores reales."
   },
   "footer": {
     "links": "Enlaces",

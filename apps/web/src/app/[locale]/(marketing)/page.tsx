@@ -3,23 +3,34 @@ import { StarField } from "@/components/StarField";
 import { FeatureCard } from "@/components/FeatureCard";
 import { DownloadButtons } from "@/components/DownloadButtons";
 import { MarketingPricingSection } from "@/components/MarketingPricingSection";
+import { InstallPrompt } from "@/components/InstallPrompt";
+import { PhoneMockupPlaceholder } from "@/components/PhoneMockupPlaceholder";
+import {
+  BirthChartIcon,
+  SynastryIcon,
+  DiscoveryIcon,
+  HoroscopeIcon,
+  TransitsIcon,
+  ProfileIcon,
+  DiscoverPeopleIcon,
+  ConversationIcon,
+} from "@/components/MarketingIcons";
 
 const FEATURE_KEYS = [
-  { key: "birthChart", icon: "🪐" },
-  { key: "synastry", icon: "💫" },
-  { key: "discovery", icon: "🔮" },
-  { key: "horoscope", icon: "⭐" },
-  { key: "transits", icon: "🌙" },
+  { key: "birthChart", Icon: BirthChartIcon },
+  { key: "synastry", Icon: SynastryIcon },
+  { key: "discovery", Icon: DiscoveryIcon },
+  { key: "horoscope", Icon: HoroscopeIcon },
+  { key: "transits", Icon: TransitsIcon },
 ] as const;
 
-const STEP_KEYS = ["step1", "step2", "step3"] as const;
-const STEP_ICONS = ["🌟", "🔮", "💬"] as const;
-
-const SOCIAL_PROOF = [
-  { stat: "50K+", labelKey: "proofDownloads" },
-  { stat: "2M+", labelKey: "proofCharts" },
-  { stat: "4.8", labelKey: "proofRating" },
+const STEPS = [
+  { key: "step1", Icon: ProfileIcon },
+  { key: "step2", Icon: DiscoverPeopleIcon },
+  { key: "step3", Icon: ConversationIcon },
 ] as const;
+
+const PROOF_KEYS = ["proofRating", "proofTags", "proofEngine"] as const;
 
 const JSON_LD = {
   "@context": "https://schema.org",
@@ -41,7 +52,6 @@ export default function LandingPage({
 }: {
   params: Promise<{ locale: string }>;
 }) {
-  // Need to unwrap params for setRequestLocale but useTranslations works without it in server components
   const hero = useTranslations("hero");
   const feat = useTranslations("features");
   const how = useTranslations("howItWorks");
@@ -55,48 +65,53 @@ export default function LandingPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
       />
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-bg via-bg-secondary to-bg-tertiary py-28 sm:py-36">
+      <section className="relative overflow-hidden bg-gradient-to-b from-bg via-bg-secondary to-bg-tertiary py-20 sm:py-28">
         <StarField />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_40%,rgba(232,93,117,0.12),transparent)]" aria-hidden="true" />
-        <div className="relative mx-auto max-w-4xl px-4 text-center">
-          <div className="mx-auto mb-6 flex h-28 w-28 items-center justify-center rounded-full border border-accent/40 bg-accent/8 shadow-[0_0_60px_rgba(232,93,117,0.2)]" aria-hidden="true">
-            <svg width="64" height="64" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M64 98 C40 82 24 66 24 48 C24 36 33 28 44 28 C53 28 60 33 64 40 C68 33 75 28 84 28 C95 28 104 36 104 48 C104 66 88 82 64 98Z"
-                fill="none"
-                stroke="#E94560"
-                strokeWidth="2.5"
-                strokeOpacity="0.6"
-              />
-              <path
-                d="M64 26 L74.3 51.7 L104 51.7 L80 69.1 L89.4 97 L64 80.2 L38.6 97 L48 69.1 L24 51.7 L53.7 51.7 Z"
-                fill="#F7F4EE"
-              />
-            </svg>
-          </div>
-          <p className="mb-3 text-sm font-medium uppercase tracking-[0.3em] text-accent">
-            {hero("badge")}
-          </p>
-          <h1 className="mb-5 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
-            {hero("tagline")}
-          </h1>
-          <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-text-muted">
-            {hero("description")}
-          </p>
-          <div className="flex justify-center">
-            <DownloadButtons />
+
+        <div className="relative mx-auto grid max-w-6xl gap-10 px-4 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-16">
+          {/* Left column: copy + CTAs */}
+          <div className="text-center lg:text-left">
+            <p className="mb-3 text-sm font-medium uppercase tracking-[0.3em] text-accent">
+              {hero("badge")}
+            </p>
+            <h1 className="mb-5 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+              {hero("tagline")}
+            </h1>
+            <p className="mx-auto mb-8 max-w-xl text-lg leading-relaxed text-text-muted lg:mx-0">
+              {hero("description")}
+            </p>
+            <div className="flex justify-center lg:justify-start">
+              <DownloadButtons />
+            </div>
+
+            {/* Trust strip — qualitative proofs only, no invented stats */}
+            <ul
+              className="mx-auto mt-10 flex max-w-xl flex-wrap items-center justify-center gap-2 lg:mx-0 lg:justify-start"
+              aria-label="What sets AstroDating apart"
+            >
+              {PROOF_KEYS.map((key, i) => (
+                <li
+                  key={key}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/8 bg-white/[0.03] px-3 py-1.5 text-xs text-white/85"
+                >
+                  {i === 0 ? (
+                    <span aria-hidden="true" className="text-accent">★ 4.8</span>
+                  ) : null}
+                  <span>{social(key)}</span>
+                </li>
+              ))}
+            </ul>
+
+            {/* Inline install prompt — auto-shows on iOS / Android Chrome only */}
+            <div className="mx-auto mt-6 max-w-md lg:mx-0">
+              <InstallPrompt />
+            </div>
           </div>
 
-          {/* Social proof */}
-          <div className="mx-auto mt-14 flex max-w-lg flex-wrap items-center justify-center gap-8 border-t border-border/50 pt-8">
-            {SOCIAL_PROOF.map(({ stat, labelKey }) => (
-              <div key={labelKey} className="text-center">
-                <p className="text-2xl font-bold text-white">{stat}</p>
-                <p className="mt-1 text-xs uppercase tracking-widest text-text-dim">
-                  {social(labelKey)}
-                </p>
-              </div>
-            ))}
+          {/* Right column: phone mockup */}
+          <div className="flex justify-center lg:justify-end">
+            <PhoneMockupPlaceholder />
           </div>
         </div>
       </section>
@@ -114,10 +129,10 @@ export default function LandingPage({
             {feat("subtitle")}
           </p>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURE_KEYS.map(({ key, icon }) => (
+            {FEATURE_KEYS.map(({ key, Icon }) => (
               <FeatureCard
                 key={key}
-                icon={icon}
+                icon={<Icon size={28} />}
                 title={feat(key)}
                 description={feat(`${key}Desc`)}
               />
@@ -142,11 +157,11 @@ export default function LandingPage({
             {how("subtitle")}
           </p>
           <div className="grid gap-8 sm:grid-cols-3">
-            {STEP_KEYS.map((key, i) => (
+            {STEPS.map(({ key, Icon }, i) => (
               <div key={key} className="group text-center">
                 <div className="relative mx-auto mb-5">
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-accent/20 bg-accent/8 text-2xl shadow-[0_0_30px_rgba(232,93,117,0.1)] transition-transform group-hover:scale-105" aria-hidden="true">
-                    {STEP_ICONS[i]}
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-accent/20 bg-accent/8 text-accent shadow-[0_0_30px_rgba(232,93,117,0.1)] transition-transform group-hover:scale-105" aria-hidden="true">
+                    <Icon size={28} />
                   </div>
                   <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-xs font-bold text-white">
                     {i + 1}
@@ -172,7 +187,6 @@ export default function LandingPage({
       >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_50%_60%_at_50%_50%,rgba(118,129,255,0.1),transparent)]" />
         <div className="relative mx-auto max-w-3xl px-4 text-center">
-          <p className="mb-3 text-3xl" aria-hidden="true">✨</p>
           <h2 className="mb-4 text-3xl font-bold text-white sm:text-4xl">
             {cta("title")}
           </h2>

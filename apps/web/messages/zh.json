@@ -20,12 +20,19 @@
     "contact": "联系我们"
   },
   "hero": {
-    "tagline": "命中注定的缘分",
-    "description": "找到你的星象伴侣。AstroDating 运用真实占星术——星盘、合盘分析和行星过境——为你匹配真正相合的人。",
+    "tagline": "深度约会。",
+    "description": "占星术、价值观、真正的对话 — 给厌倦了表面滑动的你。",
     "appStore": "App Store",
     "playStore": "Google Play",
     "webApp": "打开网页应用",
-    "badge": "真正的占星。真正的连接。"
+    "badge": "真正的占星。真正的连接。",
+    "installWebApp": "安装网页应用",
+    "iOSInstallHint": "iPhone 用户？添加到主屏幕 — 像原生应用一样使用。"
+  },
+  "socialProof": {
+    "proofRating": "Google Play 评分",
+    "proofTags": "价值观 & 生活方式标签",
+    "proofEngine": "真实合盘引擎"
   },
   "features": {
     "title": "功能特色",
@@ -103,8 +110,8 @@
     "trustTrial": "所有付费方案均享7天免费试用"
   },
   "cta": {
-    "title": "准备好找到你的星象伴侣了吗？",
-    "subtitle": "下载 AstroDating，发现命中注定的缘分。"
+    "title": "准备好认识真正适合你的人了吗？",
+    "subtitle": "下载 AstroDating，发现基于真实星盘和真实价值观的连接。"
   },
   "footer": {
     "links": "链接",
