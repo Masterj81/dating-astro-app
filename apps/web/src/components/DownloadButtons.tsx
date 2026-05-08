@@ -3,7 +3,14 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { SITE } from "@/lib/constants";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
+
+/**
+ * sessionStorage flag read on mount by InstallPrompt to auto-open the iOS guide
+ * after we've navigated the user to /app — so when they tap "Add to Home Screen"
+ * iOS bookmarks the web app URL rather than the landing page they came from.
+ */
+const SHOW_INSTALL_GUIDE_FLAG = "astrodating-show-install-guide";
 
 // Set to true when App Store version is approved
 const SHOW_APP_STORE = false;
@@ -63,6 +70,8 @@ function fireOpenInstallGuide() {
   window.dispatchEvent(new CustomEvent(OPEN_INSTALL_GUIDE_EVENT));
 }
 
+export { SHOW_INSTALL_GUIDE_FLAG };
+
 export function DownloadButtons({
   size = "md",
   variant = "auto",
@@ -75,12 +84,28 @@ export function DownloadButtons({
   variant?: "auto" | "all";
 }) {
   const t = useTranslations("hero");
+  const router = useRouter();
   const [device, setDevice] = useState<Device | null>(null);
   const padding = size === "sm" ? "px-4 py-2 text-sm" : "px-6 py-3 text-base";
 
   useEffect(() => {
     setDevice(detectDevice());
   }, []);
+
+  // iOS: navigate to /app FIRST so when the user taps "Add to Home Screen",
+  // iOS Safari bookmarks the web app URL — not the landing page they came from.
+  // The InstallPrompt component on /app reads the sessionStorage flag and
+  // auto-opens the install guide.
+  function handleIOSInstall() {
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem(SHOW_INSTALL_GUIDE_FLAG, "1");
+      } catch {
+        /* sessionStorage may be unavailable in some private modes */
+      }
+    }
+    router.push("/app");
+  }
 
   // Primary white pill (Play Store / App Store)
   const playStoreBtn = (
@@ -109,12 +134,14 @@ export function DownloadButtons({
     </a>
   ) : null;
 
-  // iOS primary: Install Web App (triggers the InstallPrompt sheet via custom event)
+  // iOS primary: Install Web App — navigates to /app first, then InstallPrompt
+  // there opens the Add-to-Home-Screen guide. This way iOS bookmarks /app, not
+  // the landing.
   const installWebAppBtn = (
     <button
       key="install"
       type="button"
-      onClick={fireOpenInstallGuide}
+      onClick={handleIOSInstall}
       className={`inline-flex items-center gap-2 rounded-full bg-white text-black font-medium shadow-lg shadow-white/10 transition-all hover:opacity-90 hover:shadow-white/15 ${padding}`}
     >
       <PhoneInstallIcon />

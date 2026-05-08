@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { OPEN_INSTALL_GUIDE_EVENT } from "@/components/DownloadButtons";
+import {
+  OPEN_INSTALL_GUIDE_EVENT,
+  SHOW_INSTALL_GUIDE_FLAG,
+} from "@/components/DownloadButtons";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -41,6 +44,23 @@ export function InstallPrompt() {
     };
 
     window.addEventListener("beforeinstallprompt", handler);
+
+    // Auto-open the iOS install guide if the user just navigated here from
+    // the marketing CTA "Install Web App". The hero/sticky-bar buttons set
+    // this flag right before pushing to /app — landing here, we open the
+    // sheet so iOS Add-to-Home-Screen captures the /app URL.
+    try {
+      if (sessionStorage.getItem(SHOW_INSTALL_GUIDE_FLAG) === "1") {
+        sessionStorage.removeItem(SHOW_INSTALL_GUIDE_FLAG);
+        // Defer one tick so the route transition has settled before the
+        // modal mounts (avoids a flash where the dialog appears before the
+        // page content).
+        setTimeout(() => setShowIOSGuide(true), 50);
+      }
+    } catch {
+      /* sessionStorage may be unavailable in some private modes */
+    }
+
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 

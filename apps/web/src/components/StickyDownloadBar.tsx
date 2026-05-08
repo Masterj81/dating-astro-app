@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { SITE } from "@/lib/constants";
-import { OPEN_INSTALL_GUIDE_EVENT } from "@/components/DownloadButtons";
+import { SHOW_INSTALL_GUIDE_FLAG } from "@/components/DownloadButtons";
 
 type Device = "ios" | "android" | "desktop";
 
@@ -22,6 +22,7 @@ function detect(): Device {
  */
 export function StickyDownloadBar() {
   const t = useTranslations("hero");
+  const router = useRouter();
   const [device, setDevice] = useState<Device | null>(null);
   const [hidden, setHidden] = useState(true);
 
@@ -36,6 +37,17 @@ export function StickyDownloadBar() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  function handleIOSInstall() {
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem(SHOW_INSTALL_GUIDE_FLAG, "1");
+      } catch {
+        /* sessionStorage may be unavailable in some private modes */
+      }
+    }
+    router.push("/app");
+  }
 
   if (device === "desktop" || device === null) return null;
 
@@ -59,7 +71,7 @@ export function StickyDownloadBar() {
         {isIOS ? (
           <button
             type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent(OPEN_INSTALL_GUIDE_EVENT))}
+            onClick={handleIOSInstall}
             className="shrink-0 rounded-full bg-white px-4 py-2 text-sm font-semibold text-black shadow-lg shadow-white/10 transition-opacity hover:opacity-90"
           >
             {t("installWebApp")}
