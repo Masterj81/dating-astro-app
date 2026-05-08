@@ -1,34 +1,35 @@
 import { useTranslations } from "next-intl";
 import { StarField } from "@/components/StarField";
-import { FeatureCard } from "@/components/FeatureCard";
+import { GlassCard } from "@/components/GlassCard";
 import { DownloadButtons } from "@/components/DownloadButtons";
 import { MarketingPricingSection } from "@/components/MarketingPricingSection";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { PhoneMockupPlaceholder } from "@/components/PhoneMockupPlaceholder";
+import { CompatibilityDotsArc } from "@/components/CompatibilityDotsArc";
+import { ValuePillCloud } from "@/components/ValuePillCloud";
+import { IntentPill } from "@/components/IntentPill";
+import { LifestyleTagsCloud } from "@/components/LifestyleTagsCloud";
+import { VoiceIntroDemo } from "@/components/VoiceIntroDemo";
+import { IcebreakerBubble } from "@/components/IcebreakerBubble";
 import {
-  BirthChartIcon,
-  SynastryIcon,
-  DiscoveryIcon,
-  HoroscopeIcon,
-  TransitsIcon,
   ProfileIcon,
   DiscoverPeopleIcon,
   ConversationIcon,
 } from "@/components/MarketingIcons";
-
-const FEATURE_KEYS = [
-  { key: "birthChart", Icon: BirthChartIcon },
-  { key: "synastry", Icon: SynastryIcon },
-  { key: "discovery", Icon: DiscoveryIcon },
-  { key: "horoscope", Icon: HoroscopeIcon },
-  { key: "transits", Icon: TransitsIcon },
-] as const;
 
 const STEPS = [
   { key: "step1", Icon: ProfileIcon },
   { key: "step2", Icon: DiscoverPeopleIcon },
   { key: "step3", Icon: ConversationIcon },
 ] as const;
+
+// Sample data shown in the feature cards. Hardcoded EN strings for Phase 2 P0;
+// values, tags, and intents come from the same vocabulary the mobile profile
+// uses (apps/mobile/data/profile-fields.ts) so we never demo a tag the app
+// can't actually offer.
+const DEMO_VALUES = ["Family", "Growth", "Honesty", "Freedom", "Spirituality", "Adventure"];
+const DEMO_LIFESTYLE = ["Outdoor", "Sober-curious", "Yoga", "Plant parent", "Reader"];
+const DEMO_LIFESTYLE_SHARED = ["Outdoor", "Yoga"];
 
 const PROOF_KEYS = ["proofRating", "proofTags", "proofEngine"] as const;
 
@@ -116,7 +117,10 @@ export default function LandingPage({
         </div>
       </section>
 
-      {/* Features */}
+      {/* Features — product-first (Phase 2). The astrology-only feature
+          grid (birthChart/synastry/discovery/horoscope/transits) used to
+          live here; horoscope and transits remain promoted in the
+          MarketingPricingSection where they're tier features. */}
       <section id="features" className="bg-bg py-24">
         <div className="mx-auto max-w-6xl px-4">
           <p className="mb-3 text-center text-sm font-medium uppercase tracking-[0.3em] text-accent">
@@ -128,15 +132,97 @@ export default function LandingPage({
           <p className="mx-auto mb-14 max-w-xl text-center text-text-muted">
             {feat("subtitle")}
           </p>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURE_KEYS.map(({ key, Icon }) => (
-              <FeatureCard
-                key={key}
-                icon={<Icon size={28} />}
-                title={feat(key)}
-                description={feat(`${key}Desc`)}
-              />
-            ))}
+
+          <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {/* 1 — Compatibility, decoded */}
+            <GlassCard className="p-6">
+              <div className="mb-5 flex justify-center">
+                <CompatibilityDotsArc percentage={82} size={140} />
+              </div>
+              <p className="mb-1 text-center text-[11px] uppercase tracking-[0.2em] text-accent/85">
+                {feat("compatibilityVerdict")}
+              </p>
+              <h3 className="text-center text-base font-semibold text-white sm:text-lg">
+                {feat("compatibility")}
+              </h3>
+              <p className="mt-1 text-center text-sm leading-relaxed text-text-muted">
+                {feat("compatibilityDesc")}
+              </p>
+            </GlassCard>
+
+            {/* 2 — Match on values */}
+            <GlassCard className="p-6">
+              <div className="mb-5 flex min-h-[140px] items-center justify-center">
+                <ValuePillCloud values={DEMO_VALUES} className="justify-center" />
+              </div>
+              <h3 className="text-base font-semibold text-white sm:text-lg">
+                {feat("values")}
+              </h3>
+              <p className="mt-1 text-sm leading-relaxed text-text-muted">
+                {feat("valuesDesc")}
+              </p>
+            </GlassCard>
+
+            {/* 3 — Show your intent */}
+            <GlassCard className="p-6">
+              <div className="mb-5 flex min-h-[140px] flex-col items-center justify-center gap-2">
+                <IntentPill label={feat("intentLongTerm")} tone="longTerm" />
+                <IntentPill label={feat("intentCasual")} tone="casual" />
+                <IntentPill label={feat("intentFriendship")} tone="friendship" />
+              </div>
+              <h3 className="text-base font-semibold text-white sm:text-lg">
+                {feat("intent")}
+              </h3>
+              <p className="mt-1 text-sm leading-relaxed text-text-muted">
+                {feat("intentDesc")}
+              </p>
+            </GlassCard>
+
+            {/* 4 — Hear their voice */}
+            <GlassCard className="p-6">
+              <div className="mb-5 flex min-h-[140px] items-center">
+                <VoiceIntroDemo className="w-full" />
+              </div>
+              <h3 className="text-base font-semibold text-white sm:text-lg">
+                {feat("voice")}
+              </h3>
+              <p className="mt-1 text-sm leading-relaxed text-text-muted">
+                {feat("voiceDesc")}
+              </p>
+            </GlassCard>
+
+            {/* 5 — Start with an icebreaker */}
+            <GlassCard className="p-6">
+              <div className="mb-5 flex min-h-[140px] items-center">
+                <IcebreakerBubble
+                  caption={feat("icebreakerCaption")}
+                  question={feat("icebreakerExample")}
+                  className="w-full"
+                />
+              </div>
+              <h3 className="text-base font-semibold text-white sm:text-lg">
+                {feat("icebreaker")}
+              </h3>
+              <p className="mt-1 text-sm leading-relaxed text-text-muted">
+                {feat("icebreakerDesc")}
+              </p>
+            </GlassCard>
+
+            {/* 6 — See what you share */}
+            <GlassCard className="p-6">
+              <div className="mb-5 flex min-h-[140px] items-center justify-center">
+                <LifestyleTagsCloud
+                  tags={DEMO_LIFESTYLE}
+                  sharedTags={DEMO_LIFESTYLE_SHARED}
+                />
+              </div>
+              <h3 className="text-base font-semibold text-white sm:text-lg">
+                {feat("shared")}
+              </h3>
+              <p className="mt-1 text-sm leading-relaxed text-text-muted">
+                {feat("sharedDesc")}
+              </p>
+            </GlassCard>
           </div>
         </div>
       </section>

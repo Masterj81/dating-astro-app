@@ -3,11 +3,14 @@
  * Designed to be replaced by real screenshots in apps/web/public/screenshots/
  * once captured. Only depicts features that are actually shipped today:
  *   - profile depth (prompt + voice intro)
- *   - compatibility score (synastry)
+ *   - compatibility score (synastry) — uses the same CompatibilityDotsArc
+ *     as the mobile app and the marketing Compatibility feature card
  *   - icebreaker chat bubble
  *
  * No invented copy, no fake user names.
  */
+
+import { CompatibilityDotsArc } from "@/components/CompatibilityDotsArc";
 
 export function PhoneMockupPlaceholder({
   className,
@@ -35,28 +38,14 @@ export function PhoneMockupPlaceholder({
             <span aria-hidden="true">●●●</span>
           </div>
 
-          {/* Compatibility ring + name */}
+          {/* Compatibility arc — same component used in the marketing feature card */}
           <div className="mb-4 flex items-center gap-3">
-            <div className="relative h-12 w-12 shrink-0">
-              <svg viewBox="0 0 48 48" className="absolute inset-0">
-                <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="3" />
-                <circle
-                  cx="24"
-                  cy="24"
-                  r="20"
-                  fill="none"
-                  stroke="#E94560"
-                  strokeWidth="3"
-                  strokeDasharray="125.6"
-                  strokeDashoffset="31.4"
-                  strokeLinecap="round"
-                  transform="rotate(-90 24 24)"
-                />
-              </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-white">
-                75
-              </span>
-            </div>
+            <CompatibilityDotsArc
+              percentage={75}
+              size={56}
+              showScore
+              className="shrink-0"
+            />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-white">Compatibility</p>
               <p className="truncate text-[10px] text-white/55">Synastry · 7 aspects</p>

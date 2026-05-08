@@ -195,6 +195,16 @@ button {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes dot-pop-in {
+  from { opacity: 0; transform: scale(0.4); }
+  to { opacity: var(--dot-target-opacity, 1); transform: scale(1); }
+}
+
+@keyframes voice-bar {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+
 .star {
   animation: twinkle var(--duration, 3s) ease-in-out infinite;
   animation-delay: var(--delay, 0s);
@@ -211,6 +221,16 @@ button {
 
 .animate-pulse-glow {
   animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.dot-anim {
+  animation: dot-pop-in 320ms ease-out both;
+  transform-origin: center;
+}
+
+.voice-bar {
+  animation: voice-bar 1.1s ease-in-out infinite;
+  transform-origin: center;
 }
 
 /* Select element styling for dark theme */
