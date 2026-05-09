@@ -116,7 +116,7 @@ export default function ProfileMVPSections(props: Props) {
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <View>
+    <View style={s.container}>
       {/* ── Relationship intent (required) ─────────────────────────── */}
       <View style={s.section}>
         <View style={s.sectionHeaderRow}>
@@ -354,6 +354,9 @@ export default function ProfileMVPSections(props: Props) {
 }
 
 const s = StyleSheet.create({
+  container: {
+    paddingHorizontal: 20,
+  },
   section: {
     backgroundColor: AppTheme.colors.panel,
     padding: 16,
