@@ -36,11 +36,15 @@ export async function getCurrentSubscription(userId: string): Promise<{
     cancel_at_period_end: boolean | null;
   };
 
-  const { data, error } = await supabase
-    .rpc("get_effective_subscription", { p_user_id: userId })
-    .maybeSingle<EffectiveRow>();
+  // Use array form (no .maybeSingle()) to avoid 406 when RPC returns 0 rows for free users.
+  const { data, error } = await supabase.rpc("get_effective_subscription", {
+    p_user_id: userId,
+  });
 
-  if (error || !data) {
+  const rows = (data as unknown as EffectiveRow[] | null) ?? [];
+  const row = rows[0] ?? null;
+
+  if (error || !row) {
     return {
       tier: "free",
       source: null,
@@ -51,11 +55,11 @@ export async function getCurrentSubscription(userId: string): Promise<{
   }
 
   return {
-    tier: (data.tier as WebTier) || "free",
-    source: (data.source as WebSource) || null,
-    status: data.status || null,
-    expiresAt: data.expires_at || null,
-    cancelAtPeriodEnd: Boolean(data.cancel_at_period_end),
+    tier: (row.tier as WebTier) || "free",
+    source: (row.source as WebSource) || null,
+    status: row.status || null,
+    expiresAt: row.expires_at || null,
+    cancelAtPeriodEnd: Boolean(row.cancel_at_period_end),
   };
 }
 
