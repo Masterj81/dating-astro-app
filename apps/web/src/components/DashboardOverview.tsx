@@ -8,6 +8,7 @@ import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
+import { DashboardGridSkeleton } from "@/components/Skeleton";
 
 type DiscoverPreviewProfile = {
   id: string;
@@ -153,11 +154,7 @@ export function DashboardOverview() {
   const isFree = state?.tier === "free";
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-      </div>
-    );
+    return <DashboardGridSkeleton ariaLabel={t("loading")} cards={4} />;
   }
 
   const signedInCards: DashboardCard[] = state

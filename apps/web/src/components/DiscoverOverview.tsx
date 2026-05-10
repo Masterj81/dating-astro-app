@@ -8,6 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
+import { FullCardSkeleton } from "@/components/Skeleton";
 import {
   findIntent,
   findLifestyleTag,
@@ -244,15 +245,7 @@ export function DiscoverOverview() {
   }, [currentProfile, actionLoading, reportOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
-    return (
-      <div className="rounded-[2rem] border border-border bg-card/90 p-10 text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-accent/20 bg-accent/8">
-          <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent border-t-transparent" aria-hidden="true" />
-        </div>
-        <p role="status" className="mt-5 text-sm font-medium text-white">{t("discoverLoadingTitle")}</p>
-        <p className="mt-2 text-xs text-text-dim">{t("discoverLoadingBody")}</p>
-      </div>
-    );
+    return <FullCardSkeleton ariaLabel={t("discoverLoadingTitle")} />;
   }
 
   if (!currentProfile) {

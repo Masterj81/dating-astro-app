@@ -8,6 +8,7 @@ import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
+import { SynastryOverviewSkeleton } from "@/components/Skeleton";
 
 type MatchRow = {
   match_id: string;
@@ -250,11 +251,7 @@ export function SynastryOverview() {
   }, [activeMatch, t]);
 
   if (loading) {
-    return (
-      <div className="rounded-[2rem] border border-border bg-card/90 p-6 text-sm text-text-muted">
-        {t("loading")}
-      </div>
-    );
+    return <SynastryOverviewSkeleton ariaLabel={t("loading")} />;
   }
 
   if (!state) {

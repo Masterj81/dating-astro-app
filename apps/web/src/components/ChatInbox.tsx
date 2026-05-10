@@ -7,6 +7,7 @@ import { Link } from "@/i18n/navigation";
 import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
+import { ChatListSkeleton } from "@/components/Skeleton";
 
 // Conversation-first: rows now come from `get_user_conversations` RPC.
 // Compatibility % is intentionally absent.
@@ -63,11 +64,7 @@ export function ChatInbox() {
   useEffect(() => { loadConversations(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" role="status" aria-label={t("loading")} />
-      </div>
-    );
+    return <ChatListSkeleton ariaLabel={t("loading")} rows={4} />;
   }
 
   if (!conversations.length) {
