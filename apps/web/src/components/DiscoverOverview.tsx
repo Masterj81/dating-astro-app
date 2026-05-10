@@ -8,6 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
+import { getCurrentTier, type WebTier } from "@/lib/web-subscriptions";
 import { FullCardSkeleton } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import {
@@ -43,6 +44,13 @@ export function DiscoverOverview() {
   const [profiles, setProfiles] = useState<DiscoverProfile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+  // Subscription tier drives whether the "Find your compatibility" CTAs
+  // pitch /app/plans (paywall) or open the actual synastry view. Celestial
+  // === "premium", Cosmic === "premium_plus" — see the price-key map in
+  // lib/web-checkout.ts. Defaulting to "free" before the RPC resolves
+  // keeps the current pre-load paywall behavior; once the tier loads, the
+  // CTAs swap destinations.
+  const [tier, setTier] = useState<WebTier>("free");
   const [viewerInterests, setViewerInterests] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   // Conversation-first: the only mutating action from this screen is
@@ -86,19 +94,25 @@ export function DiscoverOverview() {
 
       setUserId(session.user.id);
 
-      // Discover deck + viewer's own lifestyle tags in parallel. The viewer
-      // tags power the shared-tag highlight on each card; on failure the
-      // highlight is silently absent.
+      // Discover deck + viewer's own lifestyle tags + viewer's tier in
+      // parallel. The viewer tags power the shared-tag highlight on each
+      // card; on failure the highlight is silently absent. The tier
+      // drives whether the in-card compatibility CTAs pitch the paywall
+      // or open synastry directly.
       const [
         { data: discoverData, error: discoverError },
         { data: viewerRows },
+        viewerTier,
       ] = await Promise.all([
         supabase.rpc("get_discoverable_profiles", {
           p_user_id: session.user.id,
           p_limit: 50,
         }),
         supabase.rpc("get_my_full_profile"),
+        getCurrentTier(session.user.id),
       ]);
+
+      setTier(viewerTier);
 
       if (discoverError) {
         throw discoverError;
@@ -288,6 +302,13 @@ export function DiscoverOverview() {
   }
 
   const profileImage = resolveImageSrc(currentProfile.image_url, currentProfile.images?.[0]);
+  // Paid users (Celestial = "premium", Cosmic = "premium_plus") already
+  // own the synastry feature — route them straight to it. Free users
+  // still see the paywall.
+  const isFreeTier = tier === "free";
+  const compatibilityHref = isFreeTier
+    ? "/app/plans"
+    : "/app/premium/celestial/synastry";
 
   return (
     <div className="space-y-6">
@@ -308,7 +329,7 @@ export function DiscoverOverview() {
                 The premium-gated "Find your compatibility" CTA is the
                 single surface for the score breakdown. */}
             <Link
-              href="/app/plans"
+              href={compatibilityHref}
               className="absolute left-5 top-5 flex items-center gap-2 rounded-full border border-purple/30 bg-[rgba(124,108,255,0.30)] px-4 py-2 text-sm font-semibold text-white backdrop-blur-md transition-colors hover:bg-[rgba(124,108,255,0.40)]"
             >
               ✨ {t("findYourCompatibility")}
@@ -436,22 +457,26 @@ export function DiscoverOverview() {
 
               {/* Premium-gated compatibility CTA — replaces the visible
                   % score + breakdown that used to live here. Compatibility
-                  detail is now a paid feature. */}
-              <div className="mt-6 rounded-2xl border border-purple/25 bg-[linear-gradient(135deg,rgba(124,108,255,0.10),rgba(232,93,117,0.06))] p-5">
-                <p className="text-2xl" aria-hidden="true">✨</p>
-                <h4 className="mt-2 text-base font-semibold text-white">
-                  {t("findYourCompatibility")}
-                </h4>
-                <p className="mt-1 text-sm leading-6 text-text-muted">
-                  {t("findYourCompatibilitySubtitle")}
-                </p>
-                <Link
-                  href="/app/plans"
-                  className="mt-4 inline-flex items-center gap-2 rounded-full bg-purple/90 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-purple hover:shadow-[0_0_18px_rgba(124,108,255,0.30)]"
-                >
-                  {t("viewAllPlans")}
-                </Link>
-              </div>
+                  detail is now a paid feature, so this teaser only renders
+                  for free users; paid tiers already own the synastry view
+                  and the in-card pitch would be noise for them. */}
+              {isFreeTier ? (
+                <div className="mt-6 rounded-2xl border border-purple/25 bg-[linear-gradient(135deg,rgba(124,108,255,0.10),rgba(232,93,117,0.06))] p-5">
+                  <p className="text-2xl" aria-hidden="true">✨</p>
+                  <h4 className="mt-2 text-base font-semibold text-white">
+                    {t("findYourCompatibility")}
+                  </h4>
+                  <p className="mt-1 text-sm leading-6 text-text-muted">
+                    {t("findYourCompatibilitySubtitle")}
+                  </p>
+                  <Link
+                    href="/app/plans"
+                    className="mt-4 inline-flex items-center gap-2 rounded-full bg-purple/90 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-purple hover:shadow-[0_0_18px_rgba(124,108,255,0.30)]"
+                  >
+                    {t("viewAllPlans")}
+                  </Link>
+                </div>
+              ) : null}
             </div>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -491,7 +516,7 @@ export function DiscoverOverview() {
                 👤 {t("matchesViewProfile")}
               </Link>
               <Link
-                href="/app/plans"
+                href={compatibilityHref}
                 className="group flex items-center gap-2 rounded-full border border-purple/30 bg-purple/10 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-purple/20"
               >
                 ✨ {t("findYourCompatibility")}
