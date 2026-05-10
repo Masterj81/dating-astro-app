@@ -8,6 +8,7 @@ import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
+import { CompatibilityDotsArc } from "@/components/CompatibilityDotsArc";
 import { SynastryOverviewSkeleton } from "@/components/Skeleton";
 
 type MatchRow = {
@@ -422,13 +423,28 @@ export function SynastryOverview() {
           </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-[auto_1fr] md:items-center">
-            <div className="flex h-32 w-32 items-center justify-center rounded-full border-4 border-accent bg-accent/10 text-center">
-              <div>
-                <div className="text-3xl font-bold text-white">{totalScore ?? "--"}%</div>
-                <div className="mx-auto mt-1 max-w-[4.5rem] text-[10px] font-medium leading-tight tracking-[0.08em] text-text-dim">
-                  {t("cosmicCompatibility")}
+            <div className="flex justify-center md:justify-start">
+              {totalScore != null ? (
+                <CompatibilityDotsArc
+                  percentage={totalScore}
+                  size={140}
+                  showScore
+                  label={t("cosmicCompatibility")}
+                />
+              ) : (
+                <div
+                  className="flex h-32 w-32 items-center justify-center rounded-full border-4 border-white/10 bg-white/[0.03] text-center"
+                  aria-label={t("cosmicCompatibility")}
+                  role="img"
+                >
+                  <div>
+                    <div className="text-3xl font-bold text-white/40">--</div>
+                    <div className="mx-auto mt-1 max-w-[4.5rem] text-[10px] font-medium leading-tight tracking-[0.08em] text-text-dim">
+                      {t("cosmicCompatibility")}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
             <p className="text-sm leading-7 text-text-muted">
               {t("synastryOverviewBody")}
