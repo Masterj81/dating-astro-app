@@ -9,6 +9,7 @@ import { routing } from "@/i18n/routing";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentTier } from "@/lib/web-subscriptions";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { NavIcon, type NavIconName } from "@/components/NavIcons";
 
 type AppShellProps = {
   children: ReactNode;
@@ -20,7 +21,7 @@ type AppShellProps = {
 type NavLink = {
   href: string;
   label: string;
-  icon: string;
+  icon: NavIconName;
   accent?: "cosmic" | "celestial" | "rose";
 };
 
@@ -117,20 +118,20 @@ export function AppShell({
   // Conversation-first nav: the Matches tab is gone. Chat is now the primary
   // social inbox. Old /app/matches deep links still resolve via a redirect.
   const mainNav: NavLink[] = [
-    { href: "/app", label: t("sidebarDashboard"), icon: "🏠" },
-    { href: "/app/discover", label: t("discoverNav"), icon: "🔮", accent: "rose" },
-    { href: "/app/chat", label: t("chatNav"), icon: "💬" },
-    { href: "/app/premium/cosmic", label: t("premiumNav"), icon: "🌌", accent: "cosmic" },
-    { href: "/app/premium/celestial", label: t("natalChartNav"), icon: "✨", accent: "celestial" },
-    { href: "/app/profile", label: t("profileNav"), icon: "👤" },
+    { href: "/app", label: t("sidebarDashboard"), icon: "dashboard" },
+    { href: "/app/discover", label: t("discoverNav"), icon: "discover", accent: "rose" },
+    { href: "/app/chat", label: t("chatNav"), icon: "chat" },
+    { href: "/app/premium/cosmic", label: t("premiumNav"), icon: "cosmic", accent: "cosmic" },
+    { href: "/app/premium/celestial", label: t("natalChartNav"), icon: "celestial", accent: "celestial" },
+    { href: "/app/profile", label: t("profileNav"), icon: "profile" },
   ];
 
   // Bottom tab bar uses a simplified set
   const bottomNav: NavLink[] = [
-    { href: "/app/discover", label: t("discoverNav"), icon: "🔮", accent: "rose" },
-    { href: "/app/chat", label: t("chatNav"), icon: "💬" },
-    { href: "/app/premium/cosmic", label: t("premiumNav"), icon: "✨", accent: "cosmic" },
-    { href: "/app/profile", label: t("profileNav"), icon: "👤" },
+    { href: "/app/discover", label: t("discoverNav"), icon: "discover", accent: "rose" },
+    { href: "/app/chat", label: t("chatNav"), icon: "chat" },
+    { href: "/app/premium/cosmic", label: t("premiumNav"), icon: "cosmic", accent: "cosmic" },
+    { href: "/app/profile", label: t("profileNav"), icon: "profile" },
   ];
 
   const isActive = (href: string) => {
@@ -227,7 +228,7 @@ export function AppShell({
                 } ${sidebarCollapsed ? "justify-center" : ""}`}
                 title={sidebarCollapsed ? link.label : undefined}
               >
-                <span className="text-lg">{link.icon}</span>
+                <NavIcon name={link.icon} className="h-5 w-5 shrink-0" />
                 {!sidebarCollapsed && <span>{link.label}</span>}
                 {active && !sidebarCollapsed && (
                   <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent" />
@@ -253,10 +254,11 @@ export function AppShell({
           <div className="mx-3 mb-2">
             <Link
               href="/app/plans"
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 text-sm transition-all hover:bg-accent/20"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 text-accent transition-all hover:bg-accent/20"
               title={t("sidebarUpgradeCta")}
+              aria-label={t("sidebarUpgradeCta")}
             >
-              ✨
+              <NavIcon name="upgrade" className="h-4 w-4" />
             </Link>
           </div>
         )}
@@ -292,7 +294,7 @@ export function AppShell({
               aria-label={tLang("label")}
               className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-text-muted transition-colors hover:bg-white/[0.06] ${sidebarCollapsed ? "justify-center" : ""}`}
             >
-              <span aria-hidden="true">🌐</span>
+              <NavIcon name="globe" className="h-4 w-4 shrink-0" />
               {!sidebarCollapsed && <span>{tLang(locale)}</span>}
             </button>
             {langOpen && (
@@ -320,7 +322,7 @@ export function AppShell({
               onClick={handleSignOut}
               className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-text-dim transition-colors hover:bg-white/[0.06] hover:text-white"
             >
-              <span>↗</span>
+              <NavIcon name="signout" className="h-4 w-4 shrink-0" />
               <span>{t("signOut")}</span>
             </button>
           )}
@@ -351,9 +353,10 @@ export function AppShell({
                 aria-expanded={langOpen}
                 aria-haspopup="listbox"
                 aria-label={tLang("label")}
-                className="rounded-lg border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-xs text-text-muted"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-xs text-text-muted"
               >
-                <span aria-hidden="true">🌐</span> {tLang(locale)}
+                <NavIcon name="globe" className="h-3.5 w-3.5" />
+                {tLang(locale)}
               </button>
               {langOpen && (
                 <div className="absolute right-0 top-full z-50 mt-1 w-36 rounded-xl border border-white/10 bg-[#111624]/95 py-1 shadow-xl backdrop-blur-xl" role="listbox" aria-label={tLang("label")}>
@@ -436,9 +439,10 @@ export function AppShell({
                   active ? "text-accent" : "text-text-dim"
                 }`}
               >
-                <span className={`text-xl transition-transform ${active ? "scale-110" : ""}`} aria-hidden="true">
-                  {link.icon}
-                </span>
+                <NavIcon
+                  name={link.icon}
+                  className={`h-6 w-6 transition-transform ${active ? "scale-110" : ""}`}
+                />
                 <span className={active ? "font-semibold" : ""}>{link.label}</span>
                 {active && (
                   <span className="absolute top-0 h-0.5 w-8 rounded-b-full bg-accent" aria-hidden="true" />
