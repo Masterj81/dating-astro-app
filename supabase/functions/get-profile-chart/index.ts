@@ -89,16 +89,33 @@ function calculatePlanetPositions(time: any) {
 // CORS
 // ---------------------------------------------------------------------------
 
-const ALLOWED_ORIGINS = new Set<string>([
-  'https://astrodatingapp.com',
+// CORS origins. Pattern aligned with calculate-chart / create-checkout-session
+// / claim-referral so any new web subdomain is whitelisted in one place.
+// `https://app.astrodatingapp.com` MUST be included — the authenticated web
+// app runs there and was previously rejected, surfacing as
+// "Failed to send a request to the Edge Function" on the synastry page.
+const PROD_ORIGINS = [
   'https://www.astrodatingapp.com',
+  'https://astrodatingapp.com',
+  'https://app.astrodatingapp.com',
+]
+const DEV_ORIGINS = [
+  ...PROD_ORIGINS,
   'http://localhost:3000',
   'http://127.0.0.1:3000',
-])
+  'http://localhost:8081',
+  'http://localhost:19006',
+]
+const ALLOWED_ORIGINS = Deno.env.get('ENVIRONMENT') === 'production'
+  ? PROD_ORIGINS
+  : DEV_ORIGINS
 
 function getAllowedOrigin(origin: string | null): string {
-  if (origin && ALLOWED_ORIGINS.has(origin)) return origin
-  return 'https://astrodatingapp.com'
+  if (origin && ALLOWED_ORIGINS.includes(origin)) return origin
+  // Native mobile + Supabase relay calls have no Origin header — empty string
+  // means "no CORS allowance", which is correct: those code paths don't go
+  // through a browser CORS check anyway.
+  return ''
 }
 
 function corsHeaders(origin: string): HeadersInit {

@@ -348,9 +348,26 @@ Storage: removing `e2e-user2-elliot.jpg` / `liam-discover.jpg` from the
 
 ---
 
-## Known unrelated bug (do not block on this)
+## Compatibility score CORS fix (2026-05-10)
 
-`compatibility.png` is captured on `/en/app/premium/celestial/synastry`,
-which calls the `get-profile-chart` edge function. That function
-currently fails in production, so the score renders as `--%`. Layout is
-otherwise clean. Fixing the edge function is tracked separately.
+`compatibility.png` previously rendered `--%` because the
+`get-profile-chart` edge function did not whitelist
+`https://app.astrodatingapp.com` in its CORS allowlist — only
+`astrodatingapp.com` and `www.*` were accepted, so the browser blocked
+the response and `supabase.functions.invoke` threw "Failed to send a
+request to the Edge Function".
+
+Fix: aligned `get-profile-chart`'s CORS pattern with
+`calculate-chart` / `create-checkout-session` / `claim-referral`
+(PROD_ORIGINS + DEV_ORIGINS + `ENVIRONMENT` env switch), which already
+include the `app.*` subdomain. After redeploy via
+`npx supabase functions deploy get-profile-chart --project-ref qtihezzbuubnyvrjdkjd`,
+the page now shows a real fallback score (86% for Aries↔Leo via the
+fire-element compatibility matrix). The chart itself is still empty
+because Elliot has no `birth_date` seeded — the score comes from
+sun-sign element matching, which is the documented fallback path.
+
+If you want richer aspects (Venus, Mars, Mercury, Saturn signs visible
+instead of falling back to Sun), seed `birth_date` + `birth_time` +
+`birth_latitude` / `birth_longitude` on `e2e_user2`. Out of scope for
+the current screenshot pass.
