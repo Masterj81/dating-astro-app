@@ -139,6 +139,61 @@ export function FullCardSkeleton({
   );
 }
 
+export function ChatThreadSkeleton({ ariaLabel }: { ariaLabel: string }) {
+  return (
+    <div
+      role="status"
+      aria-label={ariaLabel}
+      className="grid gap-6 xl:grid-cols-[0.55fr_1.45fr]"
+    >
+      <aside className="hidden rounded-[2rem] border border-border bg-card/90 p-6 xl:block">
+        <Skeleton className="h-3 w-16 rounded-md" />
+        <Skeleton className="mt-3 h-5 w-2/3 rounded-md" />
+        <div className="mt-5 space-y-3">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="flex items-center gap-3 rounded-[1.25rem] border border-border bg-bg/70 px-4 py-4"
+            >
+              <Skeleton className="h-12 w-12 rounded-2xl" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-3 w-1/2 rounded-md" />
+                <Skeleton className="h-3 w-2/3 rounded-md" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </aside>
+      <section className="rounded-[2rem] border border-border bg-card/90 p-6">
+        <div className="flex flex-wrap items-center gap-4 rounded-[1.5rem] border border-border bg-bg/60 px-5 py-4">
+          <Skeleton className="h-16 w-16 rounded-2xl" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-3 w-20 rounded-md" />
+            <Skeleton className="h-5 w-1/3 rounded-md" />
+            <Skeleton className="h-3 w-1/4 rounded-md" />
+          </div>
+        </div>
+        <div className="mt-6 space-y-4 rounded-[1.5rem] border border-border bg-bg/40 p-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className={`flex ${i % 2 === 0 ? "justify-start" : "justify-end"}`}
+            >
+              <Skeleton
+                className={`h-12 ${i === 0 ? "w-3/4" : i === 1 ? "w-1/2" : i === 2 ? "w-2/3" : "w-1/3"} rounded-[1.5rem]`}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 flex gap-3">
+          <Skeleton className="h-24 flex-1 rounded-[1.5rem]" />
+          <Skeleton className="h-12 w-24 self-end rounded-full" />
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function SynastryOverviewSkeleton({ ariaLabel }: { ariaLabel: string }) {
   return (
     <div
