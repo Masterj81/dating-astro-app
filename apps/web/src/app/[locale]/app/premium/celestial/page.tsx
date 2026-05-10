@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { PremiumGlyph, type PremiumGlyphName } from "@/components/PremiumGlyph";
 import { Link } from "@/i18n/navigation";
 import { getTranslations } from "next-intl/server";
 
@@ -8,6 +9,7 @@ type CelestialFeatureCard =
       title: string;
       body: string;
       badge: string;
+      glyph: PremiumGlyphName;
       available: true;
     }
   | {
@@ -15,6 +17,7 @@ type CelestialFeatureCard =
       title: string;
       body: string;
       badge: string;
+      glyph: PremiumGlyphName;
       available: false;
     };
 
@@ -27,6 +30,7 @@ export default async function CelestialHubPage() {
       title: t("celestialHubOpenNatal"),
       body: t("celestialHubItem_natal"),
       badge: t("hubBadge_core"),
+      glyph: "natal",
       available: true,
     },
     {
@@ -34,6 +38,7 @@ export default async function CelestialHubPage() {
       title: t("celestialHubOpenSynastry"),
       body: t("celestialHubItem_synastry"),
       badge: t("hubBadge_match"),
+      glyph: "synastry",
       available: true,
     },
     {
@@ -41,6 +46,7 @@ export default async function CelestialHubPage() {
       title: t("celestialHubOpenLikes"),
       body: t("celestialHubItem_likes"),
       badge: t("hubBadge_live"),
+      glyph: "likes",
       available: true,
     },
     {
@@ -48,13 +54,17 @@ export default async function CelestialHubPage() {
       title: t("celestialHubOpenPriorityMessages"),
       body: t("celestialHubItem_priorityMessages"),
       badge: t("hubBadge_live"),
+      glyph: "priorityMessages",
       available: true,
     },
     {
+      // Tarot badge previously rendered the 🃏 emoji — replaced with a
+      // short uppercase tag matching the rest of the hub.
       href: "/app/premium/celestial/tarot",
       title: t("tarotReading"),
       body: t("monthlyTarotSubtitle"),
-      badge: "🃏",
+      badge: "TAROT",
+      glyph: "tarot",
       available: true,
     },
   ];
@@ -77,6 +87,9 @@ export default async function CelestialHubPage() {
                     }`}
                   >
                     <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-white">
+                        <PremiumGlyph name={card.glyph} />
+                      </div>
                       <span className="rounded-full border border-border bg-card px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
                         {card.badge}
                       </span>
@@ -90,6 +103,9 @@ export default async function CelestialHubPage() {
                     className="rounded-[1.6rem] border border-border bg-bg/40 p-5 opacity-75"
                   >
                     <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-white/60">
+                        <PremiumGlyph name={card.glyph} />
+                      </div>
                       <span className="rounded-full border border-border bg-card px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
                         {card.badge}
                       </span>

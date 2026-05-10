@@ -1,52 +1,71 @@
 import { AppShell } from "@/components/AppShell";
+import { PremiumGlyph, type PremiumGlyphName } from "@/components/PremiumGlyph";
 import { Link } from "@/i18n/navigation";
 import { getTranslations } from "next-intl/server";
 
 export default async function CosmicHubPage() {
   const t = await getTranslations("webApp");
 
-  const featureCards = [
+  const featureCards: Array<{
+    href: string;
+    title: string;
+    body: string;
+    badge: string;
+    glyph: PremiumGlyphName;
+  }> = [
     {
       href: "/app/premium/cosmic/daily-horoscope",
       title: t("cosmicHubOpenDaily"),
       body: t("cosmicHubItem_daily"),
       badge: t("hubBadge_now"),
+      glyph: "daily",
     },
     {
       href: "/app/premium/cosmic/monthly-horoscope",
       title: t("cosmicHubOpenMonthly"),
       body: t("cosmicHubItem_monthly"),
       badge: t("hubBadge_macro"),
+      glyph: "monthly",
     },
     {
       href: "/app/premium/cosmic/planetary-transits",
       title: t("cosmicHubOpenTransits"),
       body: t("cosmicHubItem_transits"),
       badge: t("hubBadge_live"),
+      glyph: "transits",
     },
     {
       href: "/app/premium/cosmic/lucky-days",
       title: t("cosmicHubOpenLucky"),
       body: t("cosmicHubItem_lucky"),
       badge: t("hubBadge_timing"),
+      glyph: "lucky",
     },
     {
       href: "/app/premium/cosmic/date-planner",
       title: t("cosmicHubOpenPlanner"),
       body: t("cosmicHubItem_planner"),
       badge: t("hubBadge_dates"),
+      glyph: "planner",
     },
     {
       href: "/app/premium/cosmic/retrograde-alerts",
       title: t("cosmicHubOpenRetrograde"),
       body: t("cosmicHubItem_retrograde"),
       badge: t("hubBadge_alerts"),
+      glyph: "retrograde",
     },
     {
+      // Tarot badge previously rendered the 🃏 emoji. The Tarot title is
+      // already rendered as the card heading; the badge becomes a short
+      // uppercase tag matching the rest of the hub. "TAROT" is the same
+      // word in EN/FR/ES/IT/PT/DE so the literal works for our shipped
+      // locales pending a proper hubBadge_tarot key in i18n.
       href: "/app/premium/cosmic/tarot",
       title: t("tarotReading"),
       body: t("weeklyTarotSubtitle"),
-      badge: "🃏",
+      badge: "TAROT",
+      glyph: "tarot",
     },
   ];
 
@@ -78,6 +97,9 @@ export default async function CosmicHubPage() {
                   }`}
                 >
                   <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-white">
+                      <PremiumGlyph name={card.glyph} />
+                    </div>
                     <span className="whitespace-nowrap rounded-full border border-border bg-card px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
                       {card.badge}
                     </span>
