@@ -453,24 +453,36 @@ export function SynastryOverview() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          {areaScores.map((area) => (
-            <article
-              key={area.key}
-              className="rounded-[1.5rem] border border-border bg-card/90 p-5"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-lg font-semibold text-white">
-                  {t(`synastryArea_${area.key}`)}
-                </h3>
-                <div className="rounded-full border border-border bg-bg/70 px-3 py-1 text-sm font-semibold text-white">
-                  {area.score}%
+          {areaScores.map((area) => {
+            const areaLabel = t(`synastryArea_${area.key}`);
+            return (
+              <article
+                key={area.key}
+                className="flex items-start gap-4 rounded-[1.5rem] border border-border bg-card/90 p-5"
+              >
+                {/* Mini arc echoes the hero score's visual language — same
+                    dot palette + animation, just shrunk. Label is intentionally
+                    omitted: the h3 next door already carries the zone name,
+                    and the arc's own role="img" aria-label ("Compatibility N%")
+                    pairs with the heading for assistive tech. */}
+                <div className="shrink-0">
+                  <CompatibilityDotsArc
+                    percentage={area.score}
+                    size={80}
+                    showScore
+                  />
                 </div>
-              </div>
-              <p className="mt-3 text-sm leading-7 text-text-muted">
-                {t(`synastryAreaBody_${area.key}`)}
-              </p>
-            </article>
-          ))}
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-base font-semibold text-white sm:text-lg">
+                    {areaLabel}
+                  </h3>
+                  <p className="mt-2 text-sm leading-7 text-text-muted">
+                    {t(`synastryAreaBody_${area.key}`)}
+                  </p>
+                </div>
+              </article>
+            );
+          })}
         </div>
 
         <div className="rounded-[2rem] border border-border bg-card/90 p-6">
