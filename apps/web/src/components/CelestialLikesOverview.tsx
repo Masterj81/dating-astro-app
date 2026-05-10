@@ -7,6 +7,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
+import { EmptyState } from "@/components/EmptyState";
 
 type LikeRow = {
   id: string;
@@ -148,30 +149,29 @@ export function CelestialLikesOverview() {
 
   if (!likes.length) {
     return (
-      <div className="rounded-[2rem] border border-border bg-card/90 p-8">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-          {t("likesEyebrow")}
-        </p>
-        <h2 className="mt-3 text-2xl font-semibold text-white">{t("likesEmptyTitle")}</h2>
-        <p className="mt-3 max-w-2xl text-sm leading-7 text-text-muted">
-          {t("likesEmptyBody")}
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link
-            href="/app/discover"
-            className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
-          >
-            {t("openDiscover")}
-          </Link>
-          <button
-            type="button"
-            onClick={loadLikes}
-            className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
-          >
-            {t("likesRefresh")}
-          </button>
-        </div>
-      </div>
+      <EmptyState
+        icon="💖"
+        eyebrow={t("likesEyebrow")}
+        title={t("likesEmptyTitle")}
+        body={t("likesEmptyBody")}
+        action={
+          <>
+            <Link
+              href="/app/discover"
+              className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+            >
+              {t("openDiscover")}
+            </Link>
+            <button
+              type="button"
+              onClick={loadLikes}
+              className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
+            >
+              {t("likesRefresh")}
+            </button>
+          </>
+        }
+      />
     );
   }
 

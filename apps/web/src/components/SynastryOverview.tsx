@@ -10,6 +10,7 @@ import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
 import { CompatibilityDotsArc } from "@/components/CompatibilityDotsArc";
 import { SynastryOverviewSkeleton } from "@/components/Skeleton";
+import { EmptyState } from "@/components/EmptyState";
 
 type MatchRow = {
   match_id: string;
@@ -257,27 +258,23 @@ export function SynastryOverview() {
 
   if (!state) {
     return (
-      <div className="rounded-[2rem] border border-border bg-card/90 p-8">
-        <h2 className="text-2xl font-semibold text-white">{t("notSignedIn")}</h2>
-        <p className="mt-3 text-sm leading-7 text-text-muted">{t("synastrySignIn")}</p>
-      </div>
+      <EmptyState
+        icon="🔒"
+        title={t("notSignedIn")}
+        body={t("synastrySignIn")}
+      />
     );
   }
 
   if (state.tier === "free") {
     return (
-      <div className="rounded-[2rem] border border-border bg-card/90 p-8">
-        <div className="max-w-3xl rounded-[1.75rem] border border-[rgba(232,93,117,0.22)] bg-[rgba(232,93,117,0.10)] p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-            {t("natalChartNav")}
-          </p>
-          <h2 className="mt-3 text-2xl font-semibold text-white">
-            {t("synastryLockedTitle")}
-          </h2>
-          <p className="mt-3 text-sm leading-7 text-text-muted">
-            {t("synastryLockedBody")}
-          </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+      <EmptyState
+        icon="✨"
+        eyebrow={t("natalChartNav")}
+        title={t("synastryLockedTitle")}
+        body={t("synastryLockedBody")}
+        action={
+          <>
             <Link
               href="/app/plans"
               className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
@@ -290,32 +287,35 @@ export function SynastryOverview() {
             >
               {t("openNatalChart")}
             </Link>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
     );
   }
 
   if (!matches.length) {
     return (
-      <div className="rounded-[2rem] border border-border bg-card/90 p-8">
-        <h2 className="text-2xl font-semibold text-white">{t("synastryEmptyTitle")}</h2>
-        <p className="mt-3 text-sm leading-7 text-text-muted">{t("synastryEmptyBody")}</p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link
-            href="/app/matches"
-            className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
-          >
-            {t("openMatches")}
-          </Link>
-          <Link
-            href="/app/discover"
-            className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
-          >
-            {t("openDiscover")}
-          </Link>
-        </div>
-      </div>
+      <EmptyState
+        icon="🌠"
+        title={t("synastryEmptyTitle")}
+        body={t("synastryEmptyBody")}
+        action={
+          <>
+            <Link
+              href="/app/matches"
+              className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+            >
+              {t("openMatches")}
+            </Link>
+            <Link
+              href="/app/discover"
+              className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
+            >
+              {t("openDiscover")}
+            </Link>
+          </>
+        }
+      />
     );
   }
 

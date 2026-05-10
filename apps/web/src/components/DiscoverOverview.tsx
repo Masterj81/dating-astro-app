@@ -9,6 +9,7 @@ import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { FullCardSkeleton } from "@/components/Skeleton";
+import { EmptyState } from "@/components/EmptyState";
 import {
   findIntent,
   findLifestyleTag,
@@ -251,20 +252,20 @@ export function DiscoverOverview() {
   if (!currentProfile) {
     return (
       <div className="space-y-4">
-        <div className="rounded-[2rem] border border-border bg-card/90 p-10 text-center">
-          <p className="mb-4 text-5xl" aria-hidden="true">🌌</p>
-          <h2 className="text-2xl font-semibold text-white">{t("discoverEmptyTitle")}</h2>
-          <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-text-muted">
-            {t("discoverEmptyBody")}
-          </p>
-          <button
-            type="button"
-            onClick={loadProfiles}
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)]"
-          >
-            {t("refreshProfiles")}
-          </button>
-        </div>
+        <EmptyState
+          icon="🌌"
+          title={t("discoverEmptyTitle")}
+          body={t("discoverEmptyBody")}
+          action={
+            <button
+              type="button"
+              onClick={loadProfiles}
+              className="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)]"
+            >
+              {t("refreshProfiles")}
+            </button>
+          }
+        />
 
         {/* Profile improvement nudge -- activation booster */}
         <Link

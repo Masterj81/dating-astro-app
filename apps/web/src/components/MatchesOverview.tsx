@@ -7,6 +7,7 @@ import { Link } from "@/i18n/navigation";
 import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
+import { EmptyState } from "@/components/EmptyState";
 
 type MatchRow = {
   match_id: string;
@@ -77,30 +78,28 @@ export function MatchesOverview() {
 
   if (!matches.length) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-accent/10 text-5xl" aria-hidden="true">
-          💫
-        </div>
-        <h2 className="text-2xl font-semibold text-white">{t("matchesEmptyTitle")}</h2>
-        <p className="mt-3 max-w-md text-sm leading-7 text-text-muted">
-          {t("matchesEmptyBody")}
-        </p>
-        <div className="mt-8 flex gap-3">
-          <Link
-            href="/app/discover"
-            className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
-          >
-            {t("openDiscover")}
-          </Link>
-          <button
-            type="button"
-            onClick={loadMatches}
-            className="rounded-full border border-border px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
-          >
-            {t("refreshMatches")}
-          </button>
-        </div>
-      </div>
+      <EmptyState
+        icon="💫"
+        title={t("matchesEmptyTitle")}
+        body={t("matchesEmptyBody")}
+        action={
+          <>
+            <Link
+              href="/app/discover"
+              className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+            >
+              {t("openDiscover")}
+            </Link>
+            <button
+              type="button"
+              onClick={loadMatches}
+              className="rounded-full border border-border px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
+            >
+              {t("refreshMatches")}
+            </button>
+          </>
+        }
+      />
     );
   }
 

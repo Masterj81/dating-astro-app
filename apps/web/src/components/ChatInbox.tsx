@@ -8,6 +8,7 @@ import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { ChatListSkeleton } from "@/components/Skeleton";
+import { EmptyState } from "@/components/EmptyState";
 
 // Conversation-first: rows now come from `get_user_conversations` RPC.
 // Compatibility % is intentionally absent.
@@ -91,23 +92,19 @@ export function ChatInbox() {
 
   if (!conversations.length) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-purple/10 text-5xl" aria-hidden="true">
-          💬
-        </div>
-        <h2 className="text-2xl font-semibold text-white">{t("chatInboxEmptyTitle")}</h2>
-        <p className="mt-3 max-w-md text-sm leading-7 text-text-muted">
-          {t("chatInboxEmptyBody")}
-        </p>
-        <div className="mt-8 flex gap-3">
+      <EmptyState
+        icon="💬"
+        title={t("chatInboxEmptyTitle")}
+        body={t("chatInboxEmptyBody")}
+        action={
           <Link
             href="/app/discover"
             className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
           >
             {t("discoverNav")}
           </Link>
-        </div>
-      </div>
+        }
+      />
     );
   }
 

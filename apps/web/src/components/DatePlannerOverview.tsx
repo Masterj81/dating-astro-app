@@ -7,6 +7,7 @@ import { Link } from "@/i18n/navigation";
 import { translateSign } from "@/lib/astrology-labels";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
+import { EmptyState } from "@/components/EmptyState";
 
 type MatchRow = {
   match_id: string;
@@ -210,27 +211,23 @@ export function DatePlannerOverview() {
 
   if (!state) {
     return (
-      <div className="rounded-[2rem] border border-border bg-card/90 p-8">
-        <h2 className="text-2xl font-semibold text-white">{t("notSignedIn")}</h2>
-        <p className="mt-3 text-sm leading-7 text-text-muted">{t("datePlannerSignIn")}</p>
-      </div>
+      <EmptyState
+        icon="🔒"
+        title={t("notSignedIn")}
+        body={t("datePlannerSignIn")}
+      />
     );
   }
 
   if (state.tier !== "premium_plus") {
     return (
-      <div className="rounded-[2rem] border border-border bg-card/90 p-8">
-        <div className="max-w-3xl rounded-[1.75rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-            {t("premiumNav")}
-          </p>
-          <h2 className="mt-3 text-2xl font-semibold text-white">
-            {t("datePlannerLockedTitle")}
-          </h2>
-          <p className="mt-3 text-sm leading-7 text-text-muted">
-            {t("datePlannerLockedBody")}
-          </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+      <EmptyState
+        icon="✨"
+        eyebrow={t("premiumNav")}
+        title={t("datePlannerLockedTitle")}
+        body={t("datePlannerLockedBody")}
+        action={
+          <>
             <Link
               href="/app/plans"
               className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
@@ -243,32 +240,35 @@ export function DatePlannerOverview() {
             >
               {t("premiumNav")}
             </Link>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
     );
   }
 
   if (!matches.length) {
     return (
-      <div className="rounded-[2rem] border border-border bg-card/90 p-8">
-        <h2 className="text-2xl font-semibold text-white">{t("datePlannerEmptyTitle")}</h2>
-        <p className="mt-3 text-sm leading-7 text-text-muted">{t("datePlannerEmptyBody")}</p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link
-            href="/app/matches"
-            className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
-          >
-            {t("openMatches")}
-          </Link>
-          <Link
-            href="/app/discover"
-            className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
-          >
-            {t("openDiscover")}
-          </Link>
-        </div>
-      </div>
+      <EmptyState
+        icon="🌙"
+        title={t("datePlannerEmptyTitle")}
+        body={t("datePlannerEmptyBody")}
+        action={
+          <>
+            <Link
+              href="/app/matches"
+              className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+            >
+              {t("openMatches")}
+            </Link>
+            <Link
+              href="/app/discover"
+              className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
+            >
+              {t("openDiscover")}
+            </Link>
+          </>
+        }
+      />
     );
   }
 
