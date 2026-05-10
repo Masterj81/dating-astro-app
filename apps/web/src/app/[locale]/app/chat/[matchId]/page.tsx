@@ -8,10 +8,10 @@ import { getTranslations } from "next-intl/server";
 // already has, so we accept the legacy name and pass it through as a
 // conversation id internally.
 //
-// `?prefill=<question>` is used by the icebreaker CTA (DiscoverOverview /
-// ProfileDetail) to seed the composer with the target's icebreaker
-// question. Decoded once here, then passed to the client component as a
-// prop — never auto-sends, the user always confirms with the send button.
+// `?prefill=<question>` is used by the icebreaker CTA (DiscoverOverview)
+// to seed the composer with the target's icebreaker question. Decoded
+// once here, then passed to the client component as a prop — never
+// auto-sends, the user always confirms with the send button.
 export default async function ChatPage({
   params,
   searchParams,

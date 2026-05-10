@@ -41,22 +41,13 @@ export default async function CelestialHubPage() {
       glyph: "synastry",
       available: true,
     },
-    {
-      href: "/app/premium/celestial/likes",
-      title: t("celestialHubOpenLikes"),
-      body: t("celestialHubItem_likes"),
-      badge: t("hubBadge_live"),
-      glyph: "likes",
-      available: true,
-    },
-    {
-      href: "/app/premium/celestial/priority-messages",
-      title: t("celestialHubOpenPriorityMessages"),
-      body: t("celestialHubItem_priorityMessages"),
-      badge: t("hubBadge_live"),
-      glyph: "priorityMessages",
-      available: true,
-    },
+    // "Likes" and "Priority messages" cards were removed from this hub
+    // when the conversation-first product shipped: there is no longer
+    // a swipe/like system to surface admirers from, and the priority
+    // messaging tier never had a real backend signal — the page just
+    // rendered generic chat counters. The route files are kept under
+    // celestial/likes and celestial/priority-messages but redirect to
+    // this hub so any cached link lands somewhere coherent.
     {
       // Tarot badge previously rendered the 🃏 emoji — replaced with a
       // short uppercase tag matching the rest of the hub.

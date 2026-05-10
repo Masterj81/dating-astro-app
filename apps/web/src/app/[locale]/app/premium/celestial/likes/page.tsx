@@ -1,13 +1,18 @@
-import { AppShell } from "@/components/AppShell";
-import { CelestialLikesOverview } from "@/components/CelestialLikesOverview";
-import { getTranslations } from "next-intl/server";
+import { redirect } from "@/i18n/navigation";
 
-export default async function CelestialLikesPage() {
-  const t = await getTranslations("webApp");
+// The "Likes" surface was retired when AstroDating moved to a
+// conversation-first product: there is no swipe/like signal to source
+// "people who liked you" from anymore. The route stays so cached links
+// don't 404 — it redirects back to the Celestial hub.
+export default async function CelestialLikesRedirect({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
 
-  return (
-    <AppShell title={t("likesWebTitle")} subtitle={t("likesWebSubtitle")}>
-      <CelestialLikesOverview />
-    </AppShell>
-  );
+  redirect({
+    href: "/app/premium/celestial",
+    locale,
+  });
 }

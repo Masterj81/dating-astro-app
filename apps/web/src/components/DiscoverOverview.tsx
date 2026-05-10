@@ -383,7 +383,7 @@ export function DiscoverOverview() {
               </div>
 
               {/* MVP teasers — compact preview of the new profile fields.
-                  Full version lives on /app/profile/[id] (ProfileDetail). */}
+                  Full version lives on /app/profile/[id] (ProfileOverview). */}
               {(() => {
                 const cardIntent = findIntent(currentProfile.relationship_intent);
                 const cardTags = sanitizeLifestyleTags(currentProfile.interests);
