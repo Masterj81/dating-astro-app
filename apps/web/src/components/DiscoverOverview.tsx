@@ -288,29 +288,11 @@ export function DiscoverOverview() {
   }
 
   const profileImage = resolveImageSrc(currentProfile.image_url, currentProfile.images?.[0]);
-  // Stack depth: a flat silhouette suggesting "another card waiting".
-  // We deliberately do NOT show the next profile's photo here — the active
-  // card uses bg-card/90, which resolves to ~6% alpha (since --color-card
-  // is itself rgba(255,255,255,0.07)). With anything visually rich behind,
-  // the active section becomes a window onto the back layer. A solid
-  // bg-bg-secondary panel anchored at origin-bottom peeks slightly below
-  // and on the sides without competing with the active content.
-  const hasNextProfile = currentIndex + 1 < profiles.length;
 
   return (
     <div className="space-y-6">
       <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
-      <div className="relative">
-      {hasNextProfile ? (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 origin-bottom transition-transform duration-300 ease-out motion-reduce:transition-none"
-          style={{ transform: "translateY(18px) scale(0.97)" }}
-        >
-          <div className="h-full rounded-[2rem] border border-border bg-bg-secondary shadow-[0_18px_50px_rgba(0,0,0,0.18)]" />
-        </div>
-      ) : null}
-      <section className="relative overflow-hidden rounded-[2rem] border border-border bg-card/90 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
+      <section className="overflow-hidden rounded-[2rem] border border-border bg-card/90 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
         <div className="grid lg:grid-cols-[0.95fr_1.05fr]">
           <div className="relative min-h-[420px] bg-bg-secondary">
             <Image
@@ -615,7 +597,6 @@ export function DiscoverOverview() {
           </div>
         </div>
       </section>
-      </div>
 
       <aside className="rounded-[2rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.16)]">
         <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
@@ -630,7 +611,11 @@ export function DiscoverOverview() {
             : t("discoverQueueEmpty")}
         </p>
 
-        <div className="mt-6 space-y-3">
+        {/* Constrain the queue to a fixed height so the page doesn't grow
+            indefinitely with deck size. The 6px custom scrollbar in
+            globals.css picks this up automatically; pr-2 keeps the thumb
+            clear of the rounded queue buttons. */}
+        <div className="mt-6 max-h-[28rem] space-y-3 overflow-y-auto pr-2">
           {queue.length > 0 ? (
             queue.map((profile) => {
               const targetIndex = profiles.findIndex((p) => p.id === profile.id);
