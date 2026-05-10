@@ -22,6 +22,7 @@ type ConversationInfo = {
   id: string;
   otherUserId: string;
   otherUserName: string;
+  otherUserAge: number | null;
   otherUserImage: string | null;
   otherUserSunSign: string | null;
 };
@@ -159,6 +160,9 @@ export function ChatThread({ conversationId, initialPrefill }: ChatThreadProps) 
   const [conversationInfo, setConversationInfo] = useState<ConversationInfo | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<ConversationListRow[]>([]);
+  // Sidebar uses the same get_user_conversations shape as the inbox; the RPC
+  // omits age, so we enrich with a single batch profiles SELECT.
+  const [sidebarAgesByUserId, setSidebarAgesByUserId] = useState<Record<string, number>>({});
   // Seed the composer once with the icebreaker prefill (if any). Plain
   // useState initializer so navigating away and back without the param
   // doesn't clobber a draft the user has been typing.
@@ -242,7 +246,7 @@ export function ChatThread({ conversationId, initialPrefill }: ChatThreadProps) 
       const [{ data: profile }, { data: threadMessages, error: messageError }] = await Promise.all([
         supabase
           .from("profiles")
-          .select("id, name, photos, sun_sign")
+          .select("id, name, age, photos, sun_sign")
           .eq("id", otherUserId)
           .maybeSingle(),
         supabase
@@ -262,10 +266,30 @@ export function ChatThread({ conversationId, initialPrefill }: ChatThreadProps) 
         id: conversation.id,
         otherUserId,
         otherUserName: profile?.name || t("unknownUser"),
+        otherUserAge: typeof profile?.age === "number" ? profile.age : null,
         otherUserImage: profile?.photos?.[0] || null,
         otherUserSunSign: profile?.sun_sign || null,
       });
-      setConversations((conversationsData as ConversationListRow[]) || []);
+      const conversationRows = (conversationsData as ConversationListRow[]) || [];
+      setConversations(conversationRows);
+
+      const sidebarOtherIds = Array.from(
+        new Set(conversationRows.map((r) => r.other_user_id).filter(Boolean))
+      );
+      if (sidebarOtherIds.length) {
+        const { data: sidebarProfiles } = await supabase
+          .from("profiles")
+          .select("id, age")
+          .in("id", sidebarOtherIds);
+        const nextAges: Record<string, number> = {};
+        for (const row of (sidebarProfiles as Array<{ id: string; age: number | null }>) || []) {
+          if (typeof row.age === "number") nextAges[row.id] = row.age;
+        }
+        setSidebarAgesByUserId(nextAges);
+      } else {
+        setSidebarAgesByUserId({});
+      }
+
       setMessages(nextMessages);
       await markMessagesRead(supabase, session.user.id, nextMessages);
     } catch (loadFailure) {
@@ -438,6 +462,9 @@ export function ChatThread({ conversationId, initialPrefill }: ChatThreadProps) 
                       <div className="flex items-center justify-between gap-2">
                         <p className="truncate text-sm font-semibold text-white">
                           {conversation.other_user_name || t("unknownUser")}
+                          {sidebarAgesByUserId[conversation.other_user_id] != null
+                            ? `, ${sidebarAgesByUserId[conversation.other_user_id]}`
+                            : ""}
                         </p>
                         {conversation.unread_count ? (
                           <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-white">
@@ -495,6 +522,9 @@ export function ChatThread({ conversationId, initialPrefill }: ChatThreadProps) 
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-base font-semibold text-white sm:text-lg">
                     {conversationInfo.otherUserName}
+                    {conversationInfo.otherUserAge != null
+                      ? `, ${conversationInfo.otherUserAge}`
+                      : ""}
                   </p>
                   {sunLabel ? (
                     <span className="mt-0.5 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-[11px] font-medium text-text-muted">

@@ -41,6 +41,10 @@ export function ChatInbox() {
   const t = useTranslations("webApp");
   const locale = useLocale();
   const [conversations, setConversations] = useState<ConversationRow[]>([]);
+  // get_user_conversations RPC doesn't return age, so we enrich client-side
+  // with a single follow-up batch SELECT against `profiles`. Keeps the
+  // canonical RPC unchanged while still surfacing age in the inbox.
+  const [agesByUserId, setAgesByUserId] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,7 +57,25 @@ export function ChatInbox() {
       if (!session?.user?.id) { setConversations([]); setLoading(false); return; }
       const { data, error: rpcError } = await supabase.rpc("get_user_conversations");
       if (rpcError) throw rpcError;
-      setConversations((data as ConversationRow[]) || []);
+      const rows = (data as ConversationRow[]) || [];
+      setConversations(rows);
+
+      const otherIds = Array.from(
+        new Set(rows.map((r) => r.other_user_id).filter(Boolean))
+      );
+      if (otherIds.length) {
+        const { data: profileRows } = await supabase
+          .from("profiles")
+          .select("id, age")
+          .in("id", otherIds);
+        const nextAges: Record<string, number> = {};
+        for (const row of (profileRows as Array<{ id: string; age: number | null }>) || []) {
+          if (typeof row.age === "number") nextAges[row.id] = row.age;
+        }
+        setAgesByUserId(nextAges);
+      } else {
+        setAgesByUserId({});
+      }
     } catch (loadFailure) {
       setError(loadFailure instanceof Error ? loadFailure.message : t("unknownError"));
     } finally {
@@ -156,6 +178,9 @@ export function ChatInbox() {
                 <div className="flex items-baseline justify-between gap-2">
                   <h3 className={`truncate text-[15px] ${hasUnread ? "font-bold text-white" : "font-medium text-white/90"}`}>
                     {conversation.other_user_name || t("unknownUser")}
+                    {agesByUserId[conversation.other_user_id] != null
+                      ? `, ${agesByUserId[conversation.other_user_id]}`
+                      : ""}
                   </h3>
                   {relativeDate && (
                     <span className={`shrink-0 text-xs ${hasUnread ? "font-semibold text-accent" : "text-text-dim"}`}>

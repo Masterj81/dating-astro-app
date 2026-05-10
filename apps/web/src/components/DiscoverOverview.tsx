@@ -315,7 +315,7 @@ export function DiscoverOverview() {
             <div className="absolute inset-x-0 bottom-0 p-6">
               <h2 className="text-3xl font-semibold text-white">
                 {currentProfile.name || t("unknownUser")}
-                {currentProfile.age ? `, ` : ""}
+                {currentProfile.age ? `, ${currentProfile.age}` : ""}
               </h2>
               <p className="mt-2 text-sm text-white/80">
                 {currentProfile.sun_sign ? translateSign(currentProfile.sun_sign, locale) : "?"}{" "}
