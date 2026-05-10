@@ -1,9 +1,23 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { translateSign } from "@/lib/astrology-labels";
+import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
+import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
+
+type DiscoverPreviewProfile = {
+  id: string;
+  name: string | null;
+  age: number | null;
+  sun_sign: string | null;
+  moon_sign: string | null;
+  bio: string | null;
+  image_url: string | null;
+};
 
 type DashboardCard = {
   href: string;
@@ -73,9 +87,15 @@ function getTimeGreetingKey(): "dashboardGreetingMorning" | "dashboardGreetingAf
 
 export function DashboardOverview() {
   const t = useTranslations("webApp");
+  const locale = useLocale();
   const [loading, setLoading] = useState(true);
   const [state, setState] = useState<WebAccountState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // First discoverable profile — used for the featured Discover card preview.
+  // Replaces the previous hard-coded "Mila, 27" fake-data block; if the queue
+  // is empty we render nothing rather than fabricate a profile.
+  const [firstProfile, setFirstProfile] = useState<DiscoverPreviewProfile | null>(null);
+  const [loadingFirstProfile, setLoadingFirstProfile] = useState(true);
 
   useEffect(() => {
     const load = async () => {
@@ -93,6 +113,42 @@ export function DashboardOverview() {
 
     load();
   }, [t]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadFirst = async () => {
+      try {
+        const supabase = getSupabaseBrowser();
+        const { data: sessionData } = await supabase.auth.getSession();
+        const userId = sessionData.session?.user?.id;
+        if (!userId) {
+          if (!cancelled) {
+            setFirstProfile(null);
+            setLoadingFirstProfile(false);
+          }
+          return;
+        }
+        const { data, error: rpcError } = await supabase.rpc(
+          "get_discoverable_profiles",
+          { p_user_id: userId, p_limit: 1 }
+        );
+        if (cancelled) return;
+        if (rpcError || !Array.isArray(data) || data.length === 0) {
+          setFirstProfile(null);
+        } else {
+          setFirstProfile(data[0] as DiscoverPreviewProfile);
+        }
+      } catch {
+        if (!cancelled) setFirstProfile(null);
+      } finally {
+        if (!cancelled) setLoadingFirstProfile(false);
+      }
+    };
+    loadFirst();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const isFree = state?.tier === "free";
 
@@ -173,41 +229,87 @@ export function DashboardOverview() {
     return "border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))]";
   };
 
-  const discoverPreview = (
-    <div className="mt-8 grid gap-4 rounded-[1.6rem] border border-white/12 bg-[linear-gradient(180deg,rgba(13,15,28,0.72),rgba(23,26,45,0.9))] p-4 shadow-[0_20px_50px_rgba(0,0,0,0.24)] sm:grid-cols-[108px_minmax(0,1fr)] sm:p-5">
-      <div className="relative mx-auto h-28 w-28 overflow-hidden rounded-[1.4rem] border border-white/10 bg-[radial-gradient(circle_at_30%_22%,rgba(255,255,255,0.55),transparent_24%),linear-gradient(145deg,rgba(244,118,147,0.95),rgba(94,72,173,0.95))] shadow-[0_18px_35px_rgba(118,74,167,0.24)]">
-        <div className="absolute inset-x-0 bottom-0 h-[58%] rounded-t-[999px] bg-[rgba(16,18,33,0.26)]" />
-        <div className="absolute left-1/2 top-[28%] h-10 w-10 -translate-x-1/2 rounded-full bg-white/90" />
-        <div className="absolute left-1/2 top-[52%] h-16 w-20 -translate-x-1/2 rounded-t-[999px] bg-white/85" />
-      </div>
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-[rgba(255,255,255,0.12)] bg-white/8 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-white/80">
-            {t("cosmicCompatibility")} 92%
-          </span>
-          <span className="rounded-full border border-[rgba(244,118,147,0.25)] bg-[rgba(244,118,147,0.12)] px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-[#ffb2c4]">
-            Montreal
-          </span>
-        </div>
-        <div className="mt-4 flex items-start justify-between gap-4">
-          <div>
-            <p className="text-2xl font-semibold tracking-[-0.04em] text-white">
-              Mila, 27
-            </p>
-            <p className="mt-2 text-sm leading-6 text-text-muted">
-              {t("discoverSun")}: Cancer · {t("discoverMoon")}: Libra
-            </p>
-          </div>
-          <div className="hidden h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/6 text-[#ffb2c4] sm:flex">
-            <CardGlyph icon="matches" />
+  const discoverPreview = (() => {
+    if (loadingFirstProfile) {
+      return (
+        <div
+          className="mt-8 grid gap-4 rounded-[1.6rem] border border-white/12 bg-[linear-gradient(180deg,rgba(13,15,28,0.72),rgba(23,26,45,0.9))] p-4 sm:grid-cols-[108px_minmax(0,1fr)] sm:p-5"
+          role="status"
+          aria-label={t("loading")}
+        >
+          <div className="mx-auto h-28 w-28 animate-pulse rounded-[1.4rem] bg-white/[0.06]" />
+          <div className="space-y-3">
+            <div className="h-5 w-1/2 animate-pulse rounded-md bg-white/[0.06]" />
+            <div className="h-3 w-1/3 animate-pulse rounded-md bg-white/[0.06]" />
+            <div className="mt-3 h-3 w-3/4 animate-pulse rounded-md bg-white/[0.06]" />
+            <div className="h-3 w-2/3 animate-pulse rounded-md bg-white/[0.06]" />
           </div>
         </div>
-        <p className="mt-4 max-w-xl text-sm leading-7 text-text-muted">
-          Photographe de nuit, romantique calme, attirée par les connexions qui ont du fond et du rythme.
-        </p>
+      );
+    }
+
+    if (!firstProfile) {
+      return null;
+    }
+
+    const photoSrc = resolveImageSrc(firstProfile.image_url);
+    const headline = firstProfile.age
+      ? `${firstProfile.name ?? t("unknownUser")}, ${firstProfile.age}`
+      : firstProfile.name ?? t("unknownUser");
+    const sunLabel = firstProfile.sun_sign
+      ? translateSign(firstProfile.sun_sign, locale)
+      : null;
+    const moonLabel = firstProfile.moon_sign
+      ? translateSign(firstProfile.moon_sign, locale)
+      : null;
+
+    return (
+      <div className="mt-8 grid gap-4 rounded-[1.6rem] border border-white/12 bg-[linear-gradient(180deg,rgba(13,15,28,0.72),rgba(23,26,45,0.9))] p-4 shadow-[0_20px_50px_rgba(0,0,0,0.24)] sm:grid-cols-[108px_minmax(0,1fr)] sm:p-5">
+        <div className="relative mx-auto h-28 w-28 overflow-hidden rounded-[1.4rem] border border-white/10 bg-bg-secondary">
+          <Image
+            src={photoSrc}
+            alt={firstProfile.name ?? t("unknownUser")}
+            fill
+            sizes="112px"
+            unoptimized={shouldBypassImageOptimization(photoSrc)}
+            className="object-cover"
+          />
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="truncate text-2xl font-semibold tracking-[-0.04em] text-white">
+                {headline}
+              </p>
+              {(sunLabel || moonLabel) && (
+                <p className="mt-2 text-sm leading-6 text-text-muted">
+                  {sunLabel && (
+                    <>
+                      {t("discoverSun")}: {sunLabel}
+                    </>
+                  )}
+                  {sunLabel && moonLabel ? " · " : null}
+                  {moonLabel && (
+                    <>
+                      {t("discoverMoon")}: {moonLabel}
+                    </>
+                  )}
+                </p>
+              )}
+            </div>
+            <div className="hidden h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-[#ffb2c4] sm:flex">
+              <CardGlyph icon="matches" />
+            </div>
+          </div>
+          {firstProfile.bio && (
+            <p className="mt-4 line-clamp-2 max-w-xl text-sm leading-7 text-text-muted">
+              {firstProfile.bio}
+            </p>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  })();
 
   return (
     <div className="space-y-6">
