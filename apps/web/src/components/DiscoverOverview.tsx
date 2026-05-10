@@ -288,37 +288,26 @@ export function DiscoverOverview() {
   }
 
   const profileImage = resolveImageSrc(currentProfile.image_url, currentProfile.images?.[0]);
-  // Stack depth: hint of the next profile sitting behind the active card.
-  // Pure visual — never interactive, never announced. The translateY +
-  // uniform scale + top-anchored origin combo yields a thin sliver
-  // peeking on the sides while staying inside the active card vertically,
-  // so the back card never collides with the action row at the bottom.
-  const nextProfile = profiles[currentIndex + 1] ?? null;
-  const nextProfileImage = nextProfile
-    ? resolveImageSrc(nextProfile.image_url, nextProfile.images?.[0])
-    : null;
+  // Stack depth: a flat silhouette suggesting "another card waiting".
+  // We deliberately do NOT show the next profile's photo here — the active
+  // card uses bg-card/90, which resolves to ~6% alpha (since --color-card
+  // is itself rgba(255,255,255,0.07)). With anything visually rich behind,
+  // the active section becomes a window onto the back layer. A solid
+  // bg-bg-secondary panel anchored at origin-bottom peeks slightly below
+  // and on the sides without competing with the active content.
+  const hasNextProfile = currentIndex + 1 < profiles.length;
 
   return (
     <div className="space-y-6">
       <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
       <div className="relative">
-      {nextProfile && nextProfileImage ? (
+      {hasNextProfile ? (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 origin-top opacity-60 transition-transform duration-300 ease-out motion-reduce:transition-none"
-          style={{ transform: "translateY(18px) scale(0.96)" }}
+          className="pointer-events-none absolute inset-0 origin-bottom transition-transform duration-300 ease-out motion-reduce:transition-none"
+          style={{ transform: "translateY(18px) scale(0.97)" }}
         >
-          <div className="relative h-full overflow-hidden rounded-[2rem] border border-border bg-card/90 shadow-[0_18px_50px_rgba(0,0,0,0.16)]">
-            <Image
-              src={nextProfileImage}
-              alt=""
-              fill
-              sizes="(max-width: 1024px) 100vw, 60vw"
-              unoptimized={shouldBypassImageOptimization(nextProfileImage)}
-              className="object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/55 to-black/85" />
-          </div>
+          <div className="h-full rounded-[2rem] border border-border bg-bg-secondary shadow-[0_18px_50px_rgba(0,0,0,0.18)]" />
         </div>
       ) : null}
       <section className="relative overflow-hidden rounded-[2rem] border border-border bg-card/90 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
