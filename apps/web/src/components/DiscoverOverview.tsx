@@ -288,11 +288,40 @@ export function DiscoverOverview() {
   }
 
   const profileImage = resolveImageSrc(currentProfile.image_url, currentProfile.images?.[0]);
+  // Stack depth: hint of the next profile sitting behind the active card.
+  // Pure visual — never interactive, never announced. The translateY +
+  // uniform scale + top-anchored origin combo yields a thin sliver
+  // peeking on the sides while staying inside the active card vertically,
+  // so the back card never collides with the action row at the bottom.
+  const nextProfile = profiles[currentIndex + 1] ?? null;
+  const nextProfileImage = nextProfile
+    ? resolveImageSrc(nextProfile.image_url, nextProfile.images?.[0])
+    : null;
 
   return (
     <div className="space-y-6">
       <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
-      <section className="overflow-hidden rounded-[2rem] border border-border bg-card/90 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
+      <div className="relative">
+      {nextProfile && nextProfileImage ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 origin-top opacity-60 transition-transform duration-300 ease-out motion-reduce:transition-none"
+          style={{ transform: "translateY(18px) scale(0.96)" }}
+        >
+          <div className="relative h-full overflow-hidden rounded-[2rem] border border-border bg-card/90 shadow-[0_18px_50px_rgba(0,0,0,0.16)]">
+            <Image
+              src={nextProfileImage}
+              alt=""
+              fill
+              sizes="(max-width: 1024px) 100vw, 60vw"
+              unoptimized={shouldBypassImageOptimization(nextProfileImage)}
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/55 to-black/85" />
+          </div>
+        </div>
+      ) : null}
+      <section className="relative overflow-hidden rounded-[2rem] border border-border bg-card/90 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
         <div className="grid lg:grid-cols-[0.95fr_1.05fr]">
           <div className="relative min-h-[420px] bg-bg-secondary">
             <Image
@@ -597,6 +626,7 @@ export function DiscoverOverview() {
           </div>
         </div>
       </section>
+      </div>
 
       <aside className="rounded-[2rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.16)]">
         <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
