@@ -331,10 +331,13 @@ export function DashboardOverview() {
         </div>
       )}
 
-      {/* Daily cosmic insight card -- drives daily return habit */}
+      {/* Daily horoscope card -- drives daily return habit. Routes to the
+          Celestial namespace because Daily Horoscope is a Celestial-tier
+          feature; Cosmic users also resolve through this URL since the
+          page is tier-aware. */}
       {state && !isFree && (
         <Link
-          href="/app/premium/cosmic"
+          href="/app/premium/celestial/daily-horoscope"
           className="group flex items-center gap-5 rounded-2xl border border-[rgba(124,108,255,0.2)] bg-[linear-gradient(135deg,rgba(124,108,255,0.1),rgba(77,159,255,0.06))] px-6 py-4 transition-all hover:-translate-y-0.5 hover:border-[rgba(124,108,255,0.35)] hover:shadow-[0_12px_30px_rgba(124,108,255,0.12)]"
         >
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[rgba(124,108,255,0.15)] text-2xl">
