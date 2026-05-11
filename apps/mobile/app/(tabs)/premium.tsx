@@ -113,7 +113,7 @@ export default function PremiumScreen() {
             {t('paywallHeroSubtitle') || 'Unlock the cosmic insights that lead to deeper, more meaningful connections'}
           </p>
           <p style={{ fontSize: 12, color: '#DAB56D', margin: '0 0 32px' }}>
-            {t('paywallSocialProofLine') || 'Join 12,000+ cosmic seekers finding real connections'}
+            {t('paywallSocialProofLineV2') || 'Designed for deeper dating, real compatibility, and better conversations'}
           </p>
 
           {/* Features preview */}
@@ -184,7 +184,7 @@ export default function PremiumScreen() {
           {/* Social proof nudge */}
           <View style={styles.socialProof}>
             <Text style={styles.socialProofText}>
-              {t('paywallSocialProofLine') || 'Join 12,000+ cosmic seekers finding real connections'}
+              {t('paywallSocialProofLineV2') || 'Designed for deeper dating, real compatibility, and better conversations'}
             </Text>
           </View>
 
