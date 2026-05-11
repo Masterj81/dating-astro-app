@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
@@ -6,7 +6,6 @@ import { Link } from "@/i18n/navigation";
 import { translateElement, translateModality, translateSign } from "@/lib/astrology-labels";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
-import { PlacementCard } from "@/components/PlacementCard";
 
 type NatalProfile = {
   id: string;
@@ -44,14 +43,14 @@ type PlanetPosition = {
 };
 
 const PLANET_SYMBOLS: Record<PlanetKey, string> = {
-  sun: "\u2609",
-  moon: "\u263D",
-  rising: "\u2191",
-  mercury: "\u263F",
-  venus: "\u2640",
-  mars: "\u2642",
-  jupiter: "\u2643",
-  saturn: "\u2644",
+  sun: "☉",
+  moon: "☽",
+  rising: "↑",
+  mercury: "☿",
+  venus: "♀",
+  mars: "♂",
+  jupiter: "♃",
+  saturn: "♄",
 };
 
 const SIGNS = [
@@ -104,63 +103,6 @@ const DEFAULT_INTERPRETATIONS: Record<"sun" | "moon" | "rising", string> = {
   moon: "Your Moon sign reveals how you process feelings, seek comfort, and restore emotional balance.",
   rising: "Your Rising sign shapes first impressions, your visible style, and how you enter new situations.",
 };
-
-// Pilot set of detailed placement reads. Only renders a PlacementCard
-// when the viewer's actual chart matches one of these (planet, sign)
-// tuples — so the section grows naturally as we add more content. The
-// fourth column is whether this combo carries a dating-lens "in love"
-// callout (Venus / Mars / Moon only).
-//
-// Keys are intentionally kebab-friendly and stable: the i18n lookup is
-// `natalPlanetMeaning_${planet}`, `natalPlanetIn_${planet}_${sign}`,
-// and optionally `natalPlanetInLove_${planet}_${sign}`.
-type PlacementPlanet = "mercury" | "venus" | "moon" | "mars";
-type FeaturedPlacement = {
-  planet: PlacementPlanet;
-  sign: string;
-  /**
-   * True when an `natalPlanetDatingLens_${planet}_${sign}` i18n entry
-   * exists for this tuple. Drives whether the PlacementCard renders the
-   * dating-lens callout. Mercury can get a conversational lens too —
-   * the field is no longer "in love"-specific.
-   */
-  hasDatingLens: boolean;
-};
-const FEATURED_PLACEMENTS: FeaturedPlacement[] = [
-  // Pilot 4 (commit 0749b54)
-  { planet: "mercury", sign: "Aries", hasDatingLens: true },
-  { planet: "venus", sign: "Taurus", hasDatingLens: true },
-  { planet: "moon", sign: "Cancer", hasDatingLens: true },
-  { planet: "mars", sign: "Leo", hasDatingLens: true },
-  // Batch 1 — common Mercury / Venus / Mars / Moon placements.
-  // Mercury entries here have no dating-lens content yet — the card
-  // still renders with planet meaning + sign + house, just no callout.
-  { planet: "mercury", sign: "Taurus", hasDatingLens: false },
-  { planet: "mercury", sign: "Gemini", hasDatingLens: false },
-  { planet: "mercury", sign: "Cancer", hasDatingLens: false },
-  { planet: "venus", sign: "Aries", hasDatingLens: true },
-  { planet: "venus", sign: "Gemini", hasDatingLens: true },
-  { planet: "venus", sign: "Cancer", hasDatingLens: true },
-  { planet: "mars", sign: "Aries", hasDatingLens: true },
-  { planet: "mars", sign: "Taurus", hasDatingLens: true },
-  { planet: "mars", sign: "Cancer", hasDatingLens: true },
-  { planet: "moon", sign: "Aries", hasDatingLens: true },
-  { planet: "moon", sign: "Taurus", hasDatingLens: true },
-  { planet: "moon", sign: "Leo", hasDatingLens: true },
-];
-
-function getPlanetSign(profile: NatalProfile, planet: PlacementPlanet): string | null {
-  switch (planet) {
-    case "mercury":
-      return profile.mercury_sign ?? null;
-    case "venus":
-      return profile.venus_sign ?? null;
-    case "moon":
-      return profile.moon_sign ?? null;
-    case "mars":
-      return profile.mars_sign ?? null;
-  }
-}
 
 function getFallbackSign(seed: number) {
   return SIGNS[seed % SIGNS.length];
@@ -215,6 +157,10 @@ export function NatalChartOverview() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [serverGate, setServerGate] = useState<ServerGate>({ allowed: true, reason: null });
+  // Single-open accordion. Picked over multi-open because it keeps state to
+  // one string, matches the mobile pattern (`expandedSection`), and avoids
+  // a second scroll-jump puzzle on small viewports.
+  const [openKey, setOpenKey] = useState<PlanetKey | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -417,28 +363,169 @@ export function NatalChartOverview() {
           </div>
         </div>
 
+        {/* Editorial reminder — sits just above the Planetary Positions card
+            so the user reads the framing before tapping into each placement. */}
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+            {t("natalChartDisclaimerTitle")}
+          </p>
+          <p className="mt-2 text-sm leading-7 text-text-muted">
+            {t("natalChartDisclaimerBody")}
+          </p>
+        </div>
+
+        {/* Planetary Positions — inline accordion. Each row is a button that
+            toggles a panel below it with up to four reads:
+            (1) planet meaning, (2) sign expression, (3) house area,
+            (4) dating lens. Reads 2 + 4 only render when an i18n entry
+            exists for that planet × sign tuple. */}
         <div className="rounded-[2rem] border border-border bg-card/90 p-6">
           <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
             {t("planetaryPositions")}
           </p>
-          <div className="mt-5 space-y-3">
-            {positions.map((position) => (
-              <div
-                key={position.key}
-                className="flex items-center gap-4 rounded-[1.4rem] border border-border bg-bg/70 px-4 py-4"
-              >
-                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[rgba(232,93,117,0.22)] bg-[rgba(232,93,117,0.12)] text-2xl text-white">
-                  {position.symbol}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-lg font-semibold text-white">{position.label}</p>
-                  <p className="mt-1 text-sm text-text-muted">
-                    {translateSign(position.sign, locale)} {position.degree}° - {t("natalHouse")} {position.house}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <ul className="mt-5 space-y-3">
+            {positions.map((position) => {
+              const isOpen = openKey === position.key;
+              const signKey = position.sign.toLowerCase();
+              const panelId = `natal-planet-panel-${position.key}`;
+              const buttonId = `natal-planet-button-${position.key}`;
+
+              const planetMeaningKey = `natalPlanetMeaning_${position.key}`;
+              const planetInKey = `natalPlanetIn_${position.key}_${signKey}`;
+              const datingLensKey = `natalPlanetDatingLens_${position.key}_${signKey}`;
+              const coreInterpretationKey = `natalInterpretation_${position.key}`;
+
+              const hasPlanetMeaning = t.has(planetMeaningKey);
+              const hasPlanetInSign = t.has(planetInKey);
+              const hasCoreInterpretation =
+                (position.key === "sun" || position.key === "moon" || position.key === "rising") &&
+                t.has(coreInterpretationKey);
+              const hasDatingLens = t.has(datingLensKey);
+
+              const houseNumber = position.house;
+              const hasHouse = houseNumber >= 1 && houseNumber <= 12;
+
+              const signLabel = translateSign(position.sign, locale);
+
+              return (
+                <li key={position.key}>
+                  <button
+                    type="button"
+                    id={buttonId}
+                    aria-expanded={isOpen}
+                    aria-controls={panelId}
+                    onClick={() =>
+                      setOpenKey((current) => (current === position.key ? null : position.key))
+                    }
+                    className="flex w-full items-center gap-4 rounded-[1.4rem] border border-border bg-bg/70 px-4 py-4 text-left transition-colors hover:bg-card-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    <div
+                      className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[rgba(232,93,117,0.22)] bg-[rgba(232,93,117,0.12)] text-2xl text-white"
+                      aria-hidden="true"
+                    >
+                      {position.symbol}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-lg font-semibold text-white">{position.label}</p>
+                      <p className="mt-1 text-sm text-text-muted">
+                        {signLabel} {position.degree}° · {t("natalHouse")} {position.house}
+                      </p>
+                    </div>
+                    {/* Chevron — CSS-only rotation, gated behind motion-safe
+                        so reduced-motion users don't see the transition. */}
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 20 20"
+                      className={`h-5 w-5 shrink-0 text-text-muted motion-safe:transition-transform motion-safe:duration-200 ${
+                        isOpen ? "rotate-180" : "rotate-0"
+                      }`}
+                    >
+                      <path
+                        d="M5 7l5 5 5-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.75"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+
+                  {isOpen ? (
+                    <div
+                      id={panelId}
+                      role="region"
+                      aria-labelledby={buttonId}
+                      className="mt-2 space-y-4 rounded-[1.4rem] border border-[rgba(232,93,117,0.22)] bg-[rgba(232,93,117,0.06)] px-4 py-5"
+                    >
+                      {hasPlanetMeaning ? (
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
+                            {t("natalPlanet_" + position.key)}
+                          </p>
+                          <p className="mt-2 text-sm leading-7 text-white/90">
+                            {t(planetMeaningKey)}
+                          </p>
+                        </div>
+                      ) : null}
+
+                      {hasPlanetInSign ? (
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
+                            {position.label} <span className="text-white/40">in</span> {signLabel}
+                          </p>
+                          <p className="mt-2 text-sm leading-7 text-white/90">
+                            {t(planetInKey)}
+                          </p>
+                        </div>
+                      ) : hasCoreInterpretation ? (
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
+                            {position.label} <span className="text-white/40">in</span> {signLabel}
+                          </p>
+                          <p className="mt-2 text-sm leading-7 text-white/90">
+                            {t(coreInterpretationKey, { sign: signLabel })}
+                          </p>
+                        </div>
+                      ) : (position.key === "sun" || position.key === "moon" || position.key === "rising") ? (
+                        // Final fallback for the big three — never leave them empty.
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
+                            {position.label} <span className="text-white/40">in</span> {signLabel}
+                          </p>
+                          <p className="mt-2 text-sm leading-7 text-white/90">
+                            {DEFAULT_INTERPRETATIONS[position.key as "sun" | "moon" | "rising"]}
+                          </p>
+                        </div>
+                      ) : null}
+
+                      {hasHouse ? (
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
+                            {t(`natalHouseName_${houseNumber}`)}
+                          </p>
+                          <p className="mt-2 text-sm leading-7 text-text-muted">
+                            {t(`natalHouseMeaning_${houseNumber}`)}
+                          </p>
+                        </div>
+                      ) : null}
+
+                      {hasDatingLens ? (
+                        <div className="rounded-2xl border border-[rgba(232,93,117,0.22)] bg-[rgba(232,93,117,0.10)] p-4">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#ffb7c7]">
+                            {t("natalPlanetCardDatingLensLabel")}
+                          </p>
+                          <p className="mt-2 text-sm leading-7 text-white/90">
+                            {t(datingLensKey)}
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
         </div>
 
         {/* House meanings — pedagogical, identical for every chart. Future
@@ -476,117 +563,6 @@ export function NatalChartOverview() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Featured placement insights — only renders cards where we have
-            content matching the viewer's actual chart. Each card surfaces
-            four reads: planet meaning, sign expression, house area, and
-            (optional) dating lens. Adding more tuples is content-only;
-            FEATURED_PLACEMENTS is the explicit allowlist. */}
-        {(() => {
-          const matched = FEATURED_PLACEMENTS
-            .map((featured) => {
-              const sign = getPlanetSign(profile, featured.planet);
-              if (sign?.toLowerCase() !== featured.sign.toLowerCase()) return null;
-              // Pull the planet's house from buildPlanetPositions so the
-              // card stays consistent with the planetary-positions table.
-              const position = positions.find((p) => p.key === featured.planet);
-              return { featured, position };
-            })
-            .filter((entry): entry is { featured: FeaturedPlacement; position: PlanetPosition | undefined } => Boolean(entry));
-          if (matched.length === 0) return null;
-          return (
-            <div className="space-y-6">
-              {/* Editorial reminder that astrology reads best in context,
-                  not as a fixed verdict on any one placement. Sits above
-                  the cards so it sets expectations before the user reads. */}
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-                <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-                  {t("natalChartDisclaimerTitle")}
-                </p>
-                <p className="mt-2 text-sm leading-7 text-text-muted">
-                  {t("natalChartDisclaimerBody")}
-                </p>
-              </div>
-
-              <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-                <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-                  {t("natalChartFeaturedInsightsTitle")}
-                </p>
-                <p className="mt-3 text-sm leading-7 text-text-muted">
-                  {t("natalChartFeaturedInsightsBody")}
-                </p>
-                <div className="mt-6 grid gap-4 md:grid-cols-2">
-                  {matched.map(({ featured, position }) => {
-                    const signKey = featured.sign.toLowerCase();
-                    const houseNumber = position?.house ?? null;
-                    const houseLabel =
-                      houseNumber && houseNumber >= 1 && houseNumber <= 12
-                        ? t(`natalHouseName_${houseNumber}`)
-                        : undefined;
-                    const houseMeaning =
-                      houseNumber && houseNumber >= 1 && houseNumber <= 12
-                        ? t(`natalHouseMeaning_${houseNumber}`)
-                        : undefined;
-                    return (
-                      <PlacementCard
-                        key={`${featured.planet}-${featured.sign}`}
-                        planet={t(`natalPlanet_${featured.planet}`)}
-                        signKey={signKey}
-                        signLabel={translateSign(featured.sign, locale)}
-                        planetMeaning={t(`natalPlanetMeaning_${featured.planet}`)}
-                        signInterpretation={t(
-                          `natalPlanetIn_${featured.planet}_${signKey}`
-                        )}
-                        houseNumber={houseNumber}
-                        houseLabel={houseLabel}
-                        houseMeaning={houseMeaning}
-                        datingLens={
-                          featured.hasDatingLens
-                            ? t(`natalPlanetDatingLens_${featured.planet}_${signKey}`)
-                            : undefined
-                        }
-                        eyebrow={t("natalPlanetCardFeaturedEyebrow")}
-                        datingLensLabel={t("natalPlanetCardDatingLensLabel")}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
-        <div className="grid gap-6 md:grid-cols-3">
-          {(["sun", "moon", "rising"] as const).map((coreKey) => {
-            const sign =
-              coreKey === "sun"
-                ? profile.sun_sign
-                : coreKey === "moon"
-                  ? profile.moon_sign
-                  : profile.rising_sign;
-
-            return (
-              <article
-                key={coreKey}
-                className="rounded-[2rem] border border-border bg-card/90 p-6"
-              >
-                <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-                  {t(`natalPlanet_${coreKey}`)}
-                </p>
-                <h3 className="mt-3 text-2xl font-semibold text-white">
-                  {sign ? translateSign(sign, locale) : t("statusUnknown")}
-                </h3>
-                <p className="mt-3 text-sm leading-7 text-text-muted">
-                  {t.has(`natalInterpretation_${coreKey}`)
-                    ? t(`natalInterpretation_${coreKey}`, {
-                        sign: sign ? translateSign(sign, locale) : t("statusUnknown"),
-                      })
-                    : DEFAULT_INTERPRETATIONS[coreKey]}
-                </p>
-              </article>
-            );
-          })}
         </div>
 
         {error ? (
