@@ -104,6 +104,22 @@ const DEFAULT_INTERPRETATIONS: Record<"sun" | "moon" | "rising", string> = {
   rising: "Your Rising sign shapes first impressions, your visible style, and how you enter new situations.",
 };
 
+// Locale-aware label builders. We keep these in code rather than inline
+// templates in JSON because the English form for houses uses an article
+// ("in the 1st house") that FR doesn't carry, and other locales without
+// dedicated phrasing get a neutral bullet that always reads cleanly.
+function formatPlanetInSignLabel(planet: string, sign: string, locale: string): string {
+  if (locale === "fr") return `${planet} en ${sign}`;
+  if (locale === "en") return `${planet} in ${sign}`;
+  return `${planet} · ${sign}`;
+}
+
+function formatPlanetInHouseLabel(planet: string, houseName: string, locale: string): string {
+  if (locale === "fr") return `${planet} en ${houseName}`;
+  if (locale === "en") return `${planet} in the ${houseName}`;
+  return `${planet} · ${houseName}`;
+}
+
 function getFallbackSign(seed: number) {
   return SIGNS[seed % SIGNS.length];
 }
@@ -404,6 +420,8 @@ export function NatalChartOverview() {
 
               const houseNumber = position.house;
               const hasHouse = houseNumber >= 1 && houseNumber <= 12;
+              const planetInHouseKey = `natalPlanetInHouse_${position.key}_${houseNumber}`;
+              const hasPlanetInHouse = hasHouse && t.has(planetInHouseKey);
 
               const signLabel = translateSign(position.sign, locale);
 
@@ -458,54 +476,42 @@ export function NatalChartOverview() {
                       aria-labelledby={buttonId}
                       className="mt-2 space-y-4 rounded-[1.4rem] border border-[rgba(232,93,117,0.22)] bg-[rgba(232,93,117,0.06)] px-4 py-5"
                     >
-                      {hasPlanetMeaning ? (
-                        <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
-                            {t("natalPlanet_" + position.key)}
-                          </p>
-                          <p className="mt-2 text-sm leading-7 text-white/90">
-                            {t(planetMeaningKey)}
-                          </p>
-                        </div>
-                      ) : null}
-
-                      {hasPlanetInSign ? (
-                        <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
-                            {position.label} <span className="text-white/40">in</span> {signLabel}
-                          </p>
-                          <p className="mt-2 text-sm leading-7 text-white/90">
-                            {t(planetInKey)}
-                          </p>
-                        </div>
-                      ) : hasCoreInterpretation ? (
-                        <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
-                            {position.label} <span className="text-white/40">in</span> {signLabel}
-                          </p>
-                          <p className="mt-2 text-sm leading-7 text-white/90">
-                            {t(coreInterpretationKey, { sign: signLabel })}
-                          </p>
-                        </div>
-                      ) : (position.key === "sun" || position.key === "moon" || position.key === "rising") ? (
-                        // Final fallback for the big three — never leave them empty.
-                        <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
-                            {position.label} <span className="text-white/40">in</span> {signLabel}
-                          </p>
-                          <p className="mt-2 text-sm leading-7 text-white/90">
-                            {DEFAULT_INTERPRETATIONS[position.key as "sun" | "moon" | "rising"]}
-                          </p>
-                        </div>
-                      ) : null}
+                      {/* Block 1: planet-in-sign. Cascade priority:
+                          1) natalPlanetIn_<planet>_<sign>  — specific tuple
+                          2) natalInterpretation_<planet> {sign}  — sun/moon/rising legacy
+                          3) DEFAULT_INTERPRETATIONS — final safety net
+                          4) natalPlanetMeaning_<planet>  — outer-planet fallback
+                          The generic planet meaning is NEVER rendered as its
+                          own block; it only becomes the body when nothing
+                          more specific exists. */}
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
+                          {formatPlanetInSignLabel(position.label, signLabel, locale)}
+                        </p>
+                        <p className="mt-2 text-sm leading-7 text-white/90">
+                          {hasPlanetInSign
+                            ? t(planetInKey)
+                            : hasCoreInterpretation
+                              ? t(coreInterpretationKey, { sign: signLabel })
+                              : (position.key === "sun" || position.key === "moon" || position.key === "rising")
+                                ? DEFAULT_INTERPRETATIONS[position.key as "sun" | "moon" | "rising"]
+                                : hasPlanetMeaning
+                                  ? t(planetMeaningKey)
+                                  : ""}
+                        </p>
+                      </div>
 
                       {hasHouse ? (
                         <div>
                           <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
-                            {t(`natalHouseName_${houseNumber}`)}
+                            {hasPlanetInHouse
+                              ? formatPlanetInHouseLabel(position.label, t(`natalHouseName_${houseNumber}`), locale)
+                              : t(`natalHouseName_${houseNumber}`)}
                           </p>
                           <p className="mt-2 text-sm leading-7 text-text-muted">
-                            {t(`natalHouseMeaning_${houseNumber}`)}
+                            {hasPlanetInHouse
+                              ? t(planetInHouseKey)
+                              : t(`natalHouseMeaning_${houseNumber}`)}
                           </p>
                         </div>
                       ) : null}

@@ -93,8 +93,23 @@ function NatalChartScreenContent() {
   const [expandedSection, setExpandedSection] = useState<string | null>('sun');
   const [serverGate, setServerGate] = useState<ServerGate>({ allowed: true, reason: null });
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const insets = useSafeAreaInsets();
+
+  // Locale-aware label builders for "Planet in Sign" / "Planet in House".
+  // English: "Sun in Taurus" / "Sun in the 1st house"
+  // French:  "Soleil en Taureau" / "Soleil en Maison 1"
+  // Other locales fall back to a neutral bullet separator.
+  const formatPlanetInSignLabel = (planet: string, sign: string): string => {
+    if (language === 'fr') return `${planet} en ${sign}`;
+    if (language === 'en') return `${planet} in ${sign}`;
+    return `${planet} · ${sign}`;
+  };
+  const formatPlanetInHouseLabel = (planet: string, houseLabel: string): string => {
+    if (language === 'fr') return `${planet} en ${houseLabel}`;
+    if (language === 'en') return `${planet} in the ${houseLabel}`;
+    return `${planet} · ${houseLabel}`;
+  };
 
   const signs = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
                  'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
@@ -445,6 +460,11 @@ function NatalChartScreenContent() {
           const datingLens = resolveOptional(t, `natalPlanetDatingLens_${pos.planetKey}_${signKey}`);
           const hasHouse = pos.house >= 1 && pos.house <= 12;
           const houseName = hasHouse ? resolveOptional(t, `natalHouseName_${pos.house}`) : null;
+          const planetInHouse = hasHouse
+            ? resolveOptional(t, `natalPlanetInHouse_${pos.planetKey}_${pos.house}`)
+            : null;
+          // Fall back to the generic house meaning when no planet-specific
+          // read exists yet — the user still gets a useful description.
           const houseMeaning = hasHouse ? resolveOptional(t, `natalHouseMeaning_${pos.house}`) : null;
           const datingLensLabel = resolveOptional(t, 'natalPlanetCardDatingLensLabel') || 'Dating lens';
 
@@ -473,29 +493,31 @@ function NatalChartScreenContent() {
 
               {isOpen && (
                 <View style={styles.planetAccordionPanel}>
-                  {planetMeaning && (
-                    <View style={styles.panelBlock}>
-                      <Text style={styles.panelLabel}>{pos.planet}</Text>
-                      <Text style={styles.panelBody}>{planetMeaning}</Text>
-                    </View>
-                  )}
-
-                  {(planetInSign || coreInterpretation) && (
-                    <View style={styles.panelBlock}>
-                      <Text style={styles.panelLabel}>
-                        {pos.planet} · {signLabel}
-                      </Text>
-                      <Text style={styles.panelBody}>{planetInSign || coreInterpretation}</Text>
-                    </View>
-                  )}
+                  {/* Block 1: planet-in-sign. Cascade priority:
+                      1) natalPlanetIn_<planet>_<sign>  — specific tuple
+                      2) coreInterpretation for sun/moon/rising (legacy with {sign})
+                      3) planetMeaning — generic planet description as last-resort body
+                      The generic planet meaning is NEVER rendered as its own
+                      block; it only becomes the body when nothing more
+                      specific exists. */}
+                  <View style={styles.panelBlock}>
+                    <Text style={styles.panelLabel}>
+                      {formatPlanetInSignLabel(pos.planet, signLabel)}
+                    </Text>
+                    <Text style={styles.panelBody}>
+                      {planetInSign || coreInterpretation || planetMeaning || ''}
+                    </Text>
+                  </View>
 
                   {hasHouse && (
                     <View style={styles.panelBlock}>
                       <Text style={styles.panelLabel}>
-                        {houseName || `${t('house')} ${pos.house}`}
+                        {planetInHouse
+                          ? formatPlanetInHouseLabel(pos.planet, houseName || `${t('house')} ${pos.house}`)
+                          : (houseName || `${t('house')} ${pos.house}`)}
                       </Text>
-                      <Text style={styles.panelBodyMuted}>
-                        {houseMeaning || ''}
+                      <Text style={planetInHouse ? styles.panelBody : styles.panelBodyMuted}>
+                        {planetInHouse || houseMeaning || ''}
                       </Text>
                     </View>
                   )}
