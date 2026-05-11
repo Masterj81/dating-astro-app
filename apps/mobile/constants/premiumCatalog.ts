@@ -1,11 +1,11 @@
 // Conversation-first product change: removed `seeWhoLikes`, `superLikes`,
-// `priorityMessages` from the Celestial tier. Messaging is free for
-// everyone now, so those upsells are gone. The compatibility-detail
-// surface (synastry) becomes the primary value prop for Celestial.
+// and `priorityMessages` from the Celestial tier. Messaging is free
+// for everyone now and the "who liked you" feed has no real backend
+// signal on the web side, so those upsells are gone. Natal Chart,
+// Synastry, and Monthly Tarot are the Celestial value props.
 //
-// `super-likes` was deleted in full (it was never wired to a swipe
-// action or visibility boost). `likes.tsx` and `priority-messages.tsx`
-// still exist so deep links don't 404, pending a follow-up cleanup.
+// The `likes` and `priority-messages` routes have been redirected to
+// the premium hub so any lingering deep links land somewhere sensible.
 export const CELESTIAL_FEATURES = [
   { key: 'fullNatalChart', icon: '\u{1F31F}', route: '/premium-screens/natal-chart' },
   { key: 'advancedSynastry', icon: '\u{1F495}', route: '/premium-screens/synastry' },

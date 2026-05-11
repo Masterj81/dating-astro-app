@@ -67,8 +67,6 @@ export default function PaywallModal() {
 
     const featureNames: Record<FeatureKey, string> = {
       'synastry': t('advancedSynastry') || 'Advanced Synastry',
-      'likes': t('seeWhoLikes') || 'See Who Likes You',
-      'priority-messages': t('priorityMessages') || 'Priority Messages',
       'natal-chart': t('fullNatalChart') || 'Full Natal Chart',
       'daily-horoscope': t('dailyHoroscope') || 'Daily Horoscope',
       'monthly-horoscope': t('monthlyHoroscope') || 'Monthly Horoscope',
@@ -145,9 +143,11 @@ export default function PaywallModal() {
             {/* Quick benefits - emotional copy with concrete value */}
             <View style={styles.quickBenefits}>
               {[
-                { icon: '\u2764\uFE0F', text: t('paywallBenefit1') || 'See who\u2019s drawn to your energy' },
-                { icon: '\u{1F31F}', text: t('paywallBenefit2') || 'Your full birth chart with 10 planets' },
-                { icon: '\u{1F52E}', text: t('paywallBenefit3') || 'Daily guidance tuned to your chart' },
+                // Keys are versioned (`v2`) so stale translations from the
+                // swipe-era product can't override the new fallback copy.
+                { icon: '\u{1F495}', text: t('paywallBenefitV2_1') || 'Synastry compatibility breakdown' },
+                { icon: '\u{1F31F}', text: t('paywallBenefitV2_2') || 'Full natal chart insights' },
+                { icon: '\u{1F0CF}', text: t('paywallBenefitV2_3') || 'Monthly tarot reading' },
               ].map((b, i) => (
                 <View key={i} style={styles.quickBenefitRow}>
                   <Text style={styles.quickBenefitIcon}>{b.icon}</Text>

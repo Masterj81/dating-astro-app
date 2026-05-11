@@ -9,11 +9,13 @@ import WebTabWrapper from '../../components/WebTabWrapper';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { usePremium } from '../../contexts/PremiumContext';
 
+// Conversation-first product change: `seeWhoLikes` and `priorityMessages`
+// were removed. Monthly Tarot is the third real Celestial value prop and
+// matches what `constants/premiumCatalog.ts` lists as CELESTIAL_FEATURES.
 const CELESTIAL_FEATURES = [
   { key: 'fullNatalChart', icon: '🌟', route: '/premium-screens/natal-chart' },
   { key: 'advancedSynastry', icon: '💕', route: '/premium-screens/synastry' },
-  { key: 'seeWhoLikes', icon: '❤️', route: '/premium-screens/likes' },
-  { key: 'priorityMessages', icon: '💬', route: '/premium-screens/priority-messages' },
+  { key: 'monthlyTarot', icon: '🃏', route: '/premium-screens/tarot' },
 ];
 
 const COSMIC_FEATURES = [

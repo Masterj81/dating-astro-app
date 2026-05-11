@@ -1,11 +1,12 @@
 import { supabase } from './supabase';
 
-// Feature keys for premium features
+// Feature keys for premium features.
+// Conversation-first product change: `likes` and `priority-messages`
+// were removed — the web/app no longer surfaces a "who liked you" feed
+// (no real backend signal) and messaging is free for all users.
 export type FeatureKey =
   // Premium tier features (Celestial)
   | 'synastry'
-  | 'likes'
-  | 'priority-messages'
   | 'natal-chart'
   // Premium Plus tier features (Cosmic)
   | 'daily-horoscope'
@@ -22,8 +23,6 @@ export type FeatureKey =
 export const FEATURE_TIERS: Record<FeatureKey, 'premium' | 'premium_plus'> = {
   // Premium tier features (Celestial)
   'synastry': 'premium',
-  'likes': 'premium',
-  'priority-messages': 'premium',
   'natal-chart': 'premium',
   // Premium Plus tier features (Cosmic)
   'daily-horoscope': 'premium_plus',

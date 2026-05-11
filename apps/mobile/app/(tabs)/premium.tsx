@@ -157,12 +157,15 @@ export default function PremiumScreen() {
       );
     }
 
-    // Native version paywall — compelling upsell with social proof and benefit previews
+    // Native version paywall — copy reflects the conversation-first product.
+    // Real Celestial value props: Synastry, Natal Chart, Monthly Tarot.
     const BENEFIT_ROWS = [
-      { icon: '\u{1F495}', label: t('paywallBenefitLabel1') || 'See Who\u2019s Drawn to You', desc: t('paywallBenefitDesc1') || 'Reveal every person who swiped right on your profile' },
-      { icon: '\u{1F31F}', label: t('paywallBenefitLabel2') || 'Your Complete Star Map', desc: t('paywallBenefitDesc2') || 'All 10 planets, 12 houses \u2014 your full cosmic blueprint' },
-      { icon: '\u{1F52E}', label: t('paywallBenefitLabel3') || 'Daily Cosmic Guidance', desc: t('paywallBenefitDesc3') || 'Personalized love insights based on today\u2019s transits' },
-      { icon: '\u{2B50}', label: t('paywallBenefitLabel4') || 'Unlimited Likes & Swipes', desc: t('paywallBenefitDesc4') || 'No daily limit \u2014 keep matching as long as the stars align' },
+      // Keys are versioned (`v2`) so stale translations from the swipe-era
+      // product can't override the new conversation-first fallback copy.
+      { icon: '\u{1F495}', label: t('paywallBenefitLabelV2_1') || 'Synastry Compatibility', desc: t('paywallBenefitDescV2_1') || 'A side-by-side chart breakdown of how you and a match align' },
+      { icon: '\u{1F31F}', label: t('paywallBenefitLabelV2_2') || 'Full Natal Chart Insights', desc: t('paywallBenefitDescV2_2') || 'Explore your sun, moon, rising, and the planets that shape you' },
+      { icon: '\u{1F0CF}', label: t('paywallBenefitLabelV2_3') || 'Monthly Tarot Reading', desc: t('paywallBenefitDescV2_3') || 'A fresh reading each month to reflect on love and direction' },
+      { icon: '\u{1F4AC}', label: t('paywallBenefitLabelV2_4') || 'Conversation-First Matching', desc: t('paywallBenefitDescV2_4') || 'Connect through values, intent, and prompts \u2014 not just photos' },
     ];
 
     return (
