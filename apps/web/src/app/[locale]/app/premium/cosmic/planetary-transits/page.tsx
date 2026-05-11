@@ -7,8 +7,8 @@ export default async function PlanetaryTransitsPage() {
 
   return (
     <AppShell
-      title={t("planetaryTransitsWebTitle")}
-      subtitle={t("planetaryTransitsWebSubtitle")}
+      title={t("transitReflectionV2PageTitle")}
+      subtitle={t("transitReflectionV2PageSubtitle")}
     >
       <PlanetaryTransitsOverview />
     </AppShell>
