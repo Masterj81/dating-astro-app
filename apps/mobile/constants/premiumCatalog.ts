@@ -9,11 +9,14 @@
 export const CELESTIAL_FEATURES = [
   { key: 'fullNatalChart', icon: '\u{1F31F}', route: '/premium-screens/natal-chart' },
   { key: 'advancedSynastry', icon: '\u{1F495}', route: '/premium-screens/synastry' },
+  { key: 'dailyHoroscope', icon: '\u{1F52E}', route: '/premium-screens/daily-horoscope' },
   { key: 'monthlyTarot', icon: '\u{1F0CF}', route: '/premium-screens/tarot' },
 ] as const;
 
+// Daily Horoscope moved from Cosmic → Celestial: it's a personal +
+// daily astrology feature, not a high-end exclusive. Cosmic users
+// still have access by downward inclusion via FEATURE_TIERS.
 export const COSMIC_FEATURES = [
-  { key: 'dailyHoroscope', icon: '\u{1F52E}', route: '/premium-screens/daily-horoscope' },
   { key: 'monthlyHoroscope', icon: '\u{1F4C5}', route: '/premium-screens/monthly-horoscope' },
   { key: 'weeklyTarot', icon: '\u{1F0CF}', route: '/premium-screens/tarot' },
   { key: 'planetaryTransits', icon: '\u{1FA90}', route: '/premium-screens/planetary-transits' },

@@ -227,7 +227,7 @@ function DailyHoroscopeScreenContent() {
 
         <View style={styles.premiumBadge}>
           <Text style={styles.premiumIcon}>✨</Text>
-          <Text style={styles.premiumText}>{t('premiumPlusFeature')}</Text>
+          <Text style={styles.premiumText}>{t('celestialFeatureBadge') || t('premiumPlusFeature')}</Text>
         </View>
       </ScrollView>
     </LinearGradient>

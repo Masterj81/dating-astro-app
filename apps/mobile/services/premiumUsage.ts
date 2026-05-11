@@ -4,12 +4,17 @@ import { supabase } from './supabase';
 // Conversation-first product change: `likes` and `priority-messages`
 // were removed — the web/app no longer surfaces a "who liked you" feed
 // (no real backend signal) and messaging is free for all users.
+//
+// Daily Horoscope was moved from Premium Plus (Cosmic) → Premium
+// (Celestial). It's a personal + daily astrology feature, not a
+// high-end exclusive. Cosmic still has access by downward inclusion
+// (see canAccessFeature in PremiumContext).
 export type FeatureKey =
   // Premium tier features (Celestial)
   | 'synastry'
   | 'natal-chart'
-  // Premium Plus tier features (Cosmic)
   | 'daily-horoscope'
+  // Premium Plus tier features (Cosmic)
   | 'monthly-horoscope'
   | 'planetary-transits'
   | 'retrograde-alerts'
@@ -24,8 +29,8 @@ export const FEATURE_TIERS: Record<FeatureKey, 'premium' | 'premium_plus'> = {
   // Premium tier features (Celestial)
   'synastry': 'premium',
   'natal-chart': 'premium',
+  'daily-horoscope': 'premium',
   // Premium Plus tier features (Cosmic)
-  'daily-horoscope': 'premium_plus',
   'monthly-horoscope': 'premium_plus',
   'planetary-transits': 'premium_plus',
   'retrograde-alerts': 'premium_plus',

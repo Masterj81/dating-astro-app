@@ -10,16 +10,20 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { usePremium } from '../../contexts/PremiumContext';
 
 // Conversation-first product change: `seeWhoLikes` and `priorityMessages`
-// were removed. Monthly Tarot is the third real Celestial value prop and
+// were removed. Monthly Tarot is a real Celestial value prop and
 // matches what `constants/premiumCatalog.ts` lists as CELESTIAL_FEATURES.
+//
+// Daily Horoscope moved from Cosmic → Celestial (personal + daily,
+// not a high-end exclusive). Cosmic users still get it by downward
+// inclusion via FEATURE_TIERS.
 const CELESTIAL_FEATURES = [
   { key: 'fullNatalChart', icon: '🌟', route: '/premium-screens/natal-chart' },
   { key: 'advancedSynastry', icon: '💕', route: '/premium-screens/synastry' },
+  { key: 'dailyHoroscope', icon: '🔮', route: '/premium-screens/daily-horoscope' },
   { key: 'monthlyTarot', icon: '🃏', route: '/premium-screens/tarot' },
 ];
 
 const COSMIC_FEATURES = [
-  { key: 'dailyHoroscope', icon: '🔮', route: '/premium-screens/daily-horoscope' },
   { key: 'monthlyHoroscope', icon: '📅', route: '/premium-screens/monthly-horoscope' },
   { key: 'planetaryTransits', icon: '🪐', route: '/premium-screens/planetary-transits' },
   { key: 'luckyDays', icon: '🍀', route: '/premium-screens/lucky-days' },
