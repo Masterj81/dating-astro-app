@@ -28,6 +28,17 @@ const POSITION_KEY: Record<SpreadPosition, string> = {
   advice: "tarotV2PositionAdvice",
 };
 
+// Position × mode lens copy. A single static lens (V1 of V2) repeated the same
+// sentence on every card and broke the illusion that each card was speaking
+// to a different question. Splitting per position keeps the lens framing
+// reflective without writing 78 card-specific lenses.
+const LENS_KEY: Record<SpreadPosition, Record<ReadingMode, string>> = {
+  past:    { love: "tarotV2DatingLensPresent",    general: "tarotV2ReflectionLensPresent" },
+  present: { love: "tarotV2DatingLensAttention",  general: "tarotV2ReflectionLensAttention" },
+  future:  { love: "tarotV2DatingLensConnection", general: "tarotV2ReflectionLensConnection" },
+  advice:  { love: "tarotV2DatingLensAdvice",     general: "tarotV2ReflectionLensAdvice" },
+};
+
 const SUIT_KEY: Record<TarotSuit, string> = {
   major: "tarotV2MajorArcana",
   cups: "tarotV2SuitCups",
@@ -213,8 +224,6 @@ export function TarotReadingOverview() {
       : "tarotV2InterpretationGeneralBody";
   const lensLabelKey =
     mode === "love" ? "tarotV2DatingLensLabel" : "tarotV2ReflectionLensLabel";
-  const lensBodyKey =
-    mode === "love" ? "tarotV2DatingLensBody" : "tarotV2ReflectionLensBody";
 
   const promptKeys =
     mode === "love"
@@ -381,7 +390,7 @@ export function TarotReadingOverview() {
                     {t(lensLabelKey)}
                   </p>
                   <p className="mt-2 text-sm leading-7 text-text-muted">
-                    {t(lensBodyKey)}
+                    {t(LENS_KEY[entry.position][mode])}
                   </p>
                 </div>
               </article>
