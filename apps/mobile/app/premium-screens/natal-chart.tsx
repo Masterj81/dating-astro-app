@@ -29,6 +29,22 @@ type PlanetPosition = {
   emoji: string;
 };
 
+// i18n-js returns `[missing "..." translation]` for missing keys. This
+// helper returns the localised value or null so callers can choose to
+// omit a section instead of rendering a debug string.
+function resolveOptional(
+  t: (key: string, opts?: Record<string, string | number>) => string,
+  key: string,
+  opts?: Record<string, string | number>
+): string | null {
+  const value = t(key, opts);
+  if (!value) return null;
+  if (typeof value === 'string' && value.startsWith('[missing')) return null;
+  // Some i18n configs return the key itself when missing.
+  if (value === key) return null;
+  return value;
+}
+
 type NatalChartData = {
   sun_sign: string;
   moon_sign: string;
@@ -390,112 +406,111 @@ function NatalChartScreenContent() {
         </View>
       </View>
 
-      {/* Sun Sign Interpretation */}
+      {/* Editorial reminder — sits above the Planetary Positions list so
+          the user reads the framing before tapping into a placement. */}
       <View style={styles.section}>
-        <TouchableOpacity
-          style={styles.interpretationHeader}
-          onPress={() => setExpandedSection(expandedSection === 'sun' ? null : 'sun')}
-        >
-          <View style={styles.interpretationHeaderLeft}>
-            <Text style={styles.interpretationEmoji}>☀️</Text>
-            <View>
-              <Text style={styles.interpretationTitle}>{t('sunSign') || 'Sun Sign'}</Text>
-              <Text style={styles.interpretationSign}>{chartData?.sun_sign || 'Unknown'}</Text>
-            </View>
-          </View>
-          <Text style={styles.expandIcon}>{expandedSection === 'sun' ? '−' : '+'}</Text>
-        </TouchableOpacity>
-        {expandedSection === 'sun' && (
-          <View style={styles.interpretationContent}>
-            <Text style={styles.interpretationLabel}>{t('coreIdentity') || 'Core Identity & Life Purpose'}</Text>
-            <Text style={styles.interpretationText}>
-              {getSunInterpretation(chartData?.sun_sign || '')}
-            </Text>
-            <View style={styles.keyTraits}>
-              <Text style={styles.keyTraitsTitle}>{t('keyTraits') || 'Key Traits'}</Text>
-              <Text style={styles.keyTraitsText}>{getSignDescription(chartData?.sun_sign || '')}</Text>
-            </View>
-            <View style={styles.elementBadge}>
-              <Text style={styles.elementBadgeText}>
-                {t(getElement(chartData?.sun_sign || ''))} {t('element') || 'Element'}
-              </Text>
-            </View>
-          </View>
-        )}
+        <View style={styles.disclaimerCard}>
+          <Text style={styles.disclaimerTitle}>
+            {resolveOptional(t, 'natalChartDisclaimerTitle') || 'About reading your chart'}
+          </Text>
+          <Text style={styles.disclaimerBody}>
+            {resolveOptional(t, 'natalChartDisclaimerBody') ||
+              'Read each placement as one piece of the whole chart. Astrology works best as a pattern language, not a fixed label.'}
+          </Text>
+        </View>
       </View>
 
-      {/* Moon Sign Interpretation */}
-      <View style={styles.section}>
-        <TouchableOpacity
-          style={styles.interpretationHeader}
-          onPress={() => setExpandedSection(expandedSection === 'moon' ? null : 'moon')}
-        >
-          <View style={styles.interpretationHeaderLeft}>
-            <Text style={styles.interpretationEmoji}>🌙</Text>
-            <View>
-              <Text style={styles.interpretationTitle}>{t('moonSign') || 'Moon Sign'}</Text>
-              <Text style={styles.interpretationSign}>{chartData?.moon_sign || 'Unknown'}</Text>
-            </View>
-          </View>
-          <Text style={styles.expandIcon}>{expandedSection === 'moon' ? '−' : '+'}</Text>
-        </TouchableOpacity>
-        {expandedSection === 'moon' && (
-          <View style={styles.interpretationContent}>
-            <Text style={styles.interpretationLabel}>{t('emotionalNature') || 'Emotional Nature & Inner Self'}</Text>
-            <Text style={styles.interpretationText}>
-              {getMoonInterpretation(chartData?.moon_sign || '')}
-            </Text>
-            <View style={styles.keyTraits}>
-              <Text style={styles.keyTraitsTitle}>{t('emotionalNeeds') || 'Emotional Needs'}</Text>
-              <Text style={styles.keyTraitsText}>{getSignDescription(chartData?.moon_sign || '')}</Text>
-            </View>
-          </View>
-        )}
-      </View>
-
-      {/* Rising Sign Interpretation */}
-      <View style={styles.section}>
-        <TouchableOpacity
-          style={styles.interpretationHeader}
-          onPress={() => setExpandedSection(expandedSection === 'rising' ? null : 'rising')}
-        >
-          <View style={styles.interpretationHeaderLeft}>
-            <Text style={styles.interpretationEmoji}>⬆️</Text>
-            <View>
-              <Text style={styles.interpretationTitle}>{t('risingSign') || 'Rising Sign'}</Text>
-              <Text style={styles.interpretationSign}>{chartData?.rising_sign || 'Unknown'}</Text>
-            </View>
-          </View>
-          <Text style={styles.expandIcon}>{expandedSection === 'rising' ? '−' : '+'}</Text>
-        </TouchableOpacity>
-        {expandedSection === 'rising' && (
-          <View style={styles.interpretationContent}>
-            <Text style={styles.interpretationLabel}>{t('publicPersona') || 'Public Persona & First Impressions'}</Text>
-            <Text style={styles.interpretationText}>
-              {getRisingInterpretation(chartData?.rising_sign || '')}
-            </Text>
-            <View style={styles.keyTraits}>
-              <Text style={styles.keyTraitsTitle}>{t('howOthersSeeYou') || 'How Others See You'}</Text>
-              <Text style={styles.keyTraitsText}>{getSignDescription(chartData?.rising_sign || '')}</Text>
-            </View>
-          </View>
-        )}
-      </View>
-
-      {/* All Planetary Positions */}
+      {/* Planetary Positions — inline accordion. Each row is a Pressable
+          that toggles a panel below with up to four reads:
+          (1) planet meaning, (2) sign expression, (3) house area,
+          (4) dating lens. Single-open: one `expandedSection: string | null`
+          is enough state, matches the previous Sun/Moon/Rising pattern. */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('planetaryPositions')}</Text>
-        {positions.map((pos, index) => (
-          <View key={index} style={styles.planetRow}>
-            <PlanetGlyph planetKey={pos.planetKey} symbol={pos.emoji} size={30} textStyle={styles.planetEmoji} />
-            <View style={styles.planetInfo}>
-              <Text style={styles.planetName}>{pos.planet}</Text>
-              <Text style={styles.planetDetail}>
-                {t(pos.sign.toLowerCase()) || pos.sign} {pos.degree}° • {t('house')} {pos.house}
-              </Text>
+        {positions.map((pos) => {
+          const isOpen = expandedSection === pos.planetKey;
+          const signKey = pos.sign.toLowerCase();
+          const signLabel = resolveOptional(t, signKey) || pos.sign;
+
+          const planetMeaning = resolveOptional(t, `natalPlanetMeaning_${pos.planetKey}`);
+          const planetInSign = resolveOptional(t, `natalPlanetIn_${pos.planetKey}_${signKey}`);
+          const coreInterpretation =
+            !planetInSign && (pos.planetKey === 'sun' || pos.planetKey === 'moon' || pos.planetKey === 'rising')
+              ? (pos.planetKey === 'sun'
+                  ? getSunInterpretation(pos.sign)
+                  : pos.planetKey === 'moon'
+                    ? getMoonInterpretation(pos.sign)
+                    : getRisingInterpretation(pos.sign))
+              : null;
+          const datingLens = resolveOptional(t, `natalPlanetDatingLens_${pos.planetKey}_${signKey}`);
+          const hasHouse = pos.house >= 1 && pos.house <= 12;
+          const houseName = hasHouse ? resolveOptional(t, `natalHouseName_${pos.house}`) : null;
+          const houseMeaning = hasHouse ? resolveOptional(t, `natalHouseMeaning_${pos.house}`) : null;
+          const datingLensLabel = resolveOptional(t, 'natalPlanetCardDatingLensLabel') || 'Dating lens';
+
+          return (
+            <View key={pos.planetKey} style={styles.planetAccordion}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityState={{ expanded: isOpen }}
+                style={styles.planetAccordionHeader}
+                onPress={() => setExpandedSection(isOpen ? null : pos.planetKey)}
+              >
+                <PlanetGlyph
+                  planetKey={pos.planetKey}
+                  symbol={pos.emoji}
+                  size={30}
+                  textStyle={styles.planetAccordionEmoji}
+                />
+                <View style={styles.planetAccordionInfo}>
+                  <Text style={styles.planetAccordionName}>{pos.planet}</Text>
+                  <Text style={styles.planetAccordionDetail}>
+                    {signLabel} {pos.degree}° · {t('house')} {pos.house}
+                  </Text>
+                </View>
+                <Text style={styles.planetAccordionChevron}>{isOpen ? '−' : '+'}</Text>
+              </TouchableOpacity>
+
+              {isOpen && (
+                <View style={styles.planetAccordionPanel}>
+                  {planetMeaning && (
+                    <View style={styles.panelBlock}>
+                      <Text style={styles.panelLabel}>{pos.planet}</Text>
+                      <Text style={styles.panelBody}>{planetMeaning}</Text>
+                    </View>
+                  )}
+
+                  {(planetInSign || coreInterpretation) && (
+                    <View style={styles.panelBlock}>
+                      <Text style={styles.panelLabel}>
+                        {pos.planet} · {signLabel}
+                      </Text>
+                      <Text style={styles.panelBody}>{planetInSign || coreInterpretation}</Text>
+                    </View>
+                  )}
+
+                  {hasHouse && (
+                    <View style={styles.panelBlock}>
+                      <Text style={styles.panelLabel}>
+                        {houseName || `${t('house')} ${pos.house}`}
+                      </Text>
+                      <Text style={styles.panelBodyMuted}>
+                        {houseMeaning || ''}
+                      </Text>
+                    </View>
+                  )}
+
+                  {datingLens && (
+                    <View style={styles.panelDatingLens}>
+                      <Text style={styles.panelDatingLensLabel}>{datingLensLabel}</Text>
+                      <Text style={styles.panelBody}>{datingLens}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
             </View>
-          </View>
-        ))}
+          );
+        })}
       </View>
 
       {/* Elements & Modalities Analysis */}
@@ -963,6 +978,107 @@ const styles = StyleSheet.create({
   premiumText: {
     fontSize: 12,
     color: AppTheme.colors.coral,
+    fontWeight: '600',
+  },
+  disclaimerCard: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  disclaimerTitle: {
+    fontSize: 12,
+    color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  disclaimerBody: {
+    fontSize: 14,
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 22,
+  },
+  planetAccordion: {
+    marginBottom: 8,
+  },
+  planetAccordionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  planetAccordionEmoji: {
+    fontSize: 22,
+    marginRight: 12,
+    width: 32,
+    textAlign: 'center',
+  },
+  planetAccordionInfo: {
+    flex: 1,
+  },
+  planetAccordionName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: AppTheme.colors.textPrimary,
+  },
+  planetAccordionDetail: {
+    fontSize: 13,
+    color: AppTheme.colors.textMuted,
+    marginTop: 2,
+  },
+  planetAccordionChevron: {
+    fontSize: 22,
+    color: AppTheme.colors.coral,
+    fontWeight: 'bold',
+    marginLeft: 8,
+    width: 18,
+    textAlign: 'center',
+  },
+  planetAccordionPanel: {
+    backgroundColor: 'rgba(232, 93, 117, 0.06)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(232, 93, 117, 0.22)',
+    padding: 14,
+    marginTop: 6,
+    gap: 12,
+  },
+  panelBlock: {
+    gap: 4,
+  },
+  panelLabel: {
+    fontSize: 11,
+    color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  panelBody: {
+    fontSize: 14,
+    color: AppTheme.colors.textPrimary,
+    lineHeight: 22,
+  },
+  panelBodyMuted: {
+    fontSize: 14,
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 22,
+  },
+  panelDatingLens: {
+    backgroundColor: 'rgba(232, 93, 117, 0.12)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(232, 93, 117, 0.30)',
+    padding: 12,
+    gap: 4,
+  },
+  panelDatingLensLabel: {
+    fontSize: 11,
+    color: '#ffb7c7',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
     fontWeight: '600',
   },
 });
