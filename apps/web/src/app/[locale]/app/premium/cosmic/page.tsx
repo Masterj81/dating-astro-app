@@ -13,13 +13,11 @@ export default async function CosmicHubPage() {
     badge: string;
     glyph: PremiumGlyphName;
   }> = [
-    {
-      href: "/app/premium/cosmic/daily-horoscope",
-      title: t("cosmicHubOpenDaily"),
-      body: t("cosmicHubItem_daily"),
-      badge: t("hubBadge_now"),
-      glyph: "daily",
-    },
+    // Daily Horoscope was moved to the Celestial hub — it's a personal,
+    // frequent feature, not a high-end Cosmic exclusive. Cosmic still
+    // includes it by downward inclusion; the card just lives in the
+    // Celestial hub now. The /app/premium/cosmic/daily-horoscope route
+    // is kept alive for backward compatibility with any cached link.
     {
       href: "/app/premium/cosmic/monthly-horoscope",
       title: t("cosmicHubOpenMonthly"),
@@ -91,7 +89,7 @@ export default async function CosmicHubPage() {
                   key={card.href}
                   href={card.href}
                   className={`rounded-[1.7rem] border p-5 transition-all duration-200 hover:-translate-y-1 hover:bg-card-hover ${
-                    card.href === "/app/premium/cosmic/daily-horoscope"
+                    card.href === "/app/premium/cosmic/monthly-horoscope"
                       ? "border-[rgba(232,93,117,0.24)] bg-[linear-gradient(180deg,rgba(232,93,117,0.14),rgba(255,255,255,0.03))]"
                       : "border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))]"
                   }`}

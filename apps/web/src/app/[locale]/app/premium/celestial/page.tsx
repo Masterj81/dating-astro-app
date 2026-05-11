@@ -41,6 +41,18 @@ export default async function CelestialHubPage() {
       glyph: "synastry",
       available: true,
     },
+    {
+      // Daily horoscope moved from Cosmic → Celestial. It's personal and
+      // frequent, not a high-end exclusive, so it belongs alongside the
+      // natal chart and synastry tools. Cosmic users still have access by
+      // downward inclusion via the canAccess logic.
+      href: "/app/premium/celestial/daily-horoscope",
+      title: t("celestialHubOpenDailyHoroscope"),
+      body: t("celestialHubItem_dailyHoroscope"),
+      badge: t("hubBadge_daily"),
+      glyph: "daily",
+      available: true,
+    },
     // "Likes" and "Priority messages" cards were removed from this hub
     // when the conversation-first product shipped: there is no longer
     // a swipe/like system to surface admirers from, and the priority

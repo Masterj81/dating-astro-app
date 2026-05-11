@@ -9,11 +9,15 @@ import { formatPrice, type PriceMap } from "@/lib/billingPriceFormat";
 // the like/priority/see-who-liked-you bullets that no longer have
 // product meaning. Premium value is now compatibility detail and
 // astro insights.
+//
+// Daily Horoscope moved from FREE → CELESTIAL: the real product gates
+// it behind a tier, so listing it under FREE was misleading. It's a
+// personal + daily Celestial feature, included in Cosmic by downward
+// inclusion.
 const FREE_FEATURES = [
   "featureBasicChart",
   "featureFreeMessaging",
   "featureSunSignCompat",
-  "featureDailyHoroscope",
 ] as const;
 
 const CELESTIAL_FEATURES = [
@@ -21,6 +25,7 @@ const CELESTIAL_FEATURES = [
   "featureSynastry",
   "featureCompatibilityBreakdown",
   "featureAdvancedFilters",
+  "featureDailyHoroscope",
   "featureWeeklyHoroscopes",
   "featureMonthlyTarot",
 ] as const;
@@ -107,7 +112,7 @@ export function MarketingPricingSection() {
   return (
     <section id="premium" className="bg-bg-secondary py-24">
       <div className="mx-auto max-w-5xl px-4">
-        <p className="mb-3 text-center text-sm font-medium uppercase tracking-[0.3em] text-accent">
+        <p className="mb-3 text-center text-xs font-medium uppercase tracking-[0.24em] text-accent sm:text-sm sm:tracking-[0.3em]">
           {prem("badge")}
         </p>
         <h2 className="mb-3 text-center text-3xl font-bold text-white sm:text-4xl">

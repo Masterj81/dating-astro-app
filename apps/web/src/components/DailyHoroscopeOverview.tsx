@@ -100,7 +100,9 @@ export function DailyHoroscopeOverview() {
     );
   }
 
-  if (state.tier !== "premium_plus") {
+  // Daily Horoscope is part of the Celestial tier (and Cosmic, by inclusion).
+  // Only fully-free users hit the paywall here.
+  if (state.tier === "free") {
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-8">
         <div className="max-w-3xl rounded-[1.75rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-6">
