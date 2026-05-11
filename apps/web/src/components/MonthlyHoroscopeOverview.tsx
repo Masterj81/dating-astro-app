@@ -4,99 +4,112 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { translateSign } from "@/lib/astrology-labels";
+import { ZodiacGlyph } from "@/components/ZodiacGlyph";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
 
-type MonthlySection = {
-  key: "love" | "career" | "wellbeing" | "luck";
-  score: number;
+// V2 of Monthly Horoscope. Replaces the previous numeric-score / weekly
+// percentage / "important dates with exact day numbers" layout. Those were
+// fabricated precision presented as personal analysis (e.g. "Week 3: 62%",
+// "Day 18 — Mercury pressure point") which carries marketing / legal risk
+// and looks cheap next to the enriched Natal Chart and Daily Horoscope V2.
+//
+// New structure (top to bottom, mirroring Daily V2 but framed monthly):
+//   1. Hero — month + sign glyph + qualitative monthly theme (no %)
+//   2. Month's lens — one longer reflective paragraph (pattern, not action)
+//   3. Relationship rhythm — 4 axes (Love / Communication / Confidence /
+//      Rest), each a qualitative label (quiet / opening / steady / bright /
+//      intense). Same 5-dot meter as Daily V2 but with monthly axis names.
+//   4. Dating lens — one relational pattern sentence (not a prediction)
+//   5. Conversation prompt — a monthly question / intention
+//   6. Reflect this month — 2 reflection invitations
+//   7. Disclaimer — "monthly reflection, not prediction"
+//
+// All content lives behind `*V2_*` i18n keys so any stale 7-locale
+// translation of the old keys can't bleed into the new UI.
+//
+// Editorial split versus Daily V2: monthly = pattern, theme, rhythm;
+// daily = micro-action, today, single conversation. Tone uses "tends to /
+// often / can / may" and never "you will / destined / guaranteed".
+
+const SIGNS = [
+  "aries",
+  "taurus",
+  "gemini",
+  "cancer",
+  "leo",
+  "virgo",
+  "libra",
+  "scorpio",
+  "sagittarius",
+  "capricorn",
+  "aquarius",
+  "pisces",
+] as const;
+
+type SignKey = (typeof SIGNS)[number];
+
+// Monthly axes differ from Daily (love/mind/body/social) — these are
+// relational rather than personal: Love / Communication / Confidence /
+// Rest. They map onto how a month tends to feel inside a connection.
+const AXES = ["love", "communication", "confidence", "rest"] as const;
+type Axis = (typeof AXES)[number];
+
+// Monthly levels also differ from Daily (quiet/soft/steady/bright/strong).
+// "opening" replaces "soft" — monthly arcs are about phase shifts, not
+// instant intensity. "intense" replaces "strong" — same shape, more
+// monthly weight.
+const LEVELS = ["quiet", "opening", "steady", "bright", "intense"] as const;
+type Level = (typeof LEVELS)[number];
+
+// Different multipliers per axis so the four axes don't move in lockstep
+// across signs and months. Co-prime with 5 (the level count) keeps the
+// distribution flat-ish.
+const AXIS_SEED_OFFSET: Record<Axis, number> = {
+  love: 0,
+  communication: 3,
+  confidence: 7,
+  rest: 11,
 };
 
-type WeeklyForecast = {
-  week: number;
-  score: number;
-  themeKey: string;
-  bodyKey: string;
-};
-
-type ImportantDate = {
-  day: number;
-  eventKey: string;
-  bodyKey: string;
-  tone: "positive" | "neutral" | "challenging";
-};
-
-const TONE_STYLES: Record<ImportantDate["tone"], string> = {
-  positive: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
-  neutral: "border-amber-500/30 bg-amber-500/10 text-amber-200",
-  challenging: "border-rose-500/30 bg-rose-500/10 text-rose-200",
-};
-
-function buildMonthlySections(seed: number): MonthlySection[] {
-  return [
-    { key: "love", score: 72 + (seed % 18) },
-    { key: "career", score: 75 + ((seed + 4) % 17) },
-    { key: "wellbeing", score: 64 + ((seed + 8) % 19) },
-    { key: "luck", score: 70 + ((seed + 12) % 16) },
-  ];
+function pickLevel(seed: number, axis: Axis): Level {
+  const value = (seed + AXIS_SEED_OFFSET[axis]) % LEVELS.length;
+  return LEVELS[(value + LEVELS.length) % LEVELS.length];
 }
 
-function buildWeeklyForecasts(seed: number): WeeklyForecast[] {
-  return [
-    {
-      week: 1,
-      score: 68 + (seed % 15),
-      themeKey: "monthlyWeekTheme_1",
-      bodyKey: "monthlyWeekBody_1",
-    },
-    {
-      week: 2,
-      score: 75 + ((seed + 4) % 14),
-      themeKey: "monthlyWeekTheme_2",
-      bodyKey: "monthlyWeekBody_2",
-    },
-    {
-      week: 3,
-      score: 62 + ((seed + 9) % 18),
-      themeKey: "monthlyWeekTheme_3",
-      bodyKey: "monthlyWeekBody_3",
-    },
-    {
-      week: 4,
-      score: 71 + ((seed + 13) % 17),
-      themeKey: "monthlyWeekTheme_4",
-      bodyKey: "monthlyWeekBody_4",
-    },
-  ];
+// Dot count per level — 1..5 — used by the qualitative meter. Rendered
+// visually only; we never expose a number.
+const LEVEL_INTENSITY: Record<Level, number> = {
+  quiet: 1,
+  opening: 2,
+  steady: 3,
+  bright: 4,
+  intense: 5,
+};
+
+// Small qualitative meter — 5 dots, N filled. Replaces the previous "72%"
+// chip from the old monthly layout. Mirrors the EnergyDots pattern from
+// DailyHoroscopeOverview but kept inline so the two components can evolve
+// independently without a premature shared abstraction.
+function RhythmDots({ level }: { level: Level }) {
+  const filled = LEVEL_INTENSITY[level];
+  return (
+    <div className="flex items-center gap-1.5" aria-hidden="true">
+      {Array.from({ length: 5 }, (_, i) => (
+        <span
+          key={i}
+          className={`h-2 w-2 rounded-full ${
+            i < filled ? "bg-[#e85d75]" : "bg-white/15"
+          }`}
+        />
+      ))}
+    </div>
+  );
 }
 
-function buildImportantDates(): ImportantDate[] {
-  return [
-    {
-      day: 5,
-      eventKey: "monthlyImportantEvent_1",
-      bodyKey: "monthlyImportantBody_1",
-      tone: "positive",
-    },
-    {
-      day: 12,
-      eventKey: "monthlyImportantEvent_2",
-      bodyKey: "monthlyImportantBody_2",
-      tone: "neutral",
-    },
-    {
-      day: 18,
-      eventKey: "monthlyImportantEvent_3",
-      bodyKey: "monthlyImportantBody_3",
-      tone: "challenging",
-    },
-    {
-      day: 26,
-      eventKey: "monthlyImportantEvent_4",
-      bodyKey: "monthlyImportantBody_4",
-      tone: "positive",
-    },
-  ];
+function isKnownSign(value: string | null | undefined): value is SignKey {
+  if (!value) return false;
+  return SIGNS.includes(value.toLowerCase() as SignKey);
 }
 
 export function MonthlyHoroscopeOverview() {
@@ -153,19 +166,28 @@ export function MonthlyHoroscopeOverview() {
     load();
   }, [t]);
 
-  const seed = (sunSign?.length || 6) * (today.getMonth() + 3) * 5;
-  const sections = buildMonthlySections(seed);
-  const weeks = buildWeeklyForecasts(seed);
-  const importantDates = buildImportantDates();
-  const overallScore = Math.round(
-    sections.reduce((total, section) => total + section.score, 0) / sections.length
-  );
-  const translatedSign = sunSign ? translateSign(sunSign, locale) : t("statusUnknown");
+  // Seed = month + year + signKey length. Same shape as the legacy
+  // implementation, but only used to pick qualitative labels — never to
+  // fabricate a percentage or "lucky" anything.
+  const signKey = (sunSign?.toLowerCase() as SignKey | undefined) ?? null;
+  const signLabel = sunSign ? translateSign(sunSign, locale) : null;
+  const seed = (today.getMonth() + 1 + today.getFullYear() + (signKey?.length || 0)) * 5;
+
+  const axisLabel: Record<Axis, string> = {
+    love: t("monthlyHoroscopeV2AxisLove"),
+    communication: t("monthlyHoroscopeV2AxisCommunication"),
+    confidence: t("monthlyHoroscopeV2AxisConfidence"),
+    rest: t("monthlyHoroscopeV2AxisRest"),
+  };
 
   if (loading) {
+    // Skeleton mirrors the final layout coarsely so the perceived load
+    // doesn't trigger a layout shift on slow connections.
     return (
-      <div className="rounded-[2rem] border border-border bg-card/90 p-6 text-sm text-text-muted">
-        {t("loading")}
+      <div className="grid gap-6">
+        <div className="h-44 animate-pulse rounded-[2rem] border border-border bg-card/90" />
+        <div className="h-32 animate-pulse rounded-[2rem] border border-border bg-card/90" />
+        <div className="h-32 animate-pulse rounded-[2rem] border border-border bg-card/90" />
       </div>
     );
   }
@@ -181,6 +203,10 @@ export function MonthlyHoroscopeOverview() {
     );
   }
 
+  // Tier gating — preserved from legacy MonthlyHoroscopeOverview. Monthly
+  // is Cosmic-only (`tier === "premium_plus"`), unlike Daily which is
+  // Celestial+ (`tier !== "free"`). Do not soften this without product
+  // sign-off.
   if (state.tier !== "premium_plus") {
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-8">
@@ -213,122 +239,167 @@ export function MonthlyHoroscopeOverview() {
     );
   }
 
+  // Tier is OK, but no sun sign on the profile yet. We don't fabricate a
+  // sign — route them to the profile so they get an accurate monthly
+  // read on next visit. Same pattern as DailyHoroscopeOverview.
+  if (!isKnownSign(sunSign)) {
+    return (
+      <section className="rounded-[2rem] border border-border bg-card/90 p-8">
+        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          {t("monthlyHoroscopeMonthLabel")}
+        </p>
+        <h2 className="mt-3 text-2xl font-semibold text-white">
+          {t("monthlyHoroscopeV2NoSignTitle")}
+        </h2>
+        <p className="mt-3 max-w-xl text-sm leading-7 text-text-muted">
+          {t("monthlyHoroscopeV2NoSignBody")}
+        </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            href="/app/profile"
+            className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+          >
+            {t("openProfile")}
+          </Link>
+        </div>
+        {error ? (
+          <p className="mt-6 rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
+            {error}
+          </p>
+        ) : null}
+      </section>
+    );
+  }
+
+  // Sign is real and tier is Cosmic. Narrow the type so the i18n keys
+  // can be templated safely.
+  const sign: SignKey = signKey as SignKey;
+
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-      <section className="space-y-6">
-        <div className="rounded-[2rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-6">
+    <div className="grid gap-6">
+      {/* Block 1 — Hero. Month label, glyph, sign, qualitative monthly theme. */}
+      <section className="rounded-[2rem] border border-border bg-card/90 p-6">
+        <div className="rounded-[1.75rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-6">
           <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
             {t("monthlyHoroscopeMonthLabel")}
           </p>
-          <h2 className="mt-3 text-3xl font-semibold text-white">
-            {monthFormatter.format(today)}
-          </h2>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <span className="rounded-full border border-border bg-bg/70 px-4 py-2 text-sm text-white">
-              {t("dailyHoroscopeYourSign")}: {translatedSign}
-            </span>
-            <span className="rounded-full border border-border bg-bg/70 px-4 py-2 text-sm text-white">
-              {t("monthlyOverallEnergy")}: {overallScore}%
-            </span>
-          </div>
-          <p className="mt-5 text-sm leading-7 text-text-muted">
-            {t("monthlyHoroscopeOverviewBody", {
-              sign: translatedSign,
-            })}
-          </p>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          {sections.map((section) => (
-            <article
-              key={section.key}
-              className="rounded-[1.5rem] border border-border bg-card/90 p-5"
+          <div className="mt-3 flex flex-wrap items-center gap-4">
+            <div
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[rgba(232,93,117,0.22)] bg-[rgba(232,93,117,0.12)] text-3xl text-white"
+              aria-hidden="true"
             >
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-lg font-semibold text-white">
-                  {t(`monthlySection_${section.key}`)}
-                </h3>
-                <div className="rounded-full border border-border bg-bg/70 px-3 py-1 text-sm font-semibold text-white">
-                  {section.score}%
-                </div>
-              </div>
-              <p className="mt-3 text-sm leading-7 text-text-muted">
-                {t(`monthlySectionBody_${section.key}`, {
-                  sign: translatedSign,
-                })}
+              <ZodiacGlyph sign={sign} className="leading-none" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-2xl font-semibold text-white sm:text-3xl">
+                {signLabel}
+              </h2>
+              <p className="mt-1 text-sm text-text-muted">
+                {monthFormatter.format(today)}
               </p>
-            </article>
-          ))}
-        </div>
-
-        <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-            {t("monthlyWeekTitle")}
-          </p>
-          <div className="mt-5 space-y-4">
-            {weeks.map((week) => (
-              <article
-                key={week.week}
-                className="rounded-[1.5rem] border border-border bg-bg/70 p-5"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="rounded-full bg-accent px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">
-                    {t("monthlyWeekLabel", { week: week.week })}
-                  </div>
-                  <div className="rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-white">
-                    {week.score}%
-                  </div>
-                </div>
-                <h3 className="mt-4 text-lg font-semibold text-white">{t(week.themeKey)}</h3>
-                <p className="mt-3 text-sm leading-7 text-text-muted">{t(week.bodyKey)}</p>
-              </article>
-            ))}
+            </div>
+          </div>
+          <div className="mt-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
+              {t("monthlyHoroscopeV2Theme")}
+            </p>
+            <p className="mt-2 text-lg font-medium text-white">
+              {t(`monthlyHoroscopeMoodV2_${sign}`)}
+            </p>
           </div>
         </div>
       </section>
 
-      <aside className="space-y-6">
-        <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-            {t("monthlyImportantDatesTitle")}
-          </p>
-          <div className="mt-5 space-y-3">
-            {importantDates.map((item) => (
+      {/* Block 2 — Month's lens. Longer reflective paragraph framed as a
+          pattern across the month, not an action for today. */}
+      <section className="rounded-[2rem] border border-border bg-card/90 p-6">
+        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          {t("monthlyHoroscopeV2LensTitle")}
+        </p>
+        <p className="mt-3 text-sm leading-7 text-white/90">
+          {t(`monthlyHoroscopeLensV2_${sign}`)}
+        </p>
+      </section>
+
+      {/* Block 3 — Relationship rhythm. 4 axes × qualitative label + dot
+          meter. No percentages, no "best days", no fabricated precision. */}
+      <section className="rounded-[2rem] border border-border bg-card/90 p-6">
+        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          {t("monthlyHoroscopeV2RhythmTitle")}
+        </p>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          {AXES.map((axis) => {
+            const level = pickLevel(seed, axis);
+            return (
               <div
-                key={item.day}
-                className="rounded-[1.4rem] border border-border bg-bg/70 p-4"
+                key={axis}
+                className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-bg/70 px-4 py-3"
               >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${TONE_STYLES[item.tone]}`}
-                  >
-                    {item.day}
-                  </div>
-                  <p className="text-sm font-semibold text-white">{t(item.eventKey)}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white">
+                    {axisLabel[axis]}
+                  </p>
+                  <p className="mt-1 text-xs capitalize text-text-muted">
+                    {t(`monthlyHoroscopeV2Level_${level}`)}
+                  </p>
                 </div>
-                <p className="mt-3 text-sm leading-7 text-text-muted">{t(item.bodyKey)}</p>
+                <RhythmDots level={level} />
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
+      </section>
 
-        <div className="rounded-[2rem] border border-[rgba(74,222,128,0.24)] bg-[rgba(74,222,128,0.10)] p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-            {t("monthlyBestDaysTitle")}
-          </p>
-          <div className="mt-4 space-y-3 text-sm leading-7 text-text-muted">
-            <p>{t("monthlyBestDays_love")}</p>
-            <p>{t("monthlyBestDays_career")}</p>
-            <p>{t("monthlyBestDays_manifestation")}</p>
-          </div>
-        </div>
+      {/* Block 4 — Dating lens. One relational sentence framed as a
+          monthly pattern, not a prediction. Coral-tinted to mirror Daily
+          V2 and the Natal Chart dating-lens styling. */}
+      <section className="rounded-[2rem] border border-[rgba(232,93,117,0.24)] bg-[rgba(232,93,117,0.10)] p-6">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#ffb7c7]">
+          {t("monthlyHoroscopeV2DatingTitle")}
+        </p>
+        <p className="mt-3 text-sm leading-7 text-white/90">
+          {t(`monthlyHoroscopeDatingLensV2_${sign}`)}
+        </p>
+      </section>
 
-        {error ? (
-          <p className="rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
-            {error}
-          </p>
-        ) : null}
-      </aside>
+      {/* Block 5 — Conversation prompt. A monthly question or
+          intention, longer-arc than the daily single-conversation prompt. */}
+      <section className="rounded-[2rem] border border-border bg-card/90 p-6">
+        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          {t("monthlyHoroscopeV2PromptTitle")}
+        </p>
+        <p className="mt-3 text-base leading-7 text-white">
+          {t(`monthlyHoroscopeConversationPromptV2_${sign}`)}
+        </p>
+      </section>
+
+      {/* Block 6 — Reflect this month. Two reflection invitations in a
+          journaling / self-awareness tone. */}
+      <section className="rounded-[2rem] border border-border bg-card/90 p-6">
+        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          {t("monthlyHoroscopeV2ReflectTitle")}
+        </p>
+        <p className="mt-3 text-sm leading-7 text-text-muted">
+          {t(`monthlyHoroscopeReflectV2_${sign}`)}
+        </p>
+      </section>
+
+      {/* Block 7 — Disclaimer. Mirrors the Natal Chart / Daily V2 pattern
+          but framed monthly: "reflection, not prediction". */}
+      <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          {t("monthlyHoroscopeV2DisclaimerTitle")}
+        </p>
+        <p className="mt-2 text-sm leading-7 text-text-muted">
+          {t("monthlyHoroscopeV2DisclaimerBody")}
+        </p>
+      </div>
+
+      {error ? (
+        <p className="rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
