@@ -121,10 +121,24 @@ type FeaturedPlacement = {
   hasInLove: boolean;
 };
 const FEATURED_PLACEMENTS: FeaturedPlacement[] = [
+  // Pilot 4 (commit 0749b54)
   { planet: "mercury", sign: "Aries", hasInLove: false },
   { planet: "venus", sign: "Taurus", hasInLove: true },
   { planet: "moon", sign: "Cancer", hasInLove: true },
   { planet: "mars", sign: "Leo", hasInLove: true },
+  // Batch 1 — common Mercury / Venus / Mars / Moon placements
+  { planet: "mercury", sign: "Taurus", hasInLove: false },
+  { planet: "mercury", sign: "Gemini", hasInLove: false },
+  { planet: "mercury", sign: "Cancer", hasInLove: false },
+  { planet: "venus", sign: "Aries", hasInLove: true },
+  { planet: "venus", sign: "Gemini", hasInLove: true },
+  { planet: "venus", sign: "Cancer", hasInLove: true },
+  { planet: "mars", sign: "Aries", hasInLove: true },
+  { planet: "mars", sign: "Taurus", hasInLove: true },
+  { planet: "mars", sign: "Cancer", hasInLove: true },
+  { planet: "moon", sign: "Aries", hasInLove: true },
+  { planet: "moon", sign: "Taurus", hasInLove: true },
+  { planet: "moon", sign: "Leo", hasInLove: true },
 ];
 
 function getPlanetSign(profile: NatalProfile, planet: PlacementPlanet): string | null {
