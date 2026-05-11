@@ -224,7 +224,7 @@ export default function PremiumScreen() {
               <Text style={[styles.previewBarPct, styles.previewBarLocked]}>{'\u{1F512}'}</Text>
             </View>
             <Text style={styles.previewTeaserHint}>
-              {t('paywallCompatHint') || 'Moon & Rising reveal 60% of relationship compatibility'}
+              {t('paywallCompatHintV2') || 'Moon & Rising add emotional and first-impression depth beyond your Sun sign'}
             </Text>
           </View>
 
