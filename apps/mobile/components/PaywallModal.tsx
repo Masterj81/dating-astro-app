@@ -159,7 +159,7 @@ export default function PaywallModal() {
             {/* Social proof line */}
             <View style={styles.paywallSocialProof}>
               <Text style={styles.paywallSocialProofText}>
-                {t('paywallSocialProof') || 'Trusted by 12,000+ cosmic seekers'}
+                {t('paywallSocialProof') || 'Designed for deeper dating, real compatibility, and better conversations'}
               </Text>
             </View>
 

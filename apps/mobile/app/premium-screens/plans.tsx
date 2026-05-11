@@ -335,7 +335,7 @@ export default function PremiumPlansScreen() {
             {t('plansTrialDesc') || 'You won\u2019t be charged during your trial. Cancel anytime in 30 seconds from your device settings.'}
           </Text>
         </View>
-        <Text style={styles.trialText}>{t('plansSocialProof') || 'Trusted by 12,000+ cosmic seekers worldwide'}</Text>
+        <Text style={styles.trialText}>{t('plansSocialProof') || 'Designed for deeper dating, real compatibility, and better conversations'}</Text>
       </ScrollView>
     </LinearGradient>
   );
