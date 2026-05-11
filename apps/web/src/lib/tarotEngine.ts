@@ -201,15 +201,15 @@ const MAJOR_ARCANA: Array<{
     name: "Wheel of Fortune",
     love: {
       upright:
-        "A turning point in your love life. Fate brings an unexpected romantic opportunity.",
+        "A turning point in your love life. An unexpected opening may invite you to soften and pay attention.",
       reversed:
-        "Resisting change in love. Bad luck in timing — patience is needed.",
+        "Resisting a shift in your love patterns. Timing feels off — patience may help more than pushing.",
     },
     general: {
       upright:
-        "Destiny, cycles, and turning points. Change is coming — embrace it.",
+        "Cycles and turning points. A shift may be asking for your attention — meet it rather than resist it.",
       reversed:
-        "Bad luck or resisting inevitable change. This too shall pass.",
+        "Resisting a shift you can feel coming. This phase will pass — notice what it's trying to show you.",
     },
   },
   {
@@ -292,14 +292,14 @@ const MAJOR_ARCANA: Array<{
     name: "The Tower",
     love: {
       upright:
-        "A sudden upheaval reveals the truth. Painful but necessary relationship revelation.",
+        "A sudden upheaval reveals what was already there. Painful, but it may clear space for honesty.",
       reversed:
-        "Avoiding an inevitable breakdown. The truth will come out.",
+        "Avoiding a breakdown that's been building. Truth tends to surface when it's ready, not before.",
     },
     general: {
       upright:
-        "Sudden change, upheaval, and revelation. Destruction clears the way for truth.",
-      reversed: "Avoiding disaster or delaying inevitable change.",
+        "Sudden change, upheaval, and revelation. Collapse can clear the way for something more honest.",
+      reversed: "Avoiding disaster or delaying a change that wants to happen.",
     },
   },
   {
@@ -520,7 +520,7 @@ const MINOR_MEANINGS: Record<string, Record<number, MinorMeanings>> = {
     7: { love: { upright: "Deception or secrecy in love. Not everything is as it seems.", reversed: "Coming clean or exposing dishonesty." }, general: { upright: "Deception, strategy, and getting away with something.", reversed: "Truth revealed, confession, or conscience." } },
     8: { love: { upright: "Feeling trapped in a relationship. The restrictions are often self-imposed.", reversed: "Breaking free from limiting beliefs about love." }, general: { upright: "Feeling restricted or trapped. The bonds are often mental.", reversed: "Freedom, release, and new perspectives." } },
     9: { love: { upright: "Anxiety and fear about love keeping you up at night. Face the worry.", reversed: "Hope and recovery from romantic anxiety." }, general: { upright: "Anxiety, nightmares, and overwhelming worry.", reversed: "Recovery from anxiety and finding hope." } },
-    10: { love: { upright: "A painful ending in love. Rock bottom — but the only way is up.", reversed: "Recovery and rising from a devastating love experience." }, general: { upright: "Painful ending, rock bottom, and betrayal.", reversed: "Recovery, resilience, and inevitable improvement." } },
+    10: { love: { upright: "A painful ending in love. Rock bottom — but it can also be the floor you build from.", reversed: "Recovery and rising from a devastating love experience." }, general: { upright: "Painful ending, rock bottom, and betrayal.", reversed: "Recovery, resilience, and slow improvement." } },
     11: { love: { upright: "Curious and communicative energy in love. Honest conversations.", reversed: "Gossip or spying in relationships." }, general: { upright: "Curiosity, vigilance, and new ideas.", reversed: "Gossip, deception, or all talk no action." } },
     12: { love: { upright: "Quick-witted and direct communication in love. Fast-moving romance.", reversed: "Hurtful words or rushing into love recklessly." }, general: { upright: "Ambition, action, and quick thinking.", reversed: "Impulsiveness, aggression, or carelessness." } },
     13: { love: { upright: "Independent and perceptive in love. Clear boundaries and self-respect.", reversed: "Coldness, bitterness, or emotional distance in love." }, general: { upright: "Independence, clear thinking, and unbiased judgment.", reversed: "Coldness, cruelty, or bitterness." } },

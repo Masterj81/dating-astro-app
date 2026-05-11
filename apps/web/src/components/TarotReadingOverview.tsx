@@ -3,17 +3,40 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
 import {
   generateReading,
   getCardImageUrl,
   getCardMeaning,
-  getPositionLabel,
   type ReadingMode,
+  type SpreadPosition,
+  type TarotCard,
   type TarotReading,
+  type TarotSuit,
 } from "@/lib/tarotEngine";
 
 type RevealState = Record<number, boolean>;
+
+// The seed order in tarotEngine is past/present/future/advice. V2 re-labels
+// those positions editorially without touching the engine — same draw, new
+// language. Maps the legacy SpreadPosition to the V2 i18n key suffix.
+const POSITION_KEY: Record<SpreadPosition, string> = {
+  past: "tarotV2PositionPresent",
+  present: "tarotV2PositionAttention",
+  future: "tarotV2PositionConnection",
+  advice: "tarotV2PositionAdvice",
+};
+
+const SUIT_KEY: Record<TarotSuit, string> = {
+  major: "tarotV2MajorArcana",
+  cups: "tarotV2SuitCups",
+  wands: "tarotV2SuitWands",
+  swords: "tarotV2SuitSwords",
+  pents: "tarotV2SuitPentacles",
+};
+
+type ServerGate = { allowed: boolean; reason: string | null };
 
 export function TarotReadingOverview() {
   const t = useTranslations("webApp");
@@ -22,26 +45,50 @@ export function TarotReadingOverview() {
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<ReadingMode>("love");
   const [revealed, setRevealed] = useState<RevealState>({});
+  const [serverGate, setServerGate] = useState<ServerGate>({ allowed: true, reason: null });
 
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
       setLoading(true);
       setError(null);
       try {
         const account = await getCurrentAccountState(t("unknownUser"));
+        if (cancelled) return;
         setState(account);
+
+        // Server-side enforcement runs only for Cosmic (premium_plus) where the
+        // DB policy ('tarot' -> required_tier='cosmic', quota=10) applies. The
+        // current product allows Celestial users to view monthly tarot through
+        // client-side gating only; promoting Celestial through this RPC would
+        // return insufficient_tier and break the product. Surfaced as a known
+        // product/DB-policy conflict for follow-up.
+        if (account?.tier === "premium_plus") {
+          const supabase = getSupabaseBrowser();
+          const { data: gateRow, error: gateError } = await supabase
+            .rpc("enforce_premium_feature", { p_feature_key: "tarot" })
+            .maybeSingle<{ allowed: boolean; reason: string | null }>();
+
+          if (cancelled) return;
+          if (gateError || !gateRow || gateRow.allowed !== true) {
+            setServerGate({ allowed: false, reason: gateRow?.reason ?? "error" });
+            return;
+          }
+          setServerGate({ allowed: true, reason: "ok" });
+        }
       } catch (loadError) {
-        setError(
-          loadError instanceof Error ? loadError.message : t("unknownError")
-        );
+        if (cancelled) return;
+        setError(loadError instanceof Error ? loadError.message : t("unknownError"));
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     load();
+    return () => {
+      cancelled = true;
+    };
   }, [t]);
 
-  // Determine tier-based period
   const period = useMemo<"weekly" | "monthly" | null>(() => {
     if (!state) return null;
     if (state.tier === "premium_plus") return "weekly";
@@ -49,13 +96,11 @@ export function TarotReadingOverview() {
     return null;
   }, [state]);
 
-  // Generate the reading deterministically
   const reading = useMemo<TarotReading | null>(() => {
     if (!state?.userId || !period) return null;
     return generateReading(state.userId, mode, period);
   }, [state?.userId, mode, period]);
 
-  // Reset revealed state when mode changes
   useEffect(() => {
     setRevealed({});
   }, [mode]);
@@ -67,9 +112,6 @@ export function TarotReadingOverview() {
   const allRevealed = reading
     ? reading.cards.every((_, i) => revealed[i])
     : false;
-
-  const periodLabel =
-    period === "weekly" ? "Weekly" : period === "monthly" ? "Monthly" : "";
 
   // --- Loading state ---
   if (loading) {
@@ -87,9 +129,6 @@ export function TarotReadingOverview() {
         <h2 className="text-2xl font-semibold text-white">
           {t("notSignedIn")}
         </h2>
-        <p className="mt-3 text-sm leading-7 text-text-muted">
-          Sign in to unlock your personalized tarot reading.
-        </p>
       </div>
     );
   }
@@ -103,13 +142,13 @@ export function TarotReadingOverview() {
             {t("premiumNav")}
           </p>
           <h2 className="mt-3 text-2xl font-semibold text-white">
-            Tarot Reading
+            {t("tarotV2Title")}
           </h2>
           <p className="mt-3 text-sm leading-7 text-text-muted">
-            Upgrade to Celestial for monthly tarot readings, or Cosmic for
-            weekly readings with an extra Cosmic Advice card. Each spread is
-            seeded to your profile so your cards stay consistent throughout the
-            period.
+            {t("tarotV2Subtitle")}
+          </p>
+          <p className="mt-3 text-sm leading-7 text-text-muted">
+            {t("tarotLockedBody")}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
@@ -130,28 +169,82 @@ export function TarotReadingOverview() {
     );
   }
 
+  // --- Server-gate denied (Cosmic only) ---
+  if (state.tier === "premium_plus" && !serverGate.allowed) {
+    const isQuota = serverGate.reason === "quota_exceeded";
+    return (
+      <div className="rounded-[2rem] border border-border bg-card/90 p-8">
+        <h2 className="text-2xl font-semibold text-white">
+          {isQuota ? t("tarotV2QuotaTitle") : t("tarotV2Title")}
+        </h2>
+        <p className="mt-3 text-sm leading-7 text-text-muted">
+          {isQuota ? t("tarotV2QuotaBody") : t("unknownError")}
+        </p>
+      </div>
+    );
+  }
+
   // --- Premium reading ---
   if (!reading) return null;
 
-  // For Celestial (premium), only show past/present/future (3 cards).
-  // For Cosmic (premium_plus), show all 4 including advice.
+  // Celestial (premium) sees 3 cards (no advice). Cosmic (premium_plus) sees all 4.
   const visibleCards =
     state.tier === "premium_plus"
       ? reading.cards
       : reading.cards.filter((c) => c.position !== "advice");
 
+  const tierLabelKey =
+    state.tier === "premium_plus" ? "tarotV2TierCosmic" : "tarotV2TierCelestial";
+  const tierDescriptionKey =
+    state.tier === "premium_plus"
+      ? "tarotV2TierCosmicDescription"
+      : "tarotV2TierCelestialDescription";
+  const periodLabelKey =
+    period === "weekly" ? "tarotV2WeeklyPeriodLabel" : "tarotV2MonthlyPeriodLabel";
+  const descriptionKey =
+    state.tier === "premium_plus"
+      ? "tarotV2WeeklyDescription"
+      : "tarotV2MonthlyDescription";
+  const spreadTitleKey =
+    mode === "love" ? "tarotV2LoveSpread" : "tarotV2GeneralSpread";
+  const interpretationBodyKey =
+    mode === "love"
+      ? "tarotV2InterpretationLoveBody"
+      : "tarotV2InterpretationGeneralBody";
+  const lensLabelKey =
+    mode === "love" ? "tarotV2DatingLensLabel" : "tarotV2ReflectionLensLabel";
+  const lensBodyKey =
+    mode === "love" ? "tarotV2DatingLensBody" : "tarotV2ReflectionLensBody";
+
+  const promptKeys =
+    mode === "love"
+      ? ["tarotV2PromptLove1", "tarotV2PromptLove2", "tarotV2PromptLove3"]
+      : ["tarotV2PromptGeneral1", "tarotV2PromptGeneral2", "tarotV2PromptGeneral3"];
+
+  // Responsive grid: 360px-safe. 3-card spread = 1 col on phone, 3 on sm+.
+  // 4-card spread = 2 cols on phone, 4 on md+.
+  const gridClass =
+    visibleCards.length === 4
+      ? "grid-cols-2 md:grid-cols-4"
+      : "grid-cols-1 sm:grid-cols-3";
+
+  const suitLabel = (card: TarotCard) => t(SUIT_KEY[card.suit]);
+
   return (
     <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
       {/* Main spread area */}
       <section className="rounded-[2rem] border border-border bg-card/90 p-6">
-        {/* Header */}
+        {/* Hero */}
         <div className="rounded-[1.75rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-5">
           <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-            {periodLabel} Tarot Reading
+            {t(periodLabelKey)}
           </p>
           <h2 className="mt-3 text-3xl font-semibold text-white">
-            Your {mode === "love" ? "Love" : "General"} Spread
+            {t("tarotV2Title")}
           </h2>
+          <p className="mt-3 text-sm leading-7 text-text-muted">
+            {t("tarotV2Subtitle")}
+          </p>
 
           {/* Mode toggle */}
           <div className="mt-5 flex gap-2">
@@ -163,7 +256,7 @@ export function TarotReadingOverview() {
                   : "border border-border bg-bg/70 text-white hover:bg-card-hover"
               }`}
             >
-              Love
+              {t("tarotV2ModeLove")}
             </button>
             <button
               onClick={() => setMode("general")}
@@ -173,27 +266,23 @@ export function TarotReadingOverview() {
                   : "border border-border bg-bg/70 text-white hover:bg-card-hover"
               }`}
             >
-              General
+              {t("tarotV2ModeGeneral")}
             </button>
           </div>
 
-          <p className="mt-5 text-sm leading-7 text-text-muted">
-            {state.tier === "premium_plus"
-              ? "Your Cosmic weekly spread draws four cards including a Cosmic Advice position. Tap each card to reveal it."
-              : "Your Celestial monthly spread draws three cards. Tap each card to reveal it."}
+          <p className="mt-5 text-lg font-medium text-white">
+            {t(spreadTitleKey)}
+          </p>
+          <p className="mt-2 text-sm leading-7 text-text-muted">
+            {t(descriptionKey)}
           </p>
         </div>
 
         {/* Card grid */}
-        <div
-          className={`mt-6 grid gap-4 ${
-            visibleCards.length === 4
-              ? "grid-cols-2 md:grid-cols-4"
-              : "grid-cols-3"
-          }`}
-        >
+        <div className={`mt-6 grid gap-4 ${gridClass}`}>
           {visibleCards.map((entry, i) => {
             const isRevealed = !!revealed[i];
+            const positionLabel = t(POSITION_KEY[entry.position]);
             return (
               <button
                 key={entry.card.id + entry.position}
@@ -202,8 +291,8 @@ export function TarotReadingOverview() {
                 className="group perspective-[800px] cursor-pointer focus:outline-none"
                 aria-label={
                   isRevealed
-                    ? `${entry.card.name} — ${getPositionLabel(entry.position)}`
-                    : `Reveal ${getPositionLabel(entry.position)} card`
+                    ? `${entry.card.name} — ${positionLabel}`
+                    : `${t("tarotV2TapToReveal")} — ${positionLabel}`
                 }
               >
                 <div
@@ -214,17 +303,17 @@ export function TarotReadingOverview() {
                   {/* Card back */}
                   <div className="absolute inset-0 rounded-2xl border border-border bg-gradient-to-br from-[#2a1a4e] to-[#1a0e2e] [backface-visibility:hidden] flex flex-col items-center justify-center gap-3 group-hover:border-accent/50 transition-colors">
                     <div className="text-3xl">
-                      {mode === "love" ? "\u2665" : "\u2605"}
+                      {mode === "love" ? "♥" : "★"}
                     </div>
-                    <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-                      {getPositionLabel(entry.position)}
+                    <p className="text-center px-2 text-xs uppercase tracking-[0.24em] text-text-dim">
+                      {positionLabel}
                     </p>
                     <p className="text-[10px] text-text-dim/60">
-                      Tap to reveal
+                      {t("tarotV2TapToReveal")}
                     </p>
                   </div>
 
-                  {/* Card front (rotated so it faces forward after flip) */}
+                  {/* Card front */}
                   <div className="absolute inset-0 rounded-2xl border border-border overflow-hidden [backface-visibility:hidden] [transform:rotateY(180deg)]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -235,14 +324,13 @@ export function TarotReadingOverview() {
                       }`}
                       loading="lazy"
                     />
-                    {/* Position label overlay */}
                     <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-2">
                       <p className="text-[10px] uppercase tracking-[0.16em] text-text-dim">
-                        {getPositionLabel(entry.position)}
+                        {positionLabel}
                       </p>
                       <p className="text-xs font-semibold text-white truncate">
                         {entry.card.name}
-                        {entry.card.reversed ? " (Rev.)" : ""}
+                        {entry.card.reversed ? ` (${t("tarotV2ReversedSuffix")})` : ""}
                       </p>
                     </div>
                   </div>
@@ -257,12 +345,10 @@ export function TarotReadingOverview() {
           <div className="mt-6 space-y-4">
             <div className="rounded-[1.75rem] border border-[rgba(232,93,117,0.24)] bg-[rgba(232,93,117,0.10)] p-5">
               <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-                Your Interpretation
+                {t("tarotV2InterpretationTitle")}
               </p>
               <p className="mt-3 text-lg font-medium text-white">
-                {mode === "love"
-                  ? "Here is what the cards reveal about your love journey."
-                  : "Here is what the cards reveal about your path ahead."}
+                {t(interpretationBodyKey)}
               </p>
             </div>
 
@@ -271,28 +357,60 @@ export function TarotReadingOverview() {
                 key={entry.card.id + "-meaning"}
                 className="rounded-[1.5rem] border border-border bg-bg/70 p-5"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
                     <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-                      {getPositionLabel(entry.position)}
+                      {t(POSITION_KEY[entry.position])}
                     </p>
                     <h3 className="mt-2 text-xl font-semibold text-white">
                       {entry.card.name}
-                      {entry.card.reversed ? " (Reversed)" : ""}
+                      {entry.card.reversed
+                        ? ` (${t("tarotV2ReversedSuffix")})`
+                        : ""}
                     </h3>
                   </div>
-                  <div className="shrink-0 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-white">
-                    {entry.card.suit === "major"
-                      ? "Major Arcana"
-                      : entry.card.suit.charAt(0).toUpperCase() +
-                        entry.card.suit.slice(1)}
+                  <div className="shrink-0 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-white">
+                    {suitLabel(entry.card)}
                   </div>
                 </div>
                 <p className="mt-4 text-sm leading-7 text-text-muted">
                   {getCardMeaning(entry.card, mode)}
                 </p>
+                <div className="mt-4 rounded-2xl border border-border bg-card/70 p-4">
+                  <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+                    {t(lensLabelKey)}
+                  </p>
+                  <p className="mt-2 text-sm leading-7 text-text-muted">
+                    {t(lensBodyKey)}
+                  </p>
+                </div>
               </article>
             ))}
+
+            {/* Journal prompts */}
+            <div className="rounded-[1.5rem] border border-border bg-bg/70 p-5">
+              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+                {t("tarotV2JournalTitle")}
+              </p>
+              <ul className="mt-3 space-y-2 text-sm leading-7 text-text-muted">
+                {promptKeys.map((key) => (
+                  <li key={key} className="flex gap-2">
+                    <span aria-hidden className="text-text-dim">·</span>
+                    <span>{t(key)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Disclaimer */}
+            <div className="rounded-[1.5rem] border border-border bg-bg/50 p-5">
+              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+                {t("tarotV2DisclaimerTitle")}
+              </p>
+              <p className="mt-2 text-sm leading-7 text-text-muted">
+                {t("tarotV2DisclaimerBody")}
+              </p>
+            </div>
           </div>
         )}
 
@@ -306,25 +424,25 @@ export function TarotReadingOverview() {
       {/* Sidebar */}
       <aside className="rounded-[2rem] border border-border bg-card/90 p-6">
         <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-          Reading Details
+          {t("tarotV2ReadingDetailsLabel")}
         </p>
         <h3 className="mt-3 text-xl font-semibold text-white">
-          {periodLabel} Spread
+          {t(periodLabelKey)}
         </h3>
 
         <div className="mt-5 space-y-4">
           <div className="rounded-2xl border border-border bg-bg/70 p-4">
             <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-              Mode
+              {t("tarotV2ModeLabel")}
             </p>
             <p className="mt-3 text-lg font-semibold text-white">
-              {mode === "love" ? "Love Reading" : "General Reading"}
+              {t(spreadTitleKey)}
             </p>
           </div>
 
           <div className="rounded-2xl border border-border bg-bg/70 p-4">
             <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-              Period
+              {t("tarotV2PeriodLabel")}
             </p>
             <p className="mt-3 text-lg font-semibold text-white">
               {reading.seed}
@@ -333,35 +451,32 @@ export function TarotReadingOverview() {
 
           <div className="rounded-2xl border border-border bg-bg/70 p-4">
             <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-              Cards Drawn
+              {t("tarotV2CardsLabel")}
             </p>
             <p className="mt-3 text-lg font-semibold text-white">
-              {visibleCards.length} cards
+              {visibleCards.length}
             </p>
           </div>
 
           <div className="rounded-2xl border border-border bg-bg/70 p-4">
             <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-              Your Tier
+              {t("tarotV2TierLabel")}
             </p>
             <p className="mt-3 text-lg font-semibold text-white">
-              {state.tier === "premium_plus" ? "Cosmic" : "Celestial"}
+              {t(tierLabelKey)}
             </p>
             <p className="mt-2 text-sm leading-7 text-text-muted">
-              {state.tier === "premium_plus"
-                ? "Weekly readings with 4-card spread including Cosmic Advice."
-                : "Monthly readings with 3-card past-present-future spread."}
+              {t(tierDescriptionKey)}
             </p>
           </div>
 
           {state.tier === "premium" && (
             <div className="rounded-2xl border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-4">
               <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-                Upgrade
+                {t("tarotV2UpgradeLabel")}
               </p>
               <p className="mt-3 text-sm leading-7 text-text-muted">
-                Upgrade to Cosmic for weekly readings and an extra Cosmic Advice
-                card in every spread.
+                {t("tarotV2UpgradeBody")}
               </p>
               <Link
                 href="/app/plans"
@@ -374,7 +489,7 @@ export function TarotReadingOverview() {
         </div>
       </aside>
 
-      {/* Inline styles for 3D perspective (Tailwind JIT handles most, but perspective needs a fallback) */}
+      {/* Inline styles for 3D perspective */}
       <style jsx global>{`
         .perspective-\\[800px\\] {
           perspective: 800px;
