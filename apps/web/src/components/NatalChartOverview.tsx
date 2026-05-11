@@ -118,27 +118,35 @@ type PlacementPlanet = "mercury" | "venus" | "moon" | "mars";
 type FeaturedPlacement = {
   planet: PlacementPlanet;
   sign: string;
-  hasInLove: boolean;
+  /**
+   * True when an `natalPlanetDatingLens_${planet}_${sign}` i18n entry
+   * exists for this tuple. Drives whether the PlacementCard renders the
+   * dating-lens callout. Mercury can get a conversational lens too —
+   * the field is no longer "in love"-specific.
+   */
+  hasDatingLens: boolean;
 };
 const FEATURED_PLACEMENTS: FeaturedPlacement[] = [
   // Pilot 4 (commit 0749b54)
-  { planet: "mercury", sign: "Aries", hasInLove: false },
-  { planet: "venus", sign: "Taurus", hasInLove: true },
-  { planet: "moon", sign: "Cancer", hasInLove: true },
-  { planet: "mars", sign: "Leo", hasInLove: true },
-  // Batch 1 — common Mercury / Venus / Mars / Moon placements
-  { planet: "mercury", sign: "Taurus", hasInLove: false },
-  { planet: "mercury", sign: "Gemini", hasInLove: false },
-  { planet: "mercury", sign: "Cancer", hasInLove: false },
-  { planet: "venus", sign: "Aries", hasInLove: true },
-  { planet: "venus", sign: "Gemini", hasInLove: true },
-  { planet: "venus", sign: "Cancer", hasInLove: true },
-  { planet: "mars", sign: "Aries", hasInLove: true },
-  { planet: "mars", sign: "Taurus", hasInLove: true },
-  { planet: "mars", sign: "Cancer", hasInLove: true },
-  { planet: "moon", sign: "Aries", hasInLove: true },
-  { planet: "moon", sign: "Taurus", hasInLove: true },
-  { planet: "moon", sign: "Leo", hasInLove: true },
+  { planet: "mercury", sign: "Aries", hasDatingLens: true },
+  { planet: "venus", sign: "Taurus", hasDatingLens: true },
+  { planet: "moon", sign: "Cancer", hasDatingLens: true },
+  { planet: "mars", sign: "Leo", hasDatingLens: true },
+  // Batch 1 — common Mercury / Venus / Mars / Moon placements.
+  // Mercury entries here have no dating-lens content yet — the card
+  // still renders with planet meaning + sign + house, just no callout.
+  { planet: "mercury", sign: "Taurus", hasDatingLens: false },
+  { planet: "mercury", sign: "Gemini", hasDatingLens: false },
+  { planet: "mercury", sign: "Cancer", hasDatingLens: false },
+  { planet: "venus", sign: "Aries", hasDatingLens: true },
+  { planet: "venus", sign: "Gemini", hasDatingLens: true },
+  { planet: "venus", sign: "Cancer", hasDatingLens: true },
+  { planet: "mars", sign: "Aries", hasDatingLens: true },
+  { planet: "mars", sign: "Taurus", hasDatingLens: true },
+  { planet: "mars", sign: "Cancer", hasDatingLens: true },
+  { planet: "moon", sign: "Aries", hasDatingLens: true },
+  { planet: "moon", sign: "Taurus", hasDatingLens: true },
+  { planet: "moon", sign: "Leo", hasDatingLens: true },
 ];
 
 function getPlanetSign(profile: NatalProfile, planet: PlacementPlanet): string | null {
@@ -471,46 +479,79 @@ export function NatalChartOverview() {
         </div>
 
         {/* Featured placement insights — only renders cards where we have
-            content matching the viewer's actual chart. Today: 4 pilot
-            (planet, sign) tuples. Adding more is content-only, no code
-            change required beyond extending FEATURED_PLACEMENTS. */}
+            content matching the viewer's actual chart. Each card surfaces
+            four reads: planet meaning, sign expression, house area, and
+            (optional) dating lens. Adding more tuples is content-only;
+            FEATURED_PLACEMENTS is the explicit allowlist. */}
         {(() => {
-          const matched = FEATURED_PLACEMENTS.filter((featured) => {
-            const sign = getPlanetSign(profile, featured.planet);
-            return sign?.toLowerCase() === featured.sign.toLowerCase();
-          });
+          const matched = FEATURED_PLACEMENTS
+            .map((featured) => {
+              const sign = getPlanetSign(profile, featured.planet);
+              if (sign?.toLowerCase() !== featured.sign.toLowerCase()) return null;
+              // Pull the planet's house from buildPlanetPositions so the
+              // card stays consistent with the planetary-positions table.
+              const position = positions.find((p) => p.key === featured.planet);
+              return { featured, position };
+            })
+            .filter((entry): entry is { featured: FeaturedPlacement; position: PlanetPosition | undefined } => Boolean(entry));
           if (matched.length === 0) return null;
           return (
-            <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-                {t("natalChartFeaturedInsightsTitle")}
-              </p>
-              <p className="mt-3 text-sm leading-7 text-text-muted">
-                {t("natalChartFeaturedInsightsBody")}
-              </p>
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                {matched.map((featured) => {
-                  const signKey = featured.sign.toLowerCase();
-                  return (
-                    <PlacementCard
-                      key={`${featured.planet}-${featured.sign}`}
-                      planet={t(`natalPlanet_${featured.planet}`)}
-                      signKey={signKey}
-                      signLabel={translateSign(featured.sign, locale)}
-                      meaning={t(`natalPlanetMeaning_${featured.planet}`)}
-                      interpretation={t(
-                        `natalPlanetIn_${featured.planet}_${signKey}`
-                      )}
-                      inLove={
-                        featured.hasInLove
-                          ? t(`natalPlanetInLove_${featured.planet}_${signKey}`)
-                          : undefined
-                      }
-                      eyebrow={t("natalPlanetCardFeaturedEyebrow")}
-                      inLoveLabel={t("natalPlanetCardInLoveLabel")}
-                    />
-                  );
-                })}
+            <div className="space-y-6">
+              {/* Editorial reminder that astrology reads best in context,
+                  not as a fixed verdict on any one placement. Sits above
+                  the cards so it sets expectations before the user reads. */}
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+                <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+                  {t("natalChartDisclaimerTitle")}
+                </p>
+                <p className="mt-2 text-sm leading-7 text-text-muted">
+                  {t("natalChartDisclaimerBody")}
+                </p>
+              </div>
+
+              <div className="rounded-[2rem] border border-border bg-card/90 p-6">
+                <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+                  {t("natalChartFeaturedInsightsTitle")}
+                </p>
+                <p className="mt-3 text-sm leading-7 text-text-muted">
+                  {t("natalChartFeaturedInsightsBody")}
+                </p>
+                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  {matched.map(({ featured, position }) => {
+                    const signKey = featured.sign.toLowerCase();
+                    const houseNumber = position?.house ?? null;
+                    const houseLabel =
+                      houseNumber && houseNumber >= 1 && houseNumber <= 12
+                        ? t(`natalHouseName_${houseNumber}`)
+                        : undefined;
+                    const houseMeaning =
+                      houseNumber && houseNumber >= 1 && houseNumber <= 12
+                        ? t(`natalHouseMeaning_${houseNumber}`)
+                        : undefined;
+                    return (
+                      <PlacementCard
+                        key={`${featured.planet}-${featured.sign}`}
+                        planet={t(`natalPlanet_${featured.planet}`)}
+                        signKey={signKey}
+                        signLabel={translateSign(featured.sign, locale)}
+                        planetMeaning={t(`natalPlanetMeaning_${featured.planet}`)}
+                        signInterpretation={t(
+                          `natalPlanetIn_${featured.planet}_${signKey}`
+                        )}
+                        houseNumber={houseNumber}
+                        houseLabel={houseLabel}
+                        houseMeaning={houseMeaning}
+                        datingLens={
+                          featured.hasDatingLens
+                            ? t(`natalPlanetDatingLens_${featured.planet}_${signKey}`)
+                            : undefined
+                        }
+                        eyebrow={t("natalPlanetCardFeaturedEyebrow")}
+                        datingLensLabel={t("natalPlanetCardDatingLensLabel")}
+                      />
+                    );
+                  })}
+                </div>
               </div>
             </div>
           );
