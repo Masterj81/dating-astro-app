@@ -419,6 +419,43 @@ export function NatalChartOverview() {
           </div>
         </div>
 
+        {/* House meanings — pedagogical, identical for every chart. Future
+            iteration will overlay the sign on each house's cusp once the
+            edge function returns cusps, but the meanings themselves don't
+            depend on the viewer's chart. Two-column grid on md+, single
+            column on mobile so 360px stays clean. */}
+        <div className="rounded-[2rem] border border-border bg-card/90 p-6">
+          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+            {t("natalChartHousesTitle")}
+          </p>
+          <p className="mt-3 text-sm leading-7 text-text-muted">
+            {t("natalChartHousesBody")}
+          </p>
+          <div className="mt-6 grid gap-3 md:grid-cols-2">
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((houseNumber) => (
+              <div
+                key={houseNumber}
+                className="flex items-start gap-3 rounded-[1.4rem] border border-border bg-bg/70 p-4"
+              >
+                <div
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-sm font-semibold text-white"
+                  aria-hidden="true"
+                >
+                  {houseNumber}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-white">
+                    {t(`natalHouseName_${houseNumber}`)}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-text-muted">
+                    {t(`natalHouseMeaning_${houseNumber}`)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Featured placement insights — only renders cards where we have
             content matching the viewer's actual chart. Today: 4 pilot
             (planet, sign) tuples. Adding more is content-only, no code
