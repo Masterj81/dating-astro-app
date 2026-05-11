@@ -4,68 +4,133 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { translateSign } from "@/lib/astrology-labels";
+import { ZodiacGlyph } from "@/components/ZodiacGlyph";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
 
-type LuckyCategoryKey = "love" | "career" | "money" | "health" | "creativity";
+// V2 of Lucky Days — renamed editorially to "Planning Windows".
+//
+// Why a full V2: the previous layout fabricated 5 calendar dates per month
+// (e.g. "Best day: October 14") plus a numeric "energy %" and a precise
+// "lucky window 11:00-13:30" per date, all derived from
+// (sun_sign.length * (day-of-month + 3)) — no ephemeris, no astrological
+// data. Presented across categories Money / Health / Romance, this was the
+// highest legal-risk surface in the app: a date precisely framed as
+// favorable for negotiation, romance, or budget revision verges on
+// disguised financial/relational advice.
+//
+// The V2 removes:
+//   - All percentage scores
+//   - All time windows ("11:00-13:30")
+//   - All precise calendar dates ("October 14")
+//   - The "Money" / "Health" / "Romance" categories pinned to dates
+//   - The "Avoid: X" callouts pinned to dates
+//   - The "Next lucky day: N" green chip
+//   - The word "lucky" everywhere user-facing (FR: "faste")
+//
+// What remains:
+//   - Real `sun_sign` from Supabase (used to personalize voice, not a date)
+//   - The current month (used as a frame, not a prediction)
+//   - The Cosmic tier gate exactly as it was
+//   - The legacy route `/cosmic/lucky-days` (no rename, deep links survive)
+//
+// New shape: three broad windows (Days 1-10 / 11-20 / 21-end), each with a
+// sign-specific qualitative paragraph; four generic activity lenses
+// (Connect / Reflect / Reset / Plan); a sign-specific dating lens; a
+// monthly reflection prompt; a soft disclaimer. All content lives behind
+// `luckyDays*V2*` i18n keys so any stale translation of the old keys
+// can't bleed through.
 
-type LuckyDay = {
-  day: number;
-  score: number;
-  luckyWindow: string;
-  bestForKeys: string[];
-  avoidKeys: string[];
+const SIGNS = [
+  "aries",
+  "taurus",
+  "gemini",
+  "cancer",
+  "leo",
+  "virgo",
+  "libra",
+  "scorpio",
+  "sagittarius",
+  "capricorn",
+  "aquarius",
+  "pisces",
+] as const;
+
+type SignKey = (typeof SIGNS)[number];
+
+function isKnownSign(value: string | null | undefined): value is SignKey {
+  if (!value) return false;
+  return SIGNS.includes(value.toLowerCase() as SignKey);
+}
+
+// Phase indicator — 5 dots, N filled. Used to convey window position in
+// the monthly arc (begin / build / close), NOT a score. Visually mirrors
+// the Daily/Monthly V2 meters but reads as a sequence marker, not a
+// quantitative claim. The dot counts here are intrinsic to each window's
+// role in a typical month — not derived from any seed or user data.
+function PhaseDots({ filled }: { filled: 1 | 2 | 3 | 4 | 5 }) {
+  return (
+    <div className="flex items-center gap-1.5" aria-hidden="true">
+      {Array.from({ length: 5 }, (_, i) => (
+        <span
+          key={i}
+          className={`h-2 w-2 rounded-full ${
+            i < filled ? "bg-[#a78bfa]" : "bg-white/15"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
+type WindowDef = {
+  key: "early" | "mid" | "late";
+  rangeKey: string;
+  labelKey: string;
+  verbKey: string;
+  bodyKeyTemplate: string;
+  phase: 1 | 2 | 3 | 4 | 5;
 };
 
-const CATEGORY_KEYS: LuckyCategoryKey[] = ["love", "career", "money", "health", "creativity"];
+const WINDOWS: WindowDef[] = [
+  {
+    key: "early",
+    rangeKey: "luckyDaysV2WindowEarlyRange",
+    labelKey: "luckyDaysV2WindowEarly",
+    verbKey: "luckyDaysV2WindowEarlyVerb",
+    bodyKeyTemplate: "luckyDaysEarlyWindowV2_",
+    phase: 2,
+  },
+  {
+    key: "mid",
+    rangeKey: "luckyDaysV2WindowMidRange",
+    labelKey: "luckyDaysV2WindowMid",
+    verbKey: "luckyDaysV2WindowMidVerb",
+    bodyKeyTemplate: "luckyDaysMidWindowV2_",
+    phase: 4,
+  },
+  {
+    key: "late",
+    rangeKey: "luckyDaysV2WindowLateRange",
+    labelKey: "luckyDaysV2WindowLate",
+    verbKey: "luckyDaysV2WindowLateVerb",
+    bodyKeyTemplate: "luckyDaysLateWindowV2_",
+    phase: 3,
+  },
+];
 
-function getDaysInMonth(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-}
+type LensDef = {
+  key: "connect" | "reflect" | "reset" | "plan";
+  labelKey: string;
+  bodyKey: string;
+};
 
-function wrapDay(day: number, daysInMonth: number) {
-  return ((day - 1) % daysInMonth) + 1;
-}
-
-function buildLuckyDays(
-  category: LuckyCategoryKey,
-  seed: number,
-  daysInMonth: number
-): LuckyDay[] {
-  const startOffset = seed % 6;
-  const spacing = 4 + (seed % 3);
-
-  const detailMap: Record<LuckyCategoryKey, { bestForKeys: string[]; avoidKeys: string[] }> = {
-    love: {
-      bestForKeys: ["luckyDaysBestFor_romance", "luckyDaysBestFor_vulnerability"],
-      avoidKeys: ["luckyDaysAvoid_conflict"],
-    },
-    career: {
-      bestForKeys: ["luckyDaysBestFor_pitch", "luckyDaysBestFor_planning"],
-      avoidKeys: ["luckyDaysAvoid_rushing"],
-    },
-    money: {
-      bestForKeys: ["luckyDaysBestFor_budget", "luckyDaysBestFor_negotiation"],
-      avoidKeys: ["luckyDaysAvoid_impulse"],
-    },
-    health: {
-      bestForKeys: ["luckyDaysBestFor_routine", "luckyDaysBestFor_rest"],
-      avoidKeys: ["luckyDaysAvoid_overload"],
-    },
-    creativity: {
-      bestForKeys: ["luckyDaysBestFor_brainstorm", "luckyDaysBestFor_expression"],
-      avoidKeys: ["luckyDaysAvoid_doubt"],
-    },
-  };
-
-  return Array.from({ length: 5 }, (_, index) => ({
-    day: wrapDay(startOffset + 2 + index * spacing, daysInMonth),
-    score: 72 + ((seed + index * 9) % 25),
-    luckyWindow: `${9 + ((seed + index) % 8)}:00 - ${11 + ((seed + index) % 8)}:30`,
-    bestForKeys: detailMap[category].bestForKeys,
-    avoidKeys: detailMap[category].avoidKeys,
-  })).sort((a, b) => a.day - b.day);
-}
+const LENSES: LensDef[] = [
+  { key: "connect", labelKey: "luckyDaysV2LensConnect", bodyKey: "luckyDaysV2LensConnectBody" },
+  { key: "reflect", labelKey: "luckyDaysV2LensReflect", bodyKey: "luckyDaysV2LensReflectBody" },
+  { key: "reset", labelKey: "luckyDaysV2LensReset", bodyKey: "luckyDaysV2LensResetBody" },
+  { key: "plan", labelKey: "luckyDaysV2LensPlan", bodyKey: "luckyDaysV2LensPlanBody" },
+];
 
 export function LuckyDaysOverview() {
   const t = useTranslations("webApp");
@@ -74,11 +139,16 @@ export function LuckyDaysOverview() {
   const [sunSign, setSunSign] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<LuckyCategoryKey>("love");
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   const today = useMemo(() => new Date(), []);
-  const daysInMonth = useMemo(() => getDaysInMonth(today), [today]);
+  const monthLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale, {
+        month: "long",
+        year: "numeric",
+      }).format(today),
+    [locale, today]
+  );
 
   useEffect(() => {
     const load = async () => {
@@ -116,49 +186,16 @@ export function LuckyDaysOverview() {
     load();
   }, [t]);
 
-  const monthFormatter = useMemo(
-    () =>
-      new Intl.DateTimeFormat(locale, {
-        month: "long",
-        year: "numeric",
-      }),
-    [locale]
-  );
-
-  const fullDateFormatter = useMemo(
-    () =>
-      new Intl.DateTimeFormat(locale, {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-      }),
-    [locale]
-  );
-
-  const categoryDays = useMemo(() => {
-    const baseSeed = (sunSign?.length || 5) * (today.getDate() + 3);
-    return CATEGORY_KEYS.reduce<Record<LuckyCategoryKey, LuckyDay[]>>((acc, category, index) => {
-      acc[category] = buildLuckyDays(category, baseSeed + index * 7, daysInMonth);
-      return acc;
-    }, {} as Record<LuckyCategoryKey, LuckyDay[]>);
-  }, [daysInMonth, sunSign, today]);
-
-  const activeDays = categoryDays[selectedCategory];
-  const signLabel = sunSign ? translateSign(sunSign, locale) : t("statusUnknown");
-
-  useEffect(() => {
-    setSelectedDay(activeDays?.[0]?.day ?? null);
-  }, [activeDays]);
-
-  const selectedLuckyDay =
-    activeDays.find((entry) => entry.day === selectedDay) ?? activeDays[0] ?? null;
-  const nextLuckyDay =
-    activeDays.find((entry) => entry.day >= today.getDate()) ?? activeDays[0] ?? null;
+  const signLabel = sunSign ? translateSign(sunSign, locale) : null;
 
   if (loading) {
+    // Skeleton — 4 placeholder cards roughly matching the final layout.
     return (
-      <div className="rounded-[2rem] border border-border bg-card/90 p-6 text-sm text-text-muted">
-        {t("loading")}
+      <div className="grid gap-6">
+        <div className="h-44 animate-pulse rounded-[2rem] border border-border bg-card/90" />
+        <div className="h-64 animate-pulse rounded-[2rem] border border-border bg-card/90" />
+        <div className="h-48 animate-pulse rounded-[2rem] border border-border bg-card/90" />
+        <div className="h-32 animate-pulse rounded-[2rem] border border-border bg-card/90" />
       </div>
     );
   }
@@ -172,6 +209,7 @@ export function LuckyDaysOverview() {
     );
   }
 
+  // Cosmic-only gate, preserved exactly from the V1 surface.
   if (state.tier !== "premium_plus") {
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-8">
@@ -204,188 +242,170 @@ export function LuckyDaysOverview() {
     );
   }
 
+  // Tier OK but no sun sign — route to profile rather than fabricate.
+  if (!isKnownSign(sunSign)) {
+    return (
+      <section className="rounded-[2rem] border border-border bg-card/90 p-8">
+        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          {t("luckyDaysV2HeroEyebrow")}
+        </p>
+        <h2 className="mt-3 text-2xl font-semibold text-white">
+          {t("luckyDaysV2NoSignTitle")}
+        </h2>
+        <p className="mt-3 max-w-xl text-sm leading-7 text-text-muted">
+          {t("luckyDaysV2NoSignBody")}
+        </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            href="/app/profile"
+            className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+          >
+            {t("openProfile")}
+          </Link>
+        </div>
+        {error ? (
+          <p className="mt-6 rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
+            {error}
+          </p>
+        ) : null}
+      </section>
+    );
+  }
+
+  const sign: SignKey = sunSign.toLowerCase() as SignKey;
+
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-      <section className="space-y-6">
-        <div className="rounded-[2rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-6">
+    <div className="grid gap-6">
+      {/* Block 1 — Hero. Month + sign glyph + qualitative monthly theme. */}
+      <section className="rounded-[2rem] border border-border bg-card/90 p-6">
+        <div className="rounded-[1.75rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-6">
           <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-            {t("luckyDaysMonthLabel")}
+            {t("luckyDaysV2HeroEyebrow")}
           </p>
-          <h2 className="mt-3 text-3xl font-semibold text-white">
-            {t("luckyDaysFor", { sign: signLabel })}
-          </h2>
-          <p className="mt-3 text-sm leading-7 text-text-muted">
-            {t("luckyDaysOverviewBody", {
-              sign: signLabel,
-              month: monthFormatter.format(today),
-            })}
-          </p>
-        </div>
-
-        <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-            {t("luckyDaysCategoryTitle")}
-          </p>
-          <div className="mt-5 flex flex-wrap gap-3">
-            {CATEGORY_KEYS.map((category) => {
-              const isActive = selectedCategory === category;
-
-              return (
-                <button
-                  key={category}
-                  type="button"
-                  onClick={() => setSelectedCategory(category)}
-                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
-                    isActive
-                      ? "border-[rgba(232,93,117,0.34)] bg-[rgba(232,93,117,0.18)] text-white"
-                      : "border-border bg-bg/70 text-text-muted hover:bg-card-hover hover:text-white"
-                  }`}
-                >
-                  {t(`luckyDaysCategory_${category}`)}
-                </button>
-              );
-            })}
-          </div>
-          <p className="mt-4 text-sm leading-7 text-text-muted">
-            {t(`luckyDaysCategoryBody_${selectedCategory}`)}
-          </p>
-        </div>
-
-        <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-                {t("luckyDaysCalendarTitle")}
-              </p>
-              <h3 className="mt-2 text-xl font-semibold text-white">
-                {monthFormatter.format(today)}
-              </h3>
+          <div className="mt-3 flex flex-wrap items-center gap-4">
+            <div
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[rgba(124,108,255,0.34)] bg-[rgba(124,108,255,0.18)] text-3xl text-white"
+              aria-hidden="true"
+            >
+              <ZodiacGlyph sign={sign} className="leading-none" />
             </div>
-            {nextLuckyDay ? (
-              <div className="rounded-full border border-[rgba(74,222,128,0.24)] bg-[rgba(74,222,128,0.12)] px-4 py-2 text-sm font-semibold text-emerald-200">
-                {t("luckyDaysNextTitle")}: {nextLuckyDay.day}
-              </div>
-            ) : null}
+            <div className="min-w-0">
+              <h2 className="text-2xl font-semibold text-white sm:text-3xl">
+                {t("luckyDaysV2Title")}
+              </h2>
+              <p className="mt-1 text-sm text-text-muted">
+                {signLabel} · {monthLabel}
+              </p>
+            </div>
           </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            {activeDays.map((entry) => {
-              const date = new Date(today.getFullYear(), today.getMonth(), entry.day);
-              const isSelected = selectedLuckyDay?.day === entry.day;
-
-              return (
-                <button
-                  key={entry.day}
-                  type="button"
-                  onClick={() => setSelectedDay(entry.day)}
-                  className={`rounded-[1.5rem] border p-4 text-left transition-colors ${
-                    isSelected
-                      ? "border-[rgba(124,108,255,0.32)] bg-[rgba(124,108,255,0.12)]"
-                      : "border-border bg-bg/70 hover:bg-card-hover"
-                  }`}
-                >
-                  <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-                    {t("luckyDaysBestDay")}
-                  </p>
-                  <h4 className="mt-2 text-lg font-semibold text-white">
-                    {fullDateFormatter.format(date)}
-                  </h4>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <span className="rounded-full border border-border bg-card px-3 py-1 text-xs text-white">
-                      {t("luckyDaysEnergy")}: {entry.score}%
-                    </span>
-                    <span className="rounded-full border border-border bg-card px-3 py-1 text-xs text-white">
-                      {t("luckyDaysLuckyWindow")}: {entry.luckyWindow}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
+          <p className="mt-5 text-sm leading-7 text-text-muted">
+            {t("luckyDaysV2Subtitle")}
+          </p>
+          <div className="mt-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
+              {t("luckyDaysV2ThemeLabel")}
+            </p>
+            <p className="mt-2 text-lg font-medium text-white">
+              {t(`luckyDaysThemeV2_${sign}`)}
+            </p>
           </div>
         </div>
       </section>
 
-      <aside className="space-y-6">
-        {selectedLuckyDay ? (
-          <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-            <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-              {t("luckyDaysBestDay")}
-            </p>
-            <h3 className="mt-3 text-2xl font-semibold text-white">
-              {fullDateFormatter.format(
-                new Date(today.getFullYear(), today.getMonth(), selectedLuckyDay.day)
-              )}
-            </h3>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-border bg-bg/70 p-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-                  {t("luckyDaysEnergy")}
-                </p>
-                <p className="mt-3 text-lg font-semibold text-white">
-                  {selectedLuckyDay.score}%
-                </p>
+      {/* Block 2 — Three planning windows. Each is a broad multi-day band
+          (Days 1-10, 11-20, 21-end) with a qualitative verb (Begin / Build
+          / Close) and a sign-specific paragraph. No precise dates, no
+          times, no scores. */}
+      <section className="rounded-[2rem] border border-border bg-card/90 p-6">
+        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          {t("luckyDaysV2WindowsTitle")}
+        </p>
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          {WINDOWS.map((w) => (
+            <article
+              key={w.key}
+              className="flex flex-col rounded-[1.4rem] border border-border bg-bg/70 p-5"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
+                    {t(w.labelKey)}
+                  </p>
+                  <p className="mt-1 text-xs text-text-muted">{t(w.rangeKey)}</p>
+                </div>
+                <PhaseDots filled={w.phase} />
               </div>
-              <div className="rounded-2xl border border-border bg-bg/70 p-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-                  {t("luckyDaysLuckyWindow")}
-                </p>
-                <p className="mt-3 text-lg font-semibold text-white">
-                  {selectedLuckyDay.luckyWindow}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-[1.5rem] border border-border bg-bg/70 p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-                {t("luckyDaysBestFor")}
+              <p className="mt-4 text-sm font-semibold text-white">
+                {t(w.verbKey)}
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {selectedLuckyDay.bestForKeys.map((key) => (
-                  <span
-                    key={key}
-                    className="rounded-full border border-[rgba(74,222,128,0.24)] bg-[rgba(74,222,128,0.12)] px-3 py-1 text-xs text-emerald-200"
-                  >
-                    {t(key)}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-[1.5rem] border border-border bg-bg/70 p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-                {t("luckyDaysAvoid")}
+              <p className="mt-2 text-sm leading-7 text-text-muted">
+                {t(`${w.bodyKeyTemplate}${sign}`)}
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {selectedLuckyDay.avoidKeys.map((key) => (
-                  <span
-                    key={key}
-                    className="rounded-full border border-[rgba(251,191,36,0.24)] bg-[rgba(251,191,36,0.12)] px-3 py-1 text-xs text-amber-200"
-                  >
-                    {t(key)}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        <div className="rounded-[2rem] border border-[rgba(74,222,128,0.24)] bg-[rgba(74,222,128,0.10)] p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-            {t("luckyDaysTipsTitle")}
-          </p>
-          <div className="mt-4 space-y-3 text-sm leading-7 text-text-muted">
-            <p>{t("luckyDaysTip_1")}</p>
-            <p>{t("luckyDaysTip_2")}</p>
-            <p>{t("luckyDaysTip_3")}</p>
-          </div>
+            </article>
+          ))}
         </div>
+      </section>
 
-        {error ? (
-          <p className="rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
-            {error}
-          </p>
-        ) : null}
-      </aside>
+      {/* Block 3 — Activity lenses. Four generic frames (Connect / Reflect
+          / Reset / Plan) replacing the old risky categories (Love / Career
+          / Money / Health / Creativity with date-pinned recommendations).
+          These paragraphs are NOT pinned to any specific date — they're
+          frames for the whole month. */}
+      <section className="rounded-[2rem] border border-border bg-card/90 p-6">
+        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          {t("luckyDaysV2LensesTitle")}
+        </p>
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          {LENSES.map((lens) => (
+            <article
+              key={lens.key}
+              className="rounded-[1.4rem] border border-border bg-bg/70 p-5"
+            >
+              <p className="text-sm font-semibold text-white">{t(lens.labelKey)}</p>
+              <p className="mt-3 text-sm leading-7 text-text-muted">
+                {t(lens.bodyKey)}
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* Block 4 — Dating lens. Coral-tinted card, mirrors Daily V2 /
+          Monthly V2 styling for the dating block. */}
+      <section className="rounded-[2rem] border border-[rgba(232,93,117,0.24)] bg-[rgba(232,93,117,0.10)] p-6">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#ffb7c7]">
+          {t("luckyDaysV2DatingTitle")}
+        </p>
+        <p className="mt-3 text-sm leading-7 text-white/90">
+          {t(`luckyDaysDatingLensV2_${sign}`)}
+        </p>
+      </section>
+
+      {/* Block 5 — Reflection prompts. Journal-style invitations. */}
+      <section className="rounded-[2rem] border border-border bg-card/90 p-6">
+        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          {t("luckyDaysV2ReflectTitle")}
+        </p>
+        <p className="mt-3 text-sm leading-7 text-text-muted">
+          {t(`luckyDaysReflectionV2_${sign}`)}
+        </p>
+      </section>
+
+      {/* Block 6 — Disclaimer. */}
+      <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          {t("luckyDaysV2DisclaimerTitle")}
+        </p>
+        <p className="mt-2 text-sm leading-7 text-text-muted">
+          {t("luckyDaysV2DisclaimerBody")}
+        </p>
+      </div>
+
+      {error ? (
+        <p className="rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
