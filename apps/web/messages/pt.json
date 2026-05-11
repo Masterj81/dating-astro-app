@@ -1241,7 +1241,7 @@
     "planFeatureTransitAlerts": "Alertas de trânsitos planetários em tempo real",
     "planFeatureUnlimitedLikes": "Curtidas ilimitadas todos os dias",
     "planFeatureWeeklyHoroscopes": "Horóscopos e orientações semanais",
-    "plansFaqNote": "Seu cartão não será cobrado durante o período de teste de 7 dias. Você pode cancelar a qualquer momento nas configurações de cobrança. Todos os planos incluem garantia de reembolso total em até 14 dias após a primeira cobrança.",
+    "plansFaqNote": "Seu cartão não será cobrado durante o período de teste de 7 dias. Você pode cancelar a qualquer momento nas configurações da sua conta.",
     "plansLoading": "Carregando planos disponíveis…",
     "portalHint": "Atualize o método de pagamento, veja faturas ou cancele seu plano.",
     "redirectingToCheckout": "Redirecionando para o pagamento seguro…",
@@ -1430,6 +1430,6 @@
     "step2": "Crie seu perfil e insira seus dados de nascimento",
     "step3": "Vá em Configurações > Convidar amigos e insira o código <strong>{code}</strong>",
     "step4": "Você e seu amigo ganham 1 mês de premium grátis!",
-    "footer": "AstroDating — Amor escrito nas estrelas"
+    "footer": "AstroDating — A astrologia como linguagem, não como oráculo"
   }
 }

@@ -1241,7 +1241,7 @@
     "planFeatureTransitAlerts": "Planetare Transit-Benachrichtigungen in Echtzeit",
     "planFeatureUnlimitedLikes": "Unbegrenzte Likes jeden Tag",
     "planFeatureWeeklyHoroscopes": "Wöchentliche Horoskope und Tipps",
-    "plansFaqNote": "Deine Karte wird während der 7-tägigen Testphase nicht belastet. Du kannst jederzeit über deine Abrechnungseinstellungen kündigen. Alle Tarife beinhalten eine vollständige Geld-zurück-Garantie innerhalb von 14 Tagen nach der ersten Abbuchung.",
+    "plansFaqNote": "Deine Karte wird während der 7-tägigen Testphase nicht belastet. Du kannst jederzeit über deine Abrechnungseinstellungen kündigen.",
     "plansLoading": "Verfügbare Tarife werden geladen…",
     "portalHint": "Zahlungsmethode ändern, Rechnungen ansehen oder Tarif kündigen.",
     "redirectingToCheckout": "Weiterleitung zur sicheren Zahlung…",
@@ -1430,6 +1430,6 @@
     "step2": "Erstelle dein Profil und gib deine Geburtsdaten ein",
     "step3": "Gehe zu Einstellungen > Freunde einladen und gib den Code <strong>{code}</strong> ein",
     "step4": "Du und dein Freund bekommt je 1 Monat Premium kostenlos!",
-    "footer": "AstroDating — Liebe, geschrieben in den Sternen"
+    "footer": "AstroDating — Astrologie als Sprache, nicht als Orakel"
   }
 }

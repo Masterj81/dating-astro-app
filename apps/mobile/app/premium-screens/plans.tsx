@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -25,6 +26,13 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { usePremium } from '../../contexts/PremiumContext';
 import { getAllTierPackages, purchasePackage } from '../../services/purchases';
 import { claimPlayPromoCode, ClaimedPlayPromoCampaign } from '../../services/promoCodes';
+
+const MANAGE_SUBSCRIPTIONS_URL =
+  Platform.OS === 'ios'
+    ? 'https://apps.apple.com/account/subscriptions'
+    : 'https://play.google.com/store/account/subscriptions';
+const LEGAL_TERMS_URL = 'https://astrodatingapp.com/terms';
+const LEGAL_PRIVACY_URL = 'https://astrodatingapp.com/privacy';
 
 type BillingCycle = 'monthly' | 'annual';
 type TierKind = 'celestial' | 'cosmic';
@@ -335,6 +343,29 @@ export default function PremiumPlansScreen() {
             {t('plansTrialDesc') || 'You won\u2019t be charged during your trial. Cancel anytime in 30 seconds from your device settings.'}
           </Text>
         </View>
+
+        {/* Apple IAP-required disclosures: auto-renewal terms, Manage Subscriptions, Terms, Privacy.
+            These must appear within the same purchase context as the price + duration above. */}
+        <View style={styles.legalBlock}>
+          <Text style={styles.autoRenewText}>
+            {t('plansAutoRenewDisclosure') ||
+              'Subscription auto-renews at the listed price each billing cycle (monthly or yearly). Your account will be charged for renewal within 24 hours before the end of the current period. You can turn off auto-renewal anytime in your App Store / Google Play account settings.'}
+          </Text>
+          <View style={styles.legalLinksRow}>
+            <TouchableOpacity onPress={() => Linking.openURL(MANAGE_SUBSCRIPTIONS_URL).catch(() => {})}>
+              <Text style={styles.legalLink}>{t('plansManageSubsLink') || 'Manage Subscriptions'}</Text>
+            </TouchableOpacity>
+            <Text style={styles.legalLinkDot}>\u00b7</Text>
+            <TouchableOpacity onPress={() => router.push('/settings/terms-of-service' as any)}>
+              <Text style={styles.legalLink}>{t('plansLegalTerms') || 'Terms of Service'}</Text>
+            </TouchableOpacity>
+            <Text style={styles.legalLinkDot}>\u00b7</Text>
+            <TouchableOpacity onPress={() => router.push('/settings/privacy-policy' as any)}>
+              <Text style={styles.legalLink}>{t('plansLegalPrivacy') || 'Privacy Policy'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <Text style={styles.trialText}>{t('plansSocialProof') || 'Designed for deeper dating, real compatibility, and better conversations'}</Text>
       </ScrollView>
     </LinearGradient>
@@ -677,6 +708,34 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: AppTheme.spacing.lg,
     marginBottom: AppTheme.spacing.xl,
+  },
+  legalBlock: {
+    marginTop: AppTheme.spacing.lg,
+    paddingHorizontal: AppTheme.spacing.md,
+  },
+  autoRenewText: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: AppTheme.colors.textMuted,
+    textAlign: 'center',
+  },
+  legalLinksRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginTop: AppTheme.spacing.md,
+    gap: AppTheme.spacing.xs,
+  },
+  legalLink: {
+    fontSize: 12,
+    color: AppTheme.colors.textSecondary,
+    textDecorationLine: 'underline',
+    paddingHorizontal: 4,
+  },
+  legalLinkDot: {
+    fontSize: 12,
+    color: AppTheme.colors.textMuted,
   },
   webRedirectContainer: {
     flex: 1,

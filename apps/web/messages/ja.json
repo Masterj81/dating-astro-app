@@ -1241,7 +1241,7 @@
     "planFeatureTransitAlerts": "リアルタイムの惑星トランジット通知",
     "planFeatureUnlimitedLikes": "毎日無制限のいいね",
     "planFeatureWeeklyHoroscopes": "週間ホロスコープとアドバイス",
-    "plansFaqNote": "7日間のトライアル期間中はカードに請求されません。請求設定からいつでも解約できます。全プランに初回請求から14日以内の全額返金保証が付いています。",
+    "plansFaqNote": "7日間のトライアル期間中はカードに請求されません。アカウント設定からいつでも解約できます。",
     "plansLoading": "利用可能なプランを読み込み中…",
     "portalHint": "支払い方法の更新、請求書の確認、またはプランの解約ができます。",
     "redirectingToCheckout": "安全な決済ページに移動中…",
@@ -1430,6 +1430,6 @@
     "step2": "プロフィールを作成し、生年月日を入力",
     "step3": "設定 > 友達を招待 でコード <strong>{code}</strong> を入力",
     "step4": "あなたとお友達の両方がプレミアム1ヶ月無料！",
-    "footer": "AstroDating — 星に書かれた恋"
+    "footer": "AstroDating — 占星術は言語であり、占いではない"
   }
 }
