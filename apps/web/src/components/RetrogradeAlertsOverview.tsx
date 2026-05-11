@@ -1,152 +1,93 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useLocale, useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
-import { useEffect } from "react";
 
-type RetrogradeStatus = "retrograde" | "upcoming" | "direct";
+type PlanetKey = "mercury" | "venus" | "mars" | "saturn";
+type Phase = "moving" | "approaching" | "passed" | "background";
 
-type RetrogradeEvent = {
-  key: "mercury" | "venus" | "mars" | "saturn";
-  status: RetrogradeStatus;
-  startOffsetDays: number;
-  durationDays: number;
-  effects: string[];
-  doKeys: string[];
-  avoidKeys: string[];
+type PlanetReflection = {
+  key: PlanetKey;
+  phase: Phase;
 };
 
-type AlertKey =
-  | "mercury"
-  | "venus"
-  | "mars"
-  | "saturn"
-  | "preShadow"
-  | "postShadow";
-
-const PLANET_SYMBOLS: Record<RetrogradeEvent["key"], string> = {
+const PLANET_SYMBOL: Record<PlanetKey, string> = {
   mercury: "☿",
   venus: "♀",
   mars: "♂",
   saturn: "♄",
 };
 
-const STATUS_STYLES: Record<RetrogradeStatus, string> = {
-  retrograde: "border-rose-500/30 bg-rose-500/10 text-rose-200",
-  upcoming: "border-amber-500/30 bg-amber-500/10 text-amber-200",
-  direct: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+const PHASE_BADGE: Record<Phase, string> = {
+  moving: "border-rose-500/30 bg-rose-500/10 text-rose-200",
+  approaching: "border-amber-500/30 bg-amber-500/10 text-amber-200",
+  passed: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+  background: "border-white/15 bg-white/5 text-text-muted",
 };
 
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-}
+// Phases are intentionally hardcoded symbolic states, not derived from a real
+// ephemeris. The product decision (Option B) is to drop fabricated calendar
+// dates and present these as reflection windows, not astronomical timing.
+const PLANETS: PlanetReflection[] = [
+  { key: "mercury", phase: "approaching" },
+  { key: "venus", phase: "passed" },
+  { key: "mars", phase: "background" },
+  { key: "saturn", phase: "moving" },
+];
 
-function buildRetrogrades(seed: number): RetrogradeEvent[] {
-  return [
-    {
-      key: "mercury",
-      status: "upcoming",
-      startOffsetDays: (seed % 18) + 10,
-      durationDays: 22,
-      effects: [
-        "retrogradeEffect_mercury_1",
-        "retrogradeEffect_mercury_2",
-        "retrogradeEffect_mercury_3",
-      ],
-      doKeys: ["retrogradeDo_mercury_1", "retrogradeDo_mercury_2"],
-      avoidKeys: ["retrogradeAvoid_mercury_1", "retrogradeAvoid_mercury_2"],
-    },
-    {
-      key: "venus",
-      status: "direct",
-      startOffsetDays: -42,
-      durationDays: 30,
-      effects: [
-        "retrogradeEffect_venus_1",
-        "retrogradeEffect_venus_2",
-        "retrogradeEffect_venus_3",
-      ],
-      doKeys: ["retrogradeDo_venus_1", "retrogradeDo_venus_2"],
-      avoidKeys: ["retrogradeAvoid_venus_1", "retrogradeAvoid_venus_2"],
-    },
-    {
-      key: "mars",
-      status: "direct",
-      startOffsetDays: -68,
-      durationDays: 55,
-      effects: [
-        "retrogradeEffect_mars_1",
-        "retrogradeEffect_mars_2",
-        "retrogradeEffect_mars_3",
-      ],
-      doKeys: ["retrogradeDo_mars_1", "retrogradeDo_mars_2"],
-      avoidKeys: ["retrogradeAvoid_mars_1", "retrogradeAvoid_mars_2"],
-    },
-    {
-      key: "saturn",
-      status: "retrograde",
-      startOffsetDays: -8,
-      durationDays: 110,
-      effects: [
-        "retrogradeEffect_saturn_1",
-        "retrogradeEffect_saturn_2",
-        "retrogradeEffect_saturn_3",
-      ],
-      doKeys: ["retrogradeDo_saturn_1", "retrogradeDo_saturn_2"],
-      avoidKeys: ["retrogradeAvoid_saturn_1", "retrogradeAvoid_saturn_2"],
-    },
-  ];
-}
+type ServerGate = { allowed: boolean; reason: string | null };
 
 export function RetrogradeAlertsOverview() {
   const t = useTranslations("webApp");
-  const locale = useLocale();
   const [state, setState] = useState<WebAccountState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedKey, setExpandedKey] = useState<RetrogradeEvent["key"]>("mercury");
-  const [alerts, setAlerts] = useState<Record<AlertKey, boolean>>({
-    mercury: true,
-    venus: true,
-    mars: true,
-    saturn: false,
-    preShadow: true,
-    postShadow: true,
-  });
+  const [serverGate, setServerGate] = useState<ServerGate>({ allowed: true, reason: null });
 
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
       setLoading(true);
       setError(null);
       try {
         const account = await getCurrentAccountState(t("unknownUser"));
+        if (cancelled) return;
         setState(account);
+
+        // Server-side enforcement for Cosmic only. DB policy:
+        // ('retrograde_alerts', 'cosmic', NULL). NULL quota = unlimited,
+        // mirroring natal_chart / lucky_days. Free and Celestial fall through
+        // to the paywall below; no RPC for them.
+        if (account?.tier === "premium_plus") {
+          const supabase = getSupabaseBrowser();
+          const { data: gateRow, error: gateError } = await supabase
+            .rpc("enforce_premium_feature", { p_feature_key: "retrograde_alerts" })
+            .maybeSingle<{ allowed: boolean; reason: string | null }>();
+
+          if (cancelled) return;
+          if (gateError || !gateRow || gateRow.allowed !== true) {
+            setServerGate({ allowed: false, reason: gateRow?.reason ?? "error" });
+            return;
+          }
+          setServerGate({ allowed: true, reason: "ok" });
+        }
       } catch (loadError) {
+        if (cancelled) return;
         setError(loadError instanceof Error ? loadError.message : t("unknownError"));
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
-
     load();
+    return () => {
+      cancelled = true;
+    };
   }, [t]);
 
-  const today = useMemo(() => new Date(), []);
-  const formatter = useMemo(
-    () =>
-      new Intl.DateTimeFormat(locale, {
-        month: "short",
-        day: "numeric",
-      }),
-    [locale]
-  );
-
-  const retrogrades = useMemo(() => buildRetrogrades(today.getDate() + 9), [today]);
-
+  // --- Loading ---
   if (loading) {
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-6 text-sm text-text-muted">
@@ -155,17 +96,19 @@ export function RetrogradeAlertsOverview() {
     );
   }
 
+  // --- Not signed in ---
   if (!state) {
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-8">
         <h2 className="text-2xl font-semibold text-white">{t("notSignedIn")}</h2>
         <p className="mt-3 text-sm leading-7 text-text-muted">
-          {t("retrogradeSignIn")}
+          {t("retrogradeReflectionV2SignInBody")}
         </p>
       </div>
     );
   }
 
+  // --- Free / Celestial → Cosmic upgrade paywall ---
   if (state.tier !== "premium_plus") {
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-8">
@@ -174,10 +117,10 @@ export function RetrogradeAlertsOverview() {
             {t("premiumNav")}
           </p>
           <h2 className="mt-3 text-2xl font-semibold text-white">
-            {t("retrogradeLockedTitle")}
+            {t("retrogradeReflectionV2LockedTitle")}
           </h2>
           <p className="mt-3 text-sm leading-7 text-text-muted">
-            {t("retrogradeLockedBody")}
+            {t("retrogradeReflectionV2LockedBody")}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
@@ -198,158 +141,143 @@ export function RetrogradeAlertsOverview() {
     );
   }
 
+  // --- Server-gate denied (Cosmic) ---
+  if (!serverGate.allowed) {
+    const isQuota = serverGate.reason === "quota_exceeded";
+    return (
+      <div className="rounded-[2rem] border border-border bg-card/90 p-8">
+        <h2 className="text-2xl font-semibold text-white">
+          {isQuota
+            ? t("retrogradeReflectionV2QuotaTitle")
+            : t("retrogradeReflectionV2Title")}
+        </h2>
+        <p className="mt-3 text-sm leading-7 text-text-muted">
+          {isQuota
+            ? t("retrogradeReflectionV2QuotaBody")
+            : t("unknownError")}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
       <section className="space-y-6">
+        {/* Hero */}
         <div className="rounded-[2rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-6">
           <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-            {t("retrogradeStatusLabel")}
+            {t("retrogradeReflectionV2HeroEyebrow")}
           </p>
           <h2 className="mt-3 text-3xl font-semibold text-white">
-            {t("retrogradeWebTitle")}
+            {t("retrogradeReflectionV2Title")}
           </h2>
           <p className="mt-3 text-sm leading-7 text-text-muted">
-            {t("retrogradeOverviewBody")}
+            {t("retrogradeReflectionV2Subtitle")}
+          </p>
+          <p className="mt-3 text-sm leading-7 text-text-muted">
+            {t("retrogradeReflectionV2OverviewBody")}
           </p>
         </div>
 
+        {/* Planet reflections — flat list, no expand/collapse so each card
+            tells its full story without a click. Vertical stack keeps 360px
+            safe and matches the Daily/Monthly V2 reading pattern. */}
         <div className="rounded-[2rem] border border-border bg-card/90 p-6">
           <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-            {t("retrogradeCurrentTitle")}
+            {t("retrogradeReflectionV2CurrentTitle")}
           </p>
           <div className="mt-5 space-y-4">
-            {retrogrades.map((event) => {
-              const startDate = addDays(today, event.startOffsetDays);
-              const endDate = addDays(startDate, event.durationDays);
-              const expanded = expandedKey === event.key;
-
+            {PLANETS.map((planet) => {
+              const reviewKey = `retrogradeReflectionV2_${planet.key}_review`;
+              const considerKey = `retrogradeReflectionV2_${planet.key}_consider`;
+              const releaseKey = `retrogradeReflectionV2_${planet.key}_release`;
+              const relationshipKey = `retrogradeReflectionV2_${planet.key}_relationship`;
+              const promptKey = `retrogradeReflectionV2_${planet.key}_prompt`;
+              const phaseKey = `retrogradeReflectionV2Phase_${planet.phase}`;
               return (
                 <article
-                  key={event.key}
+                  key={planet.key}
                   className="rounded-[1.5rem] border border-border bg-bg/70 p-5"
                 >
-                  <button
-                    type="button"
-                    onClick={() => setExpandedKey(expanded ? "mercury" : event.key)}
-                    className="flex w-full flex-wrap items-start justify-between gap-4 text-left"
-                  >
+                  <header className="flex flex-wrap items-start justify-between gap-4">
                     <div className="flex items-center gap-4">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] text-2xl text-white">
-                        {PLANET_SYMBOLS[event.key]}
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] text-2xl text-white">
+                        {PLANET_SYMBOL[planet.key]}
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <h3 className="text-lg font-semibold text-white">
-                          {t(`natalPlanet_${event.key}`)}
+                          {t(`natalPlanet_${planet.key}`)}
                         </h3>
-                        <p className="mt-1 text-sm text-text-muted">
-                          {formatter.format(startDate)} - {formatter.format(endDate)}
-                        </p>
                       </div>
                     </div>
                     <span
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold ${STATUS_STYLES[event.status]}`}
+                      className={`rounded-full border px-3 py-1 text-xs font-semibold ${PHASE_BADGE[planet.phase]}`}
                     >
-                      {t(`retrogradeStatus_${event.status}`)}
+                      {t(phaseKey)}
                     </span>
-                  </button>
+                  </header>
 
-                  {expanded ? (
-                    <div className="mt-5 space-y-5">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-                          {t("retrogradeEffectsTitle")}
+                  <div className="mt-5 space-y-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+                        {t("retrogradeReflectionV2ReviewTitle")}
+                      </p>
+                      <p className="mt-2 text-sm leading-7 text-text-muted">
+                        {t(reviewKey)}
+                      </p>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-[1.25rem] border border-[rgba(74,222,128,0.24)] bg-[rgba(74,222,128,0.10)] p-4">
+                        <p className="text-xs uppercase tracking-[0.24em] text-emerald-200">
+                          {t("retrogradeReflectionV2ConsiderTitle")}
                         </p>
-                        <div className="mt-3 space-y-2 text-sm leading-7 text-text-muted">
-                          {event.effects.map((key) => (
-                            <p key={key}>{t(key)}</p>
-                          ))}
-                        </div>
+                        <p className="mt-2 text-sm leading-7 text-text-muted">
+                          {t(considerKey)}
+                        </p>
                       </div>
-
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="rounded-[1.25rem] border border-[rgba(74,222,128,0.24)] bg-[rgba(74,222,128,0.10)] p-4">
-                          <p className="text-sm font-semibold text-emerald-200">
-                            {t("retrogradeDoTitle")}
-                          </p>
-                          <div className="mt-3 space-y-2 text-sm leading-7 text-text-muted">
-                            {event.doKeys.map((key) => (
-                              <p key={key}>{t(key)}</p>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="rounded-[1.25rem] border border-[rgba(251,191,36,0.24)] bg-[rgba(251,191,36,0.10)] p-4">
-                          <p className="text-sm font-semibold text-amber-200">
-                            {t("retrogradeAvoidTitle")}
-                          </p>
-                          <div className="mt-3 space-y-2 text-sm leading-7 text-text-muted">
-                            {event.avoidKeys.map((key) => (
-                              <p key={key}>{t(key)}</p>
-                            ))}
-                          </div>
-                        </div>
+                      <div className="rounded-[1.25rem] border border-[rgba(251,191,36,0.24)] bg-[rgba(251,191,36,0.10)] p-4">
+                        <p className="text-xs uppercase tracking-[0.24em] text-amber-200">
+                          {t("retrogradeReflectionV2ReleaseTitle")}
+                        </p>
+                        <p className="mt-2 text-sm leading-7 text-text-muted">
+                          {t(releaseKey)}
+                        </p>
                       </div>
                     </div>
-                  ) : null}
+
+                    <div className="rounded-[1.25rem] border border-border bg-card/70 p-4">
+                      <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+                        {t("retrogradeReflectionV2RelationshipTitle")}
+                      </p>
+                      <p className="mt-2 text-sm leading-7 text-text-muted">
+                        {t(relationshipKey)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-[1.25rem] border border-border bg-bg/50 p-4">
+                      <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+                        {t("retrogradeReflectionV2PromptTitle")}
+                      </p>
+                      <p className="mt-2 text-sm leading-7 text-text-muted">
+                        {t(promptKey)}
+                      </p>
+                    </div>
+                  </div>
                 </article>
               );
             })}
           </div>
         </div>
-      </section>
 
-      <aside className="space-y-6">
-        <div className="rounded-[2rem] border border-border bg-card/90 p-6">
+        {/* Disclaimer */}
+        <div className="rounded-[2rem] border border-border bg-card/70 p-6">
           <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-            {t("retrogradeAlertSettings")}
+            {t("retrogradeReflectionV2DisclaimerTitle")}
           </p>
-          <div className="mt-5 space-y-3">
-            {(
-              [
-                ["mercury", "natalPlanet_mercury"],
-                ["venus", "natalPlanet_venus"],
-                ["mars", "natalPlanet_mars"],
-                ["saturn", "natalPlanet_saturn"],
-                ["preShadow", "retrogradeAlert_preShadow"],
-                ["postShadow", "retrogradeAlert_postShadow"],
-              ] as const
-            ).map(([key, labelKey]) => (
-              <label
-                key={key}
-                className="flex items-center justify-between gap-4 rounded-[1.25rem] border border-border bg-bg/70 px-4 py-4"
-              >
-                <span className="text-sm font-semibold text-white">{t(labelKey)}</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={alerts[key]}
-                  onClick={() => setAlerts((current) => ({ ...current, [key]: !current[key] }))}
-                  className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-                    alerts[key] ? "bg-accent" : "bg-white/15"
-                  }`}
-                >
-                  <span
-                    className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white transition-transform ${
-                      alerts[key] ? "translate-x-4" : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </label>
-            ))}
-          </div>
-          <p className="mt-4 text-sm leading-7 text-text-muted">
-            {t("retrogradeAlertHint")}
+          <p className="mt-3 text-sm leading-7 text-text-muted">
+            {t("retrogradeReflectionV2DisclaimerBody")}
           </p>
-        </div>
-
-        <div className="rounded-[2rem] border border-[rgba(74,222,128,0.24)] bg-[rgba(74,222,128,0.10)] p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-            {t("retrogradeTipsTitle")}
-          </p>
-          <div className="mt-4 space-y-3 text-sm leading-7 text-text-muted">
-            <p>{t("retrogradeTip_1")}</p>
-            <p>{t("retrogradeTip_2")}</p>
-            <p>{t("retrogradeTip_3")}</p>
-          </div>
         </div>
 
         {error ? (
@@ -357,6 +285,19 @@ export function RetrogradeAlertsOverview() {
             {error}
           </p>
         ) : null}
+      </section>
+
+      <aside className="space-y-6">
+        <div className="rounded-[2rem] border border-[rgba(74,222,128,0.24)] bg-[rgba(74,222,128,0.10)] p-6">
+          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+            {t("retrogradeReflectionV2GuideTitle")}
+          </p>
+          <div className="mt-4 space-y-3 text-sm leading-7 text-text-muted">
+            <p>{t("retrogradeReflectionV2Guide_1")}</p>
+            <p>{t("retrogradeReflectionV2Guide_2")}</p>
+            <p>{t("retrogradeReflectionV2Guide_3")}</p>
+          </div>
+        </div>
       </aside>
     </div>
   );

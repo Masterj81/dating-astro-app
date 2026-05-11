@@ -6,7 +6,10 @@ export default async function RetrogradeAlertsPage() {
   const t = await getTranslations("webApp");
 
   return (
-    <AppShell title={t("retrogradeWebTitle")} subtitle={t("retrogradeWebSubtitle")}>
+    <AppShell
+      title={t("retrogradeReflectionV2PageTitle")}
+      subtitle={t("retrogradeReflectionV2PageSubtitle")}
+    >
       <RetrogradeAlertsOverview />
     </AppShell>
   );
