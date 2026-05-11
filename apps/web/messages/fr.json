@@ -10,7 +10,7 @@
     "contactSupport": "Contacter le support",
     "learnMore": "En savoir plus",
     "copyright": "© {year} AstroDating. Tous droits réservés.",
-    "madeWith": "Trouvez votre âme sœur cosmique. Astrologie authentique, connexions réelles."
+    "madeWith": "Trouvez une rencontre plus profonde. Astrologie authentique, connexions réelles."
   },
   "nav": {
     "features": "Fonctionnalités",
@@ -2213,6 +2213,6 @@
     "step2": "Crée ton profil et entre tes détails de naissance",
     "step3": "Va dans Paramètres > Inviter des amis et entre le code <strong>{code}</strong>",
     "step4": "Toi et ton ami obtenez chacun 1 mois de premium gratuit !",
-    "footer": "AstroDating — L'amour écrit dans les étoiles"
+    "footer": "AstroDating — L'astrologie comme langage, pas comme oracle"
   }
 }

@@ -12,7 +12,7 @@
 
 ### Bio (150 characters)
 ```
-✨ Find love written in the stars
+✨ Dating with depth, powered by astrology
 🔮 Real birth chart compatibility
 💫 Daily horoscopes & synastry
 ⬇️ Download free
@@ -111,7 +111,7 @@ Swipe through to see the magic ✨
 
 No more guessing. No more "what's your sign?" small talk.
 
-Just cosmic connections 🌙
+Just real connections 🌙
 
 Download free → link in bio
 
@@ -142,7 +142,7 @@ What's your best zodiac match? Drop it below 👇
 ```
 POV: You finally matched with your perfect sign 😭✨
 
-Tag someone who needs to find their cosmic match 👇
+Tag someone who needs to find their deeper match 👇
 
 #ZodiacMemes #AstrologyHumor #DatingMemes #ZodiacSigns #Relatable
 ```

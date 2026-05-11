@@ -191,7 +191,7 @@ Your superpower is fearless initiative. Your struggle? Patience was never your t
 
 You need someone who can keep up, not slow you down.
 
-Best cosmic matches: Leo, Sagittarius, Gemini.
+Best deeper matches: Leo, Sagittarius, Gemini.
 
 Ready to find yours? Link in bio.
 
@@ -209,7 +209,7 @@ In love, you build something real. No games. No situationships.
 
 You need someone who values depth over drama.
 
-Best cosmic matches: Virgo, Cancer, Capricorn.
+Best deeper matches: Virgo, Cancer, Capricorn.
 
 Find your person on AstroDating — link in bio.
 
@@ -225,7 +225,7 @@ Your superpower is endless curiosity — your mind never stops. The struggle? Co
 
 In love, you keep them guessing. And you need someone who stimulates your mind, not just your heart.
 
-Best cosmic matches: Libra, Aquarius, Aries.
+Best deeper matches: Libra, Aquarius, Aries.
 
 Find someone who gets all your sides — link in bio.
 
@@ -241,7 +241,7 @@ Your superpower is emotional intelligence. You read people before they even spea
 
 In love, you give everything. You just need someone who makes you feel safe doing it.
 
-Best cosmic matches: Scorpio, Pisces, Taurus.
+Best deeper matches: Scorpio, Pisces, Taurus.
 
 Your person is out there — link in bio.
 
@@ -257,7 +257,7 @@ Your superpower is magnetic confidence. People are drawn to you without even kno
 
 In love, you make your partner feel like royalty. You just need someone who adores you back just as hard.
 
-Best cosmic matches: Aries, Sagittarius, Libra.
+Best deeper matches: Aries, Sagittarius, Libra.
 
 Find your crown — link in bio.
 
@@ -273,7 +273,7 @@ Your superpower is attention to detail. You notice EVERYTHING. The struggle? You
 
 In love, you show it through actions, not words. A perfect playlist. Remembering the little things. You just need someone who actually appreciates the effort.
 
-Best cosmic matches: Taurus, Capricorn, Cancer.
+Best deeper matches: Taurus, Capricorn, Cancer.
 
 Someone who sees your effort is waiting — link in bio.
 
@@ -291,7 +291,7 @@ In love, you seek the perfect balance. Not 50/50 — you want 100/100.
 
 You need someone who chooses you first. No maybes.
 
-Best cosmic matches: Gemini, Aquarius, Leo.
+Best deeper matches: Gemini, Aquarius, Leo.
 
 Stop weighing options, start swiping — link in bio.
 
@@ -309,7 +309,7 @@ In love, it's all or nothing. Surface-level doesn't exist for you.
 
 You need someone who isn't afraid to go deep.
 
-Best cosmic matches: Cancer, Pisces, Virgo.
+Best deeper matches: Cancer, Pisces, Virgo.
 
 Find someone who can handle your depth — link in bio.
 
@@ -327,7 +327,7 @@ In love, you turn ordinary life into an adventure. Road trips at 2am? Why not.
 
 You need someone who says YES.
 
-Best cosmic matches: Aries, Leo, Aquarius.
+Best deeper matches: Aries, Leo, Aquarius.
 
 Your next adventure starts here — link in bio.
 
@@ -343,7 +343,7 @@ Your superpower is relentless ambition. You build empires while everyone else sl
 
 In love, you want a partner, not a project. Someone who matches your drive and builds the vision WITH you.
 
-Best cosmic matches: Taurus, Virgo, Pisces.
+Best deeper matches: Taurus, Virgo, Pisces.
 
 Find your co-CEO — link in bio.
 
@@ -361,7 +361,7 @@ In love, you rewrite the rules. Traditional? Boring. You want something that's n
 
 You need someone who gets your weird — and loves it.
 
-Best cosmic matches: Gemini, Libra, Sagittarius.
+Best deeper matches: Gemini, Libra, Sagittarius.
 
 Find your kind of different — link in bio.
 
@@ -377,7 +377,7 @@ You absorb emotions like a sponge. You love unconditionally. You see beauty wher
 
 In love, there are no boundaries. You merge completely. You just need someone who grounds you without clipping your wings.
 
-Best cosmic matches: Cancer, Scorpio, Capricorn.
+Best deeper matches: Cancer, Scorpio, Capricorn.
 
 Find your anchor — link in bio.
 

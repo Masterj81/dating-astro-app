@@ -124,7 +124,7 @@ Romantic cosmic imagery for match announcements, compatibility posts, and love-t
 
 ---
 
-### 13. Cosmic Connection
+### 13. Real Connection
 **Use for:** General compatibility post, "find your match" CTA, relationship content
 
 ```
@@ -200,7 +200,7 @@ Romantic cosmic imagery for match announcements, compatibility posts, and love-t
 **Use for:** Fate and destiny post, "meant to be" content, soulmate matching
 
 ```
-/imagine prompt: a single thin luminous red-gold thread winding through a dark cosmic void, tracing a path between two distant glowing stars, the thread passing through constellations and around planets, soft ambient pink and purple light along its path, deep black background, sense of inevitable cosmic connection, minimalist luxury --ar 1:1 --style raw --s 250 --no text words letters watermark
+/imagine prompt: a single thin luminous red-gold thread winding through a dark cosmic void, tracing a path between two distant glowing stars, the thread passing through constellations and around planets, soft ambient pink and purple light along its path, deep black background, sense of inevitable real connection, minimalist luxury --ar 1:1 --style raw --s 250 --no text words letters watermark
 ```
 
 ---

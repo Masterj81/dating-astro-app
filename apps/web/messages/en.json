@@ -10,7 +10,7 @@
     "contactSupport": "Contact Support",
     "learnMore": "Learn More",
     "copyright": "© {year} AstroDating. All rights reserved.",
-    "madeWith": "Find your cosmic match. Real astrology, real connections."
+    "madeWith": "Find your deeper match. Real astrology, real connections."
   },
   "nav": {
     "features": "Features",
@@ -601,9 +601,9 @@
     "planFeatureReadReceipts": "Read receipts in conversations",
     "planFeatureBoost": "Weekly profile boost",
     "plan_celestial_monthly": "Celestial Monthly",
-    "plan_celestial_monthly_description": "Unlock your full birth chart, unlimited likes, and detailed synastry reports. The essentials for finding your cosmic match.",
+    "plan_celestial_monthly_description": "Unlock your full birth chart, unlimited likes, and detailed synastry reports. The essentials for finding your deeper match.",
     "plan_celestial_yearly": "Celestial Yearly",
-    "plan_celestial_yearly_description": "All Celestial features at the best price. Save big with annual billing and never miss a cosmic connection.",
+    "plan_celestial_yearly_description": "All Celestial features at the best price. Save big with annual billing and never miss a real connection.",
     "plan_cosmic_monthly": "Cosmic Monthly",
     "plan_cosmic_monthly_description": "The complete astrology dating experience. Priority discovery,  and advanced forecasts to guide every connection.",
     "plan_cosmic_yearly": "Cosmic Yearly",
@@ -2206,6 +2206,6 @@
     "step2": "Create your profile and enter your birth details",
     "step3": "Go to Settings > Invite Friends and enter code <strong>{code}</strong>",
     "step4": "Both you and your friend get 1 month premium free!",
-    "footer": "AstroDating -- Love written in the stars"
+    "footer": "AstroDating -- Astrology as a language, not a fortune"
   }
 }

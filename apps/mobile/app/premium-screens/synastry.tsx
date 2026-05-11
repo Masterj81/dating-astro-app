@@ -453,7 +453,7 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
       <View style={styles.scoreSection}>
         <View style={styles.scoreCircle}>
           <Text style={styles.scoreNumber}>{overallScore}%</Text>
-          <Text style={styles.scoreLabel}>{t('cosmicCompatibility') || 'Cosmic Match'}</Text>
+          <Text style={styles.scoreLabel}>{t('cosmicCompatibility') || 'Compatibility Score'}</Text>
         </View>
         <Text style={styles.scoreDescription}>
           {overallScore >= 80

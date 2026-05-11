@@ -140,7 +140,7 @@ export function calculateCompatibility(chart1: NatalChart, chart2: NatalChart): 
 
 // Get a description for compatibility
 export function getCompatibilityDescription(score: number): string {
-  if (score >= 85) return "Cosmic soulmates! Your charts are incredibly aligned.";
+  if (score >= 85) return "Exceptional alignment! Your charts share rare harmony.";
   if (score >= 75) return "Strong connection. Great potential for lasting love.";
   if (score >= 65) return "Good compatibility with interesting dynamics.";
   if (score >= 55) return "Some challenges, but growth opportunities abound.";

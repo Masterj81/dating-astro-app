@@ -390,8 +390,8 @@ export default function DiscoverScreen() {
     if (!currentProfile) return;
     buttonPress();
     const message = Platform.select({
-      android: `Discovering cosmic connections on AstroDating \u{1F6F0}\nhttps://play.google.com/store/apps/details?id=com.astrodatingapp.mobile`,
-      default: `Discovering cosmic connections on AstroDating \u{1F6F0}\nhttps://astrodatingapp.com`,
+      android: `Discovering real connections on AstroDating \u{1F6F0}\nhttps://play.google.com/store/apps/details?id=com.astrodatingapp.mobile`,
+      default: `Discovering real connections on AstroDating \u{1F6F0}\nhttps://astrodatingapp.com`,
     });
     try {
       await Share.share({ message, title: 'AstroDating' });

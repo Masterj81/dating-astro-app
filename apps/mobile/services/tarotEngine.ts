@@ -277,7 +277,7 @@ const MAJOR_ARCANA: Array<{
   {
     number: 21, name: 'The World',
     love: {
-      upright: 'Fulfillment and completion in love. A relationship that feels whole and destined.',
+      upright: 'Fulfillment and completion in love. A relationship that feels whole and deeply settled.',
       reversed: 'Feeling incomplete or seeking closure. The final step is near.',
     },
     general: {

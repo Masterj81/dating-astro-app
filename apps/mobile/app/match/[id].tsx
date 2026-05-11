@@ -56,8 +56,8 @@ type Aspect = {
 
 const ScoreRing = React.memo(function ScoreRing({ score, loading, label, t }: { score: number; loading: boolean; label: string; t: (key: string) => string }) {
   const getScoreVerdict = (s: number) => {
-    if (s >= 90) return t('scoreExcellent') || 'Soulmate potential';
-    if (s >= 75) return t('scoreGreat') || 'Strong cosmic bond';
+    if (s >= 90) return t('scoreExcellent') || 'Exceptional alignment';
+    if (s >= 75) return t('scoreGreat') || 'Strong bond';
     if (s >= 60) return t('scoreGood') || 'Promising alignment';
     if (s >= 45) return t('scoreFair') || 'Room to grow together';
     return t('scoreLow') || 'Different cosmic paths';

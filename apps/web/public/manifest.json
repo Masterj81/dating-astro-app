@@ -1,7 +1,7 @@
 {
   "name": "AstroDating",
   "short_name": "AstroDating",
-  "description": "Find your cosmic match — astrology-powered dating",
+  "description": "Find your deeper match — astrology-powered dating",
   "id": "/",
   "start_url": "/app/",
   "scope": "/",

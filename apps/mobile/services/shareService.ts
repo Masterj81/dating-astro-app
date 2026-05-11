@@ -152,7 +152,7 @@ export async function shareCompatibility(
   // Get compatibility description based on score
   let description: string;
   if (compatibilityScore >= 90) {
-    description = '🔥 Cosmic soulmates!';
+    description = '🔥 Deeply aligned charts!';
   } else if (compatibilityScore >= 75) {
     description = '💫 Stellar connection!';
   } else if (compatibilityScore >= 60) {
@@ -170,7 +170,7 @@ ${capitalize(userSign)} ${userEmoji} + ${capitalize(partnerSign)} ${partnerEmoji
 ${compatibilityScore}% Compatible
 ${description}
 
-🔮 Find your cosmic match on AstroDating!`;
+🔮 Find your deeper match on AstroDating!`;
 
   return shareContent(
     message,
@@ -194,7 +194,7 @@ ${emoji} ${capitalize(matchSign)} - ${compatibilityScore}% Compatible
 
 ✨ The stars have aligned! ✨
 
-🔮 Find your cosmic connection on AstroDating!`;
+🔮 Find your real connection on AstroDating!`;
 
   return shareContent(message, 'New AstroDating Match!');
 }
@@ -203,18 +203,18 @@ ${emoji} ${capitalize(matchSign)} - ${compatibilityScore}% Compatible
  * Share the app itself
  */
 export async function shareApp(): Promise<ShareResult> {
-  const message = `✨ Looking for love written in the stars?
+  const message = `✨ Dating with depth, powered by astrology.
 
-I'm using AstroDating to find my cosmic match based on astrology and synastry compatibility!
+I'm using AstroDating to find a deeper match based on real birth-chart compatibility.
 
 🔮 Sun, Moon & Rising sign matching
 💕 Real astrology-based compatibility
 ✨ Personalized horoscopes
 
-Download AstroDating and find your soulmate! 🌟`;
+Download AstroDating and meet someone aligned with you. 🌟`;
 
   // In production, you'd include the actual App Store URL
-  return shareContent(message, 'AstroDating - Find Your Cosmic Match');
+  return shareContent(message, 'AstroDating - Find Your Deeper Match');
 }
 
 /**

@@ -639,7 +639,7 @@ Drop yours in the comments and let's see who relates the most
 
 Save this for later
 
-Find your cosmic match - link in bio
+Find your deeper match - link in bio
 ```
 
 ---
@@ -1633,7 +1633,7 @@ Posted this because it happened to me three times this month. The daily horoscop
 
 **Frame 4 — New pairing illuminates:**
 ```
-/imagine prompt: two medallions with deep garnet Scorpio glyph and warm bronze Taurus Moon glyph floating toward each other on a dark cosmic canvas, golden light intensifying as they approach, synastry lines connecting them in rose-gold, a sense of unexpected rightness and destined connection, dramatic warm backlighting --ar 9:16 --style raw --s 250 --no text words letters watermark
+/imagine prompt: two medallions with deep garnet Scorpio glyph and warm bronze Taurus Moon glyph floating toward each other on a dark cosmic canvas, golden light intensifying as they approach, synastry lines connecting them in rose-gold, a sense of unexpected rightness and rare connection, dramatic warm backlighting --ar 9:16 --style raw --s 250 --no text words letters watermark
 ```
 
 **Frame 5 — Two charts merging CTA:**

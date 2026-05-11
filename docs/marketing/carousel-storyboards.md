@@ -10,11 +10,11 @@ Complete storyboards with Midjourney prompts, captions, and text overlays for ea
 **Slides:** 5
 **Caption:**
 ```
-How to find your cosmic match ✨
+How to find your deeper match ✨
 
 Swipe through to see how AstroDating uses REAL astrology to find your perfect person 👉
 
-No more guessing. No more "what's your sign?" small talk. Just cosmic connections based on your actual birth chart.
+No more guessing. No more "what's your sign?" small talk. Just real connections based on your actual birth chart.
 
 Ready to meet who the stars picked for you?
 Link in bio 🌙
@@ -23,7 +23,7 @@ Link in bio 🌙
 ```
 
 ### Slide 1 - Hook
-**Text Overlay:** "How to Find Your Cosmic Match ✨" + "Swipe →"
+**Text Overlay:** "How to Find Your Deeper Match ✨" + "Swipe →"
 **Midjourney Prompt:**
 ```
 /imagine prompt: overhead shot of a glowing iPhone floating above a polished obsidian surface, screen showing an astrology dating app with a circular compatibility gauge at 94 percent, deep indigo (#1B0A3C) to black gradient background, scattered pinpoint white and gold star lights, soft pink (#FF6B9D) nebula cloud in upper right, thin translucent constellation lines connecting small glass orbs, shallow depth of field with bokeh highlights, right edge has a frosted glass arrow pointing right, clean centered composition, editorial product photography style --ar 4:5 --style raw --s 250 --no text words letters watermark
@@ -51,7 +51,7 @@ Link in bio 🌙
 ```
 
 ### Slide 5 - CTA
-**Text Overlay:** "Your Cosmic Match is Waiting" + "Download Free ↓"
+**Text Overlay:** "Your Deeper Match is Waiting" + "Download Free ↓"
 **Midjourney Prompt:**
 ```
 /imagine prompt: centered glowing rounded rectangle button made of translucent rose-pink (#FF6B9D) glass, soft white light radiating outward from the button in straight rays, two small frosted glass store badges below it side by side, tiny gold and silver star-shaped confetti pieces falling from above with motion blur, deep purple (#1B0A3C) to black gradient background, starburst of fine gold light particles behind the button, straight-on camera angle, large empty space at bottom for branding --ar 4:5 --style raw --s 250 --no text words letters watermark

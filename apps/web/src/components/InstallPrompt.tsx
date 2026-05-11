@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { OPEN_INSTALL_GUIDE_EVENT } from "@/components/DownloadButtons";
+import { OPEN_INSTALL_GUIDE_EVENT, PhoneInstallIcon } from "@/components/DownloadButtons";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -75,7 +75,9 @@ export function InstallPrompt() {
 
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-accent/20 bg-accent/8 px-4 py-3" role="region" aria-label={t("installTitle") || "Install AstroDating"}>
-      <span className="text-2xl" aria-hidden="true">📲</span>
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/20 text-accent" aria-hidden="true">
+        <PhoneInstallIcon />
+      </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-white">
           {t("installTitle") || "Install AstroDating"}

@@ -245,7 +245,7 @@ export default function PremiumScreen() {
           </TouchableOpacity>
 
           <Text style={styles.pricingHint}>{t('paywallTrialReassurance') || 'No charge for 7 days \u00B7 Cancel anytime in 30 seconds'}</Text>
-          <Text style={styles.cancelAnytime}>{t('paywallGuarantee') || 'Satisfaction guaranteed or your money back'}</Text>
+          <Text style={styles.cancelAnytime}>{t('paywallGuarantee') || 'Manage or cancel anytime through your app store account.'}</Text>
         </ScrollView>
       </LinearGradient>
     );

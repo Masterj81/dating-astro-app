@@ -1,7 +1,7 @@
 {
   "name": "AstroDating",
   "short_name": "AstroDating",
-  "description": "Find your cosmic match through astrology",
+  "description": "Find your deeper match through astrology",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",

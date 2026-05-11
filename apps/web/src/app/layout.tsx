@@ -11,7 +11,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "AstroDating",
-  description: "Find your cosmic match",
+  description: "Find your deeper match",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

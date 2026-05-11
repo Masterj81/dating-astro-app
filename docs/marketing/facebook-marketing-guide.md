@@ -21,7 +21,7 @@
 
 **About Section (155 characters):**
 ```
-Find love written in the stars ✨ Match based on birth charts, synastry & zodiac compatibility. Download now on iOS & Android.
+Dating with depth, powered by astrology ✨ Match based on birth charts, synastry & zodiac compatibility. Download now on iOS & Android.
 ```
 
 **Description (Full):**
@@ -41,7 +41,7 @@ AstroDating is the first dating app that uses real astrology to find your perfec
 3. Get matched with people whose charts align with yours
 4. See detailed compatibility breakdowns before you swipe
 
-Whether you're an adventurous Sagittarius seeking a grounded Taurus, or a passionate Scorpio looking for an intuitive Pisces, AstroDating helps you find cosmic connections.
+Whether you're an adventurous Sagittarius seeking a grounded Taurus, or a passionate Scorpio looking for an intuitive Pisces, AstroDating helps you find real connections.
 
 Download free on iOS and Android.
 ```
@@ -54,7 +54,7 @@ Download free on iOS and Android.
 - Dark gradient background (#0f0f1a to #1a1a2e)
 - Constellation pattern overlay
 - App mockup showing the compatibility screen
-- Tagline: "Love Written in the Stars"
+- Tagline: "Astrology as a language, not a fortune"
 - App Store & Google Play badges
 
 ### Call-to-Action Button
@@ -77,7 +77,7 @@ Go to **Settings → Templates and Tabs**:
 ```
 Hey there! ✨ Thanks for reaching out to AstroDating.
 
-Looking for your cosmic match? Download our app:
+Looking for your deeper match? Download our app:
 📱 iOS: [link]
 📱 Android: [link]
 
@@ -178,7 +178,7 @@ Join thousands finding cosmic love. Link in bio ✨
 
 #### Ad 1A - Video/Carousel Ad
 ```
-Headline: Find Love Written in the Stars
+Headline: Find Astrology as a language, not a fortune
 Primary Text:
 Tired of dating apps that match you with anyone?
 
@@ -485,7 +485,7 @@ Welcome to the AstroDating community! ✨
 
 What's your Sun sign? We'd love to know who's joining us.
 
-Ready to find your cosmic match? Download free: [link]
+Ready to find your deeper match? Download free: [link]
 ```
 
 #### Comment Response - Sign Mention
@@ -517,7 +517,7 @@ We appreciate your feedback! We're always working to improve. Feel free to DM us
 
 ### Facebook Group Strategy
 
-**Group Name:** AstroDating Community - Cosmic Connections
+**Group Name:** AstroDating Community - Real Connections
 
 **Group Rules:**
 1. Be respectful of all signs
