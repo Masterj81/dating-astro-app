@@ -6,6 +6,7 @@ import { Link } from "@/i18n/navigation";
 import { translateElement, translateModality, translateSign } from "@/lib/astrology-labels";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
+import { PlacementCard } from "@/components/PlacementCard";
 
 type NatalProfile = {
   id: string;
@@ -103,6 +104,41 @@ const DEFAULT_INTERPRETATIONS: Record<"sun" | "moon" | "rising", string> = {
   moon: "Your Moon sign reveals how you process feelings, seek comfort, and restore emotional balance.",
   rising: "Your Rising sign shapes first impressions, your visible style, and how you enter new situations.",
 };
+
+// Pilot set of detailed placement reads. Only renders a PlacementCard
+// when the viewer's actual chart matches one of these (planet, sign)
+// tuples — so the section grows naturally as we add more content. The
+// fourth column is whether this combo carries a dating-lens "in love"
+// callout (Venus / Mars / Moon only).
+//
+// Keys are intentionally kebab-friendly and stable: the i18n lookup is
+// `natalPlanetMeaning_${planet}`, `natalPlanetIn_${planet}_${sign}`,
+// and optionally `natalPlanetInLove_${planet}_${sign}`.
+type PlacementPlanet = "mercury" | "venus" | "moon" | "mars";
+type FeaturedPlacement = {
+  planet: PlacementPlanet;
+  sign: string;
+  hasInLove: boolean;
+};
+const FEATURED_PLACEMENTS: FeaturedPlacement[] = [
+  { planet: "mercury", sign: "Aries", hasInLove: false },
+  { planet: "venus", sign: "Taurus", hasInLove: true },
+  { planet: "moon", sign: "Cancer", hasInLove: true },
+  { planet: "mars", sign: "Leo", hasInLove: true },
+];
+
+function getPlanetSign(profile: NatalProfile, planet: PlacementPlanet): string | null {
+  switch (planet) {
+    case "mercury":
+      return profile.mercury_sign ?? null;
+    case "venus":
+      return profile.venus_sign ?? null;
+    case "moon":
+      return profile.moon_sign ?? null;
+    case "mars":
+      return profile.mars_sign ?? null;
+  }
+}
 
 function getFallbackSign(seed: number) {
   return SIGNS[seed % SIGNS.length];
@@ -382,6 +418,52 @@ export function NatalChartOverview() {
             ))}
           </div>
         </div>
+
+        {/* Featured placement insights — only renders cards where we have
+            content matching the viewer's actual chart. Today: 4 pilot
+            (planet, sign) tuples. Adding more is content-only, no code
+            change required beyond extending FEATURED_PLACEMENTS. */}
+        {(() => {
+          const matched = FEATURED_PLACEMENTS.filter((featured) => {
+            const sign = getPlanetSign(profile, featured.planet);
+            return sign?.toLowerCase() === featured.sign.toLowerCase();
+          });
+          if (matched.length === 0) return null;
+          return (
+            <div className="rounded-[2rem] border border-border bg-card/90 p-6">
+              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+                {t("natalChartFeaturedInsightsTitle")}
+              </p>
+              <p className="mt-3 text-sm leading-7 text-text-muted">
+                {t("natalChartFeaturedInsightsBody")}
+              </p>
+              <div className="mt-6 grid gap-4 md:grid-cols-2">
+                {matched.map((featured) => {
+                  const signKey = featured.sign.toLowerCase();
+                  return (
+                    <PlacementCard
+                      key={`${featured.planet}-${featured.sign}`}
+                      planet={t(`natalPlanet_${featured.planet}`)}
+                      signKey={signKey}
+                      signLabel={translateSign(featured.sign, locale)}
+                      meaning={t(`natalPlanetMeaning_${featured.planet}`)}
+                      interpretation={t(
+                        `natalPlanetIn_${featured.planet}_${signKey}`
+                      )}
+                      inLove={
+                        featured.hasInLove
+                          ? t(`natalPlanetInLove_${featured.planet}_${signKey}`)
+                          : undefined
+                      }
+                      eyebrow={t("natalPlanetCardFeaturedEyebrow")}
+                      inLoveLabel={t("natalPlanetCardInLoveLabel")}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="grid gap-6 md:grid-cols-3">
           {(["sun", "moon", "rising"] as const).map((coreKey) => {
