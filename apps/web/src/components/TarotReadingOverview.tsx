@@ -68,16 +68,23 @@ export function TarotReadingOverview() {
         if (cancelled) return;
         setState(account);
 
-        // Server-side enforcement runs only for Cosmic (premium_plus) where the
-        // DB policy ('tarot' -> required_tier='cosmic', quota=10) applies. The
-        // current product allows Celestial users to view monthly tarot through
-        // client-side gating only; promoting Celestial through this RPC would
-        // return insufficient_tier and break the product. Surfaced as a known
-        // product/DB-policy conflict for follow-up.
-        if (account?.tier === "premium_plus") {
+        // Server-side enforcement runs for both paid tiers. The legacy single
+        // 'tarot' policy key was cosmic-only, which forced the previous bypass
+        // for Celestial; migration 20260511000002 split it into two keys so
+        // each tier hits the policy that matches the product:
+        //   premium       (Celestial) → 'tarot_monthly' (NULL quota)
+        //   premium_plus  (Cosmic)    → 'tarot_cosmic'  (10/day)
+        const featureKey =
+          account?.tier === "premium_plus"
+            ? "tarot_cosmic"
+            : account?.tier === "premium"
+              ? "tarot_monthly"
+              : null;
+
+        if (featureKey) {
           const supabase = getSupabaseBrowser();
           const { data: gateRow, error: gateError } = await supabase
-            .rpc("enforce_premium_feature", { p_feature_key: "tarot" })
+            .rpc("enforce_premium_feature", { p_feature_key: featureKey })
             .maybeSingle<{ allowed: boolean; reason: string | null }>();
 
           if (cancelled) return;
@@ -180,8 +187,11 @@ export function TarotReadingOverview() {
     );
   }
 
-  // --- Server-gate denied (Cosmic only) ---
-  if (state.tier === "premium_plus" && !serverGate.allowed) {
+  // --- Server-gate denied (any paid tier) ---
+  if (
+    (state.tier === "premium" || state.tier === "premium_plus") &&
+    !serverGate.allowed
+  ) {
     const isQuota = serverGate.reason === "quota_exceeded";
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-8">
