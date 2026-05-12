@@ -34,6 +34,12 @@
     "proofCharts": "Charts calculated",
     "proofRating": "App Store rating"
   },
+  "marketingProof": {
+    "marketingProofTitle": "L'app en images",
+    "marketingProofChat": "Vraies conversations",
+    "marketingProofCompatibility": "Compatibilité, décodée",
+    "marketingProofReflection": "Réflexion, pas prédiction"
+  },
   "features": {
     "title": "Pensé pour les vraies conversations.",
     "subtitle": "Des profils plus riches que des photos. Une compatibilité lisible. Des entrées en matière qui tiennent la route.",

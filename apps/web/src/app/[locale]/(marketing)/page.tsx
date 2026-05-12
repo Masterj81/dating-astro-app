@@ -58,6 +58,7 @@ export default function LandingPage({
   const how = useTranslations("howItWorks");
   const cta = useTranslations("cta");
   const social = useTranslations("socialProof");
+  const proof = useTranslations("marketingProof");
 
   return (
     <>
@@ -70,36 +71,36 @@ export default function LandingPage({
         <StarField />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_40%,rgba(232,93,117,0.12),transparent)]" aria-hidden="true" />
 
-        <div className="relative mx-auto grid max-w-6xl gap-10 px-4 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-16">
+        <div className="relative mx-auto grid max-w-6xl gap-10 overflow-hidden px-4 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-16">
           {/* Left column: copy + CTAs */}
-          <div className="text-center lg:text-left">
-            <p className="mb-3 text-sm font-medium uppercase tracking-[0.3em] text-accent">
+          <div className="min-w-0 text-center lg:text-left">
+            <p className="mb-3 text-xs font-medium uppercase tracking-[0.24em] text-accent sm:text-sm sm:tracking-[0.3em]">
               {hero("badge")}
             </p>
-            <h1 className="mb-5 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+            <h1 className="mb-5 text-3xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
               {hero("tagline")}
             </h1>
-            <p className="mx-auto mb-8 max-w-xl text-lg leading-relaxed text-text-muted lg:mx-0">
+            <p className="mx-auto mb-8 max-w-xl text-base leading-relaxed text-text-muted sm:text-lg lg:mx-0">
               {hero("description")}
             </p>
-            <div className="flex justify-center lg:justify-start">
+            <div className="mx-auto flex w-full max-w-sm justify-center sm:max-w-none lg:mx-0 lg:justify-start">
               <DownloadButtons />
             </div>
 
             {/* Trust strip — qualitative proofs only, no invented stats */}
             <ul
-              className="mx-auto mt-10 flex max-w-xl flex-wrap items-center justify-center gap-2 lg:mx-0 lg:justify-start"
+              className="mx-auto mt-10 flex max-w-full flex-wrap items-center justify-center gap-2 lg:mx-0 lg:justify-start"
               aria-label="What sets AstroDating apart"
             >
               {PROOF_KEYS.map((key, i) => (
                 <li
                   key={key}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-white/8 bg-white/[0.03] px-3 py-1.5 text-xs text-white/85"
+                  className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/8 bg-white/[0.03] px-3 py-1.5 text-xs text-white/85"
                 >
                   {i === 0 ? (
                     <span aria-hidden="true" className="text-accent">★ 4.8</span>
                   ) : null}
-                  <span>{social(key)}</span>
+                  <span className="truncate">{social(key)}</span>
                 </li>
               ))}
             </ul>
@@ -111,10 +112,39 @@ export default function LandingPage({
           </div>
 
           {/* Right column: phone mockup */}
-          <div className="flex justify-center lg:justify-end">
+          <div className="min-w-0 overflow-hidden px-1">
             <PhoneMockupPlaceholder />
           </div>
         </div>
+      </section>
+
+      {/* Product proof strip — three real screenshots in mini iPhone
+          frames, sitting between the hero and the features bento. Mockups
+          load lazily; the hero discover.png keeps priority for LCP. */}
+      <section className="relative mx-auto w-full max-w-6xl px-4 pb-16 pt-8 sm:pb-20 sm:pt-12">
+        <header className="mx-auto mb-8 max-w-2xl text-center sm:mb-12">
+          <h2 className="text-2xl font-semibold text-white sm:text-3xl">
+            {proof("marketingProofTitle")}
+          </h2>
+        </header>
+        <ul className="grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-6 md:gap-8">
+          {[
+            { src: "/screenshots/chat.png", label: proof("marketingProofChat") },
+            { src: "/screenshots/compatibility.png", label: proof("marketingProofCompatibility") },
+            { src: "/screenshots/premium-cosmic.png", label: proof("marketingProofReflection") },
+          ].map((item) => (
+            <li key={item.src} className="flex flex-col items-center gap-4">
+              <PhoneMockupPlaceholder
+                src={item.src}
+                alt={item.label}
+                priority={false}
+                maxWidthClassName="max-w-[200px] sm:max-w-[220px]"
+                sizes="(max-width: 640px) 200px, 220px"
+              />
+              <p className="text-sm font-medium text-text-muted">{item.label}</p>
+            </li>
+          ))}
+        </ul>
       </section>
 
       {/* Features — product-first (Phase 2). The astrology-only feature
@@ -123,7 +153,7 @@ export default function LandingPage({
           MarketingPricingSection where they're tier features. */}
       <section id="features" className="bg-bg py-24">
         <div className="mx-auto max-w-6xl px-4">
-          <p className="mb-3 text-center text-sm font-medium uppercase tracking-[0.3em] text-accent">
+          <p className="mb-3 text-center text-xs font-medium uppercase tracking-[0.24em] text-accent sm:text-sm sm:tracking-[0.3em]">
             {feat("badge")}
           </p>
           <h2 className="mb-3 text-center text-3xl font-bold text-white sm:text-4xl">
