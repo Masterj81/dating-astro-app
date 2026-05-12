@@ -115,9 +115,9 @@
     "featureMonthlyTarot": "Monthly tarot reading",
     "featureEverythingCelestial": "Everything in Celestial",
     "featureMonthlyYearlyHoroscopes": "Monthly & yearly horoscopes",
-    "featureTransitAlerts": "Transit alerts",
-    "featureLuckyDays": "Personalized lucky days",
-    "featureDatePlanner": "AI date planner",
+    "featureTransitAlerts": "Transit reflection",
+    "featureLuckyDays": "Monthly planning windows",
+    "featureDatePlanner": "Date reflection space",
     "featureWeeklyTarot": "Weekly tarot reading"
   },
   "cta": {
