@@ -338,7 +338,7 @@ export default function SettingsScreen() {
           <View style={[styles.settingsRow, loadingPrefs && styles.rowDisabled]}>
             <View style={styles.rowLeft}>
               <Text style={styles.rowIcon}>💕</Text>
-              <Text style={styles.rowText}>{t('newMatches') || 'New Matches'}</Text>
+              <Text style={styles.rowText}>{t('newMatches') || 'New connections'}</Text>
             </View>
             <Switch
               value={notifications.newMatches}

@@ -303,7 +303,7 @@ export default function PremiumPlansScreen() {
             price={getPriceForTier('celestial')}
             description={
               t('plansCelestialDesc') ||
-              'See who likes you, unlock full birth charts, and find matches with 94% compatibility accuracy.'
+              'Unlock full birth charts and deeper compatibility insights.'
             }
             featureKeys={CELESTIAL_FEATURE_KEYS}
             selectedCycle={selectedCycle}

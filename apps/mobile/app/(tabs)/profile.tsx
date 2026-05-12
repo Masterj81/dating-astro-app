@@ -560,7 +560,7 @@ export default function ProfileScreen() {
                 <View style={[styles.completenessBarFill, { width: `${completeness}%` }]} />
               </View>
               <Text style={styles.completenessHint}>
-                {t('completeProfileHint') || 'Complete profiles get up to 3x more matches'}
+                {t('completeProfileHint') || 'Complete profiles help people understand you faster'}
               </Text>
             </TouchableOpacity>
         )}

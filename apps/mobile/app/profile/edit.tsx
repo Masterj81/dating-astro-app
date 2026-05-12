@@ -536,13 +536,13 @@ export default function EditProfileScreen() {
             <View style={styles.tipRow}>
               <Text style={styles.tipIcon}>✨</Text>
               <Text style={styles.tipText}>
-                {t('tip2') || 'A complete profile gets 3x more matches'}
+                {t('tip2') || 'Complete profiles help people understand you faster'}
               </Text>
             </View>
             <View style={styles.tipRow}>
               <Text style={styles.tipIcon}>💬</Text>
               <Text style={styles.tipText}>
-                {t('tip3') || 'Be specific about your interests to find better matches'}
+                {t('tip3') || 'Be specific about your interests to find better connections'}
               </Text>
             </View>
           </View>
