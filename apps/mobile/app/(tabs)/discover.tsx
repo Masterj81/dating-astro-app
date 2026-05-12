@@ -31,6 +31,7 @@ import BlockReportMenu from '../../components/BlockReportMenu';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import VoiceIntroPlayer from '../../components/VoiceIntroPlayer';
 import PlanetGlyph from '../../components/ui/PlanetGlyph';
+import CompatibilityGlyph from '../../components/ui/CompatibilityGlyph';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
 import { startConversationWith } from '../../services/conversations';
@@ -711,7 +712,9 @@ export default function DiscoverScreen() {
               accessibilityRole="button"
               accessibilityLabel={t('findYourCompatibility') || 'Find your compatibility'}
             >
-              <Text style={styles.compatibilityCtaIcon}>{'✨'}</Text>
+              <View style={styles.compatibilityCtaGlyphWrap}>
+                <CompatibilityGlyph size={22} color={'#FFFFFF'} />
+              </View>
               <Text style={styles.compatibilityCtaText}>
                 {t('findYourCompatibility') || 'Find your compatibility'}
               </Text>
@@ -1492,6 +1495,11 @@ const styles = StyleSheet.create({
   },
   compatibilityCtaIcon: {
     fontSize: 14,
+  },
+  compatibilityCtaGlyphWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 2,
   },
   compatibilityCtaText: {
     color: '#FFFFFF',

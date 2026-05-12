@@ -10,6 +10,8 @@ import {
   View,
 } from 'react-native';
 import { useLanguage } from '../contexts/LanguageContext';
+import PremiumGlyph from './ui/PremiumGlyph';
+import { AppTheme } from '../constants/theme';
 import { usePremium, SubscriptionTier } from '../contexts/PremiumContext';
 import { FeatureKey, FEATURE_TIERS } from '../services/premiumUsage';
 
@@ -135,9 +137,10 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
 
           {/* Icon */}
           <View style={styles.iconContainer}>
-            <Text style={styles.icon}>
-              {requiredTier === 'premium_plus' ? '✨' : '⭐'}
-            </Text>
+            <PremiumGlyph
+              size={56}
+              color={requiredTier === 'premium_plus' ? AppTheme.colors.cosmic : AppTheme.colors.gold}
+            />
           </View>
 
           {/* Title */}
@@ -219,7 +222,6 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
 
       {trialConsumed && tier === 'free' && !isDataLoading && (
         <TouchableOpacity style={styles.trialBanner} onPress={() => triggerPaywall(feature)}>
-          <Text style={styles.trialBannerIcon}>✨</Text>
           <Text style={styles.trialBannerText}>
             {t('freePreviewAvailable') || '1 free preview per day'}
           </Text>

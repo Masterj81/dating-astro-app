@@ -9,6 +9,10 @@ import {
   View,
 } from 'react-native';
 import { useLanguage } from '../contexts/LanguageContext';
+import PremiumGlyph from './ui/PremiumGlyph';
+import CompatibilityGlyph from './ui/CompatibilityGlyph';
+import AscendantGlyph from './ui/AscendantGlyph';
+import { AppTheme } from '../constants/theme';
 import { usePremium, SubscriptionTier } from '../contexts/PremiumContext';
 import { FeatureKey } from '../services/premiumUsage';
 import {
@@ -121,9 +125,10 @@ export default function PaywallModal() {
 
             {/* Icon */}
             <View style={styles.iconContainer} accessibilityLabel="">
-              <Text style={styles.icon} accessibilityLabel="">
-                {recommendedTier === 'premium_plus' ? '✨' : '⭐'}
-              </Text>
+              <PremiumGlyph
+                size={48}
+                color={recommendedTier === 'premium_plus' ? AppTheme.colors.cosmic : AppTheme.colors.gold}
+              />
             </View>
 
             {/* Title - emotional, specific to the blocked feature */}
@@ -142,15 +147,24 @@ export default function PaywallModal() {
 
             {/* Quick benefits - emotional copy with concrete value */}
             <View style={styles.quickBenefits}>
-              {[
+              {([
                 // Keys are versioned (`v2`) so stale translations from the
                 // swipe-era product can't override the new fallback copy.
-                { icon: '\u{1F495}', text: t('paywallBenefitV2_1') || 'Synastry compatibility breakdown' },
-                { icon: '\u{1F31F}', text: t('paywallBenefitV2_2') || 'Full natal chart insights' },
-                { icon: '\u{1F0CF}', text: t('paywallBenefitV2_3') || 'Monthly tarot reading' },
-              ].map((b, i) => (
+                // Glyphs are component-driven; no emoji strings here.
+                { glyph: 'synastry' as const, text: t('paywallBenefitV2_1') || 'Synastry compatibility breakdown' },
+                { glyph: 'natal' as const, text: t('paywallBenefitV2_2') || 'Full natal chart insights' },
+                { glyph: 'tarot' as const, text: t('paywallBenefitV2_3') || 'Monthly tarot reading' },
+              ]).map((b, i) => (
                 <View key={i} style={styles.quickBenefitRow}>
-                  <Text style={styles.quickBenefitIcon}>{b.icon}</Text>
+                  <View style={styles.quickBenefitGlyphWrap}>
+                    {b.glyph === 'synastry' ? (
+                      <CompatibilityGlyph size={18} color={AppTheme.colors.gold} />
+                    ) : b.glyph === 'natal' ? (
+                      <AscendantGlyph size={18} color={AppTheme.colors.gold} />
+                    ) : (
+                      <PremiumGlyph size={18} color={AppTheme.colors.gold} />
+                    )}
+                  </View>
                   <Text style={styles.quickBenefitText}>{b.text}</Text>
                 </View>
               ))}
@@ -286,6 +300,11 @@ const styles = StyleSheet.create({
   },
   quickBenefitIcon: {
     fontSize: 16,
+  },
+  quickBenefitGlyphWrap: {
+    width: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   quickBenefitText: {
     fontSize: 14,
