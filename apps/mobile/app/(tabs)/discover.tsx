@@ -432,7 +432,7 @@ export default function DiscoverScreen() {
   const handleFindCompatibility = () => {
     if (!currentProfile?.id) return;
     buttonPress();
-    router.push(`/premium-screens/synastry?matchId=${currentProfile.id}` as any);
+    router.push(`/premium-screens/synastry?profileId=${currentProfile.id}` as any);
   };
 
   // Apple Guideline 1.2: after a block (or report), remove the profile from
