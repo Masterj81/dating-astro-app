@@ -1,12 +1,29 @@
-import React from 'react';
+import React, { type ComponentType } from 'react';
 import { Tabs } from 'expo-router';
 import { MotiView } from 'moti';
-import { Platform, StyleSheet, Text, ViewStyle } from 'react-native';
+import { Platform, StyleSheet, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { tabSwitch } from '../../services/haptics';
+import {
+  ChatTabIcon,
+  DiscoverTabIcon,
+  PremiumTabIcon,
+  ProfileTabIcon,
+} from '../../components/ui/TabIcons';
+import { AppTheme } from '../../constants/theme';
 
-const TabIcon = React.memo(function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
+type GlyphComponent = ComponentType<{ size?: number; color?: string }>;
+
+const TabIcon = React.memo(function TabIcon({
+  Glyph,
+  focused,
+  glyphColor,
+}: {
+  Glyph: GlyphComponent;
+  focused: boolean;
+  glyphColor?: string;
+}) {
   return (
     <MotiView
       style={styles.iconContainer}
@@ -16,7 +33,10 @@ const TabIcon = React.memo(function TabIcon({ emoji, focused }: { emoji: string;
       }}
       transition={{ type: 'timing', duration: 200 }}
     >
-      <Text style={styles.icon}>{emoji}</Text>
+      <Glyph
+        size={22}
+        color={glyphColor ?? (focused ? AppTheme.colors.coral : AppTheme.colors.textSecondary)}
+      />
     </MotiView>
   );
 });
@@ -68,7 +88,7 @@ export default function TabsLayout() {
         name="discover"
         options={{
           title: t('discover') || 'Discover',
-          tabBarIcon: ({ focused }) => <TabIcon emoji={'\u{1F50D}'} focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon Glyph={DiscoverTabIcon} focused={focused} />,
         }}
         listeners={{ tabPress: handleTabPress }}
       />
@@ -86,7 +106,7 @@ export default function TabsLayout() {
         name="chat"
         options={{
           title: t('conversations') || t('chat') || 'Chat',
-          tabBarIcon: ({ focused }) => <TabIcon emoji={'\u{1F4AC}'} focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon Glyph={ChatTabIcon} focused={focused} />,
         }}
         listeners={{ tabPress: handleTabPress }}
       />
@@ -94,7 +114,7 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: t('profile') || 'Profile',
-          tabBarIcon: ({ focused }) => <TabIcon emoji={'\u{1F464}'} focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon Glyph={ProfileTabIcon} focused={focused} />,
         }}
         listeners={{ tabPress: handleTabPress }}
       />
@@ -102,7 +122,13 @@ export default function TabsLayout() {
         name="premium"
         options={{
           title: t('premium') || 'Premium',
-          tabBarIcon: ({ focused }) => <TabIcon emoji={'\u{2B50}'} focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              Glyph={PremiumTabIcon}
+              focused={focused}
+              glyphColor={focused ? AppTheme.colors.gold : AppTheme.colors.textSecondary}
+            />
+          ),
         }}
         listeners={{ tabPress: handleTabPress }}
       />
@@ -123,8 +149,5 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  icon: {
-    fontSize: 20,
   },
 });

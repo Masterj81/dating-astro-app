@@ -8,6 +8,9 @@ import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import WebTabWrapper from '../../components/WebTabWrapper';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { usePremium } from '../../contexts/PremiumContext';
+import PremiumCardGlyph from '../../components/ui/PremiumCardGlyph';
+import PremiumGlyph from '../../components/ui/PremiumGlyph';
+import { CELESTIAL_FEATURES, COSMIC_FEATURES } from '../../constants/premiumCatalog';
 
 // Conversation-first product change: `seeWhoLikes` and `priorityMessages`
 // were removed. Monthly Tarot is a real Celestial value prop and
@@ -16,28 +19,21 @@ import { usePremium } from '../../contexts/PremiumContext';
 // Daily Horoscope moved from Cosmic → Celestial (personal + daily,
 // not a high-end exclusive). Cosmic users still get it by downward
 // inclusion via FEATURE_TIERS.
-const CELESTIAL_FEATURES = [
-  { key: 'fullNatalChart', icon: '🌟', route: '/premium-screens/natal-chart' },
-  { key: 'advancedSynastry', icon: '💕', route: '/premium-screens/synastry' },
-  { key: 'dailyHoroscope', icon: '🔮', route: '/premium-screens/daily-horoscope' },
-  { key: 'monthlyTarot', icon: '🃏', route: '/premium-screens/tarot' },
-];
-
-const COSMIC_FEATURES = [
-  { key: 'monthlyHoroscope', icon: '📅', route: '/premium-screens/monthly-horoscope' },
-  { key: 'planetaryTransits', icon: '🪐', route: '/premium-screens/planetary-transits' },
-  { key: 'luckyDays', icon: '🍀', route: '/premium-screens/lucky-days' },
-  { key: 'datePlanner', icon: '💫', route: '/premium-screens/date-planner' },
-];
+//
+// The duplicate CELESTIAL_FEATURES / COSMIC_FEATURES arrays that used
+// to live here (with emoji strings as icons) were removed in favor of
+// the single source of truth in `constants/premiumCatalog.ts`. Icons
+// are now rendered by `<PremiumCardGlyph featureKey={...} />` which
+// switches on the feature key — no emoji strings anywhere in the data.
 
 function FeatureCard({
   title,
-  icon,
+  featureKey,
   onPress,
   locked = false,
 }: {
   title: string;
-  icon: string;
+  featureKey: string;
   onPress: () => void;
   locked?: boolean;
 }) {
@@ -47,11 +43,13 @@ function FeatureCard({
       onPress={onPress}
       activeOpacity={0.82}
     >
-      <Text style={styles.cardIcon}>{icon}</Text>
+      <View style={styles.cardIconWrap}>
+        <PremiumCardGlyph featureKey={featureKey} size={40} color={AppTheme.colors.gold} />
+      </View>
       <Text style={styles.cardTitle}>{title}</Text>
       {locked ? (
         <View style={styles.lockBadge}>
-          <Text style={styles.lockBadgeText}>{'\u{2728}'} Cosmic</Text>
+          <Text style={styles.lockBadgeText}>{'COSMIC'}</Text>
         </View>
       ) : null}
     </TouchableOpacity>
@@ -90,7 +88,7 @@ export default function PremiumDashboard() {
             {t('cosmicHub') || 'Cosmic Hub'}
           </h1>
           <p style={{ fontSize: 16, color: AppTheme.colors.coral, fontWeight: 600, margin: 0 }}>
-            {isPremiumPlus ? `🌌 ${t('cosmicMember') || 'Cosmic Member'}` : `✨ ${t('celestialMember') || 'Celestial Member'}`}
+            {isPremiumPlus ? (t('cosmicMember') || 'Cosmic Member') : (t('celestialMember') || 'Celestial Member')}
           </p>
         </div>
 
@@ -118,7 +116,9 @@ export default function PremiumDashboard() {
                   boxSizing: 'border-box',
                 }}
               >
-                <span style={{ fontSize: 36, marginBottom: 12 }}>{feature.icon}</span>
+                <View style={{ marginBottom: 12 }}>
+                  <PremiumCardGlyph featureKey={feature.key} size={36} />
+                </View>
                 <span style={{ color: AppTheme.colors.textPrimary, fontWeight: 600, textAlign: 'center', fontSize: 13 }}>
                   {t(feature.key) || feature.key}
                 </span>
@@ -159,11 +159,13 @@ export default function PremiumDashboard() {
                   position: 'relative',
                 }}
               >
-                <span style={{ fontSize: 36, marginBottom: 12 }}>{feature.icon}</span>
+                <View style={{ marginBottom: 12 }}>
+                  <PremiumCardGlyph featureKey={feature.key} size={36} />
+                </View>
                 <span style={{ color: AppTheme.colors.textPrimary, fontWeight: 600, textAlign: 'center', fontSize: 13 }}>
                   {t(feature.key) || feature.key}
                 </span>
-                {!isPremiumPlus ? <span style={{ position: 'absolute', top: 12, right: 12, fontSize: 14 }}>🔒</span> : null}
+                {!isPremiumPlus ? <span style={{ position: 'absolute', top: 12, right: 12, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, color: '#9333ea' }}>{'LOCKED'}</span> : null}
               </div>
             ))}
           </div>
@@ -183,7 +185,9 @@ export default function PremiumDashboard() {
               cursor: 'pointer',
             }}
           >
-            <span style={{ fontSize: 32, marginRight: 12 }}>🌌</span>
+            <View style={{ marginRight: 12 }}>
+              <PremiumGlyph size={32} color={AppTheme.colors.cosmic} />
+            </View>
             <div style={{ flex: 1 }}>
               <div style={{ color: AppTheme.colors.textPrimary, fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
                 {t('upgradeToCosmic') || 'Upgrade to Cosmic'}
@@ -210,7 +214,7 @@ export default function PremiumDashboard() {
         <View style={styles.header}>
           <Text style={styles.title}>{t('cosmicHub') || 'Cosmic Hub'}</Text>
           <Text style={styles.subtitle}>
-            {isPremiumPlus ? `🌌 ${t('cosmicMember') || 'Cosmic Member'}` : `✨ ${t('celestialMember') || 'Celestial Member'}`}
+            {isPremiumPlus ? (t('cosmicMember') || 'Cosmic Member') : (t('celestialMember') || 'Celestial Member')}
           </Text>
           <Text style={styles.headerWelcome}>
             {t('hubWelcome') || 'Your cosmic toolkit is ready. Explore the features below.'}
@@ -224,7 +228,7 @@ export default function PremiumDashboard() {
               <FeatureCard
                 key={feature.key}
                 title={t(feature.key) || feature.key}
-                icon={feature.icon}
+                featureKey={feature.key}
                 onPress={() => router.push(feature.route as any)}
               />
             ))}
@@ -238,7 +242,7 @@ export default function PremiumDashboard() {
               <FeatureCard
                 key={feature.key}
                 title={t(feature.key) || feature.key}
-                icon={feature.icon}
+                featureKey={feature.key}
                 locked={!isPremiumPlus}
                 onPress={() => {
                   if (isPremiumPlus) {
@@ -254,7 +258,9 @@ export default function PremiumDashboard() {
 
         {!isPremiumPlus ? (
           <TouchableOpacity style={styles.upgradeBanner} onPress={() => router.push('/premium-screens/plus')}>
-            <Text style={styles.upgradeIcon}>🌌</Text>
+            <View style={styles.upgradeIconWrap}>
+              <PremiumGlyph size={32} color={AppTheme.colors.cosmic} />
+            </View>
             <View style={styles.upgradeTextContainer}>
               <Text style={styles.upgradeTitle}>{t('hubUpgradeTitle') || 'Go Cosmic for the Full Experience'}</Text>
               <Text style={styles.upgradeDescription}>
@@ -356,6 +362,16 @@ const styles = StyleSheet.create({
   cardIcon: {
     fontSize: 40,
     marginBottom: AppTheme.spacing.md,
+  },
+  cardIconWrap: {
+    marginBottom: AppTheme.spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  upgradeIconWrap: {
+    marginRight: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardTitle: {
     ...AppTheme.type.caption,

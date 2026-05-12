@@ -6,29 +6,34 @@
 //
 // The `likes` and `priority-messages` routes have been redirected to
 // the premium hub so any lingering deep links land somewhere sensible.
+//
+// Icons used to be emojis (e.g. 🌟 💕 🔮). They have been replaced
+// by `PremiumCardGlyph` which switches on the feature `key`. The
+// previous string icons are gone so the catalog now ships only
+// semantic data — no presentation glyphs to keep in sync.
 export const CELESTIAL_FEATURES = [
-  { key: 'fullNatalChart', icon: '\u{1F31F}', route: '/premium-screens/natal-chart' },
-  { key: 'advancedSynastry', icon: '\u{1F495}', route: '/premium-screens/synastry' },
-  { key: 'dailyHoroscope', icon: '\u{1F52E}', route: '/premium-screens/daily-horoscope' },
-  { key: 'monthlyTarot', icon: '\u{1F0CF}', route: '/premium-screens/tarot' },
+  { key: 'fullNatalChart', route: '/premium-screens/natal-chart' },
+  { key: 'advancedSynastry', route: '/premium-screens/synastry' },
+  { key: 'dailyHoroscope', route: '/premium-screens/daily-horoscope' },
+  { key: 'monthlyTarot', route: '/premium-screens/tarot' },
 ] as const;
 
 // Daily Horoscope moved from Cosmic → Celestial: it's a personal +
 // daily astrology feature, not a high-end exclusive. Cosmic users
 // still have access by downward inclusion via FEATURE_TIERS.
 export const COSMIC_FEATURES = [
-  { key: 'monthlyHoroscope', icon: '\u{1F4C5}', route: '/premium-screens/monthly-horoscope' },
-  { key: 'weeklyTarot', icon: '\u{1F0CF}', route: '/premium-screens/tarot' },
-  { key: 'planetaryTransits', icon: '\u{1FA90}', route: '/premium-screens/planetary-transits' },
-  { key: 'luckyDays', icon: '\u{1F340}', route: '/premium-screens/lucky-days' },
-  { key: 'datePlanner', icon: '\u{1F4AB}', route: '/premium-screens/date-planner' },
+  { key: 'monthlyHoroscope', route: '/premium-screens/monthly-horoscope' },
+  { key: 'weeklyTarot', route: '/premium-screens/tarot' },
+  { key: 'planetaryTransits', route: '/premium-screens/planetary-transits' },
+  { key: 'luckyDays', route: '/premium-screens/lucky-days' },
+  { key: 'datePlanner', route: '/premium-screens/date-planner' },
 ] as const;
 
 export const PAYWALL_PREVIEW_FEATURES = [
-  { key: 'advancedSynastry', icon: '\u{1F495}', fallback: 'Synastry' },
-  { key: 'fullNatalChart', icon: '\u{1F31F}', fallback: 'Natal Chart' },
-  { key: 'dailyHoroscope', icon: '\u{1F52E}', fallback: 'Horoscopes' },
-  { key: 'luckyDays', icon: '\u{1F340}', fallback: 'Lucky Days' },
+  { key: 'advancedSynastry', fallback: 'Synastry' },
+  { key: 'fullNatalChart', fallback: 'Natal Chart' },
+  { key: 'dailyHoroscope', fallback: 'Horoscopes' },
+  { key: 'luckyDays', fallback: 'Lucky Days' },
 ] as const;
 
 export const CELESTIAL_FEATURE_KEYS = CELESTIAL_FEATURES.map((feature) => feature.key);

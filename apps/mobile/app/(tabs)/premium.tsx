@@ -13,13 +13,17 @@ import { AppCard } from '../../components/ui/AppCard';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { usePremium } from '../../contexts/PremiumContext';
 import { LoadingState } from '../../components/ScreenStates';
+import PremiumGlyph from '../../components/ui/PremiumGlyph';
+import PremiumCardGlyph from '../../components/ui/PremiumCardGlyph';
+import CompatibilityGlyph from '../../components/ui/CompatibilityGlyph';
+import AscendantGlyph from '../../components/ui/AscendantGlyph';
 import WebTabWrapper from '../../components/WebTabWrapper';
 import { useAuth } from '../../contexts/AuthContext';
 import { getManageSubscriptionAction, manageSubscription } from '../../services/subscriptionManagement';
 
-const FeatureCard = React.memo(function FeatureCard({ title, icon, onPress, locked = false }: {
+const FeatureCard = React.memo(function FeatureCard({ title, featureKey, onPress, locked = false }: {
   title: string;
-  icon: string;
+  featureKey: string;
   onPress: () => void;
   locked?: boolean;
 }) {
@@ -31,9 +35,11 @@ const FeatureCard = React.memo(function FeatureCard({ title, icon, onPress, lock
       activeOpacity={0.8}
     >
       <AppCard style={styles.featureCardInner} elevated={locked}>
-        <Text style={styles.featureIcon}>{icon}</Text>
+        <View style={styles.featureIconWrap}>
+          <PremiumCardGlyph featureKey={featureKey} size={38} color={AppTheme.colors.gold} />
+        </View>
         <Text style={styles.featureTitle}>{title}</Text>
-        {locked ? <Text style={styles.featureLock}>🔒</Text> : null}
+        {locked ? <Text style={styles.featureLock}>{'LOCKED'}</Text> : null}
       </AppCard>
     </TouchableOpacity>
   );
@@ -105,7 +111,9 @@ export default function PremiumScreen() {
           centered
           style={{ textAlign: 'center' }}
         >
-          <span style={{ fontSize: 80, marginBottom: 24 }}>✨</span>
+          <View style={{ marginBottom: 24 }}>
+            <PremiumGlyph size={80} />
+          </View>
           <h1 style={{ fontSize: 28, fontWeight: 'bold', color: '#fff', margin: '0 0 12px' }}>
             {t('paywallHeroTitle') || 'The Stars Know Your Match'}
           </h1>
@@ -126,7 +134,7 @@ export default function PremiumScreen() {
                 color: '#ccc',
                 fontSize: 14
               }}>
-                {feature.icon} {t(feature.key) || feature.fallback}
+                {t(feature.key) || feature.fallback}
               </div>
             ))}
           </div>
@@ -162,10 +170,11 @@ export default function PremiumScreen() {
     const BENEFIT_ROWS = [
       // Keys are versioned (`v2`) so stale translations from the swipe-era
       // product can't override the new conversation-first fallback copy.
-      { icon: '\u{1F495}', label: t('paywallBenefitLabelV2_1') || 'Synastry Compatibility', desc: t('paywallBenefitDescV2_1') || 'A side-by-side chart breakdown of how you and a match align' },
-      { icon: '\u{1F31F}', label: t('paywallBenefitLabelV2_2') || 'Full Natal Chart Insights', desc: t('paywallBenefitDescV2_2') || 'Explore your sun, moon, rising, and the planets that shape you' },
-      { icon: '\u{1F0CF}', label: t('paywallBenefitLabelV2_3') || 'Monthly Tarot Reading', desc: t('paywallBenefitDescV2_3') || 'A fresh reading each month to reflect on love and direction' },
-      { icon: '\u{1F4AC}', label: t('paywallBenefitLabelV2_4') || 'Conversation-First Matching', desc: t('paywallBenefitDescV2_4') || 'Connect through values, intent, and prompts \u2014 not just photos' },
+      // Icons are now glyph components keyed by intent, not emoji strings.
+      { glyph: 'synastry' as const, label: t('paywallBenefitLabelV2_1') || 'Synastry Compatibility', desc: t('paywallBenefitDescV2_1') || 'A side-by-side chart breakdown of how you and a match align' },
+      { glyph: 'natal' as const, label: t('paywallBenefitLabelV2_2') || 'Full Natal Chart Insights', desc: t('paywallBenefitDescV2_2') || 'Explore your sun, moon, rising, and the planets that shape you' },
+      { glyph: 'tarot' as const, label: t('paywallBenefitLabelV2_3') || 'Monthly Tarot Reading', desc: t('paywallBenefitDescV2_3') || 'A fresh reading each month to reflect on love and direction' },
+      { glyph: 'conversation' as const, label: t('paywallBenefitLabelV2_4') || 'Conversation-First Matching', desc: t('paywallBenefitDescV2_4') || 'Connect through values, intent, and prompts \u2014 not just photos' },
     ];
 
     return (
@@ -175,7 +184,9 @@ export default function PremiumScreen() {
           contentContainerStyle={[styles.paywallScroll, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 40 }]}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.paywallEmoji}>{'\u2728'}</Text>
+          <View style={styles.paywallHeroGlyph}>
+            <PremiumGlyph size={64} />
+          </View>
           <Text style={styles.paywallTitle}>{t('paywallHeroTitle') || 'The Stars Know Your Match'}</Text>
           <Text style={styles.paywallSubtitle}>
             {t('paywallHeroSubtitle') || 'Unlock the cosmic insights that lead to deeper, more meaningful connections'}
@@ -193,7 +204,13 @@ export default function PremiumScreen() {
             {BENEFIT_ROWS.map((b, i) => (
               <View key={i} style={styles.benefitRow}>
                 <View style={styles.benefitIconWrap}>
-                  <Text style={styles.benefitIcon}>{b.icon}</Text>
+                  {b.glyph === 'synastry' ? (
+                    <CompatibilityGlyph size={26} color={AppTheme.colors.coral} />
+                  ) : b.glyph === 'natal' ? (
+                    <AscendantGlyph size={26} color={AppTheme.colors.coral} />
+                  ) : (
+                    <PremiumGlyph size={26} color={AppTheme.colors.coral} />
+                  )}
                 </View>
                 <View style={styles.benefitTextWrap}>
                   <Text style={styles.benefitLabel}>{b.label}</Text>
@@ -265,7 +282,7 @@ export default function PremiumScreen() {
             {t('cosmicHub') || 'Cosmic Hub'}
           </h1>
           <p style={{ fontSize: 16, color: '#e94560', fontWeight: 600, margin: 0 }}>
-            {isPremiumPlus ? '🌌 ' + (t('cosmicMember') || 'Cosmic Member') : '✨ ' + (t('celestialMember') || 'Celestial Member')}
+            {isPremiumPlus ? (t('cosmicMember') || 'Cosmic Member') : (t('celestialMember') || 'Celestial Member')}
           </p>
           <button
             onClick={() => void handleManageSubscription()}
@@ -308,7 +325,9 @@ export default function PremiumScreen() {
                   boxSizing: 'border-box'
                 }}
               >
-                <span style={{ fontSize: 36, marginBottom: 12 }}>{feature.icon}</span>
+                <View style={{ marginBottom: 12 }}>
+                  <PremiumCardGlyph featureKey={feature.key} size={36} />
+                </View>
                 <span style={{ color: '#fff', fontWeight: 600, textAlign: 'center', fontSize: 13 }}>
                   {t(feature.key) || feature.key}
                 </span>
@@ -349,12 +368,14 @@ export default function PremiumScreen() {
                   position: 'relative'
                 }}
               >
-                <span style={{ fontSize: 36, marginBottom: 12 }}>{feature.icon}</span>
+                <View style={{ marginBottom: 12 }}>
+                  <PremiumCardGlyph featureKey={feature.key} size={36} />
+                </View>
                 <span style={{ color: '#fff', fontWeight: 600, textAlign: 'center', fontSize: 13 }}>
                   {t(feature.key) || feature.key}
                 </span>
                 {!isPremiumPlus && (
-                  <span style={{ position: 'absolute', top: 12, right: 12, fontSize: 14 }}>🔒</span>
+                  <span style={{ position: 'absolute', top: 12, right: 12, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, color: '#9333ea' }}>{'LOCKED'}</span>
                 )}
               </div>
             ))}
@@ -376,7 +397,9 @@ export default function PremiumScreen() {
               cursor: 'pointer'
             }}
           >
-            <span style={{ fontSize: 32, marginRight: 12 }}>🌌</span>
+            <View style={{ marginRight: 12 }}>
+              <PremiumGlyph size={32} color={'#7C6CFF'} />
+            </View>
             <div style={{ flex: 1 }}>
               <div style={{ color: '#fff', fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
                 {t('upgradeToCosmic') || 'Upgrade to Cosmic'}
@@ -420,7 +443,7 @@ export default function PremiumScreen() {
               <FeatureCard
                 key={feature.key}
                 title={t(feature.key) || feature.key}
-                icon={feature.icon}
+                featureKey={feature.key}
                 onPress={() => handleFeaturePress(feature.route)}
               />
             ))}
@@ -435,7 +458,7 @@ export default function PremiumScreen() {
               <FeatureCard
                 key={feature.key}
                 title={t(feature.key) || feature.key}
-                icon={feature.icon}
+                featureKey={feature.key}
                 onPress={() => handleCosmicFeaturePress(feature.route)}
                 locked={!isPremiumPlus}
               />
@@ -449,7 +472,9 @@ export default function PremiumScreen() {
             style={styles.upgradeBanner}
             onPress={() => router.push('/premium-screens/plus')}
           >
-            <Text style={styles.upgradeIcon}>🌌</Text>
+            <View style={styles.upgradeIconWrap}>
+              <PremiumGlyph size={32} color={AppTheme.colors.cosmic} />
+            </View>
             <View style={styles.upgradeTextContainer}>
               <Text style={styles.upgradeTitle}>{t('upgradeToCosmic') || 'Upgrade to Cosmic'}</Text>
               <Text style={styles.upgradeDescription}>
@@ -478,6 +503,20 @@ const styles = StyleSheet.create({
   paywallEmoji: {
     fontSize: 80,
     marginBottom: 28,
+  },
+  paywallHeroGlyph: {
+    marginBottom: 28,
+    alignItems: 'center',
+  },
+  featureIconWrap: {
+    marginBottom: AppTheme.spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  upgradeIconWrap: {
+    marginRight: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   paywallTitle: {
     ...AppTheme.type.hero,
