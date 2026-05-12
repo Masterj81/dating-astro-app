@@ -308,7 +308,7 @@ export function DiscoverOverview() {
   const isFreeTier = tier === "free";
   const compatibilityHref = isFreeTier
     ? "/app/plans"
-    : "/app/premium/celestial/synastry";
+    : `/app/premium/celestial/synastry?profileId=${encodeURIComponent(currentProfile.id)}`;
 
   return (
     <div className="space-y-6">
