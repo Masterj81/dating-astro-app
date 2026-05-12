@@ -111,6 +111,23 @@ function calculateOverallCompatibility(
   );
 }
 
+type SynastryScoreBand =
+  | "exceptional"
+  | "strong"
+  | "promising"
+  | "mixed"
+  | "growth"
+  | "different";
+
+function getSynastryScoreBand(score: number): SynastryScoreBand {
+  if (score >= 90) return "exceptional";
+  if (score >= 80) return "strong";
+  if (score >= 70) return "promising";
+  if (score >= 60) return "mixed";
+  if (score >= 50) return "growth";
+  return "different";
+}
+
 function calculateAreaScores(total: number) {
   return [
     { key: "emotional", score: Math.min(96, total + 7) },
@@ -532,9 +549,25 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
                 </div>
               )}
             </div>
-            <p className="text-sm leading-7 text-text-muted">
-              {t("synastryOverviewBody")}
-            </p>
+            {totalScore != null ? (
+              (() => {
+                const band = getSynastryScoreBand(totalScore);
+                return (
+                  <div>
+                    <h3 className="text-base font-semibold text-white">
+                      {t(`synastryScoreTitle_${band}`)}
+                    </h3>
+                    <p className="mt-2 text-sm leading-7 text-text-muted">
+                      {t(`synastryScoreBody_${band}`)}
+                    </p>
+                  </div>
+                );
+              })()
+            ) : (
+              <p className="text-sm leading-7 text-text-muted">
+                {t("synastryOverviewBody")}
+              </p>
+            )}
           </div>
         </div>
 
