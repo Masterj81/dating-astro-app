@@ -77,13 +77,20 @@ const COMPATIBILITY_MATRIX: Record<string, Record<string, number>> = {
   water: { fire: 49, earth: 90, air: 64, water: 87 },
 };
 
+function normalizeSign(sign: string | null | undefined): string | null {
+  if (!sign) return null;
+  const trimmed = sign.trim();
+  if (!trimmed) return null;
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+}
+
 function calculateFallbackCompatibilityFromSunSigns(
   mySunSign: string | null,
   otherSunSign: string | null,
   fallbackScore: number | null
 ) {
-  const el1 = mySunSign ? ELEMENTS[mySunSign] : null;
-  const el2 = otherSunSign ? ELEMENTS[otherSunSign] : null;
+  const el1 = ELEMENTS[normalizeSign(mySunSign) ?? ""] ?? null;
+  const el2 = ELEMENTS[normalizeSign(otherSunSign) ?? ""] ?? null;
 
   if (!el1 || !el2) {
     return fallbackScore ?? 76;
