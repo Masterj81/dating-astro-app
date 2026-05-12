@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
@@ -12,13 +12,21 @@ import { CompatibilityDotsArc } from "@/components/CompatibilityDotsArc";
 import { SynastryOverviewSkeleton } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 
-type MatchRow = {
-  match_id: string;
-  matched_user_id: string;
-  matched_user_name: string | null;
-  matched_user_image: string | null;
-  matched_user_sun_sign: string | null;
-  compatibility_overall: number | null;
+// Picker entry. Mirrors the get_synastry_candidate_profiles RPC return
+// shape — same preference filtering as Discover, minus the swipes
+// exclusion so already-passed / already-liked profiles are still
+// available for compatibility comparison.
+type CandidateProfile = {
+  id: string;
+  name: string | null;
+  age: number | null;
+  sun_sign: string | null;
+  moon_sign: string | null;
+  rising_sign: string | null;
+  bio: string | null;
+  image_url: string | null;
+  images: string[] | null;
+  is_verified: boolean | null;
 };
 
 type SynastryProfile = {
@@ -105,21 +113,21 @@ function calculateAreaScores(total: number) {
   ];
 }
 
-export function SynastryOverview() {
+export function SynastryOverview({ initialProfileId = null }: { initialProfileId?: string | null }) {
   const t = useTranslations("webApp");
   const locale = useLocale();
   const [state, setState] = useState<WebAccountState | null>(null);
   const [selfProfile, setSelfProfile] = useState<SynastryProfile | null>(null);
-  const [matches, setMatches] = useState<MatchRow[]>([]);
-  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [matchProfile, setMatchProfile] = useState<SynastryProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const activeMatch = useMemo(
-    () => matches.find((match) => match.match_id === selectedMatchId) || null,
-    [matches, selectedMatchId]
+  const activeCandidate = useMemo(
+    () => candidates.find((candidate) => candidate.id === selectedProfileId) || null,
+    [candidates, selectedProfileId]
   );
 
   useEffect(() => {
@@ -133,31 +141,33 @@ export function SynastryOverview() {
 
         if (!account?.userId) {
           setSelfProfile(null);
-          setMatches([]);
+          setCandidates([]);
           return;
         }
 
         const supabase = getSupabaseBrowser();
-        // Phase 3-B: own profile via SECURITY DEFINER RPC (auth.uid() applied
-        // internally, robust to future column-level REVOKEs). Also fetch
-        // matches in parallel.
-        const [{ data: ownRows, error: meError }, { data: matchRows, error: matchesError }] =
+        // Phase 3-B: own profile via SECURITY DEFINER RPC. Candidate set
+        // is everyone matching the caller's discovery preferences (not
+        // just matches/likes) so the picker reflects who they could
+        // potentially compare charts with.
+        const [{ data: ownRows, error: meError }, { data: candidateRows, error: candidatesError }] =
           await Promise.all([
             supabase.rpc("get_my_full_profile"),
-            supabase.rpc("get_user_matches", {
+            supabase.rpc("get_synastry_candidate_profiles", {
               p_user_id: account.userId,
+              p_limit: 50,
             }),
           ]);
 
         if (meError) {
           throw meError;
         }
-        if (matchesError) {
-          throw matchesError;
+        if (candidatesError) {
+          throw candidatesError;
         }
 
         const ownData = Array.isArray(ownRows) ? ownRows[0] : null;
-        const nextMatches = (matchRows as MatchRow[]) || [];
+        let nextCandidates = (candidateRows as CandidateProfile[]) || [];
         setSelfProfile(
           ownData
             ? ({
@@ -171,8 +181,75 @@ export function SynastryOverview() {
               } as SynastryProfile)
             : null
         );
-        setMatches(nextMatches);
-        setSelectedMatchId(nextMatches[0]?.match_id || null);
+
+        // Deep-link handling. If a profileId came in via ?profileId= and
+        // it's already in the candidate set, just pre-select it. If it's
+        // outside the set (e.g. a swiped profile that no longer matches
+        // current preferences), still try to load it via get-profile-chart
+        // and prepend so the link works. On failure, fall back silently
+        // to the first candidate.
+        let initialSelected: string | null = null;
+        if (initialProfileId) {
+          const inSet = nextCandidates.find((c) => c.id === initialProfileId);
+          if (inSet) {
+            initialSelected = initialProfileId;
+          } else {
+            try {
+              const { data: payload, error: chartError } = await supabase.functions.invoke(
+                "get-profile-chart",
+                { body: { targetUserId: initialProfileId } }
+              );
+              if (chartError) throw chartError;
+              const profilePayload = payload as
+                | {
+                    success?: boolean;
+                    profile?: {
+                      id: string;
+                      name?: string | null;
+                      sun_sign?: string | null;
+                      moon_sign?: string | null;
+                      rising_sign?: string | null;
+                      image_url?: string | null;
+                      images?: string[] | null;
+                      age?: number | null;
+                      bio?: string | null;
+                      is_verified?: boolean | null;
+                    };
+                    error?: string;
+                  }
+                | null;
+              if (profilePayload?.success && profilePayload.profile) {
+                const p = profilePayload.profile;
+                nextCandidates = [
+                  {
+                    id: p.id,
+                    name: p.name ?? null,
+                    age: p.age ?? null,
+                    sun_sign: p.sun_sign ?? null,
+                    moon_sign: p.moon_sign ?? null,
+                    rising_sign: p.rising_sign ?? null,
+                    bio: p.bio ?? null,
+                    image_url: p.image_url ?? null,
+                    images: p.images ?? null,
+                    is_verified: p.is_verified ?? null,
+                  },
+                  ...nextCandidates,
+                ];
+                initialSelected = p.id;
+              } else {
+                console.warn(
+                  "[synastry] deep-link target not loadable, falling back",
+                  profilePayload?.error
+                );
+              }
+            } catch (deepLinkError) {
+              console.warn("[synastry] deep-link load failed, falling back", deepLinkError);
+            }
+          }
+        }
+
+        setCandidates(nextCandidates);
+        setSelectedProfileId(initialSelected ?? nextCandidates[0]?.id ?? null);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : t("unknownError"));
       } finally {
@@ -181,11 +258,11 @@ export function SynastryOverview() {
     };
 
     load();
-  }, [t]);
+  }, [t, initialProfileId]);
 
   useEffect(() => {
     const loadSelectedMatch = async () => {
-      if (!activeMatch) {
+      if (!selectedProfileId) {
         setMatchProfile(null);
         return;
       }
@@ -198,7 +275,7 @@ export function SynastryOverview() {
         // birth_time, birth_date, raw lat/long, email are NEVER included.
         const { data: payload, error: profileError } = await supabase.functions.invoke(
           "get-profile-chart",
-          { body: { targetUserId: activeMatch.matched_user_id } }
+          { body: { targetUserId: selectedProfileId } }
         );
 
         if (profileError) {
@@ -250,7 +327,7 @@ export function SynastryOverview() {
     };
 
     loadSelectedMatch();
-  }, [activeMatch, t]);
+  }, [selectedProfileId, t]);
 
   if (loading) {
     return <SynastryOverviewSkeleton ariaLabel={t("loading")} />;
@@ -293,7 +370,7 @@ export function SynastryOverview() {
     );
   }
 
-  if (!matches.length) {
+  if (!candidates.length) {
     return (
       <EmptyState
         icon="🌠"
@@ -302,10 +379,10 @@ export function SynastryOverview() {
         action={
           <>
             <Link
-              href="/app/matches"
+              href="/app/profile"
               className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
             >
-              {t("openMatches")}
+              {t("openProfile")}
             </Link>
             <Link
               href="/app/discover"
@@ -322,7 +399,7 @@ export function SynastryOverview() {
   const me = selfProfile;
   const other = matchProfile;
   const totalScore =
-    me && other ? calculateOverallCompatibility(me, other, activeMatch?.compatibility_overall ?? null) : null;
+    me && other ? calculateOverallCompatibility(me, other, null) : null;
   const safeTotalScore = totalScore ?? 76;
   const areaScores = totalScore ? calculateAreaScores(totalScore) : [];
   const aspects: AspectRow[] =
@@ -359,13 +436,13 @@ export function SynastryOverview() {
         </p>
         <h2 className="mt-3 text-xl font-semibold text-white">{t("synastryMatchListTitle")}</h2>
         <div className="mt-5 space-y-3">
-          {matches.map((match) => (
+          {candidates.map((candidate) => (
             <button
-              key={match.match_id}
+              key={candidate.id}
               type="button"
-              onClick={() => setSelectedMatchId(match.match_id)}
+              onClick={() => setSelectedProfileId(candidate.id)}
               className={`w-full rounded-[1.25rem] border px-4 py-4 text-left transition-colors ${
-                match.match_id === selectedMatchId
+                candidate.id === selectedProfileId
                   ? "border-accent/40 bg-accent/10"
                   : "border-border bg-bg/70 hover:bg-card-hover"
               }`}
@@ -373,27 +450,29 @@ export function SynastryOverview() {
               <div className="flex items-center gap-3">
                 <div className="relative h-12 w-12 overflow-hidden rounded-2xl bg-bg-secondary">
                   <Image
-                    src={resolveImageSrc(match.matched_user_image)}
-                    alt={match.matched_user_name || t("unknownUser")}
+                    src={resolveImageSrc(candidate.image_url, candidate.images?.[0])}
+                    alt={candidate.name || t("unknownUser")}
                     fill
                     sizes="48px"
-                    unoptimized={shouldBypassImageOptimization(resolveImageSrc(match.matched_user_image))}
+                    unoptimized={shouldBypassImageOptimization(
+                      resolveImageSrc(candidate.image_url, candidate.images?.[0])
+                    )}
                     className="object-cover"
                   />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-white">
-                    {match.matched_user_name || t("unknownUser")}
+                    {candidate.name || t("unknownUser")}
                   </p>
                   <p className="mt-1 text-xs text-text-muted">
-                    {t("discoverSun")}: {match.matched_user_sun_sign ? translateSign(match.matched_user_sun_sign, locale) : "?"}
+                    {t("discoverSun")}: {candidate.sun_sign ? translateSign(candidate.sun_sign, locale) : "?"}
                   </p>
                 </div>
                 <div className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-white">
                   {calculateFallbackCompatibilityFromSunSigns(
                     selfProfile?.sun_sign ?? null,
-                    match.matched_user_sun_sign,
-                    match.compatibility_overall ?? null
+                    candidate.sun_sign,
+                    null
                   )}%
                 </div>
               </div>
@@ -414,10 +493,10 @@ export function SynastryOverview() {
             <div className="flex items-center justify-center text-3xl text-white/90">✦</div>
             <div className="rounded-[1.5rem] border border-border bg-bg/70 p-5">
               <p className="text-sm font-semibold text-white">
-                {other?.name || activeMatch?.matched_user_name || t("unknownUser")}
+                {other?.name || activeCandidate?.name || t("unknownUser")}
               </p>
               <p className="mt-2 text-sm text-text-muted">
-                {other?.sun_sign ? translateSign(other.sun_sign, locale) : activeMatch?.matched_user_sun_sign ? translateSign(activeMatch.matched_user_sun_sign, locale) : "?"} • {other?.moon_sign ? translateSign(other.moon_sign, locale) : "?"} • {other?.rising_sign ? translateSign(other.rising_sign, locale) : "?"}
+                {other?.sun_sign ? translateSign(other.sun_sign, locale) : activeCandidate?.sun_sign ? translateSign(activeCandidate.sun_sign, locale) : "?"} • {other?.moon_sign ? translateSign(other.moon_sign, locale) : "?"} • {other?.rising_sign ? translateSign(other.rising_sign, locale) : "?"}
               </p>
             </div>
           </div>
