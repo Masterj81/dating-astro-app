@@ -40,13 +40,6 @@ export default async function CosmicHubPage() {
       glyph: "lucky",
     },
     {
-      href: "/app/premium/cosmic/date-planner",
-      title: t("cosmicHubOpenPlanner"),
-      body: t("cosmicHubItem_planner"),
-      badge: t("hubBadge_dates"),
-      glyph: "planner",
-    },
-    {
       href: "/app/premium/cosmic/retrograde-alerts",
       title: t("cosmicHubOpenRetrograde"),
       body: t("cosmicHubItem_retrograde"),
