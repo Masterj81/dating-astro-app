@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
-import { EmptyState } from "@/components/EmptyState";
-import { Link } from "@/i18n/navigation";
+import { DatePlannerOverview } from "@/components/DatePlannerOverview";
 import { getTranslations } from "next-intl/server";
 
 export default async function DatePlannerPage() {
@@ -8,22 +7,10 @@ export default async function DatePlannerPage() {
 
   return (
     <AppShell
-      title={t("datePlannerComingSoonTitle")}
-      subtitle={t("datePlannerComingSoonBody")}
+      title={t("dateReflectionV2Title")}
+      subtitle={t("dateReflectionV2Subtitle")}
     >
-      <EmptyState
-        icon="🌒"
-        title={t("datePlannerComingSoonTitle")}
-        body={t("datePlannerComingSoonBody")}
-        action={
-          <Link
-            href="/app/premium/cosmic"
-            className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
-          >
-            {t("backToCosmicHub")}
-          </Link>
-        }
-      />
+      <DatePlannerOverview />
     </AppShell>
   );
 }
