@@ -9,7 +9,12 @@ import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-util
 import {
   calculateSunCompatibility,
   calculateZoneScores,
+  getElement,
   getScoreBand,
+  getWhyFactors,
+  shouldShowWatchFor,
+  type SynastryElement,
+  type WhyFactor,
   type ZoneScore,
 } from "@/lib/synastry";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
@@ -69,6 +74,23 @@ function pickPlanetSign(
   if (!candidate || typeof candidate !== "object") return null;
   const sign = (candidate as { sign?: unknown }).sign;
   return typeof sign === "string" && sign.trim() ? sign : null;
+}
+
+// Color-only chip tokens for the "Why this score" factor rows. The chips
+// communicate influence visually; no copy keys off these, so the buckets
+// don't need to match the score-band names.
+type FactorInfluence = "harmonious" | "neutral" | "challenging";
+
+const INFLUENCE_STYLES: Record<FactorInfluence, string> = {
+  harmonious: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+  neutral: "border-amber-500/30 bg-amber-500/10 text-amber-200",
+  challenging: "border-rose-500/30 bg-rose-500/10 text-rose-200",
+};
+
+function factorInfluence(score: number): FactorInfluence {
+  if (score >= 80) return "harmonious";
+  if (score >= 65) return "neutral";
+  return "challenging";
 }
 
 export function SynastryOverview({ initialProfileId = null }: { initialProfileId?: string | null }) {
@@ -368,6 +390,38 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
     me && other ? calculateSunCompatibility(me.sun_sign, other.sun_sign) : null;
   const zoneScores: ZoneScore[] = me && other ? calculateZoneScores(me, other) : [];
 
+  // "Why this score" — three element pairings. Filter out rows where
+  // either side's sign is missing so we never render a placeholder.
+  const whyFactors: WhyFactor[] =
+    me && other
+      ? getWhyFactors(me, other).filter((f) => f.score != null)
+      : [];
+
+  // "How to talk to this person" — three lenses keyed by the target's
+  // placement element, falling back to the target's Sun element when
+  // the planet itself is missing. Each prompt entry is either resolved
+  // to a translation key or null (hide that lens).
+  type TalkLens = "mercury" | "moon" | "venus";
+  const talkLensSources: Array<{ lens: TalkLens; sign: string | null | undefined }> = other
+    ? [
+        { lens: "mercury", sign: other.mercury_sign },
+        { lens: "moon", sign: other.moon_sign },
+        { lens: "venus", sign: other.venus_sign },
+      ]
+    : [];
+  const talkPrompts = talkLensSources
+    .map(({ lens, sign }) => {
+      const element: SynastryElement | null =
+        getElement(sign) ?? getElement(other?.sun_sign);
+      return element ? { lens, element } : null;
+    })
+    .filter((p): p is { lens: TalkLens; element: SynastryElement } => p != null);
+
+  // Watch-for callout only renders for mixed / growth / different bands
+  // so we don't manufacture tension on strong scores.
+  const watchVisible =
+    totalScore != null && shouldShowWatchFor(getScoreBand(totalScore));
+
   return (
     <div className="grid gap-6 xl:grid-cols-[0.72fr_1.28fr]">
       <aside className="rounded-[2rem] border border-border bg-card/90 p-6">
@@ -475,6 +529,9 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
                     <p className="mt-2 text-sm leading-7 text-text-muted">
                       {t(`synastryScoreBody_${band}`)}
                     </p>
+                    <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-text-dim">
+                      {t("synastryV2HeroDisclaimer")}
+                    </p>
                   </div>
                 );
               })()
@@ -486,35 +543,135 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
           </div>
         </div>
 
+        {/* Why this score — three element pairings (Sun/Sun, Moon/Moon,
+            Rising/Rising) framed as a starting point rather than a verdict.
+            Rows hide individually when either side's sign is missing; the
+            whole section hides when zero factors remain. */}
+        {whyFactors.length > 0 ? (
+          <div className="rounded-[2rem] border border-border bg-card/90 p-6">
+            <h2 className="text-xl font-semibold text-white">
+              {t("synastryV2WhyTitle")}
+            </h2>
+            <p className="mt-2 text-sm leading-7 text-text-muted">
+              {t("synastryV2WhyBody")}
+            </p>
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+              {whyFactors.map((factor) => {
+                const influence =
+                  factor.score != null ? factorInfluence(factor.score) : "neutral";
+                return (
+                  <article
+                    key={factor.key}
+                    className="rounded-[1.4rem] border border-border bg-bg/70 p-4"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-white">
+                        {t(`synastryV2Factor_${factor.key}`)}
+                      </h3>
+                      <span
+                        className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${INFLUENCE_STYLES[influence]}`}
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <p className="mt-2 text-xs uppercase tracking-[0.18em] text-text-dim">
+                      {factor.selfSign ? translateSign(factor.selfSign, locale) : "?"}
+                      {" • "}
+                      {factor.targetSign ? translateSign(factor.targetSign, locale) : "?"}
+                    </p>
+                    <p className="mt-3 text-sm leading-7 text-text-muted">
+                      {t(`synastryV2FactorBody_${factor.key}`)}
+                    </p>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {/* Compatibility dimensions — the four cards added in the previous
+            commit, now wrapped with a section header and per-card body/cue
+            copy plus a Sun-fallback note when the underlying placement was
+            missing. Mini arc keeps the same dot palette as the hero. */}
         {zoneScores.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            {zoneScores.map((zone) => (
-              <article
-                key={zone.key}
-                className="flex items-start gap-4 rounded-[1.5rem] border border-border bg-card/90 p-5"
-              >
-                {/* Mini arc echoes the hero score's visual language — same
-                    dot palette + animation, just shrunk. Label is intentionally
-                    omitted: the h3 next door already carries the zone name,
-                    and the arc's own role="img" aria-label ("Compatibility N%")
-                    pairs with the heading for assistive tech. */}
-                <div className="shrink-0">
-                  <CompatibilityDotsArc
-                    percentage={zone.score}
-                    size={72}
-                    showScore
-                  />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-base font-semibold text-white sm:text-lg">
-                    {t(`synastryArea_${zone.key}`)}
-                  </h3>
-                  <p className="mt-2 text-sm leading-7 text-text-muted">
-                    {t(`synastryAreaBody_${zone.key}`)}
+          <div className="rounded-[2rem] border border-border bg-card/90 p-6">
+            <h2 className="text-xl font-semibold text-white">
+              {t("synastryV2DimensionsTitle")}
+            </h2>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              {zoneScores.map((zone) => (
+                <article
+                  key={zone.key}
+                  className="rounded-[1.5rem] border border-border bg-bg/70 p-5"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="shrink-0">
+                      <CompatibilityDotsArc
+                        percentage={zone.score}
+                        size={72}
+                        showScore
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-base font-semibold text-white sm:text-lg">
+                        {t(`synastryV2Dimension_${zone.key}`)}
+                      </h3>
+                      <p className="mt-2 text-sm leading-7 text-text-muted">
+                        {t(`synastryV2DimensionBody_${zone.key}`)}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-4 text-sm leading-7 text-white/80">
+                    {t(`synastryV2Cue_${zone.key}`)}
                   </p>
-                </div>
-              </article>
-            ))}
+                  {zone.source === "sun-fallback" ? (
+                    <p className="mt-3 text-[11px] uppercase tracking-[0.18em] text-text-dim">
+                      {t("synastryV2DimensionFallbackNote")}
+                    </p>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {/* How to talk to this person — three lenses (Mercury / Moon / Venus)
+            on the target's chart. Each prompt is keyed by the target placement's
+            element with a fallback to the target's Sun element when the planet
+            is missing; lenses hide individually when even the Sun fallback
+            cannot resolve an element. */}
+        {talkPrompts.length > 0 ? (
+          <div className="rounded-[2rem] border border-border bg-card/90 p-6">
+            <h2 className="text-xl font-semibold text-white">
+              {t("synastryV2TalkTitle")}
+            </h2>
+            <p className="mt-2 text-sm leading-7 text-text-muted">
+              {t("synastryV2TalkBody")}
+            </p>
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+              {talkPrompts.map(({ lens, element }) => (
+                <article
+                  key={lens}
+                  className="rounded-[1.4rem] border border-border bg-bg/70 p-4"
+                >
+                  <p className="text-sm leading-7 text-text-muted">
+                    {t(`synastryV2Prompt_${lens}_${element}`)}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {/* Watch for — warm callout rendered only on mixed / growth / different
+            bands so strong scores don't get manufactured tension. */}
+        {watchVisible ? (
+          <div className="rounded-[2rem] border border-amber-500/30 bg-amber-500/10 p-6">
+            <h2 className="text-xl font-semibold text-white">
+              {t("synastryV2WatchTitle")}
+            </h2>
+            <p className="mt-2 text-sm leading-7 text-text-muted">
+              {t("synastryV2WatchBody")}
+            </p>
           </div>
         ) : null}
 
@@ -523,6 +680,17 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
             {error}
           </p>
         ) : null}
+
+        {/* Closing disclaimer — frames the whole surface as a reflection
+            tool, not a relationship prediction. */}
+        <div className="rounded-[2rem] border border-border bg-card/90 p-6">
+          <h2 className="text-base font-semibold text-white">
+            {t("synastryV2DisclaimerTitle")}
+          </h2>
+          <p className="mt-2 text-sm leading-7 text-text-muted">
+            {t("synastryV2DisclaimerBody")}
+          </p>
+        </div>
       </section>
     </div>
   );
