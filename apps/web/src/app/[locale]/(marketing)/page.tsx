@@ -37,7 +37,7 @@ const JSON_LD = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
   "name": "AstroDating",
-  "description": "Astrology-based dating app",
+  "description": "Dating app with depth, using astrology, values, and conversation prompts as a shared language.",
   "applicationCategory": "DatingApplication",
   "url": "https://astrodatingapp.com",
   "operatingSystem": "iOS, Android",
