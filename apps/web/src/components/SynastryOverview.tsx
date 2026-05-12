@@ -6,6 +6,10 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
+import {
+  calculateSunCompatibility,
+  getScoreBand,
+} from "@/lib/synastry";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
 import { CompatibilityDotsArc } from "@/components/CompatibilityDotsArc";
@@ -55,79 +59,9 @@ const INFLUENCE_STYLES: Record<AspectRow["influence"], string> = {
   neutral: "border-amber-500/30 bg-amber-500/10 text-amber-200",
 };
 
-const ELEMENTS: Record<string, string> = {
-  Aries: "fire",
-  Leo: "fire",
-  Sagittarius: "fire",
-  Taurus: "earth",
-  Virgo: "earth",
-  Capricorn: "earth",
-  Gemini: "air",
-  Libra: "air",
-  Aquarius: "air",
-  Cancer: "water",
-  Scorpio: "water",
-  Pisces: "water",
-};
-
-const COMPATIBILITY_MATRIX: Record<string, Record<string, number>> = {
-  fire: { fire: 86, earth: 58, air: 92, water: 49 },
-  earth: { fire: 58, earth: 88, air: 56, water: 90 },
-  air: { fire: 92, earth: 56, air: 84, water: 64 },
-  water: { fire: 49, earth: 90, air: 64, water: 87 },
-};
-
-function normalizeSign(sign: string | null | undefined): string | null {
-  if (!sign) return null;
-  const trimmed = sign.trim();
-  if (!trimmed) return null;
-  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
-}
-
-function calculateFallbackCompatibilityFromSunSigns(
-  mySunSign: string | null,
-  otherSunSign: string | null,
-  fallbackScore: number | null
-) {
-  const el1 = ELEMENTS[normalizeSign(mySunSign) ?? ""] ?? null;
-  const el2 = ELEMENTS[normalizeSign(otherSunSign) ?? ""] ?? null;
-
-  if (!el1 || !el2) {
-    return fallbackScore ?? 76;
-  }
-
-  return COMPATIBILITY_MATRIX[el1]?.[el2] ?? fallbackScore ?? 76;
-}
-
-function calculateOverallCompatibility(
-  me: SynastryProfile,
-  other: SynastryProfile,
-  fallbackScore: number | null
-) {
-  return calculateFallbackCompatibilityFromSunSigns(
-    me.sun_sign,
-    other.sun_sign,
-    fallbackScore
-  );
-}
-
-type SynastryScoreBand =
-  | "exceptional"
-  | "strong"
-  | "promising"
-  | "mixed"
-  | "growth"
-  | "different";
-
-function getSynastryScoreBand(score: number): SynastryScoreBand {
-  if (score >= 90) return "exceptional";
-  if (score >= 80) return "strong";
-  if (score >= 70) return "promising";
-  if (score >= 60) return "mixed";
-  if (score >= 50) return "growth";
-  return "different";
-}
-
+// Temporary local stub. Matches the prior arithmetic exactly so this
+// refactor commit is behavior-identical; the next commit replaces this
+// with calculateZoneScores from @/lib/synastry.
 function calculateAreaScores(total: number) {
   return [
     { key: "emotional", score: Math.min(96, total + 7) },
@@ -423,7 +357,7 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
   const me = selfProfile;
   const other = matchProfile;
   const totalScore =
-    me && other ? calculateOverallCompatibility(me, other, null) : null;
+    me && other ? calculateSunCompatibility(me.sun_sign, other.sun_sign) : null;
   const safeTotalScore = totalScore ?? 76;
   const areaScores = totalScore ? calculateAreaScores(totalScore) : [];
   const aspects: AspectRow[] =
@@ -493,10 +427,9 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
                   </p>
                 </div>
                 <div className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-white">
-                  {calculateFallbackCompatibilityFromSunSigns(
+                  {calculateSunCompatibility(
                     selfProfile?.sun_sign ?? null,
-                    candidate.sun_sign,
-                    null
+                    candidate.sun_sign
                   )}%
                 </div>
               </div>
@@ -551,7 +484,7 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
             </div>
             {totalScore != null ? (
               (() => {
-                const band = getSynastryScoreBand(totalScore);
+                const band = getScoreBand(totalScore);
                 return (
                   <div>
                     <h3 className="text-base font-semibold text-white">
