@@ -1,28 +1,87 @@
-# Reduce EAS upload size (was 1.3 GB without this).
-# Anything not needed for Android/iOS native build.
+# Reduce EAS upload size (was 1.3 GB without this; last build still hit 284 MB).
+# .easignore OVERRIDES .gitignore for EAS Build uploads, so we must
+# re-list the heavy gitignored paths here too (node_modules, .next, etc.).
 
-# Marketing agent (separate Node project, not part of mobile build)
+# ---------------------------------------------------------------------------
+# Dependencies (re-installed on the EAS builder; never upload local copies).
+# ---------------------------------------------------------------------------
+node_modules/
+apps/*/node_modules/
+packages/*/node_modules/
+
+# ---------------------------------------------------------------------------
+# Build caches and generated output (regenerated on the builder).
+# ---------------------------------------------------------------------------
+.expo/
+apps/*/.expo/
+.turbo/
+apps/*/.turbo/
+dist/
+apps/*/dist/
+packages/*/dist/
+.next/
+apps/web/.next/
+.vercel/
+apps/web/.vercel/
+coverage/
+playwright-report/
+test-results/
+.tmp-android-bundle/
+
+# ---------------------------------------------------------------------------
+# Other apps in the monorepo (mobile build doesn't read them — verified
+# no apps/web/ imports from apps/mobile/**, only a stray code comment).
+# ---------------------------------------------------------------------------
+apps/web/
+
+# Supabase migrations/types live here; mobile uses @supabase/supabase-js
+# from npm, not anything in this directory.
+supabase/
+
+# Separate Node project for marketing automation; ~187 MB of PNGs.
 marketingagent/
 
-# Maestro E2E artifacts
-.maestro/
-
-# Local logs and caches
+# ---------------------------------------------------------------------------
+# Local logs, screenshots, and dev artifacts (not consumed by the build).
+# ---------------------------------------------------------------------------
+*.log
 .expo-mobile-dev.err.log
 .expo-mobile-dev.out.log
-.gradle-local/
+.web-dev.err.log
+.web-dev.out.log
 test-run.log
 test.log
+.gradle-local/
+.maestro/logs/
+tmp-screenshots/
 
-# Generated/uploaded media that EAS rebuilds anyway
-posts.json
-generate-post.ts
-evolve.ts
-test-extensions.ts
+# ---------------------------------------------------------------------------
+# Repo docs / release artifacts (not part of the mobile build).
+# ---------------------------------------------------------------------------
+docs/
+Release-Checklist-48h.doc
 
-# Scripts not used by mobile build
+# ---------------------------------------------------------------------------
+# Root-level scripts (locale validators etc., not consumed by the
+# mobile build context).
+# ---------------------------------------------------------------------------
 scripts/
 
-# Other apps in the monorepo (only mobile builds via EAS)
-apps/web/
-docs/
+# ---------------------------------------------------------------------------
+# Stray legacy directories that pre-date the monorepo layout.
+# ---------------------------------------------------------------------------
+ai-service/
+android-native/
+astro-dating/
+android/
+.adb-temp/
+
+# ---------------------------------------------------------------------------
+# OS / editor noise.
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.orig.*
+.vscode/
+.github/
+.claude/
