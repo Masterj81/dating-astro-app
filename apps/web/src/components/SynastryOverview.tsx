@@ -8,7 +8,9 @@ import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
 import {
   calculateSunCompatibility,
+  calculateZoneScores,
   getScoreBand,
+  type ZoneScore,
 } from "@/lib/synastry";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
@@ -47,28 +49,26 @@ type SynastryProfile = {
   images?: string[] | null;
 };
 
-type AspectRow = {
-  title: string;
-  influence: "harmonious" | "challenging" | "neutral";
-  description: string;
-};
-
-const INFLUENCE_STYLES: Record<AspectRow["influence"], string> = {
-  harmonious: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
-  challenging: "border-rose-500/30 bg-rose-500/10 text-rose-200",
-  neutral: "border-amber-500/30 bg-amber-500/10 text-amber-200",
-};
-
-// Temporary local stub. Matches the prior arithmetic exactly so this
-// refactor commit is behavior-identical; the next commit replaces this
-// with calculateZoneScores from @/lib/synastry.
-function calculateAreaScores(total: number) {
-  return [
-    { key: "emotional", score: Math.min(96, total + 7) },
-    { key: "communication", score: Math.max(55, total - 6) },
-    { key: "attraction", score: Math.min(98, total + 10) },
-    { key: "stability", score: Math.max(58, total - 2) },
-  ];
+// Defensively pull a planet sign out of the birth_chart JSONB returned
+// by get_my_full_profile. The shape may be either:
+//   birth_chart.planets.{planet}.sign
+//   birth_chart.{planet}.sign
+// Anything else — null, primitive, missing key, non-string sign —
+// resolves to null so the dimension card falls back to Sun × Sun.
+function pickPlanetSign(
+  birthChart: unknown,
+  planet: "mercury" | "venus" | "mars" | "saturn"
+): string | null {
+  if (!birthChart || typeof birthChart !== "object") return null;
+  const root = birthChart as Record<string, unknown>;
+  const nestedPlanets =
+    root.planets && typeof root.planets === "object"
+      ? (root.planets as Record<string, unknown>)
+      : null;
+  const candidate = nestedPlanets?.[planet] ?? root[planet];
+  if (!candidate || typeof candidate !== "object") return null;
+  const sign = (candidate as { sign?: unknown }).sign;
+  return typeof sign === "string" && sign.trim() ? sign : null;
 }
 
 export function SynastryOverview({ initialProfileId = null }: { initialProfileId?: string | null }) {
@@ -134,6 +134,14 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
                 sun_sign: ownData.sun_sign,
                 moon_sign: ownData.moon_sign,
                 rising_sign: ownData.rising_sign,
+                // birth_chart JSONB is already returned by
+                // get_my_full_profile. Pull mercury/venus/mars/saturn out
+                // so the dimensions cards score against real placements
+                // instead of silently falling back to Sun × Sun.
+                mercury_sign: pickPlanetSign(ownData.birth_chart, "mercury"),
+                venus_sign: pickPlanetSign(ownData.birth_chart, "venus"),
+                mars_sign: pickPlanetSign(ownData.birth_chart, "mars"),
+                saturn_sign: pickPlanetSign(ownData.birth_chart, "saturn"),
                 image_url: ownData.image_url,
                 images: ownData.images,
               } as SynastryProfile)
@@ -358,33 +366,7 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
   const other = matchProfile;
   const totalScore =
     me && other ? calculateSunCompatibility(me.sun_sign, other.sun_sign) : null;
-  const safeTotalScore = totalScore ?? 76;
-  const areaScores = totalScore ? calculateAreaScores(totalScore) : [];
-  const aspects: AspectRow[] =
-    me && other
-      ? [
-          {
-            title: `${t("synastryAspect_sunMoon")} (${me.sun_sign ? translateSign(me.sun_sign, locale) : "?"} • ${other.moon_sign ? translateSign(other.moon_sign, locale) : "?"})`,
-            influence: safeTotalScore >= 80 ? "harmonious" : "neutral",
-            description: t("synastryAspectBody_sunMoon"),
-          },
-          {
-            title: `${t("synastryAspect_venusMars")} (${translateSign(me.venus_sign || me.sun_sign || "", locale) || "?"} • ${translateSign(other.mars_sign || other.sun_sign || "", locale) || "?"})`,
-            influence: safeTotalScore >= 75 ? "harmonious" : "challenging",
-            description: t("synastryAspectBody_venusMars"),
-          },
-          {
-            title: `${t("synastryAspect_mercury")} (${translateSign(me.mercury_sign || me.sun_sign || "", locale) || "?"} • ${translateSign(other.mercury_sign || other.sun_sign || "", locale) || "?"})`,
-            influence: "neutral",
-            description: t("synastryAspectBody_mercury"),
-          },
-          {
-            title: `${t("synastryAspect_saturn")} (${translateSign(me.saturn_sign || me.sun_sign || "", locale) || "?"} • ${other.sun_sign ? translateSign(other.sun_sign, locale) : "?"})`,
-            influence: safeTotalScore >= 70 ? "harmonious" : "challenging",
-            description: t("synastryAspectBody_saturn"),
-          },
-        ]
-      : [];
+  const zoneScores: ZoneScore[] = me && other ? calculateZoneScores(me, other) : [];
 
   return (
     <div className="grid gap-6 xl:grid-cols-[0.72fr_1.28fr]">
@@ -504,12 +486,11 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          {areaScores.map((area) => {
-            const areaLabel = t(`synastryArea_${area.key}`);
-            return (
+        {zoneScores.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            {zoneScores.map((zone) => (
               <article
-                key={area.key}
+                key={zone.key}
                 className="flex items-start gap-4 rounded-[1.5rem] border border-border bg-card/90 p-5"
               >
                 {/* Mini arc echoes the hero score's visual language — same
@@ -519,55 +500,23 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
                     pairs with the heading for assistive tech. */}
                 <div className="shrink-0">
                   <CompatibilityDotsArc
-                    percentage={area.score}
-                    size={80}
+                    percentage={zone.score}
+                    size={72}
                     showScore
                   />
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-base font-semibold text-white sm:text-lg">
-                    {areaLabel}
+                    {t(`synastryArea_${zone.key}`)}
                   </h3>
                   <p className="mt-2 text-sm leading-7 text-text-muted">
-                    {t(`synastryAreaBody_${area.key}`)}
+                    {t(`synastryAreaBody_${zone.key}`)}
                   </p>
                 </div>
               </article>
-            );
-          })}
-        </div>
-
-        <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-            {t("keyAspects")}
-          </p>
-          <div className="mt-5 space-y-3">
-            {loadingProfile ? (
-              <div className="rounded-2xl border border-border bg-bg/70 px-4 py-4 text-sm text-text-muted">
-                {t("loading")}
-              </div>
-            ) : (
-              aspects.map((aspect) => (
-                <div
-                  key={aspect.title}
-                  className="rounded-[1.4rem] border border-border bg-bg/70 p-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h3 className="text-sm font-semibold text-white">{aspect.title}</h3>
-                    <span
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold ${INFLUENCE_STYLES[aspect.influence]}`}
-                    >
-                      {t(aspect.influence)}
-                    </span>
-                  </div>
-                  <p className="mt-3 text-sm leading-7 text-text-muted">
-                    {aspect.description}
-                  </p>
-                </div>
-              ))
-            )}
+            ))}
           </div>
-        </div>
+        ) : null}
 
         {error ? (
           <p className="rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
