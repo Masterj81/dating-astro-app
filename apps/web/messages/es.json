@@ -1210,9 +1210,6 @@
     "lookingForText": "Lo que busco",
     "lookingForTextPlaceholder": "Alguien que…"
   },
-  "socialProof": {
-    "proofRating": "App Store rating"
-  },
   "invite": {
     "invalidCode": "Código de referido inválido",
     "invalidCodeDesc": "El código de referido en este enlace no parece correcto. Revisa el enlace e inténtalo de nuevo.",

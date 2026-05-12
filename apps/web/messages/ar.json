@@ -1210,9 +1210,6 @@
     "lookingForText": "ما أبحث عنه",
     "lookingForTextPlaceholder": "شخص…"
   },
-  "socialProof": {
-    "proofRating": "App Store rating"
-  },
   "invite": {
     "invalidCode": "رمز إحالة غير صالح",
     "invalidCodeDesc": "رمز الإحالة في هذا الرابط غير صحيح. يرجى التحقق من الرابط والمحاولة مرة أخرى.",

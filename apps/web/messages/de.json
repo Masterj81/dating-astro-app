@@ -1210,9 +1210,6 @@
     "lookingForText": "Was ich suche",
     "lookingForTextPlaceholder": "Jemand, der…"
   },
-  "socialProof": {
-    "proofRating": "App Store rating"
-  },
   "invite": {
     "invalidCode": "Ungültiger Empfehlungscode",
     "invalidCodeDesc": "Der Empfehlungscode in diesem Link scheint nicht korrekt zu sein. Bitte überprüfe den Link und versuche es erneut.",

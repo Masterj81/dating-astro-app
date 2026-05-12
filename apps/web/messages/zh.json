@@ -1210,9 +1210,6 @@
     "lookingForText": "我在找的",
     "lookingForTextPlaceholder": "一个…的人"
   },
-  "socialProof": {
-    "proofRating": "App Store rating"
-  },
   "invite": {
     "invalidCode": "无效的推荐码",
     "invalidCodeDesc": "此链接中的推荐码似乎不正确。请检查链接后重试。",

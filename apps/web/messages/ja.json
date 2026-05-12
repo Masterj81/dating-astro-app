@@ -1210,9 +1210,6 @@
     "lookingForText": "求めているもの",
     "lookingForTextPlaceholder": "こんな人…"
   },
-  "socialProof": {
-    "proofRating": "App Store rating"
-  },
   "invite": {
     "invalidCode": "無効な紹介コード",
     "invalidCodeDesc": "このリンクの紹介コードが正しくないようです。リンクを確認してもう一度お試しください。",
