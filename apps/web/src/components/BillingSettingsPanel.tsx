@@ -143,7 +143,7 @@ export function BillingSettingsPanel() {
                 {t("billingFeatureCompareTitle")}
               </p>
               <div className="mt-3 space-y-2">
-                {(["likes", "compatibility", "horoscope"] as const).map((feature) => (
+                {(["chart", "compatibility", "horoscope"] as const).map((feature) => (
                   <div key={feature} className="flex items-center gap-3 text-sm">
                     <span className="flex h-5 w-5 items-center justify-center rounded-full border border-accent/20 bg-accent/8 text-[10px] text-accent" aria-hidden="true">✦</span>
                     <span className="text-text-muted">{t(`billingFeatureCompare_${feature}`)}</span>

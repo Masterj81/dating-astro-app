@@ -21,21 +21,21 @@ const TIER_PLANS: Record<string, { monthly: WebCheckoutPlan; yearly: WebCheckout
 };
 
 const CELESTIAL_FEATURES = [
-  "planFeatureFullChart",
-  "planFeatureUnlimitedLikes",
-  "planFeatureSynastry",
-  "planFeatureAdvancedFilters",
-  "planFeatureSeeWhoLiked",
-  "planFeatureWeeklyHoroscopes",
+  "featureFullChart",
+  "featureSynastry",
+  "featureDailyHoroscope",
+  "featureMonthlyTarot",
+  "featureDeeperProfileInsights",
 ] as const;
 
 const COSMIC_FEATURES = [
-  "planFeatureEverythingCelestial",
-  "planFeatureMonthlyYearlyHoroscopes",
-  "planFeatureTransitAlerts",
-  "planFeaturePriority",
-  "planFeatureReadReceipts",
-  "planFeatureBoost",
+  "featureEverythingCelestial",
+  "featureMonthlyYearlyHoroscopes",
+  "featureLuckyDays",
+  "featureDatePlanner",
+  "featureTransitAlerts",
+  "featureRetrogradeReflection",
+  "featureWeeklyTarot",
 ] as const;
 
 const TIER_FEATURES: Record<string, readonly string[]> = {
@@ -45,6 +45,7 @@ const TIER_FEATURES: Record<string, readonly string[]> = {
 
 export function PlansCheckout() {
   const t = useTranslations("webApp");
+  const tPremium = useTranslations("premium");
   const locale = useLocale();
   const searchParams = useSearchParams();
   const [sessionState, setSessionState] = useState<SessionState | null>(null);
@@ -291,7 +292,7 @@ export function PlansCheckout() {
           const plans = TIER_PLANS[tier];
           const planKey = plans[billingPeriod];
           const isCurrentTier = sessionState?.currentTier === tier;
-          const isRecommended = tier === "premium_plus" && billingPeriod === "monthly";
+          const isRecommended = tier === "premium";
           const annualDiscountPercent =
             billingPeriod === "yearly" ? getAnnualDiscountPercent(tier) : null;
           const monthlyEquiv =
@@ -324,7 +325,7 @@ export function PlansCheckout() {
                   <div className="flex flex-wrap gap-2">
                     {isRecommended ? (
                       <span className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-white">
-                        {t("recommended")}
+                        {tPremium("mostPopular")}
                       </span>
                     ) : null}
                     {annualDiscountPercent ? (
@@ -376,7 +377,7 @@ export function PlansCheckout() {
                       className="flex items-start gap-2.5 text-sm text-text-muted"
                     >
                       <span className="mt-0.5 text-purple" aria-hidden="true">&#10003;</span>
-                      {t(featureKey)}
+                      {tPremium(featureKey)}
                     </li>
                   ))}
                 </ul>
