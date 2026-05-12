@@ -47,6 +47,13 @@ export default async function CosmicHubPage() {
       glyph: "retrograde",
     },
     {
+      href: "/app/premium/cosmic/date-planner",
+      title: t("dateReflectionV2HubTitle"),
+      body: t("dateReflectionV2HubBody"),
+      badge: t("hubBadge_dates"),
+      glyph: "planner",
+    },
+    {
       // Tarot badge previously rendered the 🃏 emoji. The Tarot title is
       // already rendered as the card heading; the badge becomes a short
       // uppercase tag matching the rest of the hub. "TAROT" is the same
