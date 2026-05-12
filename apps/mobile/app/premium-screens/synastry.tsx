@@ -3,6 +3,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import {
   Animated,
+  FlatList,
+  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -39,6 +41,20 @@ type Profile = {
   birth_longitude?: number | null;
 };
 
+// Picker entry. Mirrors get_synastry_candidate_profiles RPC — same
+// preference filtering as Discover, minus the swipes exclusion so
+// already-passed / already-liked profiles still surface here.
+type CandidateProfile = {
+  id: string;
+  name: string | null;
+  age: number | null;
+  sun_sign: string | null;
+  moon_sign: string | null;
+  rising_sign: string | null;
+  image_url: string | null;
+  images: string[] | null;
+};
+
 type CompatibilityArea = {
   area: string;
   score: number;
@@ -61,17 +77,29 @@ type SynastryContentProps = {
 };
 
 function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
-  const { matchId: rawMatchId } = useLocalSearchParams<{ matchId?: string }>();
+  // Canonical param is profileId. matchId is kept as a back-compat
+  // fallback so old deep links (notifications, share sheets) keep
+  // resolving.
+  const { profileId, matchId } = useLocalSearchParams<{ profileId?: string; matchId?: string }>();
+  const initialTargetId = useMemo(() => {
+    const pid = Array.isArray(profileId) ? profileId[0] : profileId;
+    if (typeof pid === 'string' && pid.length > 0) return pid;
+    const mid = Array.isArray(matchId) ? matchId[0] : matchId;
+    if (typeof mid === 'string' && mid.length > 0) return mid;
+    return null;
+  }, [profileId, matchId]);
+
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [matchProfile, setMatchProfile] = useState<Profile | null>(null);
   const [userChart, setUserChart] = useState<BirthChart | null>(null);
   const [matchChart, setMatchChart] = useState<BirthChart | null>(null);
   const [compatibility, setCompatibility] = useState<CompatibilityScore | null>(null);
+  const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(initialTargetId);
   const { user } = useAuth();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
-  const matchId = typeof rawMatchId === 'string' && rawMatchId.length > 0 ? rawMatchId : null;
 
   // Fade animation for smooth entry
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -92,43 +120,46 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
     }
   }, [loading, fadeAnim]);
 
-  useEffect(() => {
-    loadProfiles();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
-  }, [matchId, user]);
+  // Build the user's own chart from their full profile row. Kept as a
+  // pure helper so loadProfiles + handleSelect can both reuse it.
+  const buildUserChart = useCallback((ownData: any): BirthChart | null => {
+    if (!ownData?.birth_date) return null;
+    const [year, month, day] = String(ownData.birth_date).split('-').map(Number);
+    if (!year || !month || !day) return null;
+    const birthDate = new Date(year, month - 1, day);
+    const localChart = calculateNatalChart(
+      birthDate,
+      ownData.birth_time,
+      ownData.birth_latitude || 45.5,
+      ownData.birth_longitude || -73.5,
+    );
+    return {
+      sun: { longitude: localChart.sun.longitude ?? signDegreeToLongitude(localChart.sun), sign: localChart.sun.sign, degree: localChart.sun.degree },
+      moon: { longitude: localChart.moon.longitude ?? signDegreeToLongitude(localChart.moon), sign: localChart.moon.sign, degree: localChart.moon.degree },
+      rising: { longitude: localChart.rising.longitude ?? signDegreeToLongitude(localChart.rising), sign: localChart.rising.sign, degree: localChart.rising.degree },
+      planets: {
+        mercury: { longitude: localChart.mercury.longitude ?? signDegreeToLongitude(localChart.mercury), sign: localChart.mercury.sign, degree: localChart.mercury.degree },
+        venus: { longitude: localChart.venus.longitude ?? signDegreeToLongitude(localChart.venus), sign: localChart.venus.sign, degree: localChart.venus.degree },
+        mars: { longitude: localChart.mars.longitude ?? signDegreeToLongitude(localChart.mars), sign: localChart.mars.sign, degree: localChart.mars.degree },
+        jupiter: { longitude: localChart.jupiter.longitude ?? signDegreeToLongitude(localChart.jupiter), sign: localChart.jupiter.sign, degree: localChart.jupiter.degree },
+        saturn: { longitude: localChart.saturn.longitude ?? signDegreeToLongitude(localChart.saturn), sign: localChart.saturn.sign, degree: localChart.saturn.degree },
+      },
+      coordinates: {
+        latitude: ownData.birth_latitude || 45.5,
+        longitude: ownData.birth_longitude || -73.5,
+      },
+      julianDay: 0,
+    };
+  }, []);
 
-  const loadProfiles = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-
-    try {
-      const ownResult = await supabase.rpc('get_my_full_profile');
-
-      if (ownResult.error) throw ownResult.error;
-
-      const ownData = Array.isArray(ownResult.data) ? ownResult.data[0] : null;
-      if (!ownData) {
-        setUserProfile(null);
-        setMatchProfile(null);
-        setCompatibility(null);
-        return;
-      }
-
-      setUserProfile(ownData as Profile);
-
-      if (!matchId) {
-        setMatchProfile(null);
-        setMatchChart(null);
-        setCompatibility(null);
-        return;
-      }
-
+  // Load a single target's profile + chart and update local state.
+  // Pure function — no candidate-set mutation. Used both on initial
+  // load (after candidate fetch resolves) and on picker tap.
+  const loadTargetChart = useCallback(
+    async (targetUserId: string, builtUserChart: BirthChart | null, ownData: any) => {
       const { data: matchPayload, error: matchErr } = await supabase.functions.invoke(
         'get-profile-chart',
-        { body: { targetUserId: matchId } },
+        { body: { targetUserId } },
       );
       if (matchErr) throw matchErr;
 
@@ -140,37 +171,6 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
       }
 
       setMatchProfile(payload.profile);
-
-      let builtUserChart: BirthChart | null = null;
-      if (ownData.birth_date) {
-        const [year, month, day] = String(ownData.birth_date).split('-').map(Number);
-        if (year && month && day) {
-          const birthDate = new Date(year, month - 1, day);
-          const localChart = calculateNatalChart(
-            birthDate,
-            ownData.birth_time,
-            ownData.birth_latitude || 45.5,
-            ownData.birth_longitude || -73.5,
-          );
-          builtUserChart = {
-            sun: { longitude: localChart.sun.longitude ?? signDegreeToLongitude(localChart.sun), sign: localChart.sun.sign, degree: localChart.sun.degree },
-            moon: { longitude: localChart.moon.longitude ?? signDegreeToLongitude(localChart.moon), sign: localChart.moon.sign, degree: localChart.moon.degree },
-            rising: { longitude: localChart.rising.longitude ?? signDegreeToLongitude(localChart.rising), sign: localChart.rising.sign, degree: localChart.rising.degree },
-            planets: {
-              mercury: { longitude: localChart.mercury.longitude ?? signDegreeToLongitude(localChart.mercury), sign: localChart.mercury.sign, degree: localChart.mercury.degree },
-              venus: { longitude: localChart.venus.longitude ?? signDegreeToLongitude(localChart.venus), sign: localChart.venus.sign, degree: localChart.venus.degree },
-              mars: { longitude: localChart.mars.longitude ?? signDegreeToLongitude(localChart.mars), sign: localChart.mars.sign, degree: localChart.mars.degree },
-              jupiter: { longitude: localChart.jupiter.longitude ?? signDegreeToLongitude(localChart.jupiter), sign: localChart.jupiter.sign, degree: localChart.jupiter.degree },
-              saturn: { longitude: localChart.saturn.longitude ?? signDegreeToLongitude(localChart.saturn), sign: localChart.saturn.sign, degree: localChart.saturn.degree },
-            },
-            coordinates: {
-              latitude: ownData.birth_latitude || 45.5,
-              longitude: ownData.birth_longitude || -73.5,
-            },
-            julianDay: 0,
-          };
-        }
-      }
 
       let builtMatchChart: BirthChart | null = null;
       if (payload.chart) {
@@ -191,7 +191,6 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
         };
       }
 
-      setUserChart(builtUserChart);
       setMatchChart(builtMatchChart);
 
       if (builtUserChart && builtMatchChart) {
@@ -199,7 +198,7 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
         setCompatibility(fullCompatibility);
       } else {
         const quickScore = calculateQuickCompatibility(
-          ownData.sun_sign || 'Aries',
+          ownData?.sun_sign || 'Aries',
           payload.profile.sun_sign || 'Aries',
         );
         setCompatibility({
@@ -212,12 +211,138 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
           growth: quickScore,
         });
       }
+
+      return payload.profile;
+    },
+    [],
+  );
+
+  const loadProfiles = useCallback(async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+
+    try {
+      // Fetch own profile + candidate set in parallel. The candidate set
+      // is everyone matching the caller's discovery preferences, minus
+      // the swipe filter — so already-passed / already-liked profiles
+      // still appear here for compatibility comparison.
+      const [ownResult, candidatesResult] = await Promise.all([
+        supabase.rpc('get_my_full_profile'),
+        supabase.rpc('get_synastry_candidate_profiles', {
+          p_user_id: user.id,
+          p_limit: 50,
+        }),
+      ]);
+
+      if (ownResult.error) throw ownResult.error;
+
+      const ownData = Array.isArray(ownResult.data) ? ownResult.data[0] : null;
+      if (!ownData) {
+        setUserProfile(null);
+        setMatchProfile(null);
+        setCompatibility(null);
+        return;
+      }
+
+      setUserProfile(ownData as Profile);
+
+      const builtUserChart = buildUserChart(ownData);
+      setUserChart(builtUserChart);
+
+      let nextCandidates = ((candidatesResult.data as CandidateProfile[]) || []);
+      if (candidatesResult.error) {
+        // RPC failure isn't fatal — fall back to an empty picker.
+        // get-profile-chart for the deep-link target may still work.
+        console.warn('Synastry candidates RPC failed:', candidatesResult.error);
+        nextCandidates = [];
+      }
+
+      // Deep-link resolution. If the URL carries a target that isn't in
+      // the candidate set, still try to load it via get-profile-chart and
+      // prepend so the link works (e.g. a passed profile that no longer
+      // matches preferences).
+      let selected: string | null = null;
+      if (initialTargetId) {
+        const inSet = nextCandidates.find((c) => c.id === initialTargetId);
+        if (inSet) {
+          selected = initialTargetId;
+          try {
+            await loadTargetChart(initialTargetId, builtUserChart, ownData);
+          } catch (err) {
+            console.error('Failed to load synastry chart for deep-link target:', err);
+            selected = nextCandidates[0]?.id ?? null;
+            if (selected) {
+              try { await loadTargetChart(selected, builtUserChart, ownData); } catch (e) { console.error(e); }
+            }
+          }
+        } else {
+          try {
+            const loaded = await loadTargetChart(initialTargetId, builtUserChart, ownData);
+            nextCandidates = [
+              {
+                id: loaded.id,
+                name: loaded.name ?? null,
+                age: null,
+                sun_sign: loaded.sun_sign ?? null,
+                moon_sign: loaded.moon_sign ?? null,
+                rising_sign: loaded.rising_sign ?? null,
+                image_url: loaded.image_url ?? null,
+                images: loaded.images ?? null,
+              },
+              ...nextCandidates,
+            ];
+            selected = loaded.id;
+          } catch (err) {
+            console.warn('Deep-link target not loadable, falling back:', err);
+            selected = nextCandidates[0]?.id ?? null;
+            if (selected) {
+              try { await loadTargetChart(selected, builtUserChart, ownData); } catch (e) { console.error(e); }
+            }
+          }
+        }
+      } else if (nextCandidates.length > 0) {
+        selected = nextCandidates[0].id;
+        try { await loadTargetChart(selected, builtUserChart, ownData); } catch (e) { console.error(e); }
+      }
+
+      setCandidates(nextCandidates);
+      setSelectedId(selected);
+
+      if (!selected) {
+        setMatchProfile(null);
+        setMatchChart(null);
+        setCompatibility(null);
+      }
     } catch (err) {
       console.error('Error loading synastry profiles:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, initialTargetId, buildUserChart, loadTargetChart]);
+
+  useEffect(() => {
+    loadProfiles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProfiles already captures the deps it cares about
+  }, [user, initialTargetId]);
+
+  // Re-fetching when the user taps a different profile in the picker.
+  // We don't refresh the candidate set or the user chart — only the
+  // target chart needs to change.
+  const handleSelectCandidate = useCallback(
+    async (id: string) => {
+      if (id === selectedId || !userProfile) return;
+      setSelectedId(id);
+      try {
+        await loadTargetChart(id, userChart, userProfile);
+      } catch (err) {
+        console.error('Failed to load synastry chart for selected profile:', err);
+      }
+    },
+    [selectedId, userProfile, userChart, loadTargetChart],
+  );
 
   const calculateOverallScore = (): number => {
     if (!userProfile || !matchProfile) return 75;
@@ -384,6 +509,51 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
     return null; // PremiumGate shows the unified loading UI
   }
 
+  const renderPicker = () => {
+    if (candidates.length === 0) return null;
+    return (
+      <View style={styles.pickerSection}>
+        <Text style={styles.pickerLabel}>
+          {t('synastryProfileListLabel') || 'Matching your preferences'}
+        </Text>
+        <FlatList
+          data={candidates}
+          keyExtractor={(item) => item.id}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.pickerList}
+          renderItem={({ item }) => {
+            const isSelected = item.id === selectedId;
+            const avatar = item.image_url || item.images?.[0] || null;
+            return (
+              <TouchableOpacity
+                onPress={() => handleSelectCandidate(item.id)}
+                style={[styles.pickerItem, isSelected && styles.pickerItemSelected]}
+                accessibilityLabel={item.name || 'profile'}
+              >
+                <View style={styles.pickerAvatar}>
+                  {avatar ? (
+                    <Image source={{ uri: avatar }} style={styles.pickerAvatarImage} />
+                  ) : (
+                    <Text style={styles.pickerAvatarFallback}>
+                      {(item.name || '?').slice(0, 1).toUpperCase()}
+                    </Text>
+                  )}
+                </View>
+                <Text style={styles.pickerName} numberOfLines={1}>
+                  {item.name || '?'}
+                </Text>
+                <Text style={styles.pickerSign} numberOfLines={1}>
+                  {item.sun_sign || '?'}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
+    );
+  };
+
   const renderContent = () => {
     // If we are here, loading is false, but data might still be missing
     if (!userProfile) {
@@ -400,23 +570,40 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
       );
     }
 
-    if (!matchProfile) {
-      const needsTargetSelection = !matchId;
+    // No candidates and no match loaded → active empty state. Push the
+    // user toward editing their preferences rather than dead-ending at
+    // Discover.
+    if (candidates.length === 0 && !matchProfile) {
       return (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorEmoji}>{needsTargetSelection ? '✨' : '🔮'}</Text>
+          <Text style={styles.errorEmoji}>🌠</Text>
           <Text style={styles.errorText}>
-            {needsTargetSelection
-              ? 'Choose someone from Discover or from a profile to open their synastry.'
-              : t('matchDataMissing') || 'Match profile data is missing.'}
+            {t('synastryNoProfilesTitle') || 'No profiles match your preferences yet'}
+          </Text>
+          <Text style={styles.errorSubtext}>
+            {t('synastryNoProfilesBody') || 'Try widening your preferences to compare more charts.'}
           </Text>
           <TouchableOpacity
             style={styles.retryButton}
-            onPress={needsTargetSelection ? () => router.push('/(tabs)/discover') : loadProfiles}
+            onPress={() => router.push('/(tabs)/profile')}
           >
             <Text style={styles.retryText}>
-              {needsTargetSelection ? t('discover') || 'Discover' : t('retryLoading') || 'Retry Loading'}
+              {t('adjustPreferences') || 'Edit preferences'}
             </Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (!matchProfile) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorEmoji}>🔮</Text>
+          <Text style={styles.errorText}>
+            {t('matchDataMissing') || 'Match profile data is missing.'}
+          </Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadProfiles}>
+            <Text style={styles.retryText}>{t('retryLoading') || 'Retry Loading'}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -546,8 +733,8 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
           <Text style={styles.subtitle}>{t('synastrySubtitle') || 'Deep compatibility analysis'}</Text>
         </View>
 
-        
-          {renderContent()}
+        {renderPicker()}
+        {renderContent()}
         </ScrollView>
       </LinearGradient>
     </Animated.View>
@@ -587,11 +774,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   errorText: {
-    color: AppTheme.colors.danger,
+    color: AppTheme.colors.textPrimary,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 8,
     fontSize: 16,
     lineHeight: 24,
+    fontWeight: '600',
+  },
+  errorSubtext: {
+    color: AppTheme.colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 20,
+    fontSize: 14,
+    lineHeight: 20,
   },
   retryButton: {
     backgroundColor: 'rgba(232, 93, 117, 0.16)',
@@ -637,6 +832,68 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: AppTheme.colors.textSecondary,
+  },
+  pickerSection: {
+    paddingTop: 4,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+  },
+  pickerLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    color: AppTheme.colors.textMuted,
+    marginBottom: 10,
+  },
+  pickerList: {
+    gap: 10,
+    paddingRight: 20,
+  },
+  pickerItem: {
+    width: 80,
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
+    backgroundColor: AppTheme.colors.panel,
+  },
+  pickerItemSelected: {
+    borderColor: AppTheme.colors.coral,
+    backgroundColor: 'rgba(232, 93, 117, 0.12)',
+  },
+  pickerAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: AppTheme.colors.panelStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  pickerAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  pickerAvatarFallback: {
+    color: AppTheme.colors.textPrimary,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  pickerName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: AppTheme.colors.textPrimary,
+    textAlign: 'center',
+  },
+  pickerSign: {
+    fontSize: 10,
+    color: AppTheme.colors.textMuted,
+    marginTop: 2,
+    textAlign: 'center',
   },
   profilesSection: {
     flexDirection: 'row',
