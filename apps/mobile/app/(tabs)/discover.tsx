@@ -27,6 +27,7 @@ import ReAnimated, {
   withSpring,
   withTiming
 } from 'react-native-reanimated';
+import BlockReportMenu from '../../components/BlockReportMenu';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import VoiceIntroPlayer from '../../components/VoiceIntroPlayer';
 import PlanetGlyph from '../../components/ui/PlanetGlyph';
@@ -434,6 +435,42 @@ export default function DiscoverScreen() {
     router.push(`/premium-screens/synastry?matchId=${currentProfile.id}` as any);
   };
 
+  // Apple Guideline 1.2: after a block (or report), remove the profile from
+  // the deck in place so the blocked user never reappears in this session.
+  // Block is server-side persisted by BlockReportMenu via blockUser() →
+  // blocked_users table; the next deck load will exclude them via the
+  // get_discoverable_profiles RPC. Here we just patch the in-memory deck.
+  const removeCurrentProfileFromDeck = useCallback(() => {
+    const idx = currentIndexRef.current;
+    const current = profilesRef.current;
+    if (!current.length) return;
+
+    const next = current.filter((_, i) => i !== idx);
+    setProfiles(next);
+
+    if (next.length === 0) {
+      setDeckExhausted(true);
+      setCurrentIndex(0);
+      return;
+    }
+
+    // Stay on the same index (which now points to what was the next
+    // profile). Clamp if we removed the last card.
+    const clamped = Math.min(idx, next.length - 1);
+    setCurrentIndex(clamped);
+
+    // Reset swipe animation state so the new card renders cleanly.
+    cancelAnimation(translateX);
+    cancelAnimation(translateY);
+    cancelAnimation(rotation);
+    translateX.value = 0;
+    translateY.value = 0;
+    rotation.value = 0;
+    dragXRef.current = 0;
+    setSwipeDirection('none');
+    hasReachedThresholdRef.current = false;
+  }, [rotation, translateX, translateY]);
+
   const handleRefresh = () => {
     refreshTrigger();
     setDeckExhausted(false);
@@ -622,6 +659,28 @@ export default function DiscoverScreen() {
               defaultSource={Platform.OS === 'ios' ? { uri: DEFAULT_PROFILE_IMAGE } : undefined}
               {...getImageA11yProps(t('a11y.profileImage', { name: currentProfile.name ?? 'Profile' }))}
             />
+          )}
+
+          {/* Report / Block menu — Apple Guideline 1.2 (UGC safety).
+              Discrete shield icon, top-right of the card, with a 44pt hit
+              area. Positioned absolutely so it never shifts the primary
+              CTAs (prev / view profile / message / next) and has its own
+              touch area outside the swipe gesture path. */}
+          {user && currentProfile?.id && currentProfile?.name && (
+            <View
+              style={styles.reportBlockMenuWrap}
+              pointerEvents="box-none"
+              accessibilityLabel={t('moreOptions') || 'More options'}
+            >
+              <BlockReportMenu
+                userId={user.id}
+                targetUserId={currentProfile.id}
+                targetUserName={currentProfile.name}
+                showUnmatch={false}
+                onBlock={removeCurrentProfileFromDeck}
+                onReport={removeCurrentProfileFromDeck}
+              />
+            </View>
           )}
 
           {/* Navigation overlays — purely visual feedback, no like/pass meaning */}
@@ -1389,6 +1448,28 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 28,
     fontWeight: '800',
+  },
+  // Report/Block trigger — top-right of the card, above the compatibility
+  // CTA. 44pt touch target with a subtle translucent chip background so it
+  // reads against any photo. zIndex sits above the gradient + overlays.
+  reportBlockMenuWrap: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    zIndex: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 6,
   },
   compatibilityCta: {
     position: 'absolute',
