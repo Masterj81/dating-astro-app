@@ -7,6 +7,7 @@ import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentTier } from "@/lib/web-subscriptions";
 import { createCheckoutSession, type WebCheckoutPlan } from "@/lib/web-checkout";
 import { formatPrice as formatBillingPrice, type PriceMap } from "@/lib/billingPriceFormat";
+import { PremiumGlyph, type PremiumGlyphName } from "@/components/PremiumGlyph";
 
 type SessionState = {
   userId: string;
@@ -41,6 +42,19 @@ const COSMIC_FEATURES = [
 const TIER_FEATURES: Record<string, readonly string[]> = {
   premium: CELESTIAL_FEATURES,
   premium_plus: COSMIC_FEATURES,
+};
+
+const FEATURE_GLYPHS: Record<string, PremiumGlyphName> = {
+  featureFullChart: "natal",
+  featureSynastry: "synastry",
+  featureDailyHoroscope: "daily",
+  featureMonthlyTarot: "tarot",
+  featureMonthlyYearlyHoroscopes: "monthly",
+  featureLuckyDays: "lucky",
+  featureDatePlanner: "planner",
+  featureTransitAlerts: "transits",
+  featureRetrogradeReflection: "retrograde",
+  featureWeeklyTarot: "tarot",
 };
 
 export function PlansCheckout() {
@@ -371,15 +385,22 @@ export function PlansCheckout() {
 
                 {/* Features list */}
                 <ul className="mt-5 space-y-2.5">
-                  {features.map((featureKey) => (
-                    <li
-                      key={featureKey}
-                      className="flex items-start gap-2.5 text-sm text-text-muted"
-                    >
-                      <span className="mt-0.5 text-purple" aria-hidden="true">&#10003;</span>
-                      {tPremium(featureKey)}
-                    </li>
-                  ))}
+                  {features.map((featureKey) => {
+                    const glyph = FEATURE_GLYPHS[featureKey];
+                    return (
+                      <li
+                        key={featureKey}
+                        className="flex items-start gap-2.5 text-sm text-text-muted"
+                      >
+                        {glyph ? (
+                          <PremiumGlyph name={glyph} className="mt-0.5 h-4 w-4 flex-shrink-0 text-purple" />
+                        ) : (
+                          <span className="mt-0.5 text-purple" aria-hidden="true">&#10003;</span>
+                        )}
+                        <span>{tPremium(featureKey)}</span>
+                      </li>
+                    );
+                  })}
                 </ul>
 
                 {/* CTA button */}

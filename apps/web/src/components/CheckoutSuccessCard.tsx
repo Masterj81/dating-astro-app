@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentTier } from "@/lib/web-subscriptions";
+import { PremiumGlyph, type PremiumGlyphName } from "@/components/PremiumGlyph";
 
 export function CheckoutSuccessCard() {
   const t = useTranslations("webApp");
@@ -70,16 +71,16 @@ export function CheckoutSuccessCard() {
 
   const ctasReady = tierConfirmed || pollingDone;
 
-  const nextSteps = [
-    { icon: "\u2728", label: t("successStepDiscover"), href: "/app/discover" },
-    { icon: "\ud83d\udcab", label: t("successStepProfile"), href: "/app/profile" },
-    { icon: "\ud83d\udd2e", label: t("successStepPremium"), href: "/app/premium/celestial" },
+  const nextSteps: { glyph: PremiumGlyphName; label: string; href: string }[] = [
+    { glyph: "synastry", label: t("successStepDiscover"), href: "/app/discover" },
+    { glyph: "natal", label: t("successStepProfile"), href: "/app/profile" },
+    { glyph: "tarot", label: t("successStepPremium"), href: "/app/premium/celestial" },
   ];
 
-  const featureHighlights = [
-    { icon: "🪐", label: t("successFeatureHighlight_chart") },
-    { icon: "💗", label: t("successFeatureHighlight_compatibility") },
-    { icon: "🔮", label: t("successFeatureHighlight_horoscope") },
+  const featureHighlights: { glyph: PremiumGlyphName; label: string }[] = [
+    { glyph: "natal", label: t("successFeatureHighlight_chart") },
+    { glyph: "synastry", label: t("successFeatureHighlight_compatibility") },
+    { glyph: "daily", label: t("successFeatureHighlight_horoscope") },
   ];
 
   return (
@@ -218,7 +219,7 @@ export function CheckoutSuccessCard() {
               href={step.href}
               className="flex items-center gap-3 rounded-2xl border border-border bg-bg/50 px-4 py-3.5 text-sm text-text-muted transition-colors hover:border-white/15 hover:text-white"
             >
-              <span className="text-lg" aria-hidden="true">{step.icon}</span>
+              <PremiumGlyph name={step.glyph} className="h-5 w-5 flex-shrink-0 text-[#b4a8ff]" />
               {step.label}
             </Link>
           ))}
@@ -246,7 +247,7 @@ export function CheckoutSuccessCard() {
               key={feature.label}
               className="flex items-center gap-3 rounded-xl bg-white/[0.04] px-4 py-3"
             >
-              <span className="text-lg" aria-hidden="true">{feature.icon}</span>
+              <PremiumGlyph name={feature.glyph} className="h-5 w-5 flex-shrink-0 text-[#b4a8ff]" />
               <span className="text-sm text-white">{feature.label}</span>
               <svg viewBox="0 0 16 16" className="ml-auto h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M3 8.5l3.5 3.5L13 5" strokeLinecap="round" strokeLinejoin="round" />
@@ -277,7 +278,7 @@ export function CheckoutSuccessCard() {
           href="/app/profile"
           className="mt-4 inline-flex items-center gap-2 rounded-full border border-[rgba(74,222,128,0.3)] bg-[rgba(74,222,128,0.12)] px-5 py-2.5 text-sm font-semibold text-[#a7f3c0] transition-all hover:bg-[rgba(74,222,128,0.2)]"
         >
-          🎁 {t("successShareCta")}
+          {t("successShareCta")}
         </Link>
       </div>
 
