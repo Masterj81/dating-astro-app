@@ -1,11 +1,9 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useState } from 'react';
 import {
   Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -16,292 +14,168 @@ import PlanetGlyph from '../../components/ui/PlanetGlyph';
 import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-type RetrogradeEvent = {
-  planet: string;
-  emoji: string;
-  status: 'retrograde' | 'direct' | 'upcoming';
-  startDate: string;
-  endDate: string;
-  daysRemaining?: number;
-  effects: string[];
-  doList: string[];
-  dontList: string[];
+// V2 — formerly "Retrograde Alerts". Renamed editorially to
+// "Retrograde Reflection". The V1 surface fabricated start/end calendar
+// dates for four planets' retrogrades (e.g. "Mercury Apr 1 - Apr 25",
+// "Mars Dec 6 - Feb 23"), surfaced a 58-day countdown, framed the
+// content as a "Survival Guide" with binary do / don't lists, and
+// offered seven alert toggles even though no mobile push channel
+// actually delivers them. That presented fabricated certainty about
+// when planetary events would happen and warned users to avoid
+// real-world actions during invented date ranges.
+//
+// V2 keeps:
+//   - The Cosmic gate (PremiumGate feature="retrograde-alerts")
+//   - The route `/premium-screens/retrograde-alerts`
+//
+// V2 removes:
+//   - All fabricated start/end dates and countdowns
+//   - The "Survival Guide" framing
+//   - Binary do / don't lists
+//   - The Switch-based alert toggles (no push channel exists)
+//   - The currentlyRetrograde / currentlyDirect status badges with
+//     hardcoded counts (0 retrograde, 1 upcoming, 3 direct)
+//
+// V2 ships: a one-line framing ("A review window, not a warning"),
+// four planet cards each with a reflective theme + journal prompt,
+// and a soft disclaimer. No dates. No countdowns. No alerts.
+
+type ReflectionTheme = {
+  key: string;
+  symbol: string;
+  planetKey: string;
+  themeKey: string;
+  promptKey: string;
 };
 
-type RetrogradeAlert = {
-  id: string;
-  label: string;
-  emoji: string;
-  enabled: boolean;
-};
+const THEMES: ReflectionTheme[] = [
+  {
+    key: 'mercury',
+    symbol: '☿',
+    planetKey: 'mercury',
+    themeKey: 'retrogradeReflectionMercuryTheme',
+    promptKey: 'retrogradeReflectionMercuryPrompt',
+  },
+  {
+    key: 'venus',
+    symbol: '♀',
+    planetKey: 'venus',
+    themeKey: 'retrogradeReflectionVenusTheme',
+    promptKey: 'retrogradeReflectionVenusPrompt',
+  },
+  {
+    key: 'mars',
+    symbol: '♂',
+    planetKey: 'mars',
+    themeKey: 'retrogradeReflectionMarsTheme',
+    promptKey: 'retrogradeReflectionMarsPrompt',
+  },
+  {
+    key: 'saturn',
+    symbol: '♄',
+    planetKey: 'saturn',
+    themeKey: 'retrogradeReflectionSaturnTheme',
+    promptKey: 'retrogradeReflectionSaturnPrompt',
+  },
+];
 
-function RetrogradeAlertsScreenContent() {
+function RetrogradeReflectionContent() {
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
 
-  const getMonthName = (monthIndex: number, short: boolean = true): string => {
-    const months = short
-      ? ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
-      : ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
-    return t(months[monthIndex]) || months[monthIndex];
-  };
-
-  const formatDate = (month: number, day: number): string => {
-    return `${getMonthName(month)} ${day}`;
-  };
-
-  const [alerts, setAlerts] = useState<RetrogradeAlert[]>([
-    { id: 'mercury', label: t('mercuryRetrograde'), emoji: '☿️', enabled: true },
-    { id: 'venus', label: t('venusRetrograde'), emoji: '♀️', enabled: true },
-    { id: 'mars', label: t('marsRetrograde'), emoji: '♂️', enabled: true },
-    { id: 'jupiter', label: t('jupiterRetrograde'), emoji: '♃', enabled: false },
-    { id: 'saturn', label: t('saturnRetrograde'), emoji: '♄', enabled: false },
-    { id: 'preRetrograde', label: t('preRetrogradeShadow'), emoji: '🌑', enabled: true },
-    { id: 'postRetrograde', label: t('postRetrogradeShadow'), emoji: '🌕', enabled: true },
-  ]);
-
-  const toggleAlert = (id: string) => {
-    setAlerts(alerts.map(alert =>
-      alert.id === id ? { ...alert, enabled: !alert.enabled } : alert
-    ));
-  };
-
-  const getRetrogrades = (): RetrogradeEvent[] => {
-    return [
-      {
-        planet: t('mercury'),
-        emoji: '☿️',
-        status: 'upcoming',
-        startDate: formatDate(3, 1),
-        endDate: formatDate(3, 25),
-        daysRemaining: 58,
-        effects: [t('mercuryEffect1'), t('mercuryEffect2'), t('mercuryEffect3')],
-        doList: [t('mercuryDo1'), t('mercuryDo2'), t('mercuryDo3')],
-        dontList: [t('mercuryDont1'), t('mercuryDont2'), t('mercuryDont3')],
-      },
-      {
-        planet: t('venus'),
-        emoji: '♀️',
-        status: 'direct',
-        startDate: formatDate(6, 22),
-        endDate: formatDate(8, 3),
-        effects: [t('venusEffect1'), t('venusEffect2'), t('venusEffect3')],
-        doList: [t('venusDo1'), t('venusDo2'), t('venusDo3')],
-        dontList: [t('venusDont1'), t('venusDont2'), t('venusDont3')],
-      },
-      {
-        planet: t('mars'),
-        emoji: '♂️',
-        status: 'direct',
-        startDate: formatDate(11, 6),
-        endDate: formatDate(1, 23),
-        effects: [t('marsEffect1'), t('marsEffect2'), t('marsEffect3')],
-        doList: [t('marsDo1'), t('marsDo2'), t('marsDo3')],
-        dontList: [t('marsDont1'), t('marsDont2'), t('marsDont3')],
-      },
-      {
-        planet: t('saturn'),
-        emoji: '♄',
-        status: 'direct',
-        startDate: formatDate(5, 29),
-        endDate: formatDate(10, 15),
-        effects: [t('saturnEffect1'), t('saturnEffect2'), t('saturnEffect3')],
-        doList: [t('saturnDo1'), t('saturnDo2'), t('saturnDo3')],
-        dontList: [t('saturnDont1'), t('saturnDont2'), t('saturnDont3')],
-      },
-    ];
-  };
-
-  const getStatusColor = (status: string): string => {
-    switch (status) {
-      case 'retrograde': return '#f87171';
-      case 'upcoming': return '#fbbf24';
-      default: return '#4ade80';
-    }
-  };
-
-  const getStatusLabel = (status: string): string => {
-    switch (status) {
-      case 'retrograde': return t('currentlyRetrograde');
-      case 'upcoming': return t('upcomingRetrograde');
-      default: return t('currentlyDirect');
-    }
-  };
-
-  const retrogrades = getRetrogrades();
-  const [expandedPlanet, setExpandedPlanet] = useState<string | null>('mercury');
-
-  // Fallbacks for web where SafeAreaProvider may not work
   const topInset = insets?.top ?? 0;
   const bottomInset = insets?.bottom ?? 0;
 
-  const renderContent = () => (
-    <View>
-      {/* Current Status Overview */}
-        <View style={styles.statusOverview}>
-          <View style={styles.statusItem}>
-            <View style={[styles.statusDot, { backgroundColor: '#f87171' }]} />
-            <Text style={styles.statusCount}>0</Text>
-            <Text style={styles.statusLabel}>{t('retrograde')}</Text>
-          </View>
-          <View style={styles.statusItem}>
-            <View style={[styles.statusDot, { backgroundColor: '#fbbf24' }]} />
-            <Text style={styles.statusCount}>1</Text>
-            <Text style={styles.statusLabel}>{t('upcoming')}</Text>
-          </View>
-          <View style={styles.statusItem}>
-            <View style={[styles.statusDot, { backgroundColor: '#4ade80' }]} />
-            <Text style={styles.statusCount}>3</Text>
-            <Text style={styles.statusLabel}>{t('direct')}</Text>
-          </View>
-        </View>
-
-        {/* Retrogrades List */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('retrogradeStatus')}</Text>
-
-          {retrogrades.map((retro, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.retroCard}
-              onPress={() => setExpandedPlanet(expandedPlanet === retro.planet ? null : retro.planet)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.retroHeader}>
-                <PlanetGlyph symbol={retro.emoji} size={30} textStyle={styles.retroEmoji} />
-                <View style={styles.retroInfo}>
-                  <Text style={styles.retroPlanet}>{retro.planet}</Text>
-                  <Text style={styles.retroDates}>{retro.startDate} - {retro.endDate}</Text>
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(retro.status) + '30' }]}>
-                  <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(retro.status) }]} />
-                  <Text style={[styles.statusText, { color: getStatusColor(retro.status) }]}>
-                    {getStatusLabel(retro.status)}
-                  </Text>
-                </View>
-              </View>
-
-              {retro.daysRemaining && (
-                <View style={styles.countdownBanner}>
-                  <Text style={styles.countdownText}>
-                    ⏱️ {t('startsIn')} {retro.daysRemaining} {t('days')}
-                  </Text>
-                </View>
-              )}
-
-              {expandedPlanet === retro.planet && (
-                <View style={styles.expandedContent}>
-                  {/* Effects */}
-                  <View style={styles.effectsSection}>
-                    <Text style={styles.effectsTitle}>{t('effects')}</Text>
-                    {retro.effects.map((effect, i) => (
-                      <View key={i} style={styles.effectRow}>
-                        <Text style={styles.effectBullet}>•</Text>
-                        <Text style={styles.effectText}>{effect}</Text>
-                      </View>
-                    ))}
-                  </View>
-
-                  {/* Do's */}
-                  <View style={styles.doSection}>
-                    <Text style={styles.doTitle}>✅ {t('whatToDo')}</Text>
-                    {retro.doList.map((item, i) => (
-                      <Text key={i} style={styles.doText}>• {item}</Text>
-                    ))}
-                  </View>
-
-                  {/* Don'ts */}
-                  <View style={styles.dontSection}>
-                    <Text style={styles.dontTitle}>❌ {t('whatToAvoid')}</Text>
-                    {retro.dontList.map((item, i) => (
-                      <Text key={i} style={styles.dontText}>• {item}</Text>
-                    ))}
-                  </View>
-                </View>
-              )}
-
-              <Text style={styles.expandHint}>
-                {expandedPlanet === retro.planet ? '▲ ' + t('tapToCollapse') : '▼ ' + t('tapToExpand')}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Alert Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('alertSettings')}</Text>
-
-          <View style={styles.alertsCard}>
-            {alerts.map((alert, index) => (
-              <View key={alert.id} style={[styles.alertRow, index < alerts.length - 1 && styles.alertBorder]}>
-                <PlanetGlyph symbol={alert.emoji} size={24} textStyle={styles.alertEmoji} />
-                <Text style={styles.alertLabel}>{alert.label}</Text>
-                <Switch
-                  value={alert.enabled}
-                  onValueChange={() => toggleAlert(alert.id)}
-                  trackColor={{ false: '#333', true: 'rgba(147, 51, 234, 0.5)' }}
-                  thumbColor={alert.enabled ? '#9333ea' : '#888'}
-                />
-              </View>
-            ))}
-          </View>
-
-          <Text style={styles.alertHint}>{t('alertHint')}</Text>
-        </View>
-
-        {/* Survival Guide */}
-        <View style={styles.survivalCard}>
-          <Text style={styles.survivalTitle}>🛡️ {t('retrogradeSurvival')}</Text>
-          <Text style={styles.survivalText}>{t('survivalTip1')}</Text>
-          <Text style={styles.survivalText}>{t('survivalTip2')}</Text>
-          <Text style={styles.survivalText}>{t('survivalTip3')}</Text>
-        </View>
-
-        {/* Premium Badge */}
-        <View style={styles.premiumBadge}>
-          <Text style={styles.premiumIcon}>✨</Text>
-          <Text style={styles.premiumText}>{t('premiumPlusFeature')}</Text>
-        </View>
-    </View>
-  );
-
   return (
     <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
-<ScrollView
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
         showsVerticalScrollIndicator={false}
       >
-      {/* Header - Fixed at top */}
-      <View style={[styles.header, { paddingTop: 40 + topInset }]}>
-        <TouchableOpacity style={[styles.backButton, { top: 30 + topInset }]} onPress={() => router.back()}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>{t('retrogradeAlerts')}</Text>
-        <Text style={styles.subtitle}>{t('retrogradeSubtitle')}</Text>
-      </View>
+        <View style={[styles.header, { paddingTop: 40 + topInset }]}>
+          <TouchableOpacity
+            style={[styles.backButton, { top: 30 + topInset }]}
+            onPress={() => router.back()}
+            accessibilityLabel={t('back') || 'Back'}
+          >
+            <Text style={styles.backText}>{'←'}</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>{t('retrogradeReflectionTitle') || 'Retrograde Reflection'}</Text>
+          <Text style={styles.subtitle}>
+            {t('retrogradeReflectionSubtitle') || 'A review window, not a warning.'}
+          </Text>
+        </View>
 
-      
-        {renderContent()}
+        {/* Hero framing */}
+        <View style={styles.heroCard}>
+          <Text style={styles.heroEyebrow}>
+            {t('retrogradeReflectionFramingEyebrow') || 'Framing'}
+          </Text>
+          <Text style={styles.heroBody}>
+            {t('retrogradeReflectionFramingBody') ||
+              'A review window, not a warning. Retrograde is symbolic — a time the language of astrology associates with going back over what you have already started.'}
+          </Text>
+        </View>
+
+        {/* Themes */}
+        <View style={styles.section}>
+          <Text style={styles.sectionEyebrow}>
+            {t('retrogradeReflectionThemesTitle') || 'Themes To Sit With'}
+          </Text>
+          {THEMES.map((theme) => (
+            <View key={theme.key} style={styles.themeCard}>
+              <View style={styles.themeHeader}>
+                <PlanetGlyph symbol={theme.symbol} size={28} textStyle={styles.themeSymbol} />
+                <Text style={styles.themePlanet}>{t(theme.planetKey) || theme.key}</Text>
+              </View>
+              <Text style={styles.themeLabel}>{t(theme.themeKey)}</Text>
+              <Text style={styles.themePrompt}>{t(theme.promptKey)}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Disclaimer */}
+        <View style={styles.disclaimerCard}>
+          <Text style={styles.disclaimerEyebrow}>
+            {t('retrogradeReflectionDisclaimerTitle') || 'A Note'}
+          </Text>
+          <Text style={styles.disclaimerBody}>
+            {t('retrogradeReflectionDisclaimerBody') ||
+              'Use this as a reflection tool, not a prediction.'}
+          </Text>
+        </View>
       </ScrollView>
     </LinearGradient>
+  );
+}
+
+export default function RetrogradeReflectionScreen() {
+  return (
+    <PremiumGate feature="retrograde-alerts">
+      <RetrogradeReflectionContent />
+    </PremiumGate>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    ...(Platform.OS === 'web' ? {
-      height: '100%' as any,
-      width: '100%' as any,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? ({
+          height: '100%',
+          width: '100%',
+        } as any)
+      : {}),
   },
   scrollView: {
     flex: 1,
-    ...(Platform.OS === 'web' ? {
-      height: 'calc(100vh - 120px)' as any,
-      overflowY: 'auto' as any,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? ({
+          height: 'calc(100vh - 120px)',
+          overflowY: 'auto',
+        } as any)
+      : {}),
   },
   scrollContent: {
     paddingBottom: 40,
@@ -333,248 +207,101 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: AppTheme.colors.textPrimary,
     marginBottom: 4,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
     color: AppTheme.colors.textSecondary,
     textAlign: 'center',
+    paddingHorizontal: 20,
   },
-  statusOverview: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+  heroCard: {
     marginHorizontal: 20,
-    backgroundColor: AppTheme.colors.panel,
-    borderRadius: 16,
-    padding: 16,
     marginBottom: 24,
+    padding: 20,
+    borderRadius: 20,
+    backgroundColor: 'rgba(124, 108, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(124, 108, 255, 0.22)',
   },
-  statusItem: {
-    alignItems: 'center',
+  heroEyebrow: {
+    fontSize: 11,
+    color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 10,
   },
-  statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginBottom: 6,
-  },
-  statusCount: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  heroBody: {
+    fontSize: 15,
     color: AppTheme.colors.textPrimary,
-  },
-  statusLabel: {
-    fontSize: 12,
-    color: AppTheme.colors.textSecondary,
+    lineHeight: 22,
   },
   section: {
     paddingHorizontal: 20,
     marginBottom: 24,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: AppTheme.colors.textPrimary,
-    marginBottom: 16,
-  },
-  retroCard: {
-    backgroundColor: AppTheme.colors.panel,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-  },
-  retroHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  retroEmoji: {
-    fontSize: 32,
-    marginRight: 12,
-  },
-  retroInfo: {
-    flex: 1,
-  },
-  retroPlanet: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: AppTheme.colors.textPrimary,
-  },
-  retroDates: {
-    fontSize: 13,
-    color: AppTheme.colors.textSecondary,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    gap: 6,
-  },
-  statusIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  statusText: {
+  sectionEyebrow: {
     fontSize: 11,
-    fontWeight: '600',
-  },
-  countdownBanner: {
-    backgroundColor: 'rgba(251, 191, 36, 0.15)',
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginTop: 12,
-    alignSelf: 'flex-start',
-  },
-  countdownText: {
-    fontSize: 13,
-    color: '#fbbf24',
-    fontWeight: '500',
-  },
-  expandedContent: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: AppTheme.colors.border,
-  },
-  effectsSection: {
-    marginBottom: 16,
-  },
-  effectsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: AppTheme.colors.textPrimary,
-    marginBottom: 8,
-  },
-  effectRow: {
-    flexDirection: 'row',
-    marginBottom: 4,
-  },
-  effectBullet: {
-    color: AppTheme.colors.textSecondary,
-    marginRight: 8,
-  },
-  effectText: {
-    flex: 1,
-    fontSize: 13,
-    color: AppTheme.colors.textSecondary,
-    lineHeight: 18,
-  },
-  doSection: {
-    backgroundColor: 'rgba(74, 222, 128, 0.1)',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-  },
-  doTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4ade80',
-    marginBottom: 8,
-  },
-  doText: {
-    fontSize: 13,
-    color: AppTheme.colors.textSecondary,
-    marginBottom: 4,
-    lineHeight: 18,
-  },
-  dontSection: {
-    backgroundColor: 'rgba(248, 113, 113, 0.1)',
-    borderRadius: 12,
-    padding: 12,
-  },
-  dontTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#f87171',
-    marginBottom: 8,
-  },
-  dontText: {
-    fontSize: 13,
-    color: '#aaa',
-    marginBottom: 4,
-    lineHeight: 18,
-  },
-  expandHint: {
-    fontSize: 12,
     color: AppTheme.colors.textMuted,
-    textAlign: 'center',
-    marginTop: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 14,
   },
-  alertsCard: {
+  themeCard: {
     backgroundColor: AppTheme.colors.panel,
     borderRadius: 16,
-    overflow: 'hidden',
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
   },
-  alertRow: {
+  themeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    marginBottom: 8,
+    gap: 10,
   },
-  alertBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: AppTheme.colors.border,
-  },
-  alertEmoji: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  alertLabel: {
-    flex: 1,
-    fontSize: 15,
+  themeSymbol: {
+    fontSize: 22,
     color: AppTheme.colors.textPrimary,
   },
-  alertHint: {
-    fontSize: 12,
+  themePlanet: {
+    fontSize: 11,
     color: AppTheme.colors.textMuted,
-    textAlign: 'center',
-    marginTop: 12,
-  },
-  survivalCard: {
-    backgroundColor: 'rgba(124, 108, 255, 0.14)',
-    marginHorizontal: 20,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-  },
-  survivalTitle: {
-    fontSize: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
     fontWeight: '600',
-    color: AppTheme.colors.cosmic,
-    marginBottom: 12,
   },
-  survivalText: {
+  themeLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: AppTheme.colors.textPrimary,
+    marginBottom: 6,
+  },
+  themePrompt: {
+    fontSize: 14,
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 20,
+  },
+  disclaimerCard: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    padding: 16,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  disclaimerEyebrow: {
+    fontSize: 11,
+    color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
+  disclaimerBody: {
     fontSize: 13,
     color: AppTheme.colors.textSecondary,
     lineHeight: 20,
-    marginBottom: 8,
-  },
-  premiumBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(124, 108, 255, 0.16)',
-    marginHorizontal: 60,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    gap: 8,
-  },
-  premiumIcon: {
-    fontSize: 16,
-  },
-  premiumText: {
-    fontSize: 12,
-    color: AppTheme.colors.cosmic,
-    fontWeight: '600',
   },
 });
-
-export default function RetrogradeAlertsScreen() {
-  return (
-    <PremiumGate feature="retrograde-alerts">
-      <RetrogradeAlertsScreenContent />
-    </PremiumGate>
-  );
-}
