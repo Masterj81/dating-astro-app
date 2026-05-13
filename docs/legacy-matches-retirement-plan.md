@@ -82,128 +82,72 @@ Validation:
   to the live preference key (read + write) and the `"newMatches"`
   i18n label across `apps/mobile/locales/*.json`.
 
-## Phase D — in progress: `messages.match_id` retirement
+## Phase D pass-1 — shipped (2026-05-13)
 
-Validation queries were run against production on 2026-05-13. Results:
+`supabase/migrations/20260513000005_phase_d_pass1_drop_match_id_messages_rls.sql`
 
-| # | Query                                                                                                                  | Result |
-|---|------------------------------------------------------------------------------------------------------------------------|--------|
-| 1 | `SELECT count(*) FROM public.messages WHERE conversation_id IS NULL;`                                                  | **5**  |
-| 2 | `SELECT count(*) FROM public.messages WHERE match_id IS NOT NULL AND conversation_id IS NULL;`                          | **5**  |
-| 3 | RLS policies referencing `match_id`                                                                                    | 2 rows |
-| 4 | Triggers on `swipes` / `matches` / `messages`                                                                          | 11 rows (Phase A dropped only the three creation/notification triggers; see §Triggers below) |
-| 5 | FK referencing `matches`                                                                                                | 1 row: `public.messages.messages_match_id_fkey` |
+Production audit after the Phase D pre-step backfill plus operator
+cleanup of the 5 unsalvageable orphan rows returned:
 
-Q2 = 5 → the Phase D pass-1 RLS rewrite is **gated** on a backfill of
-those 5 rows. Pass-1 cannot ship while any row has `match_id IS NOT NULL
-AND conversation_id IS NULL`, because removing the legacy `match_id`
-OR-branch would silently hide them from their participants.
+| Query | Result |
+|-------|--------|
+| `SELECT count(*) FROM public.messages WHERE conversation_id IS NULL;` | **0** |
+| `SELECT count(*) FROM public.messages WHERE match_id IS NOT NULL AND conversation_id IS NULL;` | **0** |
 
-Q3 also surfaced a second policy that still references `match_id`:
-`"Users can view match messages"`. Its `USING` clause is `EXISTS (SELECT
-1 FROM matches WHERE matches.id = messages.match_id AND ...)` — i.e.,
-pure match-based read with no conversation_id branch at all. That
-policy must also be dropped during Phase D pass-1 (not just rewritten),
-because it has no value once the OR-branch on the canonical conversation
-policy is removed.
+Both gating conditions met → pass-1 applied. The migration drops:
 
-### Phase D pre-step — shipped (2026-05-13)
+- `"Users can view match messages"` — legacy single-branch SELECT
+  policy with no conversation_id path. Removed entirely.
+- `"Users can view messages in their conversations"` — recreated
+  without the OR-branch on `matches`. Reads now flow exclusively
+  through the conversation_id path.
 
-`supabase/migrations/20260513000004_phase_d_backfill_legacy_match_only_messages.sql`
-
-The pre-step backfills the 5 orphan messages where possible and
-diagnoses each remaining bucket via `RAISE NOTICE`:
-
-- Salvageable: match has `user1_id <> user2_id` AND both profiles still
-  exist → INSERT into `conversations` (ordered pair, ON CONFLICT DO
-  NOTHING) and UPDATE `messages.conversation_id`.
-- Self-match (`user1_id = user2_id`) → unsalvageable; violates the
-  `conversations_ordered_users` CHECK constraint.
-- Orphan-user (one or both `profiles` rows deleted) → unsalvageable;
-  violates the conversations → profiles FK.
-- No-match (`match_id IS NULL` or referenced row gone) → defensive
-  bucket; should always be 0 given the `messages_match_id_fkey`
-  RESTRICT constraint.
-
-The migration explicitly does NOT touch:
+What pass-1 explicitly did NOT touch:
 - `messages.match_id` column (pass-2)
-- any RLS policy (pass-1)
+- `messages_match_id_fkey` FK constraint (pass-2)
+- `idx_messages_match` / `idx_messages_unread` / `idx_messages_match_read`
+  indexes (pass-2)
 - the `matches` table (Phase E)
-- `notification_preferences.newMatches`
-- any unsalvageable row (operator-only decision)
+- `notification_preferences.newMatches` (live UI contract)
+- any INSERT/UPDATE/DELETE policy on `messages` (the canonical INSERT
+  was already `match_id`-free since 20260428000002 §4)
 
-### Phase D — what runs next (operator playbook)
+App code requires no change — both `apps/mobile/app/chat/[id].tsx` and
+`apps/web/src/components/ChatThread.tsx` already SELECT and INSERT
+exclusively by `conversation_id`.
 
-After applying `20260513000004_phase_d_backfill_legacy_match_only_messages.sql`
-to production:
+### Post-deployment validation (run against staging then prod)
 
-1. Re-run validation Query 2:
-   ```sql
-   SELECT count(*) AS messages_match_only
-   FROM public.messages
-   WHERE match_id IS NOT NULL AND conversation_id IS NULL;
-   ```
-   - If `0`: Phase D pass-1 (RLS rewrite below) is unblocked.
-   - If `> 0`: those rows are by construction unsalvageable (self-match
-     or orphan-user). Inspect with the diagnostic SQL below, decide
-     whether to delete them or accept silent unreachability, then
-     re-check Query 2.
+```sql
+-- A. Re-confirm no policy on messages still references match_id.
+SELECT schemaname, tablename, policyname
+FROM pg_policies
+WHERE tablename = 'messages'
+  AND (qual::text LIKE '%match_id%' OR with_check::text LIKE '%match_id%');
+-- Expected: 0 rows.
 
-2. Diagnostic SQL — inspect what (if anything) remains unsalvageable:
-   ```sql
-   SELECT
-     msg.id          AS message_id,
-     msg.match_id    AS legacy_match_id,
-     msg.sender_id   AS sender_id,
-     msg.created_at  AS created_at,
-     left(msg.content, 80) AS preview,
-     m.user1_id      AS match_user1,
-     m.user2_id      AS match_user2,
-     (m.user1_id = m.user2_id) AS is_self_match,
-     (NOT EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = m.user1_id)) AS user1_deleted,
-     (NOT EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = m.user2_id)) AS user2_deleted
-   FROM public.messages msg
-   LEFT JOIN public.matches m ON m.id = msg.match_id
-   WHERE msg.conversation_id IS NULL
-   ORDER BY msg.created_at;
-   ```
+-- B. Confirm the canonical SELECT policy is conversation_id-only.
+SELECT policyname, qual::text AS using_clause
+FROM pg_policies
+WHERE tablename = 'messages'
+  AND policyname = 'Users can view messages in their conversations';
+-- Expected: USING clause references only public.conversations.
 
-3. (Optional) Delete unsalvageable rows. Only do this if the operator
-   has confirmed the rows are self-match / orphan-user and will never
-   be readable through the modern conversation_id path:
-   ```sql
-   BEGIN;
-     -- Confirm the count before deleting (must match Step 2 output).
-     SELECT count(*) FROM public.messages WHERE conversation_id IS NULL;
-     DELETE FROM public.messages WHERE conversation_id IS NULL;
-   COMMIT;
-   ```
+-- C. Chat read smoke check — pick a known conversation_id and confirm
+-- both participants can still SELECT messages. Run as each participant
+-- via the Supabase Studio "Run as user" feature, or via app smoke test.
+```
 
-4. Run Phase D pass-1 (RLS rewrite — see sketch below). The pass-1
-   migration must drop BOTH `"Users can view match messages"` (legacy
-   single-branch policy) AND the OR-branch of `"Users can view messages
-   in their conversations"` per Q3 results.
+### Rollback (pass-1)
 
-5. After pass-1 has been live in production for one release cycle with
-   no chat read regressions, schedule Phase D pass-2 (column drop).
-
-### Phase D pass-1 migration sketch (RLS rewrite, column kept) — UNSHIPPED
-
-Ship this once Step 1 above returns 0. It is purely subtractive on the
-RLS layer and leaves the `match_id` column, FK, and indexes intact. The
-sketch below incorporates the Q3 finding that two policies must change:
+If chat reads regress for any participant, re-apply the prior two
+policies verbatim:
 
 ```sql
 begin;
 
--- Drop the legacy single-branch policy entirely. It has no value once
--- the canonical conversation_id-based path is the only one.
-DROP POLICY IF EXISTS "Users can view match messages" ON public.messages;
-
--- Rewrite the canonical policy without the match_id OR-branch.
 DROP POLICY IF EXISTS "Users can view messages in their conversations"
   ON public.messages;
-
 CREATE POLICY "Users can view messages in their conversations"
   ON public.messages
   FOR SELECT
@@ -213,110 +157,49 @@ CREATE POLICY "Users can view messages in their conversations"
       WHERE c.id = messages.conversation_id
         AND (c.user_a = auth.uid() OR c.user_b = auth.uid())
     )
+    OR EXISTS (
+      SELECT 1 FROM public.matches m
+      WHERE m.id = messages.match_id
+        AND (m.user1_id = auth.uid() OR m.user2_id = auth.uid())
+    )
+  );
+
+CREATE POLICY "Users can view match messages"
+  ON public.messages
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.matches
+      WHERE matches.id = messages.match_id
+        AND (matches.user1_id = auth.uid() OR matches.user2_id = auth.uid())
+    )
   );
 
 commit;
 ```
 
-Rollback: re-create both policies with the OR-branch and the legacy
-single-branch policy as defined in
-`supabase/migrations/20260428000002_conversations_first.sql` §4 plus
-`supabase/migrations/00000000000000_full_schema.sql` (look for the
-original `"Users can view match messages"` definition).
+Pass-2 (column / FK / index drop) and Phase E (table drop) remain
+separate, future-pass concerns — see the sketches below.
 
-### Triggers still wired on `messages` / `matches` (Q4 result)
+## Phase D pass-2 — deferred: column / FK / index drop
 
-| Table     | Trigger                                       | Notes |
-|-----------|-----------------------------------------------|-------|
-| matches   | `trigger_notify_new_match` (AFTER INSERT)     | Phase A dropped the *function*; this row in the audit is stale or the trigger was re-created elsewhere. Re-verify on prod: `SELECT trigger_name FROM information_schema.triggers WHERE event_object_table = 'matches';` and drop any survivor. |
-| matches   | `trigger_notify_new_match_on_activate` (AFTER UPDATE) | Same — Phase A did not drop this UPDATE variant. Candidate for Phase E preamble (drop along with `update_match_message`). |
-| matches   | `trigger_send_match_email` (AFTER INSERT)     | Phase A dropped this. If still present, re-verify and drop. |
-| matches   | `trigger_send_match_email_on_activate` (AFTER UPDATE) | Same as above; Phase A did not target the UPDATE variant. |
-| messages  | `trigger_activate_requested_match_on_reply` (BEFORE INSERT) | Legacy; activates a pending match when a reply lands. With `match_id` now nullable and the new INSERT path never setting it, this no-ops on conversation-first messages. Candidate for Phase E preamble. |
-| messages  | `trigger_message_rate_limit` (BEFORE INSERT)  | LIVE — keep. |
-| messages  | `trigger_notify_new_message` (AFTER INSERT)   | LIVE — keep. |
-| messages  | `trigger_update_conversation_last_message` (AFTER INSERT) | LIVE — keep (conversation-first). |
-| messages  | `trigger_update_match_message` (AFTER INSERT) | Updates `matches.last_message_at`. Harmless when `match_id IS NULL` (UPDATE matches no rows). Candidate for Phase E preamble. |
-| swipes    | `trigger_check_match` (AFTER INSERT)          | Phase A dropped this. If still present, re-verify and drop. |
-| swipes    | `trigger_swipe_rate_limit` (BEFORE INSERT)    | Defensive guard — keep until `swipes` table itself is retired. |
+Cannot ship until pass-1 has soaked in production for one release
+cycle without chat read regressions. Pass-2 drops `messages.match_id`,
+its FK to `matches`, and the three indexes that referenced it.
 
-Action: Re-run Q4 after deploying the latest Phase A migration to prod
-(`20260513000002_retire_unreachable_match_triggers.sql`). If `notify_new_match`,
-`send_match_email`, or `check_match` rows reappear, they're from a
-fork or partial deploy and need a forward fix. The two `_on_activate`
-variants and the two messages-side `trigger_*_match*` triggers are
-separately tracked as Phase E preamble items.
+### Prerequisites before pass-2 can ship
 
-### Phase D audit attempt — 2026-05-12 (superseded by the 2026-05-13 prod queries above)
+- Phase D pass-1 applied to production and stable.
+- Re-run Queries A + B from the pass-1 deployment validation: both
+  must show that no policy on `messages` references `match_id`. The
+  pass-2 sketch defensively repeats the policy DROPs, so a missed
+  pass-1 step would still be caught, but pass-2 is not the place to
+  discover an RLS regression.
+- No client app version still emits `INSERT INTO messages` with
+  `match_id` (verified by grep at the time pass-1 shipped; re-verify
+  before pass-2).
 
-A Phase D-pass-1 attempt — limited to *only* rewriting the
-`messages` SELECT policy to drop the legacy `match_id` OR-branch
-(without touching the column, FK, or indexes) — was evaluated and
-**deferred** for the same root-cause reason that blocks the full
-column drop.
-
-Audit confirmed (all live as of this date):
-
-- **Only one** RLS branch on `public.messages` references
-  `match_id`: the second OR-branch inside the SELECT policy
-  `"Users can view messages in their conversations"`
-  (`20260428000002_conversations_first.sql` lines 161-165).
-- The matching INSERT policy
-  `"Users can send conversation messages"` is already
-  `match_id`-free and requires `conversation_id IS NOT NULL`. No
-  rewrite needed there.
-- App INSERT call sites do **not** write `match_id`:
-  - `apps/mobile/app/chat/[id].tsx:247-251` →
-    `{ conversation_id, sender_id, content }`.
-  - `apps/web/src/components/ChatThread.tsx:365` →
-    `{ conversation_id, ... }`.
-- App SELECT call sites filter by `conversation_id` only
-  (`apps/mobile/app/chat/[id].tsx:99,172,198`,
-  `apps/web/src/components/ChatThread.tsx:260-261`).
-- `apps/mobile/services/blockingService.ts:58-61, 184-202` still
-  runs `UPDATE matches SET status = ...` — Phase E concern only,
-  not affected by Phase D RLS work.
-
-Why deferred even for the RLS-only rewrite:
-
-The `20260428000002_conversations_first.sql` migration's own
-inline comments (lines 78-83, 95-98) state that orphan / self /
-deleted-user matches are deliberately **skipped** by the backfill
-and their messages stay readable *via the legacy `match_id`
-branch of the SELECT policy*. Removing that branch — even without
-dropping the column — would silently hide those rows from their
-participants whenever Query 2 below returns > 0.
-
-That outcome is indistinguishable locally from "safe subtractive
-change" without production row counts. Per the conservative-wins
-rule, we ship documentation only this pass and gate even the
-column-keeping RLS rewrite on Query 2 returning 0.
-
-Self-review answers (must all be GREEN before shipping
-`<YYYYMMDDHHMMSS>_phase_d_drop_legacy_match_id_messages_rls.sql`):
-
-1. Will any visible message become invisible after this RLS
-   change? — UNKNOWN locally. Depends on Query 2 result.
-2. Is the migration rollbackable? — YES (re-`CREATE POLICY` with
-   the OR-branch restores prior behaviour).
-3. Does it touch the `matches` table? — NO.
-4. Does it touch `notification_preferences.newMatches`? — NO.
-5. Does it touch chat send/read code paths in apps? — NO.
-6. Is Phase E (drop table) still independent? — YES.
-
-Blocker: Q1 cannot be answered without prod row counts. **Run
-Query 1 + Query 2 below against prod; if both return 0, ship the
-RLS-only rewrite from "Phase D pass-1 migration sketch (RLS only,
-column kept)" below in a new forward-only migration.**
-
-Superseded note: the original single-policy pass-1 sketch that lived
-here is now replaced by the comprehensive sketch in the in-progress
-section near the top of this Phase D block, which drops BOTH the
-legacy single-branch `"Users can view match messages"` policy AND the
-OR-branch on the canonical `"Users can view messages in their
-conversations"` policy (per Q3).
-
-### Required validation SQL (re-run after Phase D pre-step applies)
+### Required validation SQL (re-run before pass-2)
 
 ```sql
 -- 1. Are there messages without a conversation_id?
@@ -376,10 +259,9 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
 ```sql
 begin;
 
--- Step 1: rewrite SELECT policy on messages to drop the match_id
--- legacy branch. Conversation_id must be NOT NULL by this point.
--- Defensively also drop the legacy single-branch policy in case
--- pass-1 was skipped.
+-- Step 1: defensively re-drop the legacy policies in case pass-1 was
+-- skipped or rolled back. Pass-1 already removed them; this is belt
+-- + suspenders.
 DROP POLICY IF EXISTS "Users can view match messages" ON public.messages;
 DROP POLICY IF EXISTS "Users can view messages in their conversations"
   ON public.messages;
@@ -484,26 +366,45 @@ is a concrete reason (cleanup audit, lint pass) to remove it.
      connections" — preference write must still succeed.
 3. Promote to production.
 
-## Deployment order (Phase D pre-step, this commit)
+## Deployment order (Phase D pre-step, prior commit)
 
 1. Apply `20260513000004_phase_d_backfill_legacy_match_only_messages.sql`
    against staging first. Capture the `RAISE NOTICE` output (Supabase
    CLI streams it; the Studio SQL Editor surfaces it in the result
    pane).
 2. Verify on staging:
-   - The post-state count from the NOTICE matches the sum of the
-     three "remaining" buckets (self-match + orphan-user + no-match)
-     — i.e., the `OK` reconciliation NOTICE printed, not the `WARNING`.
+   - Post-state count from the NOTICE matches the sum of the three
+     "remaining" buckets (self-match + orphan-user + no-match) — i.e.,
+     the `OK` reconciliation NOTICE printed, not the `WARNING`.
    - `SELECT count(*) FROM public.messages WHERE match_id IS NOT NULL
-     AND conversation_id IS NULL;` returns the expected residual (0 if
-     all five were salvageable, or the unsalvageable subset otherwise).
+     AND conversation_id IS NULL;` returns the expected residual
+     (0 if all five were salvageable, otherwise the unsalvageable
+     subset).
    - Send a new chat message and verify it lands in the modern
-     conversation_id path (sanity check for the conversation-first RLS,
-     not changed by this migration).
+     conversation_id path.
 3. Promote to production. Re-run Query 2 against prod.
-4. If Query 2 returns 0 → Phase D pass-1 RLS rewrite is unblocked
-   (use the sketch in the in-progress section of Phase D above).
-5. If Query 2 returns > 0 → use the diagnostic SQL in the "what runs
-   next" section to inspect the unsalvageable rows. Decide row-by-row
-   whether to delete or accept silent unreachability, then re-check
+4. If Query 2 > 0, use the diagnostic SQL in the Phase D operator
+   playbook to inspect the unsalvageable rows; decide row-by-row
+   whether to delete or accept silent unreachability. Re-check
    Query 2 before scheduling pass-1.
+
+## Deployment order (Phase D pass-1, this commit)
+
+Prereq: Phase D pre-step migration applied to prod AND post-cleanup
+Query 2 returns 0. (Both confirmed on 2026-05-13.)
+
+1. Apply `20260513000005_phase_d_pass1_drop_match_id_messages_rls.sql`
+   against staging.
+2. Verify on staging:
+   - Query A returns 0 rows (no policy on messages references
+     `match_id` any more).
+   - Query B confirms the canonical policy's `USING` clause references
+     only `public.conversations`.
+   - Open a chat thread as each participant and confirm messages still
+     load (`apps/mobile/app/chat/[id].tsx` + `apps/web/.../ChatThread`
+     both already SELECT by `conversation_id` only).
+3. Promote to production and re-run Queries A + B + C.
+4. Monitor chat read errors for one release cycle.
+5. If a regression appears, apply the rollback SQL in the
+   "Rollback (pass-1)" section. Otherwise schedule Phase D pass-2
+   (column / FK / index drop) after the soak period.
