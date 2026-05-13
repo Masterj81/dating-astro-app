@@ -367,7 +367,7 @@ export default function EditProfileScreen() {
           </View>
           <Text style={styles.completenessHint}>
             {completeness < 60
-              ? (t('completeProfileLow') || 'Add more details to attract better matches')
+              ? (t('completeProfileLow') || 'Add more details to help others understand who you are')
               : (t('completeProfileHigh') || 'Almost there! Just a few more details.')}
           </Text>
         </View>

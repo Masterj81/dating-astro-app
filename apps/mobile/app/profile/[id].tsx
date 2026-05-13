@@ -4,9 +4,11 @@
 //
 // What it shows: photo + name/age, sun/moon/rising trio, bio, and the
 // MVP block (intent / looking for / values / lifestyle / prompts /
-// icebreaker) via ProfilePublicMVPSections. Synastry/compatibility is
-// the separate `/match/[id]` route, reached via the CTA at the bottom
-// of this screen.
+// icebreaker) via ProfilePublicMVPSections. The Compare charts CTA at
+// the bottom of this screen routes to the canonical synastry surface
+// (`/premium-screens/synastry?profileId=…`). The legacy `/match/[id]`
+// route is preserved elsewhere for back-compat but no longer linked
+// from here.
 //
 // The data flow is: discoverable_profiles view + get_my_full_profile
 // RPC in parallel, same pattern as the web component. Sanitization of
@@ -112,7 +114,10 @@ export default function ProfileDetailScreen() {
 
   const handleFindCompatibility = () => {
     if (!profile?.id) return;
-    router.push(`/match/${profile.id}` as any);
+    // Canonical synastry route accepts profileId. The old /match/[id] route is
+    // kept for back-compat by other surfaces, but the profile screen now
+    // sends viewers straight to the celestial Compare charts experience.
+    router.push(`/premium-screens/synastry?profileId=${encodeURIComponent(profile.id)}` as any);
   };
 
   if (loading) {
@@ -195,17 +200,15 @@ export default function ProfileDetailScreen() {
               disabled={startingChat}
             >
               <Text style={styles.primaryButtonText}>
-                {'💬 '}
                 {startingChat
-                  ? t('starting') || '...'
-                  : t('sendMessage') || 'Send message'}
+                  ? t('starting') || 'Starting…'
+                  : t('publicStartConversation') || t('sendMessage') || 'Start conversation'}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.secondaryButton} onPress={handleFindCompatibility}>
               <Text style={styles.secondaryButtonText}>
-                {'✨ '}
-                {t('findYourCompatibility') || 'Find your compatibility'}
+                {t('publicCompareCharts') || t('findYourCompatibility') || 'Compare charts'}
               </Text>
             </TouchableOpacity>
 
