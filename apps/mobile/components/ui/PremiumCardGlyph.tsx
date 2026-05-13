@@ -138,8 +138,14 @@ export default function PremiumCardGlyph({
       return wrap(<Calendar size={size} color={color} />);
     case 'planetaryTransits':
       return wrap(<Planet size={size} color={color} />);
+    // V2: `luckyDays` was renamed to `planningWindows` in the premium
+    // catalog. Both keys are accepted here so any older translation /
+    // deep link that still references `luckyDays` keeps a stable glyph.
+    case 'planningWindows':
     case 'luckyDays':
       return wrap(<Clover size={size} color={color} />);
+    // V2: `datePlanner` was renamed to `dateReflection`. Same back-compat.
+    case 'dateReflection':
     case 'datePlanner':
       return wrap(<PremiumGlyph size={size} color={color} />);
     default:

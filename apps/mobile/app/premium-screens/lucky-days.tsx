@@ -17,48 +17,107 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
-type LuckyDay = {
-  date: number;
-  dayName: string;
-  energy: number;
-  bestFor: string[];
-  avoid: string[];
-  luckyHour: string;
+// V2 — formerly "Lucky Days Calculator". Renamed editorially to
+// "Planning Windows". The V1 surface fabricated 30 calendar dates per
+// month across Love/Career/Money/Health/Creativity, each pinned to an
+// exact "lucky hour" (e.g. "11:00 AM"), an energy star rating, and
+// "best for / avoid" tags — all derived from `day % 5` arithmetic with
+// no astrological input. That framing crossed into disguised
+// financial/relational advice ("Optimal days for investments and
+// negotiations"). The V2 removes:
+//   - Precise calendar dates
+//   - "Lucky hour" times
+//   - Numeric energy scores
+//   - Money/Health categories pinned to dates
+//   - The word "lucky" everywhere user-facing
+//
+// What remains:
+//   - The Cosmic gate (PremiumGate feature="lucky-days") — unchanged
+//   - The route `/premium-screens/lucky-days` — unchanged (deep links survive)
+//   - The user's `sun_sign` from Supabase — used only as a heading label
+//
+// New shape: three broad reflection windows (Days 1-10 / 11-20 / 21-end)
+// + a soft disclaimer. Sign-agnostic copy keeps the i18n footprint
+// tight; sign personalization is heading-only (e.g. "Aries · May 2026").
+
+type WindowKey = 'early' | 'mid' | 'late';
+
+type WindowDef = {
+  key: WindowKey;
+  rangeKey: string;
+  labelKey: string;
+  verbKey: string;
+  bodyKey: string;
+  phase: 1 | 2 | 3 | 4 | 5;
 };
 
-type CategoryDays = {
-  category: string;
-  emoji: string;
-  days: number[];
-  description: string;
-};
+const WINDOWS: WindowDef[] = [
+  {
+    key: 'early',
+    rangeKey: 'planningWindowsEarlyRange',
+    labelKey: 'planningWindowsEarlyLabel',
+    verbKey: 'planningWindowsEarlyVerb',
+    bodyKey: 'planningWindowsEarlyBody',
+    phase: 2,
+  },
+  {
+    key: 'mid',
+    rangeKey: 'planningWindowsMidRange',
+    labelKey: 'planningWindowsMidLabel',
+    verbKey: 'planningWindowsMidVerb',
+    bodyKey: 'planningWindowsMidBody',
+    phase: 4,
+  },
+  {
+    key: 'late',
+    rangeKey: 'planningWindowsLateRange',
+    labelKey: 'planningWindowsLateLabel',
+    verbKey: 'planningWindowsLateVerb',
+    bodyKey: 'planningWindowsLateBody',
+    phase: 3,
+  },
+];
 
-function LuckyDaysScreenContent() {
+const LENSES: { key: string; labelKey: string; bodyKey: string }[] = [
+  { key: 'connect', labelKey: 'planningWindowsLensConnect', bodyKey: 'planningWindowsLensConnectBody' },
+  { key: 'reflect', labelKey: 'planningWindowsLensReflect', bodyKey: 'planningWindowsLensReflectBody' },
+  { key: 'reset', labelKey: 'planningWindowsLensReset', bodyKey: 'planningWindowsLensResetBody' },
+  { key: 'plan', labelKey: 'planningWindowsLensPlan', bodyKey: 'planningWindowsLensPlanBody' },
+];
+
+function PhaseDots({ filled }: { filled: 1 | 2 | 3 | 4 | 5 }) {
+  return (
+    <View style={styles.phaseDots} accessibilityElementsHidden>
+      {Array.from({ length: 5 }, (_, i) => (
+        <View
+          key={i}
+          style={[
+            styles.phaseDot,
+            i < filled ? styles.phaseDotFilled : styles.phaseDotEmpty,
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+function PlanningWindowsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sunSign, setSunSign] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('love');
   const { user } = useAuth();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
 
-  // Stable date ref -- avoid creating new Date on every render
   const today = useRef(new Date()).current;
-  const currentDay = today.getDate();
 
   const getMonthName = (monthIndex: number): string => {
-    const months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+    const months = ['january', 'february', 'march', 'april', 'may', 'june',
+      'july', 'august', 'september', 'october', 'november', 'december'];
     return t(months[monthIndex]) || months[monthIndex];
   };
 
-  const getDayName = (dayIndex: number): string => {
-    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    return t(days[dayIndex]) || days[dayIndex];
-  };
-
-  const currentMonthName = getMonthName(today.getMonth());
-  const currentYear = today.getFullYear();
-  const currentMonth = `${currentMonthName} ${currentYear}`;
+  const monthLabel = `${getMonthName(today.getMonth())} ${today.getFullYear()}`;
 
   useEffect(() => {
     loadUserSign();
@@ -84,139 +143,21 @@ function LuckyDaysScreenContent() {
       }
     } catch (err) {
       console.error('Error loading user sign:', err);
-      setError(t('loadingError') || 'Could not load lucky days. Please try again.');
+      setError(t('loadingError') || 'Could not load planning windows. Please try again.');
     }
     setLoading(false);
   };
 
-  const categories: CategoryDays[] = [
-    {
-      category: 'love',
-      emoji: '💕',
-      days: [3, 7, 14, 18, 21, 25],
-      description: t('loveDaysDesc'),
-    },
-    {
-      category: 'career',
-      emoji: '💼',
-      days: [2, 5, 10, 15, 22, 28],
-      description: t('careerDaysDesc'),
-    },
-    {
-      category: 'money',
-      emoji: '💰',
-      days: [1, 8, 12, 19, 24, 29],
-      description: t('moneyDaysDesc'),
-    },
-    {
-      category: 'health',
-      emoji: '🧘',
-      days: [4, 9, 13, 17, 23, 27],
-      description: t('healthDaysDesc'),
-    },
-    {
-      category: 'creativity',
-      emoji: '🎨',
-      days: [6, 11, 16, 20, 26, 30],
-      description: t('creativityDaysDesc'),
-    },
-  ];
-
-  const getDaysInMonth = (): number => {
-    return new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-  };
-
-  const getDayEnergy = (day: number): number => {
-    // Generate consistent energy based on day
-    const energyPattern = [3, 4, 5, 4, 3, 4, 5, 4, 3, 5];
-    return energyPattern[day % 10];
-  };
-
-  const getDayDetails = (day: number): LuckyDay => {
-    const date = new Date(today.getFullYear(), today.getMonth(), day);
-
-    const bestForOptions = [
-      [t('startingProjects'), t('networking')],
-      [t('romance'), t('creativity')],
-      [t('finances'), t('career')],
-      [t('health'), t('selfCare')],
-      [t('communication'), t('learning')],
-    ];
-
-    const avoidOptions = [
-      [t('majorDecisions')],
-      [t('conflicts')],
-      [t('newContracts')],
-      [t('overexertion')],
-      [],
-    ];
-
-    return {
-      date: day,
-      dayName: getDayName(date.getDay()),
-      energy: getDayEnergy(day),
-      bestFor: bestForOptions[day % 5],
-      avoid: avoidOptions[day % 5],
-      luckyHour: `${9 + (day % 8)}:00 ${day % 2 === 0 ? 'AM' : 'PM'}`,
-    };
-  };
-
-  const isLuckyDay = (day: number, category: string): boolean => {
-    const cat = categories.find(c => c.category === category);
-    return cat ? cat.days.includes(day) : false;
-  };
-
-  const getNextLuckyDay = (category: string): number | null => {
-    const cat = categories.find(c => c.category === category);
-    if (!cat) return null;
-
-    const nextDays = cat.days.filter(d => d > currentDay);
-    return nextDays.length > 0 ? nextDays[0] : cat.days[0];
-  };
-
-  const renderEnergyStars = (energy: number) => {
-    return '★'.repeat(energy) + '☆'.repeat(5 - energy);
-  };
-
-  const renderCalendar = () => {
-    const daysInMonth = getDaysInMonth();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).getDay();
-    const weeks: (number | null)[][] = [];
-    let currentWeek: (number | null)[] = [];
-
-    // Add empty days for first week
-    for (let i = 0; i < firstDay; i++) {
-      currentWeek.push(null);
-    }
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      currentWeek.push(day);
-      if (currentWeek.length === 7) {
-        weeks.push(currentWeek);
-        currentWeek = [];
-      }
-    }
-
-    // Fill remaining days
-    while (currentWeek.length < 7 && currentWeek.length > 0) {
-      currentWeek.push(null);
-    }
-    if (currentWeek.length > 0) {
-      weeks.push(currentWeek);
-    }
-
-    return weeks;
-  };
-
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const topInset = insets?.top ?? 0;
+  const bottomInset = insets?.bottom ?? 0;
 
   if (loading) {
     return (
       <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <View style={styles.centered}>
           <ActivityIndicator size="large" color={AppTheme.colors.coral} />
-          <Text style={{ color: AppTheme.colors.textMuted, marginTop: 12, fontSize: 14 }}>
-            {t('calculatingLuck') || 'Calculating your lucky days...'}
+          <Text style={styles.loadingText}>
+            {t('planningWindowsLoading') || 'Loading your monthly rhythm...'}
           </Text>
         </View>
       </LinearGradient>
@@ -226,256 +167,170 @@ function LuckyDaysScreenContent() {
   if (error) {
     return (
       <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
-          <Text style={{ fontSize: 48, marginBottom: 16 }}>{'🍀'}</Text>
-          <Text style={{ color: AppTheme.colors.textSecondary, fontSize: 16, textAlign: 'center', marginBottom: 20 }}>{error}</Text>
-          <TouchableOpacity
-            onPress={loadUserSign}
-            style={{ backgroundColor: AppTheme.colors.coral, paddingVertical: 14, paddingHorizontal: 28, borderRadius: 14, minHeight: 48 }}
-          >
-            <Text style={{ color: AppTheme.colors.textOnAccent, fontWeight: '600', fontSize: 16 }}>{t('tryAgain') || 'Try Again'}</Text>
+        <View style={[styles.centered, { paddingHorizontal: 32 }]}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={loadUserSign} style={styles.retryButton}>
+            <Text style={styles.retryText}>{t('tryAgain') || 'Try Again'}</Text>
           </TouchableOpacity>
         </View>
       </LinearGradient>
     );
   }
 
-  const selectedCat = categories.find(c => c.category === selectedCategory);
-  const nextLucky = getNextLuckyDay(selectedCategory);
-  const weeks = renderCalendar();
-  const dayDetails = selectedDay ? getDayDetails(selectedDay) : null;
-
-  // Fallbacks for web where SafeAreaProvider may not work
-  const topInset = insets?.top ?? 0;
-  const bottomInset = insets?.bottom ?? 0;
-
-  const renderContent = () => (
-    <View>
-      {/* Sign Info */}
-        <View style={styles.signCard}>
-          <Text style={styles.signEmoji}>🍀</Text>
-          <View style={styles.signInfo}>
-            <Text style={styles.signLabel}>{t('luckyDaysFor')}</Text>
-            <Text style={styles.signName}>{sunSign ? t(sunSign.toLowerCase()) : t('unknown')}</Text>
-          </View>
-        </View>
-
-        {/* Category Selector */}
-        <View style={styles.categoryContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
-            {categories.map((cat) => (
-              <TouchableOpacity
-                key={cat.category}
-                style={[styles.categoryButton, selectedCategory === cat.category && styles.categoryButtonActive]}
-                onPress={() => setSelectedCategory(cat.category)}
-              >
-                <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
-                <Text style={[styles.categoryLabel, selectedCategory === cat.category && styles.categoryLabelActive]}>
-                  {t(cat.category)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Next Lucky Day */}
-        {nextLucky && (
-          <View style={styles.nextLuckyCard}>
-            <Text style={styles.nextLuckyLabel}>{t('nextLuckyDay')}</Text>
-            <View style={styles.nextLuckyContent}>
-              <Text style={styles.nextLuckyEmoji}>{selectedCat?.emoji}</Text>
-              <Text style={styles.nextLuckyDate}>
-                {currentMonthName} {nextLucky}
-              </Text>
-            </View>
-            <Text style={styles.nextLuckyDesc}>{selectedCat?.description}</Text>
-          </View>
-        )}
-
-        {/* Calendar */}
-        <View style={styles.calendarSection}>
-          <Text style={styles.sectionTitle}>{t('monthlyCalendar')}</Text>
-
-          {/* Weekday Headers */}
-          <View style={styles.weekdayRow}>
-            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-              <Text key={i} style={styles.weekdayText}>{day}</Text>
-            ))}
-          </View>
-
-          {/* Calendar Grid */}
-          {weeks.map((week, weekIndex) => (
-            <View key={weekIndex} style={styles.weekRow}>
-              {week.map((day, dayIndex) => {
-                const isLucky = day ? isLuckyDay(day, selectedCategory) : false;
-                const isToday = day === currentDay;
-                const isPast = day ? day < currentDay : false;
-
-                return (
-                  <TouchableOpacity
-                    key={dayIndex}
-                    style={[
-                      styles.dayCell,
-                      isLucky && styles.luckyDay,
-                      isToday && styles.todayCell,
-                      isPast && styles.pastDay,
-                    ]}
-                    onPress={() => day && setSelectedDay(day)}
-                    disabled={!day}
-                  >
-                    {day && (
-                      <>
-                        <Text style={[
-                          styles.dayText,
-                          isLucky && styles.luckyDayText,
-                          isToday && styles.todayText,
-                          isPast && styles.pastDayText,
-                        ]}>
-                          {day}
-                        </Text>
-                        {isLucky && <Text style={styles.luckyDot}>★</Text>}
-                      </>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          ))}
-
-          {/* Legend */}
-          <View style={styles.legend}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#9333ea' }]} />
-              <Text style={styles.legendText}>{t('luckyDay')}</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#e94560' }]} />
-              <Text style={styles.legendText}>{t('today')}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Day Details */}
-        {dayDetails && (
-          <View style={styles.detailsCard}>
-            <View style={styles.detailsHeader}>
-              <Text style={styles.detailsDate}>
-                {currentMonthName} {dayDetails.date}
-              </Text>
-              <Text style={styles.detailsDay}>{dayDetails.dayName}</Text>
-            </View>
-
-            <View style={styles.energyRow}>
-              <Text style={styles.energyLabel}>{t('dayEnergy')}</Text>
-              <Text style={styles.energyStars}>{renderEnergyStars(dayDetails.energy)}</Text>
-            </View>
-
-            <View style={styles.luckyHourRow}>
-              <Text style={styles.luckyHourLabel}>⏰ {t('luckyHour')}</Text>
-              <Text style={styles.luckyHourValue}>{dayDetails.luckyHour}</Text>
-            </View>
-
-            {dayDetails.bestFor.length > 0 && (
-              <View style={styles.bestForSection}>
-                <Text style={styles.bestForTitle}>✅ {t('bestFor')}</Text>
-                <View style={styles.tagRow}>
-                  {dayDetails.bestFor.map((item, i) => (
-                    <View key={i} style={styles.bestTag}>
-                      <Text style={styles.bestTagText}>{item}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {dayDetails.avoid.length > 0 && (
-              <View style={styles.avoidSection}>
-                <Text style={styles.avoidTitle}>⚠️ {t('avoid')}</Text>
-                <View style={styles.tagRow}>
-                  {dayDetails.avoid.map((item, i) => (
-                    <View key={i} style={styles.avoidTag}>
-                      <Text style={styles.avoidTagText}>{item}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Lucky Days List */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('allLuckyDays')} - {t(selectedCategory)}</Text>
-          <View style={styles.luckyDaysList}>
-            {selectedCat?.days.map((day, index) => {
-              const isPast = day < currentDay;
-              return (
-                <View key={index} style={[styles.luckyDayItem, isPast && styles.luckyDayPast]}>
-                  <Text style={[styles.luckyDayNumber, isPast && styles.luckyDayNumberPast]}>{day}</Text>
-                  <Text style={styles.luckyDayMonth}>{currentMonthName}</Text>
-                  {isPast && <Text style={styles.passedLabel}>{t('passed')}</Text>}
-                </View>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Tips */}
-        <View style={styles.tipsCard}>
-          <Text style={styles.tipsTitle}>💡 {t('luckyDaysTips')}</Text>
-          <Text style={styles.tipsText}>• {t('luckyTip1')}</Text>
-          <Text style={styles.tipsText}>• {t('luckyTip2')}</Text>
-          <Text style={styles.tipsText}>• {t('luckyTip3')}</Text>
-        </View>
-
-        {/* Premium Badge */}
-        <View style={styles.premiumBadge}>
-          <Text style={styles.premiumIcon}>✨</Text>
-          <Text style={styles.premiumText}>{t('premiumPlusFeature')}</Text>
-        </View>
-    </View>
-  );
+  const signLabel = sunSign ? t(sunSign.toLowerCase()) || sunSign : null;
 
   return (
     <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
-<ScrollView
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
         showsVerticalScrollIndicator={false}
       >
-      {/* Header - Fixed at top */}
-      <View style={[styles.header, { paddingTop: 40 + topInset }]}>
-        <TouchableOpacity style={[styles.backButton, { top: 30 + topInset }]} onPress={() => router.back()}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>{t('luckyDaysCalculator')}</Text>
-        <Text style={styles.subtitle}>{currentMonth}</Text>
-      </View>
+        <View style={[styles.header, { paddingTop: 40 + topInset }]}>
+          <TouchableOpacity
+            style={[styles.backButton, { top: 30 + topInset }]}
+            onPress={() => router.back()}
+            accessibilityLabel={t('back') || 'Back'}
+          >
+            <Text style={styles.backText}>{'←'}</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>{t('planningWindowsTitle') || 'Planning Windows'}</Text>
+          <Text style={styles.subtitle}>
+            {signLabel ? `${signLabel} · ${monthLabel}` : monthLabel}
+          </Text>
+        </View>
 
-      
-        {renderContent()}
+        {/* Hero — reflection-first framing */}
+        <View style={styles.heroCard}>
+          <Text style={styles.heroEyebrow}>
+            {t('planningWindowsEyebrow') || 'Monthly Rhythm'}
+          </Text>
+          <Text style={styles.heroBody}>
+            {t('planningWindowsHeroBody') ||
+              'A symbolic monthly rhythm for reflection, not lucky dates.'}
+          </Text>
+        </View>
+
+        {/* Three Windows */}
+        <View style={styles.section}>
+          <Text style={styles.sectionEyebrow}>
+            {t('planningWindowsSectionTitle') || 'Three Windows'}
+          </Text>
+          {WINDOWS.map((w) => (
+            <View key={w.key} style={styles.windowCard}>
+              <View style={styles.windowHeader}>
+                <View style={styles.windowHeaderText}>
+                  <Text style={styles.windowLabel}>{t(w.labelKey)}</Text>
+                  <Text style={styles.windowRange}>{t(w.rangeKey)}</Text>
+                </View>
+                <PhaseDots filled={w.phase} />
+              </View>
+              <Text style={styles.windowVerb}>{t(w.verbKey)}</Text>
+              <Text style={styles.windowBody}>{t(w.bodyKey)}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Activity Lenses */}
+        <View style={styles.section}>
+          <Text style={styles.sectionEyebrow}>
+            {t('planningWindowsLensesTitle') || 'Lenses For The Month'}
+          </Text>
+          <View style={styles.lensesGrid}>
+            {LENSES.map((lens) => (
+              <View key={lens.key} style={styles.lensCard}>
+                <Text style={styles.lensLabel}>{t(lens.labelKey)}</Text>
+                <Text style={styles.lensBody}>{t(lens.bodyKey)}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Reflection prompt */}
+        <View style={styles.reflectCard}>
+          <Text style={styles.reflectEyebrow}>
+            {t('planningWindowsReflectTitle') || 'Reflection Prompt'}
+          </Text>
+          <Text style={styles.reflectBody}>
+            {t('planningWindowsReflectBody') ||
+              'Which window of the month do you usually push hardest in? Try noticing where you rest instead.'}
+          </Text>
+        </View>
+
+        {/* Disclaimer */}
+        <View style={styles.disclaimerCard}>
+          <Text style={styles.disclaimerEyebrow}>
+            {t('planningWindowsDisclaimerTitle') || 'A Note'}
+          </Text>
+          <Text style={styles.disclaimerBody}>
+            {t('planningWindowsDisclaimerBody') ||
+              'Use this as a reflection tool, not a prediction.'}
+          </Text>
+        </View>
       </ScrollView>
     </LinearGradient>
+  );
+}
+
+export default function PlanningWindowsScreen() {
+  return (
+    <PremiumGate feature="lucky-days">
+      <PlanningWindowsContent />
+    </PremiumGate>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    ...(Platform.OS === 'web' ? {
-      height: '100%' as any,
-      width: '100%' as any,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? ({
+          height: '100%',
+          width: '100%',
+        } as any)
+      : {}),
   },
   scrollView: {
     flex: 1,
-    ...(Platform.OS === 'web' ? {
-      height: 'calc(100vh - 120px)' as any,
-      overflowY: 'auto' as any,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? ({
+          height: 'calc(100vh - 120px)',
+          overflowY: 'auto',
+        } as any)
+      : {}),
   },
   scrollContent: {
     paddingBottom: 40,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: AppTheme.colors.textMuted,
+    marginTop: 12,
+    fontSize: 14,
+  },
+  errorText: {
+    color: AppTheme.colors.textSecondary,
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: AppTheme.colors.coral,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 14,
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  retryText: {
+    color: AppTheme.colors.textOnAccent,
+    fontWeight: '600',
+    fontSize: 16,
   },
   header: {
     alignItems: 'center',
@@ -504,370 +359,166 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: AppTheme.colors.textPrimary,
     marginBottom: 4,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#9333ea',
-    fontWeight: '600',
+    fontSize: 14,
+    color: AppTheme.colors.textSecondary,
   },
-  signCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+  heroCard: {
     marginHorizontal: 20,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-  },
-  signEmoji: {
-    fontSize: 32,
-    marginRight: 12,
-  },
-  signInfo: {
-    flex: 1,
-  },
-  signLabel: {
-    fontSize: 12,
-    color: '#888',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  signName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  categoryContainer: {
-    marginBottom: 20,
-  },
-  categoryScroll: {
-    paddingHorizontal: 20,
-    gap: 10,
-  },
-  categoryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    marginBottom: 24,
+    padding: 20,
     borderRadius: 20,
-    gap: 6,
-  },
-  categoryButtonActive: {
-    backgroundColor: 'rgba(147, 51, 234, 0.3)',
+    backgroundColor: 'rgba(124, 108, 255, 0.12)',
     borderWidth: 1,
-    borderColor: '#9333ea',
+    borderColor: 'rgba(124, 108, 255, 0.22)',
   },
-  categoryEmoji: {
-    fontSize: 18,
-  },
-  categoryLabel: {
-    fontSize: 14,
-    color: '#888',
-  },
-  categoryLabelActive: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  nextLuckyCard: {
-    backgroundColor: 'rgba(74, 222, 128, 0.15)',
-    marginHorizontal: 20,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(74, 222, 128, 0.3)',
-  },
-  nextLuckyLabel: {
-    fontSize: 12,
-    color: '#4ade80',
+  heroEyebrow: {
+    fontSize: 11,
+    color: AppTheme.colors.textMuted,
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
-  nextLuckyContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 8,
-  },
-  nextLuckyEmoji: {
-    fontSize: 28,
-  },
-  nextLuckyDate: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  nextLuckyDesc: {
-    fontSize: 13,
-    color: '#aaa',
-    lineHeight: 18,
-  },
-  calendarSection: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 16,
-  },
-  weekdayRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  weekdayText: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 12,
-    color: '#888',
-    fontWeight: '600',
-  },
-  weekRow: {
-    flexDirection: 'row',
-    marginBottom: 6,
-  },
-  dayCell: {
-    flex: 1,
-    aspectRatio: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 8,
-    margin: 2,
-  },
-  luckyDay: {
-    backgroundColor: 'rgba(147, 51, 234, 0.3)',
-    borderWidth: 1,
-    borderColor: '#9333ea',
-  },
-  todayCell: {
-    backgroundColor: 'rgba(233, 69, 96, 0.3)',
-    borderWidth: 2,
-    borderColor: '#e94560',
-  },
-  pastDay: {
-    opacity: 0.4,
-  },
-  dayText: {
-    fontSize: 14,
-    color: '#fff',
-  },
-  luckyDayText: {
-    fontWeight: 'bold',
-    color: '#9333ea',
-  },
-  todayText: {
-    fontWeight: 'bold',
-    color: '#e94560',
-  },
-  pastDayText: {
-    color: '#666',
-  },
-  luckyDot: {
-    fontSize: 8,
-    color: '#9333ea',
-    position: 'absolute',
-    bottom: 2,
-  },
-  legend: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 24,
-    marginTop: 16,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  legendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  legendText: {
-    fontSize: 12,
-    color: '#888',
-  },
-  detailsCard: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    marginHorizontal: 20,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-  },
-  detailsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  detailsDate: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  detailsDay: {
-    fontSize: 14,
-    color: '#888',
-  },
-  energyRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  energyLabel: {
-    fontSize: 14,
-    color: '#888',
-  },
-  energyStars: {
-    fontSize: 16,
-    color: '#fbbf24',
     letterSpacing: 2,
+    marginBottom: 10,
   },
-  luckyHourRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 12,
-  },
-  luckyHourLabel: {
-    fontSize: 13,
-    color: '#9333ea',
-  },
-  luckyHourValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  bestForSection: {
-    marginBottom: 12,
-  },
-  bestForTitle: {
-    fontSize: 13,
-    color: '#4ade80',
-    marginBottom: 8,
-  },
-  tagRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  bestTag: {
-    backgroundColor: 'rgba(74, 222, 128, 0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  bestTagText: {
-    fontSize: 12,
-    color: '#4ade80',
-  },
-  avoidSection: {},
-  avoidTitle: {
-    fontSize: 13,
-    color: '#fbbf24',
-    marginBottom: 8,
-  },
-  avoidTag: {
-    backgroundColor: 'rgba(251, 191, 36, 0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  avoidTagText: {
-    fontSize: 12,
-    color: '#fbbf24',
+  heroBody: {
+    fontSize: 15,
+    color: AppTheme.colors.textPrimary,
+    lineHeight: 22,
   },
   section: {
     paddingHorizontal: 20,
     marginBottom: 24,
   },
-  luckyDaysList: {
+  sectionEyebrow: {
+    fontSize: 11,
+    color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 14,
+  },
+  windowCard: {
+    backgroundColor: AppTheme.colors.panel,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
+  },
+  windowHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    gap: 12,
+  },
+  windowHeaderText: {
+    flex: 1,
+  },
+  windowLabel: {
+    fontSize: 11,
+    color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    marginBottom: 4,
+  },
+  windowRange: {
+    fontSize: 12,
+    color: AppTheme.colors.textSecondary,
+  },
+  windowVerb: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: AppTheme.colors.textPrimary,
+    marginBottom: 6,
+  },
+  windowBody: {
+    fontSize: 14,
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 20,
+  },
+  phaseDots: {
+    flexDirection: 'row',
+    gap: 5,
+    paddingTop: 4,
+  },
+  phaseDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  phaseDotFilled: {
+    backgroundColor: AppTheme.colors.cosmic,
+  },
+  phaseDotEmpty: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  lensesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
   },
-  luckyDayItem: {
-    backgroundColor: 'rgba(147, 51, 234, 0.2)',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    alignItems: 'center',
+  lensCard: {
+    flexBasis: '48%',
+    flexGrow: 1,
+    minWidth: 140,
+    backgroundColor: AppTheme.colors.panel,
+    borderRadius: 14,
+    padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(147, 51, 234, 0.3)',
+    borderColor: AppTheme.colors.border,
   },
-  luckyDayPast: {
-    opacity: 0.5,
-    borderColor: 'transparent',
-  },
-  luckyDayNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#9333ea',
-  },
-  luckyDayNumberPast: {
-    color: '#666',
-  },
-  luckyDayMonth: {
-    fontSize: 10,
-    color: '#888',
-  },
-  passedLabel: {
-    fontSize: 8,
-    color: '#666',
-    marginTop: 2,
-  },
-  tipsCard: {
-    backgroundColor: 'rgba(251, 191, 36, 0.1)',
-    marginHorizontal: 20,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-  },
-  tipsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fbbf24',
-    marginBottom: 12,
-  },
-  tipsText: {
+  lensLabel: {
     fontSize: 13,
-    color: '#ccc',
-    lineHeight: 20,
+    fontWeight: '600',
+    color: AppTheme.colors.textPrimary,
     marginBottom: 6,
   },
-  premiumBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(147, 51, 234, 0.2)',
-    marginHorizontal: 60,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    gap: 8,
-  },
-  premiumIcon: {
-    fontSize: 16,
-  },
-  premiumText: {
+  lensBody: {
     fontSize: 12,
-    color: '#9333ea',
-    fontWeight: '600',
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 18,
+  },
+  reflectCard: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    padding: 18,
+    borderRadius: 18,
+    backgroundColor: 'rgba(232, 93, 117, 0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(232, 93, 117, 0.24)',
+  },
+  reflectEyebrow: {
+    fontSize: 11,
+    color: AppTheme.colors.coral,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 10,
+  },
+  reflectBody: {
+    fontSize: 14,
+    color: AppTheme.colors.textPrimary,
+    lineHeight: 22,
+  },
+  disclaimerCard: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    padding: 16,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  disclaimerEyebrow: {
+    fontSize: 11,
+    color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
+  disclaimerBody: {
+    fontSize: 13,
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 20,
   },
 });
-
-export default function LuckyDaysScreen() {
-  return (
-    <PremiumGate feature="lucky-days">
-      <LuckyDaysScreenContent />
-    </PremiumGate>
-  );
-}

@@ -25,15 +25,15 @@ export const COSMIC_FEATURES = [
   { key: 'monthlyHoroscope', route: '/premium-screens/monthly-horoscope' },
   { key: 'weeklyTarot', route: '/premium-screens/tarot' },
   { key: 'planetaryTransits', route: '/premium-screens/planetary-transits' },
-  { key: 'luckyDays', route: '/premium-screens/lucky-days' },
-  { key: 'datePlanner', route: '/premium-screens/date-planner' },
+  { key: 'planningWindows', route: '/premium-screens/lucky-days' },
+  { key: 'dateReflection', route: '/premium-screens/date-planner' },
 ] as const;
 
 export const PAYWALL_PREVIEW_FEATURES = [
   { key: 'advancedSynastry', fallback: 'Synastry' },
   { key: 'fullNatalChart', fallback: 'Natal Chart' },
   { key: 'dailyHoroscope', fallback: 'Horoscopes' },
-  { key: 'luckyDays', fallback: 'Lucky Days' },
+  { key: 'planningWindows', fallback: 'Planning Windows' },
 ] as const;
 
 export const CELESTIAL_FEATURE_KEYS = CELESTIAL_FEATURES.map((feature) => feature.key);
