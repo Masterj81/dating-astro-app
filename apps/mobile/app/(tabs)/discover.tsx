@@ -677,7 +677,6 @@ export default function DiscoverScreen() {
                 userId={user.id}
                 targetUserId={currentProfile.id}
                 targetUserName={currentProfile.name}
-                showUnmatch={false}
                 onBlock={removeCurrentProfileFromDeck}
                 onReport={removeCurrentProfileFromDeck}
               />

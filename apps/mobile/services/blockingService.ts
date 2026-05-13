@@ -27,7 +27,15 @@ export interface Report {
 }
 
 /**
- * Block a user
+ * Block a user.
+ *
+ * The canonical block path is the `blocked_users` insert below. The
+ * conversation-first message INSERT policy (defined in
+ * 20260428000002_conversations_first.sql §4) enforces the block via
+ * `blocked_users`, NOT via `matches.status` — so the historical
+ * `UPDATE matches SET status='blocked'` side-effect was removed when
+ * the legacy match concept retired. See
+ * docs/legacy-matches-retirement-plan.md.
  */
 export async function blockUser(
   blockerId: string,
@@ -35,7 +43,6 @@ export async function blockUser(
   reason?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Insert block record
     const { error: blockError } = await supabase
       .from('blocked_users')
       .insert({
@@ -53,12 +60,6 @@ export async function blockUser(
       }
       throw blockError;
     }
-
-    // Update any existing match to blocked status
-    await supabase
-      .from('matches')
-      .update({ status: 'blocked' })
-      .or(`and(user1_id.eq.${blockerId},user2_id.eq.${blockedId}),and(user1_id.eq.${blockedId},user2_id.eq.${blockerId})`);
 
     return { success: true };
   } catch (error) {
@@ -178,25 +179,3 @@ export async function reportUser(
   }
 }
 
-/**
- * Unmatch with a user (soft delete - changes status)
- */
-export async function unmatchUser(
-  userId: string,
-  matchId: string
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const { error } = await supabase
-      .from('matches')
-      .update({ status: 'unmatched' })
-      .eq('id', matchId)
-      .or(`user1_id.eq.${userId},user2_id.eq.${userId}`);
-
-    if (error) throw error;
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error unmatching user:', error);
-    return { success: false, error: 'Failed to unmatch' };
-  }
-}

@@ -10,29 +10,23 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../contexts/LanguageContext';
-import { blockUser, reportUser, unmatchUser, ReportReason } from '../services/blockingService';
+import { blockUser, reportUser, ReportReason } from '../services/blockingService';
 import { errorNotification, successNotification } from '../services/haptics';
 
 interface BlockReportMenuProps {
   userId: string;
   targetUserId: string;
   targetUserName: string;
-  matchId?: string;
   onBlock?: () => void;
-  onUnmatch?: () => void;
   onReport?: () => void;
-  showUnmatch?: boolean;
 }
 
 export default function BlockReportMenu({
   userId,
   targetUserId,
   targetUserName,
-  matchId,
   onBlock,
-  onUnmatch,
   onReport,
-  showUnmatch = true,
 }: BlockReportMenuProps) {
   const { t } = useLanguage();
   const [menuVisible, setMenuVisible] = useState(false);
@@ -71,35 +65,6 @@ export default function BlockReportMenu({
             } else {
               await errorNotification();
               Alert.alert(t('error'), result.error || t('blockError'));
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleUnmatch = () => {
-    if (!matchId) return;
-    setMenuVisible(false);
-    Alert.alert(
-      t('unmatch'),
-      t('unmatchConfirmMessage', { name: targetUserName }),
-      [
-        { text: t('cancel'), style: 'cancel' },
-        {
-          text: t('unmatch'),
-          style: 'destructive',
-          onPress: async () => {
-            setLoading(true);
-            const result = await unmatchUser(userId, matchId);
-            setLoading(false);
-
-            if (result.success) {
-              await successNotification();
-              onUnmatch?.();
-            } else {
-              await errorNotification();
-              Alert.alert(t('error'), result.error || t('unmatchError'));
             }
           },
         },
@@ -156,16 +121,6 @@ export default function BlockReportMenu({
           onPress={() => setMenuVisible(false)}
         >
           <View style={styles.menuContainer}>
-            {showUnmatch && matchId && (
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={handleUnmatch}
-              >
-                <Ionicons name="heart-dislike-outline" size={22} color="#fff" />
-                <Text style={styles.menuItemText}>{t('unmatch')}</Text>
-              </TouchableOpacity>
-            )}
-
             <TouchableOpacity
               style={styles.menuItem}
               onPress={handleBlock}

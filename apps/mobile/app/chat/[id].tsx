@@ -445,8 +445,6 @@ export default function ChatScreen() {
               targetUserId={conversationInfo.other_user.id}
               targetUserName={conversationInfo.other_user.name}
               onBlock={() => router.replace('/(tabs)/chat')}
-              onUnmatch={() => router.replace('/(tabs)/chat')}
-              showUnmatch={false}
             />
           )}
         </View>
