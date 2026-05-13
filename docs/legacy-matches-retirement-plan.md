@@ -1,7 +1,7 @@
 # Legacy `matches` retirement plan
 
-Status: in progress. Phases A + B shipped on 2026-05-12. Phases C–E
-are documented here for a future maintenance pass and require
+Status: in progress. Phases A + B + C shipped on 2026-05-12. Phases
+D + E are documented here for a future maintenance pass and require
 production-side validation before they can ship.
 
 ## Context
@@ -44,28 +44,43 @@ in `apps/` or `supabase/functions/`.
 Dropped: `public.get_user_matches(uuid)`. Zero callers anywhere in
 `apps/` or `supabase/functions/`.
 
-## Phase C — deferred: edge-function cleanup
+## Phase C — shipped (2026-05-12)
 
-Pending work, separate edge-function deploy:
+Edge-function cleanup. Code-only; ships with the next edge-function
+deploy (`supabase functions deploy send-email send-notification`).
 
+Removed:
 1. `supabase/functions/send-email/index.ts`
-   - Remove `newMatchEmail()` helper and the `new_match` template
-     entry in the dispatcher (now orphaned — Postgres no longer
-     emits this template since Phase A dropped `send_match_email`).
+   - `newMatchEmail()` helper (lines 107–131).
+   - `new_match:` template registration in the `TEMPLATES` dispatcher
+     (lines 220–225).
+   - The `if (template === "new_match")` `newMatches` preference
+     short-circuit (lines 311–319). It was unreachable once the
+     template entry was removed.
 2. `supabase/functions/send-notification/index.ts`
-   - Optionally drop `match` / `newMatches` keys from
-     `TYPE_TO_PREF_KEY` and `TYPE_TO_CHANNEL`. These are dead
-     branches now (no live caller passes `type: "match"` or
-     `type: "newMatches"`).
-   - Keep `notification_preferences.newMatches` JSON column read
-     path — the mobile Settings UI still uses the `newMatches`
-     preference label ("New connections"). The schema key is
-     load-bearing for UI; the notification branch that consumed it
-     is not.
+   - `match: "newMatches"` and the legacy `newMatches: "newMatches"`
+     alias in `TYPE_TO_PREF_KEY` (no live caller dispatches
+     `type: "match"` or `type: "newMatches"` since Phase A dropped
+     `notify_new_match`).
+   - `match: "matches"` and `newMatches: "matches"` rows in
+     `TYPE_TO_CHANNEL`.
 
-Deferred because: edge functions deploy independently of SQL; this
-is housekeeping with no behaviour change. Pair with the next
-edge-function deploy.
+Intentionally kept (load-bearing, do not touch in a future pass):
+- `notification_preferences.newMatches` JSON key on profiles. Mobile
+  Settings → Notifications still reads / writes this column under
+  the "New connections" label. The JSON key is the schema contract;
+  the now-removed notification dispatch branch was only one of its
+  consumers.
+- All chat / `newMessages` / `message` notification branches in
+  `send-notification`. These are live (`messages` table INSERT
+  triggers still fire them).
+
+Validation:
+- `grep -rn "new_match" supabase/functions/` returns zero hits.
+- `grep -rn "newMatches" supabase/functions/` returns zero hits.
+- `grep -rn "newMatches" apps/mobile/app/settings/` still resolves
+  to the live preference key (read + write) and the `"newMatches"`
+  i18n label across `apps/mobile/locales/*.json`.
 
 ## Phase D — deferred: `messages.match_id` retirement
 
@@ -221,3 +236,19 @@ is a concrete reason (cleanup audit, lint pass) to remove it.
 3. Promote to production after staging smoke passes.
 4. Phases C and D wait for the prod validation queries above; this
    pass does not deploy any app-code change.
+
+## Deployment order (Phase C, separate commit, edge-function deploy)
+
+1. `supabase functions deploy send-email send-notification` against
+   staging.
+2. Smoke test on staging:
+   - Trigger the `welcome`, `onboarding_day1`, `onboarding_day3`,
+     `onboarding_day5` email templates — each must still render.
+     The removed `new_match` template now returns
+     `{ error: "Unknown template: new_match" }` if anything still
+     tries to dispatch it (none should).
+   - Trigger a chat `message` push and a `dailyHoroscope` push —
+     both must still deliver and respect their preference keys.
+   - Open mobile Settings → Notifications and toggle "New
+     connections" — preference write must still succeed.
+3. Promote to production.
