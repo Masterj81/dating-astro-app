@@ -6,12 +6,17 @@ import {
   generatePositioning,
   generateUniqueMechanism,
 } from "./positioning";
-import { generateAngles } from "./angles";
+import { generateAngles, rankAngles } from "./angles";
 import { generateHeadlines } from "./headlines";
 import { generateLandingCopy } from "./landing";
 import { generateStoreCopy } from "./store";
 import { generateFacebookAds, generateTiktokScripts } from "./shorts";
 import { generateExperiments } from "./experiments";
+import { scoreStrategy } from "./score";
+import { diagnoseOffer } from "./diagnosis";
+import { generateAwarenessVariants } from "./awareness-variants";
+import { detectGenericCopy } from "./generic-guard";
+import { generateExportBrief } from "./export-brief";
 
 // buildStrategy — deterministic local strategy generator. No API calls.
 // Future: swap in an LLM adapter (see src/lib/llm.ts) per-section.
@@ -25,7 +30,10 @@ export function buildStrategy(input: ProductInput): Strategy {
 
   const objections = baseObjections(input);
 
-  return {
+  const angles = generateAngles(input);
+  const rankedAngles = rankAngles(angles);
+
+  const partial: Omit<Strategy, "genericFlags" | "exportBrief"> = {
     positioning,
     awarenessNotes,
     sophisticationNotes,
@@ -33,13 +41,33 @@ export function buildStrategy(input: ProductInput): Strategy {
     uniqueMechanism,
     objections,
     headlines: generateHeadlines(input),
-    angles: generateAngles(input),
+    angles,
+    rankedAngles,
     landing: generateLandingCopy(input),
     store: generateStoreCopy(input),
     tiktokScripts: generateTiktokScripts(input),
     facebookAds: generateFacebookAds(input),
     experiments: generateExperiments(input),
+    score: scoreStrategy(input),
+    diagnosis: diagnoseOffer(input),
+    awarenessVariants: generateAwarenessVariants(input),
   };
+
+  // Generic-copy guard runs against the strategy we just produced. If
+  // any banned phrase is present in our own templates, the user sees
+  // the flag immediately — which keeps us honest as we expand.
+  const genericFlags = detectGenericCopy(partial as Strategy, input);
+
+  const strategy: Strategy = {
+    ...partial,
+    genericFlags,
+    // Export brief is built last so it can reference every section,
+    // including the generic-copy flags.
+    exportBrief: "",
+  };
+  strategy.exportBrief = generateExportBrief(input, strategy);
+
+  return strategy;
 }
 
 function baseObjections(input: ProductInput) {
@@ -72,9 +100,18 @@ export {
   generateCentralPromise,
   generateUniqueMechanism,
 } from "./positioning";
-export { generateAngles } from "./angles";
+export { generateAngles, rankAngles, scoreAngle } from "./angles";
 export { generateHeadlines } from "./headlines";
 export { generateLandingCopy } from "./landing";
 export { generateStoreCopy } from "./store";
 export { generateTiktokScripts, generateFacebookAds } from "./shorts";
 export { generateExperiments } from "./experiments";
+export { scoreStrategy, scoreLabel } from "./score";
+export { diagnoseOffer } from "./diagnosis";
+export { generateAwarenessVariants } from "./awareness-variants";
+export {
+  detectGenericCopy,
+  detectGenericInText,
+  BANNED_PHRASES,
+} from "./generic-guard";
+export { generateExportBrief } from "./export-brief";
