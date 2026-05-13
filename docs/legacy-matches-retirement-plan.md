@@ -88,6 +88,113 @@ Cannot ship without running the validation queries below against
 production. Local Supabase migration lint / dry-run is not
 available without a connected DB.
 
+### Phase D audit attempt — 2026-05-12 (deferred, no migration shipped)
+
+A Phase D-pass-1 attempt — limited to *only* rewriting the
+`messages` SELECT policy to drop the legacy `match_id` OR-branch
+(without touching the column, FK, or indexes) — was evaluated and
+**deferred** for the same root-cause reason that blocks the full
+column drop.
+
+Audit confirmed (all live as of this date):
+
+- **Only one** RLS branch on `public.messages` references
+  `match_id`: the second OR-branch inside the SELECT policy
+  `"Users can view messages in their conversations"`
+  (`20260428000002_conversations_first.sql` lines 161-165).
+- The matching INSERT policy
+  `"Users can send conversation messages"` is already
+  `match_id`-free and requires `conversation_id IS NOT NULL`. No
+  rewrite needed there.
+- App INSERT call sites do **not** write `match_id`:
+  - `apps/mobile/app/chat/[id].tsx:247-251` →
+    `{ conversation_id, sender_id, content }`.
+  - `apps/web/src/components/ChatThread.tsx:365` →
+    `{ conversation_id, ... }`.
+- App SELECT call sites filter by `conversation_id` only
+  (`apps/mobile/app/chat/[id].tsx:99,172,198`,
+  `apps/web/src/components/ChatThread.tsx:260-261`).
+- `apps/mobile/services/blockingService.ts:58-61, 184-202` still
+  runs `UPDATE matches SET status = ...` — Phase E concern only,
+  not affected by Phase D RLS work.
+
+Why deferred even for the RLS-only rewrite:
+
+The `20260428000002_conversations_first.sql` migration's own
+inline comments (lines 78-83, 95-98) state that orphan / self /
+deleted-user matches are deliberately **skipped** by the backfill
+and their messages stay readable *via the legacy `match_id`
+branch of the SELECT policy*. Removing that branch — even without
+dropping the column — would silently hide those rows from their
+participants whenever Query 2 below returns > 0.
+
+That outcome is indistinguishable locally from "safe subtractive
+change" without production row counts. Per the conservative-wins
+rule, we ship documentation only this pass and gate even the
+column-keeping RLS rewrite on Query 2 returning 0.
+
+Self-review answers (must all be GREEN before shipping
+`<YYYYMMDDHHMMSS>_phase_d_drop_legacy_match_id_messages_rls.sql`):
+
+1. Will any visible message become invisible after this RLS
+   change? — UNKNOWN locally. Depends on Query 2 result.
+2. Is the migration rollbackable? — YES (re-`CREATE POLICY` with
+   the OR-branch restores prior behaviour).
+3. Does it touch the `matches` table? — NO.
+4. Does it touch `notification_preferences.newMatches`? — NO.
+5. Does it touch chat send/read code paths in apps? — NO.
+6. Is Phase E (drop table) still independent? — YES.
+
+Blocker: Q1 cannot be answered without prod row counts. **Run
+Query 1 + Query 2 below against prod; if both return 0, ship the
+RLS-only rewrite from "Phase D pass-1 migration sketch (RLS only,
+column kept)" below in a new forward-only migration.**
+
+### Phase D pass-1 migration sketch (RLS only, column kept) — UNSHIPPED
+
+Ship this *first* once Query 2 returns 0. It's purely subtractive
+on the RLS layer and leaves the `match_id` column, FK, and indexes
+intact, so `blockingService.ts` and any other reader of the column
+itself are unaffected. Rollback is a single `CREATE POLICY` re-run
+of the prior definition.
+
+```sql
+-- Phase D pass-1: drop the legacy match_id OR-branch from the
+-- messages SELECT RLS. The match_id column, FK, and indexes are
+-- intentionally KEPT — see Phase D pass-2 below for the full
+-- column drop.
+--
+-- Prerequisite (run against prod before applying):
+--   SELECT count(*) FROM public.messages
+--   WHERE conversation_id IS NULL AND match_id IS NOT NULL;
+--   -- must return 0
+--
+-- Rollback: re-create the policy with the OR-branch as defined in
+-- supabase/migrations/20260428000002_conversations_first.sql §4.
+
+BEGIN;
+
+DROP POLICY IF EXISTS "Users can view messages in their conversations"
+  ON public.messages;
+
+CREATE POLICY "Users can view messages in their conversations"
+  ON public.messages
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.conversations c
+      WHERE c.id = messages.conversation_id
+        AND (c.user_a = auth.uid() OR c.user_b = auth.uid())
+    )
+  );
+
+COMMIT;
+```
+
+The pass-2 (column drop) sketch below remains the *second* step,
+to be applied only after pass-1 has been live in production long
+enough to confirm no chat regressions.
+
 ### Required validation SQL (run against prod before drafting Phase D)
 
 ```sql
@@ -143,7 +250,7 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
   algorithm in `20260428000002_conversations_first.sql` §3) and
   re-run.
 
-### Phase D migration sketch (do not apply blind)
+### Phase D pass-2 migration sketch (full column drop, do not apply blind)
 
 ```sql
 begin;
