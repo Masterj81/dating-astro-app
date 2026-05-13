@@ -167,6 +167,12 @@ export function ChatThread({ conversationId, initialPrefill }: ChatThreadProps) 
   // useState initializer so navigating away and back without the param
   // doesn't clobber a draft the user has been typing.
   const [draft, setDraft] = useState<string>(initialPrefill ?? "");
+  // Track whether the prefill is still untouched in the composer — used
+  // to swap the generic composer hint for the "edit before sending"
+  // helper while the user is still working with the seeded prompt.
+  // Cleared on first edit (or send) and never re-enters TRUE on that
+  // mount, so we don't nag once the user has signed off on their copy.
+  const [prefillActive, setPrefillActive] = useState<boolean>(Boolean(initialPrefill));
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -353,6 +359,7 @@ export function ChatThread({ conversationId, initialPrefill }: ChatThreadProps) 
       const supabase = getSupabaseBrowser();
       const content = draft.trim();
       setDraft("");
+      setPrefillActive(false);
 
       const { error: insertError } = await supabase.from("messages").insert({
         conversation_id: conversationId,
@@ -606,7 +613,7 @@ export function ChatThread({ conversationId, initialPrefill }: ChatThreadProps) 
                           >
                             <p className="mb-1.5 inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-accent/90">
                               <span aria-hidden="true">✦</span>
-                              <span>Icebreaker</span>
+                              <span>{t("chatIcebreakerChip")}</span>
                             </p>
                             <p className="text-sm leading-6 text-white">{message.content}</p>
                             <p
@@ -696,7 +703,12 @@ export function ChatThread({ conversationId, initialPrefill }: ChatThreadProps) 
                 id="chat-composer"
                 ref={composerRef}
                 value={draft}
-                onChange={(event) => setDraft(event.target.value)}
+                onChange={(event) => {
+                  setDraft(event.target.value);
+                  if (prefillActive) {
+                    setPrefillActive(false);
+                  }
+                }}
                 onKeyDown={handleComposerKeyDown}
                 placeholder={t("chatPlaceholder")}
                 rows={2}
@@ -713,7 +725,9 @@ export function ChatThread({ conversationId, initialPrefill }: ChatThreadProps) 
                 <span className="hidden sm:inline">{sending ? t("loading") : t("chatSend")}</span>
               </button>
             </div>
-            <p className="mt-2 text-xs text-text-dim">{t("chatComposerHint")}</p>
+            <p className="mt-2 text-xs text-text-dim">
+              {prefillActive ? t("chatPrefillHint") : t("chatComposerHint")}
+            </p>
           </div>
         </div>
 

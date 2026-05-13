@@ -9,6 +9,7 @@ import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-util
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { ChatListSkeleton } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
+import { ZodiacGlyph } from "@/components/ZodiacGlyph";
 
 // Conversation-first: rows now come from `get_user_conversations` RPC.
 // Compatibility % is intentionally absent.
@@ -93,7 +94,20 @@ export function ChatInbox() {
   if (!conversations.length) {
     return (
       <EmptyState
-        icon="💬"
+        icon={
+          <svg
+            viewBox="0 0 24 24"
+            className="h-7 w-7"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 6.5C4 5.12 5.12 4 6.5 4h11C18.88 4 20 5.12 20 6.5v8c0 1.38-1.12 2.5-2.5 2.5H10l-4 3v-3H6.5C5.12 17 4 15.88 4 14.5v-8Z" />
+          </svg>
+        }
         title={t("chatInboxEmptyTitle")}
         body={t("chatInboxEmptyBody")}
         action={
@@ -192,13 +206,18 @@ export function ChatInbox() {
                     )}
                   </p>
                 </div>
-                <div className="mt-1.5 flex items-center gap-2">
-                  <span className="text-xs text-text-dim">
-                    ☀️ {conversation.other_user_sun_sign
-                      ? translateSign(conversation.other_user_sun_sign, locale)
-                      : "?"}
-                  </span>
-                </div>
+                {conversation.other_user_sun_sign ? (
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] text-text-dim">
+                      <ZodiacGlyph
+                        sign={conversation.other_user_sun_sign}
+                        className="text-sm leading-none text-accent"
+                        ariaLabel={translateSign(conversation.other_user_sun_sign, locale)}
+                      />
+                      <span>{translateSign(conversation.other_user_sun_sign, locale)}</span>
+                    </span>
+                  </div>
+                ) : null}
               </div>
 
               {/* Arrow */}
