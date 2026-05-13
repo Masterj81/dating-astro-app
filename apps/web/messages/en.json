@@ -20,9 +20,9 @@
     "contact": "Contact"
   },
   "hero": {
-    "badge": "Real Astrology. Real Connections.",
+    "badge": "Astrology as a language, not a fortune.",
     "tagline": "Dating with depth.",
-    "description": "Astrology, values, and real conversations — for people tired of shallow swiping.",
+    "description": "Read the profile. Hear the voice. Then start a real conversation.",
     "appStore": "App Store",
     "playStore": "Google Play",
     "webApp": "Open Web App",
@@ -46,7 +46,7 @@
     "subtitle": "Profiles richer than photos. Compatibility you can actually read. Openers that don't fall flat.",
     "compatibility": "Compatibility, decoded.",
     "compatibilityDesc": "Astrology synastry, in plain English.",
-    "compatibilityVerdict": "Strong cosmic bond",
+    "compatibilityVerdict": "Compatibility score",
     "values": "Match on values.",
     "valuesDesc": "Family, growth, freedom — the things that actually matter.",
     "intent": "Show your intent.",
@@ -77,7 +77,7 @@
   "premium": {
     "badge": "Premium Plans",
     "title": "Choose Your Plan",
-    "subtitle": "Unlock the full power of cosmic compatibility.",
+    "subtitle": "Deeper compatibility, calmer reflection tools, and richer profile reads.",
     "mostPopular": "Most Popular",
     "free": "Free",
     "freePrice": "$0",

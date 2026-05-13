@@ -21,11 +21,11 @@
   },
   "hero": {
     "tagline": "Citas con profundidad.",
-    "description": "Astrología, valores y conversaciones reales — para quienes están cansados del swipe superficial.",
+    "description": "Lee el perfil. Escucha la voz. Empieza una conversación de verdad.",
     "appStore": "App Store",
     "playStore": "Google Play",
     "webApp": "Abrir app web",
-    "badge": "Astrología real. Conexiones reales.",
+    "badge": "La astrología como lenguaje, no como oráculo.",
     "installWebApp": "Instalar app web",
     "iOSInstallHint": "¿Tienes iPhone? Añádela a tu pantalla de inicio — funciona como una app nativa."
   },
@@ -40,7 +40,7 @@
     "badge": "Lo que nos diferencia",
     "compatibility": "Compatibility, decoded.",
     "compatibilityDesc": "Astrology synastry, in plain English.",
-    "compatibilityVerdict": "Strong cosmic bond",
+    "compatibilityVerdict": "Puntuación de compatibilidad",
     "values": "Match on values.",
     "valuesDesc": "Family, growth, freedom — the things that actually matter.",
     "intent": "Show your intent.",
@@ -70,7 +70,7 @@
   },
   "premium": {
     "title": "Elige tu plan",
-    "subtitle": "Desbloquea todo el poder de la compatibilidad cósmica.",
+    "subtitle": "Compatibilidad más profunda, herramientas de reflexión más calmadas y lecturas de perfil más ricas.",
     "mostPopular": "Más popular",
     "free": "Gratis",
     "freePrice": "$0",

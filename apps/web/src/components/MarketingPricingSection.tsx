@@ -20,22 +20,24 @@ const FREE_FEATURES = [
   "featureSunSignCompat",
 ] as const;
 
+// Celestial / Cosmic V2 — feature lists kept in sync with the product
+// truth (compatibility, reflection tooling, deeper profile reads).
+// Apple-safe framing: nothing mystical, no predictions, no guarantees.
 const CELESTIAL_FEATURES = [
   "featureFullChart",
   "featureSynastry",
-  "featureCompatibilityBreakdown",
-  "featureAdvancedFilters",
   "featureDailyHoroscope",
-  "featureWeeklyHoroscopes",
   "featureMonthlyTarot",
+  "featureDeeperProfileInsights",
 ] as const;
 
 const COSMIC_FEATURES = [
   "featureEverythingCelestial",
   "featureMonthlyYearlyHoroscopes",
-  "featureTransitAlerts",
   "featureLuckyDays",
   "featureDatePlanner",
+  "featureTransitAlerts",
+  "featureRetrogradeReflection",
   "featureWeeklyTarot",
 ] as const;
 

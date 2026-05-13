@@ -21,11 +21,11 @@
   },
   "hero": {
     "tagline": "مواعدة بعمق.",
-    "description": "علم الفلك، القيم، ومحادثات حقيقية — لمن سئموا من السحب السطحي.",
+    "description": "اقرأ الملف. استمع إلى الصوت. ثم ابدأ محادثة حقيقية.",
     "appStore": "App Store",
     "playStore": "Google Play",
     "webApp": "فتح تطبيق الويب",
-    "badge": "علم تنجيم حقيقي. علاقات حقيقية.",
+    "badge": "علم الفلك بوصفه لغة، لا تنبؤًا.",
     "installWebApp": "تثبيت تطبيق الويب",
     "iOSInstallHint": "هل لديك iPhone؟ أضفه إلى الشاشة الرئيسية — يعمل كتطبيق أصلي."
   },
@@ -40,7 +40,7 @@
     "badge": "ما يميزنا",
     "compatibility": "Compatibility, decoded.",
     "compatibilityDesc": "Astrology synastry, in plain English.",
-    "compatibilityVerdict": "Strong cosmic bond",
+    "compatibilityVerdict": "درجة التوافق",
     "values": "Match on values.",
     "valuesDesc": "Family, growth, freedom — the things that actually matter.",
     "intent": "Show your intent.",
@@ -70,7 +70,7 @@
   },
   "premium": {
     "title": "اختر خطتك",
-    "subtitle": "أطلق العنان لقوة التوافق الفلكي الكاملة.",
+    "subtitle": "توافق أعمق، وأدوات تأمل أكثر هدوءًا، وقراءات أغنى للملف الشخصي.",
     "mostPopular": "الأكثر شعبية",
     "free": "مجاني",
     "freePrice": "$0",

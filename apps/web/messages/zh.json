@@ -21,11 +21,11 @@
   },
   "hero": {
     "tagline": "深度约会。",
-    "description": "占星术、价值观、真正的对话 — 给厌倦了表面滑动的你。",
+    "description": "读读资料。听听声音。然后开启一段真正的对话。",
     "appStore": "App Store",
     "playStore": "Google Play",
     "webApp": "打开网页应用",
-    "badge": "真正的占星。真正的连接。",
+    "badge": "把占星当作语言,而不是预言。",
     "installWebApp": "安装网页应用",
     "iOSInstallHint": "iPhone 用户？添加到主屏幕 — 像原生应用一样使用。"
   },
@@ -40,7 +40,7 @@
     "badge": "我们的与众不同之处",
     "compatibility": "Compatibility, decoded.",
     "compatibilityDesc": "Astrology synastry, in plain English.",
-    "compatibilityVerdict": "Strong cosmic bond",
+    "compatibilityVerdict": "兼容性评分",
     "values": "Match on values.",
     "valuesDesc": "Family, growth, freedom — the things that actually matter.",
     "intent": "Show your intent.",
@@ -70,7 +70,7 @@
   },
   "premium": {
     "title": "选择你的方案",
-    "subtitle": "解锁星象匹配的全部功能。",
+    "subtitle": "更深的兼容性、更平和的反思工具,以及更丰富的资料解读。",
     "mostPopular": "最受欢迎",
     "free": "免费版",
     "freePrice": "$0",

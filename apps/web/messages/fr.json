@@ -20,12 +20,12 @@
     "contact": "Contact"
   },
   "hero": {
-    "tagline": "Rencontres en profondeur.",
-    "description": "Astrologie, valeurs et vraies conversations — pour celles et ceux qui en ont assez du swipe superficiel.",
+    "tagline": "Rencontrer en profondeur.",
+    "description": "Lisez le profil. Écoutez la voix. Lancez une vraie conversation.",
     "appStore": "App Store",
     "playStore": "Google Play",
     "webApp": "Ouvrir l'appli web",
-    "badge": "Astro authentique. Vraies rencontres.",
+    "badge": "L'astro comme langage, pas comme oracle.",
     "installWebApp": "Installer l'appli web",
     "iOSInstallHint": "Sur iPhone ? Ajoutez à l'écran d'accueil — fonctionne comme une vraie app."
   },
@@ -45,7 +45,7 @@
     "subtitle": "Des profils plus riches que des photos. Une compatibilité lisible. Des entrées en matière qui tiennent la route.",
     "compatibility": "La compatibilité, décodée.",
     "compatibilityDesc": "La synastrie astrologique, en clair.",
-    "compatibilityVerdict": "Belle alliance cosmique",
+    "compatibilityVerdict": "Score de compatibilité",
     "values": "Match sur les valeurs.",
     "valuesDesc": "Famille, croissance, liberté — ce qui compte vraiment.",
     "intent": "Affiche tes intentions.",
@@ -76,7 +76,7 @@
   },
   "premium": {
     "title": "Choisissez votre forfait",
-    "subtitle": "Libérez tout le potentiel de la compatibilité cosmique.",
+    "subtitle": "Compatibilité plus fine, outils de réflexion plus calmes, lectures de profil plus riches.",
     "mostPopular": "Le plus populaire",
     "free": "Gratuit",
     "freePrice": "0 €",

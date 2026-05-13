@@ -21,11 +21,11 @@
   },
   "hero": {
     "tagline": "深く出会う。",
-    "description": "占星術、価値観、そして本物の会話を — 表面的なスワイプに疲れた人へ。",
+    "description": "プロフィールを読む。声を聴く。そして、本当の会話を始める。",
     "appStore": "App Store",
     "playStore": "Google Play",
     "webApp": "Webアプリを開く",
-    "badge": "本物の占星術。本物のつながり。",
+    "badge": "占星術は予言ではなく、対話の言語。",
     "installWebApp": "Webアプリをインストール",
     "iOSInstallHint": "iPhone をお使いですか？ホーム画面に追加 — ネイティブアプリのように動作します。"
   },
@@ -40,7 +40,7 @@
     "badge": "私たちの違い",
     "compatibility": "Compatibility, decoded.",
     "compatibilityDesc": "Astrology synastry, in plain English.",
-    "compatibilityVerdict": "Strong cosmic bond",
+    "compatibilityVerdict": "相性スコア",
     "values": "Match on values.",
     "valuesDesc": "Family, growth, freedom — the things that actually matter.",
     "intent": "Show your intent.",
@@ -70,7 +70,7 @@
   },
   "premium": {
     "title": "プランを選ぶ",
-    "subtitle": "宇宙的な相性の力を最大限に引き出しましょう。",
+    "subtitle": "より深い相性、より穏やかな振り返りツール、より豊かなプロフィールの読み解き。",
     "mostPopular": "一番人気",
     "free": "フリー",
     "freePrice": "$0",
