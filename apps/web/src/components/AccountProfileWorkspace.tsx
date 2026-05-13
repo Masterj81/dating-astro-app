@@ -834,7 +834,19 @@ export function AccountProfileWorkspace({
             {t("profileWorkspaceSubtitle")}
           </p>
         </div>
-      ) : null}
+      ) : (
+        <div className="mb-6 rounded-[1.5rem] border border-purple/25 bg-purple/8 p-5">
+          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+            {t("ownProfileTagLabel")}
+          </p>
+          <h2 className="mt-3 text-2xl font-semibold text-white">
+            {t("ownProfileTagline")}
+          </h2>
+          <p className="mt-3 text-sm leading-7 text-text-muted">
+            {t("ownProfileTaglineBody")}
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-4">

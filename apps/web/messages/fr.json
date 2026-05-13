@@ -2106,6 +2106,11 @@
     "publicLifestyle": "Lifestyle",
     "publicIcebreakerLabel": "Pose-moi cette question",
     "publicIcebreakerCta": "Tape pour démarrer →",
+    "publicStartConversation": "Démarrer la conversation",
+    "publicCompareCharts": "Comparer les thèmes",
+    "ownProfileTagLabel": "Ton profil",
+    "ownProfileTagline": "Les profils qui donnent envie de lire commencent ici.",
+    "ownProfileTaglineBody": "Ajoute ton intention, tes valeurs, ton lifestyle et quelques prompts pour que les gens qui t'écrivent sachent déjà qui tu es.",
     "tagsInCommon": "{count} en commun"
   },
   "invite": {

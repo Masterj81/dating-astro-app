@@ -2099,6 +2099,11 @@
     "publicLifestyle": "Lifestyle",
     "publicIcebreakerLabel": "Ask me this",
     "publicIcebreakerCta": "Tap to start chat →",
+    "publicStartConversation": "Start conversation",
+    "publicCompareCharts": "Compare charts",
+    "ownProfileTagLabel": "Your profile",
+    "ownProfileTagline": "Profiles worth reading start here.",
+    "ownProfileTaglineBody": "Add your intent, values, lifestyle, and a few prompts so the people who message you already get who you are.",
     "tagsInCommon": "{count} in common"
   },
   "invite": {

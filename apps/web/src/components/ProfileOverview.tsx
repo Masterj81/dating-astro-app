@@ -268,19 +268,19 @@ export function ProfileOverview({ profileId }: ProfileOverviewProps) {
             disabled={startingChat}
             className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
           >
-            💬 {t("sendMessage")}
+            {startingChat ? t("sending") : t("publicStartConversation")}
           </button>
+          <Link
+            href={`/app/premium/celestial/synastry?profileId=${encodeURIComponent(profile.id)}`}
+            className="rounded-full border border-purple/40 bg-purple/10 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-purple/15"
+          >
+            {t("publicCompareCharts")}
+          </Link>
           <Link
             href="/app/discover"
             className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
           >
             {t("backToDiscover")}
-          </Link>
-          <Link
-            href="/app/matches"
-            className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
-          >
-            {t("backToMatches")}
           </Link>
           <button
             type="button"
