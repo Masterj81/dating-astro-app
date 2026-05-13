@@ -1,4 +1,4 @@
-// Shared astrology helpers used by astrology.ts, astrologyApi.ts, and others
+// Shared astrology helpers used by astrology.ts and others
 import * as Astronomy from 'astronomy-engine';
 
 export const ZODIAC_SIGNS = [
