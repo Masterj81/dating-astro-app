@@ -74,10 +74,12 @@ export default function PaywallModal() {
       'natal-chart': t('fullNatalChart') || 'Full Natal Chart',
       'daily-horoscope': t('dailyHoroscope') || 'Daily Horoscope',
       'monthly-horoscope': t('monthlyHoroscope') || 'Monthly Horoscope',
-      'planetary-transits': t('planetaryTransits') || 'Planetary Transits',
-      'retrograde-alerts': t('retrogradeAlerts') || 'Retrograde Alerts',
-      'lucky-days': t('luckyDays') || 'Lucky Days',
-      'date-planner': t('datePlanner') || 'Date Planner',
+      // V2 rename: old keys kept as final fallback so non-en locales
+      // still resolve until they pick up the V2 strings.
+      'planetary-transits': t('transitReflection') || t('planetaryTransits') || 'Transit Reflection',
+      'retrograde-alerts': t('retrogradeReflection') || t('retrogradeAlerts') || 'Retrograde Reflection',
+      'lucky-days': t('planningWindows') || t('luckyDays') || 'Planning Windows',
+      'date-planner': t('dateReflection') || t('datePlanner') || 'Date Reflection',
       'weekly-tarot': t('weeklyTarot') || 'Weekly Tarot',
       'monthly-tarot': t('monthlyTarot') || 'Monthly Tarot',
     };

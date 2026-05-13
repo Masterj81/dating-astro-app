@@ -136,6 +136,9 @@ export default function PremiumCardGlyph({
       return wrap(<Tarot size={size} color={color} />);
     case 'monthlyHoroscope':
       return wrap(<Calendar size={size} color={color} />);
+    // V2 rename: `planetaryTransits` is now `transitReflection`.
+    // Both keys resolve to the planet glyph for back-compat.
+    case 'transitReflection':
     case 'planetaryTransits':
       return wrap(<Planet size={size} color={color} />);
     // V2: `luckyDays` was renamed to `planningWindows` in the premium

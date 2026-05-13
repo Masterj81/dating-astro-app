@@ -264,7 +264,7 @@ export default function PremiumDashboard() {
             <View style={styles.upgradeTextContainer}>
               <Text style={styles.upgradeTitle}>{t('hubUpgradeTitle') || 'Go Cosmic for the Full Experience'}</Text>
               <Text style={styles.upgradeDescription}>
-                {t('hubUpgradeDesc') || 'Daily love forecasts, lucky timing, planetary alerts \u2014 everything the stars offer'}
+                {t('hubUpgradeDesc') || 'Monthly reflections, planning windows, date prompts and transit themes \u2014 your full reflection toolkit'}
               </Text>
             </View>
             <Text style={styles.upgradeArrow}>→</Text>

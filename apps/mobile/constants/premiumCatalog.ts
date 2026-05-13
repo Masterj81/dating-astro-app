@@ -21,10 +21,16 @@ export const CELESTIAL_FEATURES = [
 // Daily Horoscope moved from Cosmic → Celestial: it's a personal +
 // daily astrology feature, not a high-end exclusive. Cosmic users
 // still have access by downward inclusion via FEATURE_TIERS.
+//
+// V2 rename: hub card labels resolve through the feature `key` via
+// `t(feature.key)`. To surface V2 names (Planning Windows, Date
+// Reflection, Transit Reflection) the keys here are the V2 i18n
+// keys, not the legacy ones. Routes stay on legacy paths so deep
+// links and PremiumGate `feature` slugs continue to work.
 export const COSMIC_FEATURES = [
   { key: 'monthlyHoroscope', route: '/premium-screens/monthly-horoscope' },
   { key: 'weeklyTarot', route: '/premium-screens/tarot' },
-  { key: 'planetaryTransits', route: '/premium-screens/planetary-transits' },
+  { key: 'transitReflection', route: '/premium-screens/planetary-transits' },
   { key: 'planningWindows', route: '/premium-screens/lucky-days' },
   { key: 'dateReflection', route: '/premium-screens/date-planner' },
 ] as const;
