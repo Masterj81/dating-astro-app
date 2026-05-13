@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   FlatList,
@@ -15,35 +15,54 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PremiumGate from '../../components/PremiumGate';
 import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { calculateNatalChart } from '../../services/astrology';
-import { signDegreeToLongitude } from '../../services/astrologyCore';
-import { BirthChart, CompatibilityScore, calculateQuickCompatibility, calculateSynastry } from '../../services/astrologyService';
-import { buildSynastryAspects, buildSynastryCategories, SynastryAspect, SynastryCategory } from '../../services/synastryPresentation';
-import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import {
+  calculateSunCompatibility,
+  calculateZoneScores,
+  factorInfluence,
+  getElement,
+  getScoreBand,
+  getWhyFactors,
+  normalizeSign,
+  pickPlanetSign,
+  shouldShowWatchFor,
+  type FactorInfluence,
+  type SynastryElement,
+  type SynastryPlacements,
+  type SynastryScoreBand,
+  type WhyFactor,
+  type ZoneKey,
+  type ZoneScore,
+} from '../../lib/synastry';
+import { supabase } from '../../services/supabase';
 
-type Profile = {
-  id: string;
-  name?: string | null;
-  sun_sign?: string | null;
-  moon_sign?: string | null;
-  rising_sign?: string | null;
-  venus_sign?: string | null;
-  mars_sign?: string | null;
-  mercury_sign?: string | null;
-  saturn_sign?: string | null;
-  image_url?: string | null;
-  images?: string[] | null;
-  birth_date?: string | null;
-  birth_time?: string | null;
-  birth_latitude?: number | null;
-  birth_longitude?: number | null;
-};
+// Synastry V2 — Conversation map, not prediction.
+//
+// Mirrors apps/web/src/components/SynastryOverview.tsx + apps/web/src/lib/synastry.ts.
+// Pure scoring lives in apps/mobile/lib/synastry.ts so web + mobile stay
+// in sync without cross-app imports.
+//
+// V2 removes:
+//   - Fake per-area zone math (faked offsets off a single total score)
+//   - Hardcoded aspects independent of real placements
+//   - Decorative emojis (sun/moon glyphs/coral hearts as primary UI)
+//   - Predictive copy ("exceptional cosmic alignment", "stand the test of time")
+//   - calculateSynastry / buildSynastryCategories / buildSynastryAspects paths
+//
+// V2 ships, top to bottom:
+//   1. Hero — score (0–100), band label, dim disclaimer
+//   2. Why this score — 3 element-pairing factors
+//   3. Compatibility dimensions — Emotional / Communication / Attraction / Stability
+//      derived from real Moon, Mercury, Venus/Mars cross, Saturn placements
+//      (with Sun fallback marker when a planet is missing)
+//   4. How to talk — 2–3 prompts keyed by target's Mercury / Moon / Venus element
+//   5. Watch for — visible only when band is mixed / growth / different
+//   6. Disclaimer card — "Conversation map, not prediction."
+//
+// Gating, route, candidate picker, deep-link via ?profileId= (with
+// ?matchId= back-compat) are preserved.
 
-// Picker entry. Mirrors get_synastry_candidate_profiles RPC — same
-// preference filtering as Discover, minus the swipes exclusion so
-// already-passed / already-liked profiles still surface here.
 type CandidateProfile = {
   id: string;
   name: string | null;
@@ -55,21 +74,19 @@ type CandidateProfile = {
   images: string[] | null;
 };
 
-type CompatibilityArea = {
-  area: string;
-  score: number;
-  emoji: string;
-  description: string;
+type SynastryProfile = SynastryPlacements & {
+  id: string;
+  name: string | null;
+  image_url?: string | null;
+  images?: string[] | null;
 };
 
-type AspectType = {
-  planet1Key: string;
-  planet2Key: string;
-  sign1: string;
-  sign2: string;
-  orb: number;
-  influence: 'harmonious' | 'challenging' | 'neutral';
-  descriptionKey: string;
+const ZONE_KEYS: ZoneKey[] = ['emotional', 'communication', 'attraction', 'stability'];
+
+const INFLUENCE_COLORS: Record<FactorInfluence, { bg: string; border: string }> = {
+  harmonious: { bg: 'rgba(74, 222, 128, 0.14)', border: 'rgba(74, 222, 128, 0.36)' },
+  neutral: { bg: 'rgba(251, 191, 36, 0.14)', border: 'rgba(251, 191, 36, 0.36)' },
+  challenging: { bg: 'rgba(248, 113, 113, 0.14)', border: 'rgba(248, 113, 113, 0.36)' },
 };
 
 type SynastryContentProps = {
@@ -77,9 +94,8 @@ type SynastryContentProps = {
 };
 
 function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
-  // Canonical param is profileId. matchId is kept as a back-compat
-  // fallback so old deep links (notifications, share sheets) keep
-  // resolving.
+  // Canonical param is profileId. matchId is kept as a back-compat fallback
+  // so old deep links (notifications, share sheets) keep resolving.
   const { profileId, matchId } = useLocalSearchParams<{ profileId?: string; matchId?: string }>();
   const initialTargetId = useMemo(() => {
     const pid = Array.isArray(profileId) ? profileId[0] : profileId;
@@ -90,26 +106,21 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
   }, [profileId, matchId]);
 
   const [loading, setLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<Profile | null>(null);
-  const [matchProfile, setMatchProfile] = useState<Profile | null>(null);
-  const [userChart, setUserChart] = useState<BirthChart | null>(null);
-  const [matchChart, setMatchChart] = useState<BirthChart | null>(null);
-  const [compatibility, setCompatibility] = useState<CompatibilityScore | null>(null);
+  const [selfProfile, setSelfProfile] = useState<SynastryProfile | null>(null);
+  const [matchProfile, setMatchProfile] = useState<SynastryProfile | null>(null);
   const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(initialTargetId);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
 
-  // Fade animation for smooth entry
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Notify parent of loading state changes
   useEffect(() => {
     onLoadingChange?.(loading);
   }, [loading, onLoadingChange]);
 
-  // Fade in when content is ready
   useEffect(() => {
     if (!loading) {
       Animated.timing(fadeAnim, {
@@ -120,101 +131,59 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
     }
   }, [loading, fadeAnim]);
 
-  // Build the user's own chart from their full profile row. Kept as a
-  // pure helper so loadProfiles + handleSelect can both reuse it.
-  const buildUserChart = useCallback((ownData: any): BirthChart | null => {
-    if (!ownData?.birth_date) return null;
-    const [year, month, day] = String(ownData.birth_date).split('-').map(Number);
-    if (!year || !month || !day) return null;
-    const birthDate = new Date(year, month - 1, day);
-    const localChart = calculateNatalChart(
-      birthDate,
-      ownData.birth_time,
-      ownData.birth_latitude || 45.5,
-      ownData.birth_longitude || -73.5,
-    );
-    return {
-      sun: { longitude: localChart.sun.longitude ?? signDegreeToLongitude(localChart.sun), sign: localChart.sun.sign, degree: localChart.sun.degree },
-      moon: { longitude: localChart.moon.longitude ?? signDegreeToLongitude(localChart.moon), sign: localChart.moon.sign, degree: localChart.moon.degree },
-      rising: { longitude: localChart.rising.longitude ?? signDegreeToLongitude(localChart.rising), sign: localChart.rising.sign, degree: localChart.rising.degree },
-      planets: {
-        mercury: { longitude: localChart.mercury.longitude ?? signDegreeToLongitude(localChart.mercury), sign: localChart.mercury.sign, degree: localChart.mercury.degree },
-        venus: { longitude: localChart.venus.longitude ?? signDegreeToLongitude(localChart.venus), sign: localChart.venus.sign, degree: localChart.venus.degree },
-        mars: { longitude: localChart.mars.longitude ?? signDegreeToLongitude(localChart.mars), sign: localChart.mars.sign, degree: localChart.mars.degree },
-        jupiter: { longitude: localChart.jupiter.longitude ?? signDegreeToLongitude(localChart.jupiter), sign: localChart.jupiter.sign, degree: localChart.jupiter.degree },
-        saturn: { longitude: localChart.saturn.longitude ?? signDegreeToLongitude(localChart.saturn), sign: localChart.saturn.sign, degree: localChart.saturn.degree },
-      },
-      coordinates: {
-        latitude: ownData.birth_latitude || 45.5,
-        longitude: ownData.birth_longitude || -73.5,
-      },
-      julianDay: 0,
-    };
-  }, []);
-
-  // Load a single target's profile + chart and update local state.
-  // Pure function — no candidate-set mutation. Used both on initial
-  // load (after candidate fetch resolves) and on picker tap.
+  // Load a single target's profile + chart via the same get-profile-chart
+  // edge function the web surface uses. Returns the resolved profile so
+  // deep-link prepend logic can reuse it.
   const loadTargetChart = useCallback(
-    async (targetUserId: string, builtUserChart: BirthChart | null, ownData: any) => {
-      const { data: matchPayload, error: matchErr } = await supabase.functions.invoke(
+    async (targetUserId: string): Promise<SynastryProfile> => {
+      const { data: payload, error: matchErr } = await supabase.functions.invoke(
         'get-profile-chart',
         { body: { targetUserId } },
       );
       if (matchErr) throw matchErr;
 
-      const payload = matchPayload as
-        | { success?: boolean; profile?: Profile; chart?: any; error?: string }
+      type ChartPlanet = { sign?: string | null };
+      type ChartPlanets = Record<'mercury' | 'venus' | 'mars' | 'saturn', ChartPlanet | undefined>;
+      const response = payload as
+        | {
+            success?: boolean;
+            profile?: {
+              id: string;
+              name?: string | null;
+              sun_sign?: string | null;
+              moon_sign?: string | null;
+              rising_sign?: string | null;
+              image_url?: string | null;
+              images?: string[] | null;
+            };
+            chart?: { planets?: ChartPlanets } | null;
+            error?: string;
+          }
         | null;
-      if (!payload?.success || !payload.profile) {
-        throw new Error(payload?.error || 'Match profile not found');
+
+      if (!response?.success || !response.profile) {
+        throw new Error(response?.error || t('matchDataMissing') || 'Match profile not found');
       }
 
-      setMatchProfile(payload.profile);
-
-      let builtMatchChart: BirthChart | null = null;
-      if (payload.chart) {
-        const c = payload.chart;
-        builtMatchChart = {
-          sun: c.sun,
-          moon: c.moon,
-          rising: c.rising,
-          planets: {
-            mercury: c.planets?.mercury,
-            venus: c.planets?.venus,
-            mars: c.planets?.mars,
-            jupiter: c.planets?.jupiter,
-            saturn: c.planets?.saturn,
-          },
-          coordinates: c.coordinates ?? { latitude: 0, longitude: 0 },
-          julianDay: 0,
-        };
-      }
-
-      setMatchChart(builtMatchChart);
-
-      if (builtUserChart && builtMatchChart) {
-        const fullCompatibility = await calculateSynastry(builtUserChart, builtMatchChart);
-        setCompatibility(fullCompatibility);
-      } else {
-        const quickScore = calculateQuickCompatibility(
-          ownData?.sun_sign || 'Aries',
-          payload.profile.sun_sign || 'Aries',
-        );
-        setCompatibility({
-          overall: quickScore,
-          emotional: quickScore,
-          communication: quickScore,
-          passion: quickScore,
-          longTerm: quickScore,
-          values: quickScore,
-          growth: quickScore,
-        });
-      }
-
-      return payload.profile;
+      const p = response.profile;
+      const c = response.chart;
+      const profile: SynastryProfile = {
+        id: p.id,
+        name: p.name ?? null,
+        sun_sign: p.sun_sign ?? null,
+        moon_sign: p.moon_sign ?? null,
+        rising_sign: p.rising_sign ?? null,
+        mercury_sign: c?.planets?.mercury?.sign ?? null,
+        venus_sign: c?.planets?.venus?.sign ?? null,
+        mars_sign: c?.planets?.mars?.sign ?? null,
+        saturn_sign: c?.planets?.saturn?.sign ?? null,
+        image_url: p.image_url ?? null,
+        images: p.images ?? null,
+      };
+      setMatchProfile(profile);
+      return profile;
     },
-    [],
+    [t],
   );
 
   const loadProfiles = useCallback(async () => {
@@ -223,12 +192,12 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
       return;
     }
     setLoading(true);
+    setError(null);
 
     try {
-      // Fetch own profile + candidate set in parallel. The candidate set
-      // is everyone matching the caller's discovery preferences, minus
-      // the swipe filter — so already-passed / already-liked profiles
-      // still appear here for compatibility comparison.
+      // Own profile + candidate set in parallel. Candidates are everyone
+      // matching the caller's discovery preferences, minus the swipes
+      // exclusion so already-passed / already-liked profiles still surface.
       const [ownResult, candidatesResult] = await Promise.all([
         supabase.rpc('get_my_full_profile'),
         supabase.rpc('get_synastry_candidate_profiles', {
@@ -241,46 +210,59 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
 
       const ownData = Array.isArray(ownResult.data) ? ownResult.data[0] : null;
       if (!ownData) {
-        setUserProfile(null);
+        setSelfProfile(null);
         setMatchProfile(null);
-        setCompatibility(null);
         return;
       }
 
-      setUserProfile(ownData as Profile);
+      // Build self profile + pull planet placements out of birth_chart JSONB
+      // so the dimension cards can score against real positions instead of
+      // silently falling back to Sun x Sun for every zone.
+      const own: SynastryProfile = {
+        id: ownData.id,
+        name: ownData.name ?? null,
+        sun_sign: ownData.sun_sign ?? null,
+        moon_sign: ownData.moon_sign ?? null,
+        rising_sign: ownData.rising_sign ?? null,
+        mercury_sign: pickPlanetSign(ownData.birth_chart, 'mercury'),
+        venus_sign: pickPlanetSign(ownData.birth_chart, 'venus'),
+        mars_sign: pickPlanetSign(ownData.birth_chart, 'mars'),
+        saturn_sign: pickPlanetSign(ownData.birth_chart, 'saturn'),
+        image_url: ownData.image_url ?? null,
+        images: ownData.images ?? null,
+      };
+      setSelfProfile(own);
 
-      const builtUserChart = buildUserChart(ownData);
-      setUserChart(builtUserChart);
-
-      let nextCandidates = ((candidatesResult.data as CandidateProfile[]) || []);
+      let nextCandidates = (candidatesResult.data as CandidateProfile[]) || [];
       if (candidatesResult.error) {
-        // RPC failure isn't fatal — fall back to an empty picker.
-        // get-profile-chart for the deep-link target may still work.
+        // Candidate RPC failure isn't fatal — the deep-link path may still work.
         console.warn('Synastry candidates RPC failed:', candidatesResult.error);
         nextCandidates = [];
       }
 
-      // Deep-link resolution. If the URL carries a target that isn't in
-      // the candidate set, still try to load it via get-profile-chart and
-      // prepend so the link works (e.g. a passed profile that no longer
-      // matches preferences).
       let selected: string | null = null;
       if (initialTargetId) {
         const inSet = nextCandidates.find((c) => c.id === initialTargetId);
         if (inSet) {
           selected = initialTargetId;
           try {
-            await loadTargetChart(initialTargetId, builtUserChart, ownData);
+            await loadTargetChart(initialTargetId);
           } catch (err) {
             console.error('Failed to load synastry chart for deep-link target:', err);
             selected = nextCandidates[0]?.id ?? null;
             if (selected) {
-              try { await loadTargetChart(selected, builtUserChart, ownData); } catch (e) { console.error(e); }
+              try {
+                await loadTargetChart(selected);
+              } catch (e) {
+                console.error(e);
+              }
             }
           }
         } else {
+          // Deep-link target isn't in candidate set (e.g. already swiped).
+          // Still try to load via get-profile-chart and prepend so the link works.
           try {
-            const loaded = await loadTargetChart(initialTargetId, builtUserChart, ownData);
+            const loaded = await loadTargetChart(initialTargetId);
             nextCandidates = [
               {
                 id: loaded.id,
@@ -299,13 +281,21 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
             console.warn('Deep-link target not loadable, falling back:', err);
             selected = nextCandidates[0]?.id ?? null;
             if (selected) {
-              try { await loadTargetChart(selected, builtUserChart, ownData); } catch (e) { console.error(e); }
+              try {
+                await loadTargetChart(selected);
+              } catch (e) {
+                console.error(e);
+              }
             }
           }
         }
       } else if (nextCandidates.length > 0) {
         selected = nextCandidates[0].id;
-        try { await loadTargetChart(selected, builtUserChart, ownData); } catch (e) { console.error(e); }
+        try {
+          await loadTargetChart(selected);
+        } catch (e) {
+          console.error(e);
+        }
       }
 
       setCandidates(nextCandidates);
@@ -313,201 +303,96 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
 
       if (!selected) {
         setMatchProfile(null);
-        setMatchChart(null);
-        setCompatibility(null);
       }
     } catch (err) {
       console.error('Error loading synastry profiles:', err);
+      setError(err instanceof Error ? err.message : t('unknownError') || 'Something went wrong.');
     } finally {
       setLoading(false);
     }
-  }, [user, initialTargetId, buildUserChart, loadTargetChart]);
+  }, [user, initialTargetId, loadTargetChart, t]);
 
   useEffect(() => {
     loadProfiles();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadProfiles already captures the deps it cares about
   }, [user, initialTargetId]);
 
-  // Re-fetching when the user taps a different profile in the picker.
-  // We don't refresh the candidate set or the user chart — only the
-  // target chart needs to change.
   const handleSelectCandidate = useCallback(
     async (id: string) => {
-      if (id === selectedId || !userProfile) return;
+      if (id === selectedId) return;
       setSelectedId(id);
       try {
-        await loadTargetChart(id, userChart, userProfile);
+        await loadTargetChart(id);
       } catch (err) {
         console.error('Failed to load synastry chart for selected profile:', err);
       }
     },
-    [selectedId, userProfile, userChart, loadTargetChart],
+    [selectedId, loadTargetChart],
   );
 
-  const calculateOverallScore = (): number => {
-    if (!userProfile || !matchProfile) return 75;
-
-    // Simplified compatibility calculation
-    const elements: Record<string, string> = {
-      Aries: 'fire', Taurus: 'earth', Gemini: 'air', Cancer: 'water',
-      Leo: 'fire', Virgo: 'earth', Libra: 'air', Scorpio: 'water',
-      Sagittarius: 'fire', Capricorn: 'earth', Aquarius: 'air', Pisces: 'water',
-    };
-
-    const userSunSign = userProfile.sun_sign || 'Aries';
-    const matchSunSign = matchProfile.sun_sign || 'Pisces';
-    const el1 = elements[userSunSign] || 'fire';
-    const el2 = elements[matchSunSign] || 'water';
-
-    const compatibility: Record<string, Record<string, number>> = {
-      fire: { fire: 85, earth: 55, air: 92, water: 45 },
-      earth: { fire: 55, earth: 88, air: 50, water: 90 },
-      air: { fire: 92, earth: 50, air: 82, water: 60 },
-      water: { fire: 45, earth: 90, air: 60, water: 88 },
-    };
-
-    return compatibility[el1]?.[el2] || 75;
-  };
-
-  const getCompatibilityAreas = (): CompatibilityArea[] => {
-    return [
-      {
-        area: t('emotionalConnection') || 'Emotional Connection',
-        score: 88,
-        emoji: '💕',
-        description: t('emotionalDesc') || 'Your Moon signs create a deep emotional bond. You understand each other\'s needs intuitively.',
-      },
-      {
-        area: t('communication') || 'Communication',
-        score: 75,
-        emoji: '💬',
-        description: t('communicationDesc') || 'Mercury aspects suggest lively conversations with occasional misunderstandings to work through.',
-      },
-      {
-        area: t('passion') || 'Passion & Attraction',
-        score: 92,
-        emoji: '🔥',
-        description: t('passionDesc') || 'Venus-Mars aspects indicate strong physical chemistry and romantic attraction.',
-      },
-      {
-        area: t('longTermPotential') || 'Long-term Potential',
-        score: 82,
-        emoji: '🏠',
-        description: t('longTermDesc') || 'Saturn aspects suggest a relationship that can stand the test of time with commitment.',
-      },
-      {
-        area: t('sharedValues') || 'Shared Values',
-        score: 79,
-        emoji: '⚖️',
-        description: t('valuesDesc') || 'Jupiter placements show aligned beliefs and a shared vision for the future.',
-      },
-      {
-        area: t('growthPotential') || 'Growth & Transformation',
-        score: 85,
-        emoji: '🦋',
-        description: t('growthDesc') || 'Pluto aspects indicate this relationship will transform you both in meaningful ways.',
-      },
-    ];
-  };
-
-  const getAspects = (): AspectType[] => {
-    return [
-      {
-        planet1Key: 'sun',
-        planet2Key: 'moon',
-        sign1: userProfile?.sun_sign || 'Cancer',
-        sign2: matchProfile?.moon_sign || 'Leo',
-        orb: 2.5,
-        influence: 'harmonious',
-        descriptionKey: 'emotionalDesc',
-      },
-      {
-        planet1Key: 'venus',
-        planet2Key: 'mars',
-        sign1: userProfile?.venus_sign || userProfile?.sun_sign || 'Gemini',
-        sign2: matchProfile?.mars_sign || matchProfile?.sun_sign || 'Virgo',
-        orb: 1.2,
-        influence: 'harmonious',
-        descriptionKey: 'passionDesc',
-      },
-      {
-        planet1Key: 'mercury',
-        planet2Key: 'mercury',
-        sign1: userProfile?.mercury_sign || userProfile?.sun_sign || 'Cancer',
-        sign2: matchProfile?.mercury_sign || matchProfile?.sun_sign || 'Sagittarius',
-        orb: 3.8,
-        influence: 'challenging',
-        descriptionKey: 'communicationDesc',
-      },
-      {
-        planet1Key: 'moon',
-        planet2Key: 'venus',
-        sign1: userProfile?.moon_sign || 'Aquarius',
-        sign2: matchProfile?.venus_sign || matchProfile?.sun_sign || 'Leo',
-        orb: 4.1,
-        influence: 'harmonious',
-        descriptionKey: 'emotionalDesc',
-      },
-      {
-        planet1Key: 'saturn',
-        planet2Key: 'sun',
-        sign1: userProfile?.saturn_sign || userProfile?.sun_sign || 'Leo',
-        sign2: matchProfile?.sun_sign || 'Aries',
-        orb: 2.9,
-        influence: 'neutral',
-        descriptionKey: 'longTermDesc',
-      },
-    ];
-  };
-
-  const getInfluenceColor = (influence: string): string => {
-    switch (influence) {
-      case 'harmonious': return '#4ade80';
-      case 'intense': return '#fbbf24';
-      case 'challenging': return '#f87171';
-      default: return '#fbbf24';
-    }
-  };
-
-  // Memoize before any early returns to respect React hooks rules
-  const overallScore = useMemo(() => compatibility?.overall ?? calculateOverallScore(), [compatibility, userProfile, matchProfile]); // eslint-disable-line react-hooks/exhaustive-deps
-  const areas = useMemo<SynastryCategory[]>(
-    () => {
-      const built = buildSynastryCategories(userChart, matchChart, compatibility, t);
-      return built.length > 0
-        ? built
-        : getCompatibilityAreas().map((area) => ({
-            name: area.area,
-            score: area.score,
-            icon: area.emoji,
-            description: area.description,
-          }));
-    },
-    [userChart, matchChart, compatibility, t],
-  ); // eslint-disable-line react-hooks/exhaustive-deps
-  const legacyAspects = useMemo<SynastryAspect[]>(
-    () => {
-      const built = buildSynastryAspects(userChart, matchChart, compatibility, t);
-      return built.length > 0
-        ? built
-        : getAspects().map((aspect) => ({
-            title: `${t(aspect.planet1Key)} (${t(aspect.sign1.toLowerCase()) || aspect.sign1}) • ${t(aspect.planet2Key)} (${t(aspect.sign2.toLowerCase()) || aspect.sign2})`,
-            type: aspect.influence === 'neutral' ? 'intense' : aspect.influence,
-            description: t(aspect.descriptionKey) || aspect.descriptionKey,
-          }));
-    },
-    [userChart, matchChart, compatibility, t, userProfile, matchProfile],
-  ); // eslint-disable-line react-hooks/exhaustive-deps
-  const aspects = useMemo(() => getAspects(), [userProfile, matchProfile]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Fallbacks for web where SafeAreaProvider may not work
   const topInset = insets?.top ?? 0;
   const bottomInset = insets?.bottom ?? 0;
 
-  // Loading is now handled by PremiumGate via onLoadingChange callback
+  // PremiumGate handles its own loading shell.
   if (loading) {
-    return null; // PremiumGate shows the unified loading UI
+    return null;
   }
+
+  const me = selfProfile;
+  const other = matchProfile;
+
+  const totalScore: number | null =
+    me && other ? calculateSunCompatibility(me.sun_sign, other.sun_sign) : null;
+  const band: SynastryScoreBand | null = totalScore != null ? getScoreBand(totalScore) : null;
+
+  const zoneScores: ZoneScore[] = me && other ? calculateZoneScores(me, other) : [];
+
+  // "Why this score" — three element pairings. Filter out rows where
+  // either side's sign is missing so we never render a placeholder.
+  const whyFactors: WhyFactor[] =
+    me && other ? getWhyFactors(me, other).filter((f) => f.score != null) : [];
+
+  // "How to talk" — three lenses keyed by the target's placement element.
+  // Falls back to the target's Sun element when the planet itself is missing.
+  type TalkLens = 'mercury' | 'moon' | 'venus';
+  const talkLensSources: Array<{ lens: TalkLens; sign: string | null | undefined }> = other
+    ? [
+        { lens: 'mercury', sign: other.mercury_sign },
+        { lens: 'moon', sign: other.moon_sign },
+        { lens: 'venus', sign: other.venus_sign },
+      ]
+    : [];
+  const talkPrompts = talkLensSources
+    .map(({ lens, sign }) => {
+      const element: SynastryElement | null = getElement(sign) ?? getElement(other?.sun_sign);
+      return element ? { lens, element } : null;
+    })
+    .filter((p): p is { lens: TalkLens; element: SynastryElement } => p != null);
+
+  const watchVisible = band != null && shouldShowWatchFor(band);
+
+  const translateSign = (sign: string | null | undefined): string => {
+    const normalized = normalizeSign(sign);
+    if (!normalized) return '?';
+    const translated = t(normalized.toLowerCase());
+    return translated && translated !== normalized.toLowerCase() ? translated : normalized;
+  };
+
+  const renderHeader = (
+    <View style={[styles.header, { paddingTop: 40 + topInset }]}>
+      <TouchableOpacity
+        style={[styles.backButton, { top: 30 + topInset }]}
+        onPress={() => router.back()}
+        accessibilityLabel={t('back') || 'Back'}
+      >
+        <Text style={styles.backText}>{'←'}</Text>
+      </TouchableOpacity>
+      <Text style={styles.title}>{t('synastryV2Title') || 'Synastry Reflection'}</Text>
+      <Text style={styles.subtitle}>
+        {t('synastryV2Subtitle') || 'Conversation map, not prediction.'}
+      </Text>
+    </View>
+  );
 
   const renderPicker = () => {
     if (candidates.length === 0) return null;
@@ -544,7 +429,7 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
                   {item.name || '?'}
                 </Text>
                 <Text style={styles.pickerSign} numberOfLines={1}>
-                  {item.sun_sign || '?'}
+                  {translateSign(item.sun_sign)}
                 </Text>
               </TouchableOpacity>
             );
@@ -554,187 +439,278 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
     );
   };
 
-  const renderContent = () => {
-    // If we are here, loading is false, but data might still be missing
-    if (!userProfile) {
+  const renderEmptyOrErrorState = () => {
+    if (!me) {
       return (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorEmoji}>🔮</Text>
-          <Text style={styles.errorText}>
+        <View style={styles.stateCard}>
+          <Text style={styles.stateTitle}>
             {t('profileDataMissing') || 'Your profile data is missing.'}
           </Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadProfiles}>
-            <Text style={styles.retryText}>{t('retryLoading') || 'Retry Loading'}</Text>
+          <Text style={styles.stateBody}>
+            {t('synastryV2NoSelfBody') ||
+              'Add your birth details so we can compare placements.'}
+          </Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={loadProfiles}>
+            <Text style={styles.primaryButtonText}>
+              {t('retryLoading') || 'Retry'}
+            </Text>
           </TouchableOpacity>
         </View>
       );
     }
-
-    // No candidates and no match loaded → active empty state. Push the
-    // user toward editing their preferences rather than dead-ending at
-    // Discover.
-    if (candidates.length === 0 && !matchProfile) {
+    if (candidates.length === 0 && !other) {
       return (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorEmoji}>🌠</Text>
-          <Text style={styles.errorText}>
+        <View style={styles.stateCard}>
+          <Text style={styles.stateTitle}>
             {t('synastryNoProfilesTitle') || 'No profiles match your preferences yet'}
           </Text>
-          <Text style={styles.errorSubtext}>
-            {t('synastryNoProfilesBody') || 'Try widening your preferences to compare more charts.'}
+          <Text style={styles.stateBody}>
+            {t('synastryNoProfilesBody') ||
+              'Try widening your preferences to compare more charts.'}
           </Text>
           <TouchableOpacity
-            style={styles.retryButton}
+            style={styles.primaryButton}
             onPress={() => router.push('/(tabs)/profile')}
           >
-            <Text style={styles.retryText}>
+            <Text style={styles.primaryButtonText}>
               {t('adjustPreferences') || 'Edit preferences'}
             </Text>
           </TouchableOpacity>
         </View>
       );
     }
-
-    if (!matchProfile) {
+    if (!other) {
       return (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorEmoji}>🔮</Text>
-          <Text style={styles.errorText}>
+        <View style={styles.stateCard}>
+          <Text style={styles.stateTitle}>
             {t('matchDataMissing') || 'Match profile data is missing.'}
           </Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadProfiles}>
-            <Text style={styles.retryText}>{t('retryLoading') || 'Retry Loading'}</Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={loadProfiles}>
+            <Text style={styles.primaryButtonText}>
+              {t('retryLoading') || 'Retry'}
+            </Text>
           </TouchableOpacity>
         </View>
       );
     }
-
-    return (
-      <View style={styles.contentWrapper}>
-        {/* Profiles Comparison */}
-        <View style={styles.profilesSection}>
-        <View style={styles.profileCard}>
-          <Text style={styles.profileName}>{userProfile?.name || t('you')}</Text>
-          <View style={styles.profileSigns}>
-            <Text style={styles.profileSign}>☀️ {userProfile?.sun_sign || '?'}</Text>
-            <Text style={styles.profileSign}>🌙 {userProfile?.moon_sign || '?'}</Text>
-            <Text style={styles.profileSign}>⬆️ {userProfile?.rising_sign || '?'}</Text>
-          </View>
-        </View>
-
-        <View style={styles.vsContainer}>
-          <Text style={styles.vsText}>💕</Text>
-        </View>
-
-        <View style={styles.profileCard}>
-          <Text style={styles.profileName}>{matchProfile?.name || t('match')}</Text>
-          <View style={styles.profileSigns}>
-            <Text style={styles.profileSign}>☀️ {matchProfile?.sun_sign || '?'}</Text>
-            <Text style={styles.profileSign}>🌙 {matchProfile?.moon_sign || '?'}</Text>
-            <Text style={styles.profileSign}>⬆️ {matchProfile?.rising_sign || '?'}</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Overall Score */}
-      <View style={styles.scoreSection}>
-        <View style={styles.scoreCircle}>
-          <Text style={styles.scoreNumber}>{overallScore}%</Text>
-          <Text style={styles.scoreLabel}>{t('cosmicCompatibility') || 'Compatibility Score'}</Text>
-        </View>
-        <Text style={styles.scoreDescription}>
-          {overallScore >= 80
-            ? t('highCompatibility') || 'Exceptional cosmic alignment! You share a powerful connection.'
-            : overallScore >= 60
-            ? t('goodCompatibility') || 'Strong potential for a meaningful relationship.'
-            : t('growthCompatibility') || 'This pairing offers opportunities for growth and learning.'}
-        </Text>
-      </View>
-
-      {/* Compatibility Areas */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('compatibilityBreakdown') || 'Compatibility Breakdown'}</Text>
-        {areas.map((area, index) => (
-          <View key={index} style={styles.areaCard}>
-            <View style={styles.areaHeader}>
-              <Text style={styles.areaEmoji}>{area.icon}</Text>
-              <Text style={styles.areaName}>{area.name}</Text>
-              <Text style={styles.areaScore}>{area.score}%</Text>
-            </View>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: `${area.score}%` }]} />
-            </View>
-            <Text style={styles.areaDescription}>{area.description}</Text>
-          </View>
-        ))}
-      </View>
-
-      {/* Planetary Aspects */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('keyAspects') || 'Key Planetary Aspects'}</Text>
-        {aspects.map((aspect, index) => (
-          <View key={index} style={styles.aspectRow}>
-            <View style={[styles.aspectDot, { backgroundColor: getInfluenceColor(aspect.influence) }]} />
-            <View style={styles.aspectInfo}>
-              <Text style={styles.aspectTitle}>
-                {t(aspect.planet1Key)} ({t(aspect.sign1.toLowerCase()) || aspect.sign1}) • {t(aspect.planet2Key)} ({t(aspect.sign2.toLowerCase()) || aspect.sign2})
-              </Text>
-              <Text style={styles.aspectOrb}>{t('orb') || 'Orb'}: {aspect.orb}° • {t(aspect.influence) || aspect.influence}</Text>
-              <Text style={styles.aspectDesc}>{t(aspect.descriptionKey) || aspect.descriptionKey}</Text>
-            </View>
-          </View>
-        ))}
-
-        <View style={styles.legend}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#4ade80' }]} />
-            <Text style={styles.legendText}>{t('harmonious') || 'Harmonious'}</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#f87171' }]} />
-            <Text style={styles.legendText}>{t('challenging') || 'Challenging'}</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#fbbf24' }]} />
-            <Text style={styles.legendText}>{t('neutral') || 'Neutral'}</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Relationship Advice */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('cosmicAdvice') || 'Cosmic Advice'}</Text>
-        <View style={styles.adviceCard}>
-          <Text style={styles.adviceEmoji}>✨</Text>
-          <Text style={styles.adviceTitle}>{t('strengthenBond') || 'Strengthen Your Bond'}</Text>
-          <Text style={styles.adviceText}>
-            {t('adviceText') || 'Focus on open communication during Mercury retrograde periods. Plan romantic activities during Venus transits for maximum connection. Your composite chart suggests Sunday evenings are ideal for quality time together.'}
-          </Text>
-        </View>
-      </View>
-      </View>
-    );
+    return null;
   };
+
+  const emptyState = renderEmptyOrErrorState();
 
   return (
     <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
       <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
-<ScrollView
+        <ScrollView
           style={styles.scrollView}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
           showsVerticalScrollIndicator={false}
         >
-        {/* Header - Fixed at top */}
-        <View style={[styles.header, { paddingTop: 40 + topInset }]}>
-          <TouchableOpacity style={[styles.backButton, { top: 30 + topInset }]} onPress={() => router.back()}>
-            <Text style={styles.backText}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>{t('advancedSynastry')}</Text>
-          <Text style={styles.subtitle}>{t('synastrySubtitle') || 'Deep compatibility analysis'}</Text>
-        </View>
+          {renderHeader}
+          {renderPicker()}
 
-        {renderPicker()}
-        {renderContent()}
+          {emptyState ? (
+            emptyState
+          ) : (
+            <View style={styles.contentWrapper}>
+              {/* Block 1 — Hero. Score + band label + dim disclaimer. */}
+              <View style={styles.heroCard}>
+                <View style={styles.heroProfilesRow}>
+                  <View style={styles.heroProfileCol}>
+                    <Text style={styles.heroProfileName} numberOfLines={1}>
+                      {me?.name || t('you') || 'You'}
+                    </Text>
+                    <Text style={styles.heroProfileSigns} numberOfLines={2}>
+                      {translateSign(me?.sun_sign)}
+                      {' · '}
+                      {translateSign(me?.moon_sign)}
+                      {' · '}
+                      {translateSign(me?.rising_sign)}
+                    </Text>
+                  </View>
+                  <Text style={styles.heroJoiner}>{'✦'}</Text>
+                  <View style={styles.heroProfileCol}>
+                    <Text style={styles.heroProfileName} numberOfLines={1}>
+                      {other?.name || t('match') || 'Match'}
+                    </Text>
+                    <Text style={styles.heroProfileSigns} numberOfLines={2}>
+                      {translateSign(other?.sun_sign)}
+                      {' · '}
+                      {translateSign(other?.moon_sign)}
+                      {' · '}
+                      {translateSign(other?.rising_sign)}
+                    </Text>
+                  </View>
+                </View>
+
+                {totalScore != null && band ? (
+                  <View style={styles.heroScoreBlock}>
+                    <View style={styles.heroScoreCircle}>
+                      <Text style={styles.heroScoreNumber}>{totalScore}</Text>
+                      <Text style={styles.heroScoreOutOf}>/ 100</Text>
+                    </View>
+                    <View style={styles.heroScoreTextCol}>
+                      <Text style={styles.heroScoreEyebrow}>
+                        {t('synastryV2ScoreEyebrow') || 'Score band'}
+                      </Text>
+                      <Text style={styles.heroScoreTitle}>
+                        {t(`synastryScoreTitle_${band}`)}
+                      </Text>
+                      <Text style={styles.heroScoreBody}>
+                        {t(`synastryScoreBody_${band}`)}
+                      </Text>
+                      <Text style={styles.heroScoreDisclaimer}>
+                        {t('synastryV2HeroDisclaimer') ||
+                          'A starting point for conversation, not a verdict.'}
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+
+              {/* Block 2 — Why this score. Three element pairings. */}
+              {whyFactors.length > 0 ? (
+                <View style={styles.sectionCard}>
+                  <Text style={styles.sectionEyebrow}>
+                    {t('synastryV2WhyTitle') || 'Why this score'}
+                  </Text>
+                  <Text style={styles.sectionBodyMuted}>
+                    {t('synastryV2WhyBody') ||
+                      'Three element pairings that shape the overall read.'}
+                  </Text>
+                  <View style={styles.factorList}>
+                    {whyFactors.map((factor) => {
+                      const influence =
+                        factor.score != null ? factorInfluence(factor.score) : 'neutral';
+                      const palette = INFLUENCE_COLORS[influence];
+                      return (
+                        <View
+                          key={factor.key}
+                          style={[
+                            styles.factorRow,
+                            { borderColor: palette.border, backgroundColor: palette.bg },
+                          ]}
+                        >
+                          <View style={styles.factorTextCol}>
+                            <Text style={styles.factorTitle}>
+                              {t(`synastryV2Factor_${factor.key}`)}
+                            </Text>
+                            <Text style={styles.factorSigns}>
+                              {translateSign(factor.selfSign)}
+                              {' · '}
+                              {translateSign(factor.targetSign)}
+                            </Text>
+                            <Text style={styles.factorBody}>
+                              {t(`synastryV2FactorBody_${factor.key}`)}
+                            </Text>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : null}
+
+              {/* Block 3 — Compatibility dimensions. Four cards from real
+                  Moon / Mercury / Venus-Mars / Saturn placements with a
+                  Sun-fallback note when a placement was missing. */}
+              {zoneScores.length > 0 ? (
+                <View style={styles.sectionCard}>
+                  <Text style={styles.sectionEyebrow}>
+                    {t('synastryV2DimensionsTitle') || 'Compatibility dimensions'}
+                  </Text>
+                  <View style={styles.zoneList}>
+                    {zoneScores.map((zone) => (
+                      <View key={zone.key} style={styles.zoneCard}>
+                        <View style={styles.zoneHeaderRow}>
+                          <Text style={styles.zoneName}>
+                            {t(`synastryV2Dimension_${zone.key}`)}
+                          </Text>
+                          <Text style={styles.zoneScore}>{zone.score}</Text>
+                        </View>
+                        <View style={styles.progressBar}>
+                          <View
+                            style={[styles.progressFill, { width: `${Math.max(0, Math.min(100, zone.score))}%` }]}
+                          />
+                        </View>
+                        <Text style={styles.zoneBandLabel}>
+                          {t(`synastryScoreTitle_${zone.band}`)}
+                        </Text>
+                        <Text style={styles.zoneBody}>
+                          {t(`synastryV2DimensionBody_${zone.key}`)}
+                        </Text>
+                        <Text style={styles.zoneCue}>
+                          {t(`synastryV2Cue_${zone.key}`)}
+                        </Text>
+                        {zone.source === 'sun-fallback' ? (
+                          <Text style={styles.zoneFallback}>
+                            {t('synastryV2DimensionFallbackNote') ||
+                              'Based on Sun sign while chart details are loading.'}
+                          </Text>
+                        ) : null}
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
+              {/* Block 4 — How to talk to this person. Lenses keyed by
+                  target's Mercury / Moon / Venus element. */}
+              {talkPrompts.length > 0 ? (
+                <View style={styles.sectionCard}>
+                  <Text style={styles.sectionEyebrow}>
+                    {t('synastryV2TalkTitle') || 'How to talk to this person'}
+                  </Text>
+                  <Text style={styles.sectionBodyMuted}>
+                    {t('synastryV2TalkBody') ||
+                      'Concrete entry points based on their placements.'}
+                  </Text>
+                  <View style={styles.talkList}>
+                    {talkPrompts.map(({ lens, element }) => (
+                      <View key={lens} style={styles.talkCard}>
+                        <Text style={styles.talkLensLabel}>
+                          {t(`synastryV2TalkLens_${lens}`)}
+                        </Text>
+                        <Text style={styles.talkPromptBody}>
+                          {t(`synastryV2Prompt_${lens}_${element}`)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
+              {/* Block 5 — Watch for. Only on mixed / growth / different bands. */}
+              {watchVisible ? (
+                <View style={styles.watchCard}>
+                  <Text style={styles.watchEyebrow}>
+                    {t('synastryV2WatchTitle') || 'Watch for'}
+                  </Text>
+                  <Text style={styles.watchBody}>
+                    {t('synastryV2WatchBody') ||
+                      'Conversation rhythms may differ — pace yourself and check in often.'}
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* Block 6 — Closing disclaimer. Same pattern as Daily / Retrograde V2. */}
+              <View style={styles.disclaimerCard}>
+                <Text style={styles.disclaimerEyebrow}>
+                  {t('synastryV2DisclaimerTitle') || 'A reminder'}
+                </Text>
+                <Text style={styles.disclaimerBody}>
+                  {t('synastryV2DisclaimerBody') ||
+                    'Conversation map, not prediction.'}
+                </Text>
+              </View>
+
+              {error ? (
+                <View style={styles.errorBanner}>
+                  <Text style={styles.errorBannerText}>{error}</Text>
+                </View>
+              ) : null}
+            </View>
+          )}
         </ScrollView>
       </LinearGradient>
     </Animated.View>
@@ -744,67 +720,34 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    ...(Platform.OS === 'web' ? {
-      height: '100%' as any,
-      width: '100%' as any,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? ({
+          height: '100%',
+          width: '100%',
+        } as any)
+      : {}),
   },
   scrollView: {
     flex: 1,
-    ...(Platform.OS === 'web' ? {
-      height: 'calc(100vh - 120px)' as any,
-      overflowY: 'auto' as any,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? ({
+          height: 'calc(100vh - 120px)',
+          overflowY: 'auto',
+        } as any)
+      : {}),
   },
   scrollContent: {
     paddingBottom: 40,
   },
   contentWrapper: {
     width: '100%',
-    maxWidth: 600,
+    maxWidth: 640,
     alignSelf: 'center',
-  },
-  errorContainer: {
-    padding: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  errorEmoji: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: AppTheme.colors.textPrimary,
-    textAlign: 'center',
-    marginBottom: 8,
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: '600',
-  },
-  errorSubtext: {
-    color: AppTheme.colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 20,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  retryButton: {
-    backgroundColor: 'rgba(232, 93, 117, 0.16)',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(232, 93, 117, 0.28)',
-  },
-  retryText: {
-    color: AppTheme.colors.coral,
-    fontWeight: '600',
-    fontSize: 14,
   },
   header: {
     alignItems: 'center',
     paddingTop: 60,
-    paddingBottom: 24,
+    paddingBottom: 20,
     paddingHorizontal: 20,
     zIndex: 10,
   },
@@ -827,11 +770,14 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: AppTheme.colors.textPrimary,
-    marginBottom: 8,
+    marginBottom: 4,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: AppTheme.colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
   pickerSection: {
     paddingTop: 4,
@@ -895,109 +841,209 @@ const styles = StyleSheet.create({
     marginTop: 2,
     textAlign: 'center',
   },
-  profilesSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
+  stateCard: {
+    marginHorizontal: 20,
     marginBottom: 24,
-  },
-  profileCard: {
-    flex: 1,
+    padding: 22,
+    borderRadius: 20,
     backgroundColor: AppTheme.colors.panel,
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
   },
-  profileName: {
-    fontSize: 16,
-    fontWeight: '600',
+  stateTitle: {
+    fontSize: 18,
+    fontWeight: '700',
     color: AppTheme.colors.textPrimary,
-    marginBottom: 8,
+    marginBottom: 10,
+    lineHeight: 24,
   },
-  profileSigns: {
-    gap: 4,
-  },
-  profileSign: {
-    fontSize: 13,
+  stateBody: {
+    fontSize: 14,
     color: AppTheme.colors.textSecondary,
+    lineHeight: 22,
+    marginBottom: 18,
   },
-  vsContainer: {
-    paddingHorizontal: 12,
+  primaryButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: AppTheme.colors.coral,
+    paddingVertical: 12,
+    paddingHorizontal: 22,
+    borderRadius: 999,
+    minHeight: 44,
+    justifyContent: 'center',
   },
-  vsText: {
-    fontSize: 24,
+  primaryButtonText: {
+    color: AppTheme.colors.textOnAccent,
+    fontWeight: '600',
+    fontSize: 14,
   },
-  scoreSection: {
+  heroCard: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    padding: 20,
+    borderRadius: 20,
+    backgroundColor: 'rgba(124, 108, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(124, 108, 255, 0.22)',
+  },
+  heroProfilesRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 32,
-    paddingHorizontal: 20,
+    gap: 10,
   },
-  scoreCircle: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
+  heroProfileCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  heroProfileName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: AppTheme.colors.textPrimary,
+    marginBottom: 4,
+  },
+  heroProfileSigns: {
+    fontSize: 12,
+    color: AppTheme.colors.textMuted,
+    lineHeight: 18,
+  },
+  heroJoiner: {
+    fontSize: 18,
+    color: AppTheme.colors.textPrimary,
+    opacity: 0.6,
+    paddingHorizontal: 4,
+  },
+  heroScoreBlock: {
+    marginTop: 20,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+  },
+  heroScoreCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     backgroundColor: 'rgba(232, 93, 117, 0.14)',
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: AppTheme.colors.coral,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
   },
-  scoreNumber: {
-    fontSize: 40,
-    fontWeight: 'bold',
+  heroScoreNumber: {
+    fontSize: 26,
+    fontWeight: '700',
     color: AppTheme.colors.coral,
   },
-  scoreLabel: {
-    fontSize: 12,
+  heroScoreOutOf: {
+    fontSize: 10,
     color: AppTheme.colors.textMuted,
-    textTransform: 'uppercase',
+    marginTop: 2,
     letterSpacing: 1,
   },
-  scoreDescription: {
-    fontSize: 15,
+  heroScoreTextCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  heroScoreEyebrow: {
+    fontSize: 10,
+    color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 4,
+  },
+  heroScoreTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: AppTheme.colors.textPrimary,
+    marginBottom: 6,
+  },
+  heroScoreBody: {
+    fontSize: 13.5,
     color: AppTheme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 20,
+    marginBottom: 8,
   },
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
+  heroScoreDisclaimer: {
+    fontSize: 11,
+    color: AppTheme.colors.textMuted,
+    fontStyle: 'italic',
+    lineHeight: 16,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 16,
-  },
-  areaCard: {
+  sectionCard: {
+    marginHorizontal: 20,
+    marginBottom: 14,
+    padding: 18,
+    borderRadius: 18,
     backgroundColor: AppTheme.colors.panel,
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
-    borderRadius: 16,
-    padding: 16,
+  },
+  sectionEyebrow: {
+    fontSize: 11,
+    color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 10,
+  },
+  sectionBodyMuted: {
+    fontSize: 13.5,
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 20,
     marginBottom: 12,
   },
-  areaHeader: {
+  factorList: {
+    gap: 10,
+  },
+  factorRow: {
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  factorTextCol: {
+    gap: 4,
+  },
+  factorTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: AppTheme.colors.textPrimary,
+  },
+  factorSigns: {
+    fontSize: 11,
+    color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+  factorBody: {
+    fontSize: 13.5,
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 20,
+    marginTop: 4,
+  },
+  zoneList: {
+    gap: 12,
+  },
+  zoneCard: {
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
+  },
+  zoneHeaderRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
-  areaEmoji: {
-    fontSize: 20,
-    marginRight: 10,
-  },
-  areaName: {
-    flex: 1,
-    fontSize: 16,
+  zoneName: {
+    fontSize: 15,
     fontWeight: '600',
     color: AppTheme.colors.textPrimary,
+    flex: 1,
+    minWidth: 0,
   },
-  areaScore: {
+  zoneScore: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: AppTheme.colors.coral,
   },
   progressBar: {
@@ -1012,84 +1058,112 @@ const styles = StyleSheet.create({
     backgroundColor: AppTheme.colors.coral,
     borderRadius: 3,
   },
-  areaDescription: {
-    fontSize: 13,
-    color: AppTheme.colors.textSecondary,
-    lineHeight: 18,
-  },
-  aspectRow: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: AppTheme.colors.border,
-  },
-  aspectDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 12,
-    marginTop: 4,
-  },
-  aspectInfo: {
-    flex: 1,
-  },
-  aspectTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: AppTheme.colors.textPrimary,
-  },
-  aspectOrb: {
-    fontSize: 12,
+  zoneBandLabel: {
+    fontSize: 11,
     color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    marginBottom: 6,
   },
-  aspectDesc: {
+  zoneBody: {
+    fontSize: 13.5,
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: 6,
+  },
+  zoneCue: {
+    fontSize: 13.5,
+    color: AppTheme.colors.textPrimary,
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  zoneFallback: {
+    fontSize: 10.5,
+    color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    marginTop: 8,
+  },
+  talkList: {
+    gap: 10,
+  },
+  talkCard: {
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: 'rgba(232, 93, 117, 0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(232, 93, 117, 0.24)',
+  },
+  talkLensLabel: {
+    fontSize: 11,
+    color: '#FFB7C7',
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  talkPromptBody: {
+    fontSize: 14.5,
+    color: AppTheme.colors.textPrimary,
+    lineHeight: 22,
+  },
+  watchCard: {
+    marginHorizontal: 20,
+    marginBottom: 14,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: 'rgba(251, 191, 36, 0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.34)',
+  },
+  watchEyebrow: {
+    fontSize: 11,
+    color: '#FBBF24',
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  watchBody: {
+    fontSize: 14,
+    color: AppTheme.colors.textPrimary,
+    lineHeight: 21,
+  },
+  disclaimerCard: {
+    marginHorizontal: 20,
+    marginTop: 6,
+    marginBottom: 24,
+    padding: 16,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.10)',
+  },
+  disclaimerEyebrow: {
+    fontSize: 11,
+    color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 6,
+  },
+  disclaimerBody: {
     fontSize: 13,
     color: AppTheme.colors.textSecondary,
-    marginTop: 4,
-  },
-  legend: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
-    marginTop: 16,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  legendText: {
-    fontSize: 12,
-    color: AppTheme.colors.textSecondary,
-  },
-  adviceCard: {
-    backgroundColor: 'rgba(232, 93, 117, 0.12)',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(232, 93, 117, 0.22)',
-  },
-  adviceEmoji: {
-    fontSize: 32,
-    marginBottom: 12,
-  },
-  adviceTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: AppTheme.colors.coral,
-    marginBottom: 8,
-  },
-  adviceText: {
-    fontSize: 14,
-    color: AppTheme.colors.textSecondary,
-    textAlign: 'center',
     lineHeight: 20,
+  },
+  errorBanner: {
+    marginHorizontal: 20,
+    marginTop: 8,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(248, 113, 113, 0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(248, 113, 113, 0.30)',
+  },
+  errorBannerText: {
+    fontSize: 13,
+    color: '#FECACA',
+    lineHeight: 19,
   },
 });
 
