@@ -104,32 +104,6 @@ function welcomeEmail(name: string): { subject: string; html: string } {
   };
 }
 
-function newMatchEmail(
-  name: string,
-  matchedName: string,
-  compatibility: number,
-): { subject: string; html: string } {
-  return {
-    subject: `You matched with ${matchedName}! 💫`,
-    html: renderEmailShell({
-      eyebrow: "New match",
-      title: "It's a match",
-      intro: `Hey ${name}, you and ${matchedName} liked each other. The cosmic pull is mutual.`,
-      accentLabel: "Compatibility score",
-      accentBody: `
-        <p style="margin:0 0 10px;font-size:28px;font-weight:700;letter-spacing:-0.04em;color:#ffffff;">
-          ${compatibility}%
-        </p>
-        <p style="margin:0;font-size:15px;line-height:1.7;color:#eef2ff;">
-          Open the app to start chatting. The stars did their part. Now make the first move.
-        </p>
-      `,
-      footer:
-        "You can manage notification preferences in Settings > Notifications.",
-    }),
-  };
-}
-
 function onboardingDay1Email(name: string, sunSign: string): { subject: string; html: string } {
   const sign = sunSign || "your sign";
   return {
@@ -217,12 +191,6 @@ const TEMPLATES: Record<
   (params: Record<string, unknown>) => { subject: string; html: string }
 > = {
   welcome: (params) => welcomeEmail(String(params.name ?? "")),
-  new_match: (params) =>
-    newMatchEmail(
-      String(params.name ?? ""),
-      String(params.matchedName ?? "someone"),
-      Number(params.compatibility ?? 0),
-    ),
   onboarding_day1: (params) =>
     onboardingDay1Email(
       String(params.name ?? ""),
@@ -306,16 +274,6 @@ Deno.serve(async (req) => {
         JSON.stringify({ skipped: true, reason: "No email on profile" }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
-    }
-
-    if (template === "new_match") {
-      const prefs = profile.notification_preferences;
-      if (prefs?.newMatches === false) {
-        return new Response(
-          JSON.stringify({ skipped: true, reason: "User disabled match emails" }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }
     }
 
     // HTML-escape user-provided params to prevent XSS in emails

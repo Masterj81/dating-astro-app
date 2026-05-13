@@ -25,24 +25,24 @@ function isRateLimited(userId: string): boolean {
 }
 
 const TYPE_TO_PREF_KEY: Record<string, string> = {
-  match: "newMatches",
   like: "likes",
   message: "messages",
   dailyHoroscope: "dailyHoroscope",
   retrogradeAlert: "dailyHoroscope", // falls under horoscope prefs
   promotion: "promotions",
   // Legacy keys kept for backward compatibility
-  newMatches: "newMatches",
   messages: "messages",
   likes: "likes",
   promotions: "promotions",
 };
 
-// Map notification types to Android notification channels
+// Map notification types to Android notification channels.
+// Note: `notification_preferences.newMatches` JSON key is intentionally
+// preserved on profiles (read by the mobile Settings "New connections"
+// toggle) even though the matches notification type itself is retired
+// (Phase A dropped the trigger that emitted type: "match").
 const TYPE_TO_CHANNEL: Record<string, string> = {
-  match: "matches",
   like: "matches",
-  newMatches: "matches",
   likes: "matches",
   message: "messages",
   messages: "messages",
