@@ -51,17 +51,25 @@ type ConversationInfo = {
   other_user: {
     id: string;
     name: string;
+    age?: number | null;
     image_url?: string | null;
     photos?: Array<string | null>;
     images?: Array<string | null>;
     sun_sign: string;
+    moon_sign?: string | null;
+    rising_sign?: string | null;
   };
 };
 
 export default function ChatScreen() {
-  const { id: conversationId } = useLocalSearchParams<{ id: string }>();
+  const { id: conversationId, prefill: prefillParam } = useLocalSearchParams<{
+    id: string;
+    prefill?: string | string[];
+  }>();
+  const initialPrefill = Array.isArray(prefillParam) ? prefillParam[0] : prefillParam;
   const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState(initialPrefill ?? '');
+  const [hasPrefill, setHasPrefill] = useState(Boolean(initialPrefill && initialPrefill.length > 0));
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [conversationInfo, setConversationInfo] = useState<ConversationInfo | null>(null);
@@ -276,6 +284,7 @@ export default function ChatScreen() {
 
     setSending(true);
     setNewMessage('');
+    setHasPrefill(false);
     setMessages((prev) => [...prev, optimistic]);
 
     const ok = await insertMessage(messageContent);
@@ -388,41 +397,80 @@ export default function ChatScreen() {
     <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: 12 + insets.top }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Text style={styles.backText}>←</Text>
+          </TouchableOpacity>
 
-        <Image
-          source={{ uri: resolveProfileImage(conversationInfo?.other_user) }}
-          style={styles.headerImage}
-        />
-
-        <TouchableOpacity
-          style={styles.headerInfo}
-          onPress={() => {
-            if (conversationInfo?.other_user?.id) {
-              router.push(`/match/${conversationInfo.other_user.id}`);
-            }
-          }}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.headerName}>{conversationInfo?.other_user?.name || t('chat')}</Text>
-          <View style={styles.headerMeta}>
-            <Text style={styles.headerSign}>☀️ {conversationInfo?.other_user?.sun_sign || '?'}</Text>
-            {/* Compatibility % is intentionally hidden in chat — replaced by a paywall CTA on the profile detail screen. */}
-          </View>
-        </TouchableOpacity>
-
-        {user && conversationInfo?.other_user && (
-          <BlockReportMenu
-            userId={user.id}
-            targetUserId={conversationInfo.other_user.id}
-            targetUserName={conversationInfo.other_user.name}
-            onBlock={() => router.replace('/(tabs)/chat')}
-            onUnmatch={() => router.replace('/(tabs)/chat')}
-            showUnmatch={false}
+          <Image
+            source={{ uri: resolveProfileImage(conversationInfo?.other_user) }}
+            style={styles.headerImage}
           />
-        )}
+
+          <TouchableOpacity
+            style={styles.headerInfo}
+            onPress={() => {
+              if (conversationInfo?.other_user?.id) {
+                // Internal route name is kept for back-compat; the destination
+                // is the profile detail screen.
+                router.push(`/match/${conversationInfo.other_user.id}`);
+              }
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.headerName} numberOfLines={1}>
+              {conversationInfo?.other_user?.name || t('chat')}
+              {conversationInfo?.other_user?.age ? (
+                <Text style={styles.headerAge}>{', ' + conversationInfo.other_user.age}</Text>
+              ) : null}
+            </Text>
+            <View style={styles.headerMeta}>
+              {conversationInfo?.other_user?.sun_sign && conversationInfo.other_user.sun_sign !== '?' ? (
+                <Text style={styles.headerSign} numberOfLines={1}>
+                  {[
+                    conversationInfo.other_user.sun_sign,
+                    conversationInfo.other_user.moon_sign,
+                    conversationInfo.other_user.rising_sign,
+                  ]
+                    .filter((s) => s && s.length > 0)
+                    .join(' · ')}
+                </Text>
+              ) : null}
+            </View>
+          </TouchableOpacity>
+
+          {user && conversationInfo?.other_user && (
+            <BlockReportMenu
+              userId={user.id}
+              targetUserId={conversationInfo.other_user.id}
+              targetUserName={conversationInfo.other_user.name}
+              onBlock={() => router.replace('/(tabs)/chat')}
+              onUnmatch={() => router.replace('/(tabs)/chat')}
+              showUnmatch={false}
+            />
+          )}
+        </View>
+
+        {conversationInfo?.other_user?.id ? (
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.headerActionChip}
+              onPress={() => router.push(`/match/${conversationInfo.other_user.id}`)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.headerActionText}>{t('chatViewProfile') || 'View profile'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerActionChip}
+              onPress={() =>
+                router.push(`/premium-screens/synastry?profileId=${conversationInfo.other_user.id}` as any)
+              }
+              accessibilityRole="button"
+            >
+              <Text style={styles.headerActionText}>{t('chatCompareCharts') || 'Compare charts'}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
       </View>
 
       {/* Messages */}
@@ -433,9 +481,11 @@ export default function ChatScreen() {
       >
         {messages.length === 0 ? (
           <View style={styles.emptyChat}>
-            <Text style={styles.emptyChatEmoji}>💫</Text>
-            <Text style={styles.emptyChatText}>{t('startCosmicConversation')}</Text>
-            <Text style={styles.emptyChatSubtext}>{t('sayHelloTo', { name: conversationInfo?.other_user?.name || '' })}</Text>
+            <Text style={styles.emptyChatText}>{t('chatThreadEmptyTitle') || 'Start the conversation'}</Text>
+            <Text style={styles.emptyChatSubtext}>
+              {t('chatThreadEmptySubtitle', { name: conversationInfo?.other_user?.name || '' }) ||
+                t('sayHelloTo', { name: conversationInfo?.other_user?.name || '' })}
+            </Text>
 
             {/* Icebreaker suggestions */}
             <View style={styles.icebreakersContainer}>
@@ -448,15 +498,16 @@ export default function ChatScreen() {
                 <TouchableOpacity
                   key={idx}
                   style={styles.icebreakerPill}
-                  onPress={() => setNewMessage(icebreaker)}
+                  onPress={() => {
+                    setNewMessage(icebreaker);
+                    setHasPrefill(true);
+                  }}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.icebreakerText}>{icebreaker}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-
-            <Text style={styles.emptyChatHint}>{t('chatEmptyHint')}</Text>
           </View>
         ) : (
           <FlatList
@@ -473,14 +524,31 @@ export default function ChatScreen() {
           />
         )}
 
+        {/* Prefill helper bar — visible when a prompt/icebreaker is loaded */}
+        {hasPrefill && newMessage.length > 0 ? (
+          <View style={styles.prefillBar} testID="chat-prefill-helper">
+            <View style={styles.prefillChip}>
+              <Text style={styles.prefillChipText}>
+                {t('chatIcebreakerChip') || 'Icebreaker'}
+              </Text>
+            </View>
+            <Text style={styles.prefillHelperText} numberOfLines={2}>
+              {t('chatPrefillHelper') || 'Edit the prompt before sending.'}
+            </Text>
+          </View>
+        ) : null}
+
         {/* Input */}
         <View style={[styles.inputContainer, { paddingBottom: 12 + insets.bottom }]}>
           <TextInput
             style={styles.input}
-            placeholder={t('typeMessage')}
+            placeholder={t('chatComposerPlaceholder') || t('typeMessage') || 'Write something real…'}
             placeholderTextColor="#666"
             value={newMessage}
-            onChangeText={setNewMessage}
+            onChangeText={(text) => {
+              setNewMessage(text);
+              if (text.length === 0) setHasPrefill(false);
+            }}
             multiline
             maxLength={500}
             testID="chat-input"
@@ -508,12 +576,38 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+    paddingLeft: 56,
+  },
+  headerActionChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  headerActionText: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  headerAge: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.75)',
   },
   backButton: {
     padding: 8,
@@ -697,6 +791,36 @@ const styles = StyleSheet.create({
     color: '#888',
     fontSize: 14,
     marginTop: 12,
+  },
+  prefillBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(124, 108, 255, 0.06)',
+  },
+  prefillChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(124, 108, 255, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(124, 108, 255, 0.35)',
+  },
+  prefillChipText: {
+    color: '#d8d2ff',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+  prefillHelperText: {
+    flex: 1,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
+    fontStyle: 'italic',
   },
   inputContainer: {
     flexDirection: 'row',

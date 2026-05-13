@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FlatList, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ScreenStates';
@@ -12,14 +12,6 @@ import { supabase } from '../../services/supabase';
 import { listMyConversations, type ConversationListRow } from '../../services/conversations';
 import { formatCompactTime } from '../../utils/dateFormatting';
 import { DEFAULT_PROFILE_IMAGE, resolveProfileImage } from '../../utils/profileImages';
-
-const ICEBREAKER_KEYS = [
-  'icebreakerAstro1',
-  'icebreakerAstro2',
-  'icebreakerAstro3',
-  'icebreakerAstro4',
-  'icebreakerAstro5',
-];
 
 type Conversation = {
   conversation_id: string;
@@ -143,20 +135,11 @@ export default function ChatListScreen() {
     router.push(`/chat/${conversation.conversation_id}`);
   };
 
-  // Pick a stable icebreaker per conversation (based on conversation_id hash)
-  const getIcebreaker = useCallback((conversationId: string) => {
-    let hash = 0;
-    for (let i = 0; i < conversationId.length; i++) {
-      hash = ((hash << 5) - hash) + conversationId.charCodeAt(i);
-      hash |= 0;
-    }
-    const idx = Math.abs(hash) % ICEBREAKER_KEYS.length;
-    return t(ICEBREAKER_KEYS[idx]);
-  }, [t]);
-
   function ConversationRow({ conversation }: { conversation: Conversation }) {
     const isUnread = conversation.unread_count > 0;
     const isNewConversation = !conversation.last_message;
+    const sunSign = conversation.other_user.sun_sign;
+    const hasSign = sunSign && sunSign !== '?' && sunSign.trim().length > 0;
 
     return (
       <TouchableOpacity
@@ -171,19 +154,29 @@ export default function ChatListScreen() {
             </View>
           ) : null}
           {isNewConversation ? (
-            <View style={styles.newMatchDot} />
+            <View style={styles.newConversationDot} />
           ) : null}
         </View>
 
         <View style={styles.conversationContent}>
           <View style={styles.conversationHeader}>
-            <Text style={styles.conversationName}>{conversation.other_user.name}</Text>
+            <Text style={styles.conversationName} numberOfLines={1}>
+              {conversation.other_user.name}
+            </Text>
             {conversation.last_message ? (
               <Text style={styles.timestamp}>{formatTime(conversation.last_message.created_at)}</Text>
             ) : (
-              <Text style={styles.newMatchLabel}>{t('newConversation') || t('newMatch') || 'New'}</Text>
+              <Text style={styles.newConversationLabel}>
+                {t('chatRowNewLabel') || 'NEW'}
+              </Text>
             )}
           </View>
+
+          {hasSign ? (
+            <Text style={styles.signContext} numberOfLines={1}>
+              {sunSign}
+            </Text>
+          ) : null}
 
           {conversation.last_message ? (
             <Text
@@ -193,12 +186,9 @@ export default function ChatListScreen() {
               {conversation.last_message.content}
             </Text>
           ) : (
-            <View>
-              <Text style={styles.noMessages}>{'\u2728'} {t('sendFirstMessagePrompt') || 'Break the ice and say hello'}</Text>
-              <Text style={styles.icebreakerSuggestion} numberOfLines={1}>
-                {'\u{1F4A1}'} {getIcebreaker(conversation.conversation_id)}
-              </Text>
-            </View>
+            <Text style={styles.noMessages} numberOfLines={1}>
+              {t('chatRowSayHello') || 'Say hello \u2014 the first message is free.'}
+            </Text>
           )}
         </View>
       </TouchableOpacity>
@@ -244,17 +234,16 @@ export default function ChatListScreen() {
             ListHeaderComponent={
               <View style={styles.header} accessibilityRole="header">
                 <View style={{ height: insets.top + 8 }} />
-                <Text style={styles.headerTitle}>{t('messages')}</Text>
+                <Text style={styles.headerTitle}>{t('chatInboxTitle') || t('messages')}</Text>
               </View>
             }
           />
         ) : (
           <EmptyState
-            emoji={'\u{1F4AC}'}
-            title={t('emptyChatTitle') || t('noConversations')}
-            subtitle={t('emptyChatSubtitle') || t('startConversationFromDiscover') || 'Send the first message to anyone you discover.'}
-            hint={t('emptyChatHint')}
-            actionLabel={t('emptyChatCta') || t('discover') || 'Discover people'}
+            emoji=""
+            title={t('emptyChatTitle') || 'No conversations yet'}
+            subtitle={t('emptyChatSubtitle') || 'Start with a profile, a prompt, or an icebreaker. The first message is free.'}
+            actionLabel={t('emptyChatCta') || 'Discover people'}
             onAction={() => router.push('/(tabs)/discover')}
             testID="chat-empty"
           />
@@ -363,7 +352,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(124, 108, 255, 0.25)',
     backgroundColor: 'rgba(124, 108, 255, 0.06)',
   },
-  newMatchDot: {
+  newConversationDot: {
     position: 'absolute',
     bottom: 0,
     right: 0,
@@ -374,18 +363,17 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: AppTheme.colors.panel,
   },
-  newMatchLabel: {
+  newConversationLabel: {
     fontSize: 11,
     fontWeight: '700',
     color: '#22c55e',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  icebreakerSuggestion: {
+  signContext: {
     fontSize: 12,
     color: AppTheme.colors.textMuted,
-    fontStyle: 'italic',
-    marginTop: 4,
-    lineHeight: 16,
+    marginBottom: 2,
+    letterSpacing: 0.2,
   },
 });
