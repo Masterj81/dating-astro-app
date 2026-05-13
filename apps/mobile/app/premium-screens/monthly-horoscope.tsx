@@ -1,7 +1,15 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PremiumGate from '../../components/PremiumGate';
 import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
@@ -9,23 +17,127 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
 
-type WeekForecast = {
-  week: number;
-  dates: string;
-  theme: string;
-  energy: number;
-  advice: string;
+// V2 — formerly "Monthly Horoscope". Renamed editorially to
+// "Monthly Reflection" to match the just-shipped mobile Daily Reflection
+// V2 and the web Monthly Horoscope V2.
+//
+// The V1 surface fabricated predictive precision (★★★★☆ star ratings
+// across love/career/health/luck, "best days" numeric lists, week-by-week
+// energy bars, decorative emojis 💕 💼 🧘 ✨ 🌕 🌑 🍀 ☿️, and copy like
+// "Venus Enters Taurus" presented as personal forecast). That presented
+// invented monthly certainty as a personal reading and carried marketing
+// / legal risk under the App Store's astrology guidelines.
+//
+// V2 keeps:
+//   - The premiumCatalog key `monthlyHoroscope` (hub label)
+//   - The PremiumGate feature="monthly-horoscope"
+//   - The route `/premium-screens/monthly-horoscope`
+//   - Sun-sign lookup against the user's profile
+//
+// V2 removes:
+//   - Star ratings (★★★★☆) across all four categories
+//   - "Best days this month" numeric date lists
+//   - Week-by-week energy bars and predictive advice
+//   - "Important dates" with claimed planetary precision per day
+//   - All decorative emojis
+//   - Hardcoded "luck" / "manifestation" surfaces
+//
+// V2 ships, top to bottom (matches Daily Reflection V2 architecture):
+//   1. Hero — current month label + glyph + sign + qualitative monthly
+//      mood phrase (no %)
+//   2. Monthly lens — short reflective paragraph per sign, introspective
+//      not predictive
+//   3. Monthly rhythm — 4 axes (Love / Mind / Body / Social), each given
+//      a qualitative label (quiet / soft / steady / bright / strong)
+//      chosen deterministically from a (month + year + sign) seed.
+//      Dots only, no numeric %.
+//   4. Dating lens — one relational sentence for the month
+//   5. Conversation prompts — 2-3 questions to ask or use in chat/profile
+//   6. Reflect on — 1-2 reflection invitations for the month
+//   7. Disclaimer — "for reflection, not prediction"
+
+const SIGNS = [
+  'aries',
+  'taurus',
+  'gemini',
+  'cancer',
+  'leo',
+  'virgo',
+  'libra',
+  'scorpio',
+  'sagittarius',
+  'capricorn',
+  'aquarius',
+  'pisces',
+] as const;
+type SignKey = (typeof SIGNS)[number];
+
+const SIGN_GLYPHS: Record<SignKey, string> = {
+  aries: '♈',
+  taurus: '♉',
+  gemini: '♊',
+  cancer: '♋',
+  leo: '♌',
+  virgo: '♍',
+  libra: '♎',
+  scorpio: '♏',
+  sagittarius: '♐',
+  capricorn: '♑',
+  aquarius: '♒',
+  pisces: '♓',
 };
 
-type MonthlyAspect = {
-  date: string;
-  event: string;
-  emoji: string;
-  impact: 'positive' | 'challenging' | 'neutral';
-  description: string;
+const AXES = ['love', 'mind', 'body', 'social'] as const;
+type Axis = (typeof AXES)[number];
+
+const LEVELS = ['quiet', 'soft', 'steady', 'bright', 'strong'] as const;
+type Level = (typeof LEVELS)[number];
+
+// Different multipliers per axis so the four axes don't move in lockstep.
+// Co-primes with 5 (the level count) keep the distribution flat-ish across
+// the year rather than clustering on one label.
+const AXIS_SEED_OFFSET: Record<Axis, number> = {
+  love: 0,
+  mind: 3,
+  body: 7,
+  social: 11,
 };
 
-function MonthlyHoroscopeScreenContent() {
+function pickLevel(seed: number, axis: Axis): Level {
+  const value = (seed + AXIS_SEED_OFFSET[axis]) % LEVELS.length;
+  return LEVELS[(value + LEVELS.length) % LEVELS.length];
+}
+
+// Dot count per level — 1..5 — used by the qualitative meter. We render
+// the dot count visually but never expose it as a number to the user.
+const LEVEL_INTENSITY: Record<Level, number> = {
+  quiet: 1,
+  soft: 2,
+  steady: 3,
+  bright: 4,
+  strong: 5,
+};
+
+function EnergyDots({ level }: { level: Level }) {
+  const filled = LEVEL_INTENSITY[level];
+  return (
+    <View style={styles.dotsRow}>
+      {Array.from({ length: 5 }, (_, i) => (
+        <View
+          key={i}
+          style={[styles.dot, i < filled ? styles.dotFilled : styles.dotEmpty]}
+        />
+      ))}
+    </View>
+  );
+}
+
+function isKnownSign(value: string | null | undefined): value is SignKey {
+  if (!value) return false;
+  return (SIGNS as readonly string[]).includes(value.toLowerCase());
+}
+
+function MonthlyReflectionContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sunSign, setSunSign] = useState<string | null>(null);
@@ -36,12 +148,14 @@ function MonthlyHoroscopeScreenContent() {
   const today = useRef(new Date()).current;
 
   const getMonthName = (monthIndex: number) => {
-    const months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+    const months = [
+      'january', 'february', 'march', 'april', 'may', 'june',
+      'july', 'august', 'september', 'october', 'november', 'december',
+    ];
     return t(months[monthIndex]) || months[monthIndex];
   };
 
-  const getOrdinal = (day: number) => t('dayOrdinal', { day }) || `${day}th`;
-  const monthName = `${getMonthName(today.getMonth())} ${today.getFullYear()}`;
+  const monthLabel = `${getMonthName(today.getMonth())} ${today.getFullYear()}`;
 
   useEffect(() => {
     loadUserSign();
@@ -67,83 +181,36 @@ function MonthlyHoroscopeScreenContent() {
       }
     } catch (err) {
       console.error('Error loading user sign:', err);
-      setError(t('loadingError') || 'Could not load your monthly horoscope. Please try again.');
+      setError(t('monthlyHoroscopeV2LoadError') || 'Could not load your monthly reflection. Please try again.');
     }
 
     setLoading(false);
   };
 
-  const getWeeklyForecasts = (): WeekForecast[] => [
-    { week: 1, dates: '1-7', theme: t('weekTheme1'), energy: 4, advice: t('weekAdvice1') },
-    { week: 2, dates: '8-14', theme: t('weekTheme2'), energy: 5, advice: t('weekAdvice2') },
-    { week: 3, dates: '15-21', theme: t('weekTheme3'), energy: 3, advice: t('weekAdvice3') },
-    { week: 4, dates: '22-28/31', theme: t('weekTheme4'), energy: 4, advice: t('weekAdvice4') },
-  ];
+  const topInset = insets?.top ?? 0;
+  const bottomInset = insets?.bottom ?? 0;
 
-  const getMonthlyAspects = (): MonthlyAspect[] => [
-    {
-      date: getOrdinal(5),
-      event: t('venusEntersTaurus'),
-      emoji: '💕',
-      impact: 'positive',
-      description: t('venusEntersDesc'),
-    },
-    {
-      date: getOrdinal(12),
-      event: t('fullMoonEvent'),
-      emoji: '🌕',
-      impact: 'neutral',
-      description: t('fullMoonDesc'),
-    },
-    {
-      date: getOrdinal(18),
-      event: t('mercuryRetrograde'),
-      emoji: '☿️',
-      impact: 'challenging',
-      description: t('mercuryRetroDesc'),
-    },
-    {
-      date: getOrdinal(26),
-      event: t('newMoonEvent'),
-      emoji: '🌑',
-      impact: 'positive',
-      description: t('newMoonDesc'),
-    },
-  ];
+  const signKey: SignKey | null = isKnownSign(sunSign) ? (sunSign!.toLowerCase() as SignKey) : null;
+  const signLabel = signKey ? t(signKey) : null;
 
-  const getImpactColor = (impact: MonthlyAspect['impact']) => {
-    switch (impact) {
-      case 'positive':
-        return AppTheme.colors.success;
-      case 'challenging':
-        return AppTheme.colors.danger;
-      default:
-        return AppTheme.colors.warning;
-    }
-  };
+  // Seed for monthly rhythm — month + year + sign-length, then ×11.
+  // Deterministic per (sign × month × year). Only drives qualitative labels.
+  // Different multiplier than Daily Reflection (×7) so the two screens
+  // don't appear identically synchronized for the same sign.
+  const seed = (today.getMonth() + today.getFullYear() + (signKey?.length || 0)) * 11;
 
-  const renderEnergyBars = (energy: number) => (
-    <View style={styles.energyBars}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <View
-          key={i}
-          style={[
-            styles.energyBar,
-            { backgroundColor: i <= energy ? AppTheme.colors.cosmic : AppTheme.colors.border },
-          ]}
-        />
-      ))}
-    </View>
-  );
+  const axisLabel: Record<Axis, string> = useMemo(() => ({
+    love: t('monthlyHoroscopeV2AxisLove') || 'Love',
+    mind: t('monthlyHoroscopeV2AxisMind') || 'Mind',
+    body: t('monthlyHoroscopeV2AxisBody') || 'Body',
+    social: t('monthlyHoroscopeV2AxisSocial') || 'Social',
+  }), [t]);
 
   if (loading) {
     return (
       <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <View style={styles.centerFill}>
           <ActivityIndicator size="large" color={AppTheme.colors.coral} />
-          <Text style={{ color: AppTheme.colors.textMuted, marginTop: 12, fontSize: 14 }}>
-            {t('loadingHoroscope') || 'Consulting the cosmos...'}
-          </Text>
         </View>
       </LinearGradient>
     );
@@ -152,24 +219,66 @@ function MonthlyHoroscopeScreenContent() {
   if (error) {
     return (
       <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
-          <Text style={{ fontSize: 48, marginBottom: 16 }}>{'📅'}</Text>
-          <Text style={{ color: AppTheme.colors.textSecondary, fontSize: 16, textAlign: 'center', marginBottom: 20 }}>{error}</Text>
-          <TouchableOpacity
-            onPress={loadUserSign}
-            style={{ backgroundColor: AppTheme.colors.coral, paddingVertical: 14, paddingHorizontal: 28, borderRadius: 14, minHeight: 48 }}
-          >
-            <Text style={{ color: AppTheme.colors.textOnAccent, fontWeight: '600', fontSize: 16 }}>{t('tryAgain') || 'Try Again'}</Text>
+        <View style={styles.centerFillPadded}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={loadUserSign} style={styles.errorButton}>
+            <Text style={styles.errorButtonText}>{t('tryAgain') || 'Try Again'}</Text>
           </TouchableOpacity>
         </View>
       </LinearGradient>
     );
   }
 
-  const weeklyForecasts = getWeeklyForecasts();
-  const monthlyAspects = getMonthlyAspects();
-  const topInset = insets?.top ?? 0;
-  const bottomInset = insets?.bottom ?? 0;
+  const renderHeader = (
+    <View style={[styles.header, { paddingTop: 40 + topInset }]}>
+      <TouchableOpacity
+        style={[styles.backButton, { top: 30 + topInset }]}
+        onPress={() => router.back()}
+        accessibilityLabel={t('back') || 'Back'}
+      >
+        <Text style={styles.backText}>{'←'}</Text>
+      </TouchableOpacity>
+      <Text style={styles.title}>{t('monthlyHoroscopeV2Title') || 'Monthly Reflection'}</Text>
+      <Text style={styles.subtitle}>{monthLabel}</Text>
+    </View>
+  );
+
+  // Tier is gated by PremiumGate above. Here we only branch on whether
+  // we have a real sun sign on file. If we don't, we route the user to
+  // the profile so we can produce an accurate read next visit — we
+  // don't fabricate a sign.
+  if (!signKey) {
+    return (
+      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
+          showsVerticalScrollIndicator={false}
+        >
+          {renderHeader}
+          <View style={styles.noSignCard}>
+            <Text style={styles.heroEyebrow}>{monthLabel}</Text>
+            <Text style={styles.noSignTitle}>
+              {t('monthlyHoroscopeV2NoSignTitle') ||
+                'Add your birth details to personalize this month’s read'}
+            </Text>
+            <Text style={styles.noSignBody}>
+              {t('monthlyHoroscopeV2NoSignBody') ||
+                'Your Monthly Reflection tunes to your Sun sign. We don’t have one on file yet — open your profile to add a birth date and unlock a personal read.'}
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push('/onboarding/birth-info')}
+              style={styles.primaryButton}
+            >
+              <Text style={styles.primaryButtonText}>
+                {t('openProfile') || 'Open profile'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </LinearGradient>
+    );
+  }
 
   return (
     <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
@@ -178,124 +287,117 @@ function MonthlyHoroscopeScreenContent() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
         showsVerticalScrollIndicator={false}
       >
-      <View style={[styles.header, { paddingTop: 40 + topInset }]}>
-        <TouchableOpacity style={[styles.backButton, { top: 30 + topInset }]} onPress={() => router.back()}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>{t('monthlyHoroscope')}</Text>
-        <Text style={styles.date}>{monthName}</Text>
-      </View>
+        {renderHeader}
 
-
-        <View style={styles.signCard}>
-          <Text style={styles.signEmoji}>📅</Text>
-          <View style={styles.signInfo}>
-            <Text style={styles.signLabel}>{t('monthlyForecastFor')}</Text>
-            <Text style={styles.signName}>{sunSign ? t(sunSign.toLowerCase()) : t('unknown')}</Text>
+        {/* Block 1 — Hero. Month label, glyph, sign, qualitative monthly mood. */}
+        <View style={styles.heroCard}>
+          <Text style={styles.heroEyebrow}>
+            {t('monthlyHoroscopeV2MonthLabel') || 'This month'}
+          </Text>
+          <View style={styles.heroRow}>
+            <View style={styles.heroGlyphCircle}>
+              <Text style={styles.heroGlyph}>{SIGN_GLYPHS[signKey]}</Text>
+            </View>
+            <View style={styles.heroTextCol}>
+              <Text style={styles.heroSign}>{signLabel}</Text>
+              <Text style={styles.heroDate}>{monthLabel}</Text>
+            </View>
           </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('monthlyOverview')}</Text>
-          <View style={styles.overviewCard}>
-            <Text style={styles.overviewText}>
-              {t('monthlyOverviewContent', { sign: sunSign ? t(sunSign.toLowerCase()) : '' })}
+          <View style={styles.heroMoodBlock}>
+            <Text style={styles.heroMoodLabel}>
+              {t('monthlyHoroscopeV2Mood') || 'Monthly mood'}
+            </Text>
+            <Text style={styles.heroMoodText}>
+              {t(`monthlyHoroscopeMoodV2_${signKey}`)}
             </Text>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('keyThemes')}</Text>
-          <View style={styles.themesRow}>
-            {[
-              { emoji: '💫', label: t('themeTransformation') },
-              { emoji: '💕', label: t('themeRelationships') },
-              { emoji: '📈', label: t('themeGrowth') },
-            ].map((theme) => (
-              <View key={theme.label} style={styles.themeTag}>
-                <Text style={styles.themeEmoji}>{theme.emoji}</Text>
-                <Text style={styles.themeText}>{theme.label}</Text>
-              </View>
-            ))}
-          </View>
+        {/* Block 2 — Monthly lens. Short reflective paragraph. */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionEyebrow}>
+            {t('monthlyHoroscopeV2LensTitle') || 'Monthly lens'}
+          </Text>
+          <Text style={styles.sectionBody}>
+            {t(`monthlyHoroscopeLensV2_${signKey}`)}
+          </Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('weekByWeek')}</Text>
-          {weeklyForecasts.map((week) => (
-            <View key={week.week} style={styles.weekCard}>
-              <View style={styles.weekHeader}>
-                <View style={styles.weekBadge}>
-                  <Text style={styles.weekNumber}>
-                    {t('week')} {week.week}
-                  </Text>
+        {/* Block 3 — Monthly rhythm. Four axes × qualitative label + dot meter.
+            No percentages. Symbolic, not numeric. */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionEyebrow}>
+            {t('monthlyHoroscopeV2RhythmTitle') || 'Monthly rhythm'}
+          </Text>
+          <View style={styles.axesGrid}>
+            {AXES.map((axis) => {
+              const level = pickLevel(seed, axis);
+              return (
+                <View key={axis} style={styles.axisRow}>
+                  <View style={styles.axisTextCol}>
+                    <Text style={styles.axisLabel}>{axisLabel[axis]}</Text>
+                    <Text style={styles.axisLevel}>
+                      {t(`monthlyHoroscopeV2Level_${level}`)}
+                    </Text>
+                  </View>
+                  <EnergyDots level={level} />
                 </View>
-                <Text style={styles.weekDates}>{week.dates}</Text>
-                {renderEnergyBars(week.energy)}
-              </View>
-              <Text style={styles.weekTheme}>{week.theme}</Text>
-              <Text style={styles.weekAdvice}>{week.advice}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('importantDates')}</Text>
-          {monthlyAspects.map((aspect) => (
-            <View key={aspect.date} style={styles.aspectCard}>
-              <View style={styles.aspectHeader}>
-                <View style={[styles.aspectDateBadge, { borderColor: getImpactColor(aspect.impact) }]}>
-                  <Text style={[styles.aspectDate, { color: getImpactColor(aspect.impact) }]}>{aspect.date}</Text>
-                </View>
-                <Text style={styles.aspectEmoji}>{aspect.emoji}</Text>
-                <Text style={styles.aspectEvent}>{aspect.event}</Text>
-              </View>
-              <Text style={styles.aspectDescription}>{aspect.description}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('monthlyRatings')}</Text>
-          <View style={styles.ratingsGrid}>
-            {[
-              { emoji: '💕', label: t('loveRomance'), stars: '★★★★☆' },
-              { emoji: '💼', label: t('careerMoney'), stars: '★★★★★' },
-              { emoji: '🧘', label: t('healthWellness'), stars: '★★★☆☆' },
-              { emoji: '🍀', label: t('luck'), stars: '★★★★☆' },
-            ].map((rating) => (
-              <View key={rating.label} style={styles.ratingItem}>
-                <Text style={styles.ratingEmoji}>{rating.emoji}</Text>
-                <Text style={styles.ratingLabel}>{rating.label}</Text>
-                <Text style={styles.ratingStars}>{rating.stars}</Text>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </View>
 
-        <View style={styles.bestDaysCard}>
-          <Text style={styles.bestDaysTitle}>{t('bestDaysThisMonth')}</Text>
-          <View style={styles.bestDaysRow}>
-            {[
-              { emoji: '💕', label: t('forLove'), value: '14, 21, 28' },
-              { emoji: '💼', label: t('forCareer'), value: '3, 10, 24' },
-              { emoji: '✨', label: t('forManifestation'), value: '5, 19, 26' },
-            ].map((item) => (
-              <View key={item.label} style={styles.bestDay}>
-                <Text style={styles.bestDayEmoji}>{item.emoji}</Text>
-                <Text style={styles.bestDayLabel}>{item.label}</Text>
-                <Text style={styles.bestDayValue}>{item.value}</Text>
-              </View>
-            ))}
-          </View>
+        {/* Block 4 — Dating lens. One relational sentence for the month. */}
+        <View style={styles.datingCard}>
+          <Text style={styles.datingEyebrow}>
+            {t('monthlyHoroscopeV2DatingTitle') || 'Dating lens'}
+          </Text>
+          <Text style={styles.sectionBody}>
+            {t(`monthlyHoroscopeDatingLensV2_${signKey}`)}
+          </Text>
         </View>
 
-        <View style={styles.premiumBadge}>
-          <Text style={styles.premiumIcon}>✨</Text>
-          <Text style={styles.premiumText}>{t('premiumPlusFeature')}</Text>
+        {/* Block 5 — Conversation prompts. 2-3 questions to ask or use in
+            profile/chat. */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionEyebrow}>
+            {t('monthlyHoroscopeV2PromptsTitle') || 'Conversation prompts'}
+          </Text>
+          <Text style={styles.promptBody}>
+            {t(`monthlyHoroscopeConversationPromptsV2_${signKey}`)}
+          </Text>
+        </View>
+
+        {/* Block 6 — Reflect on. 1-2 reflection invitations for the month. */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionEyebrow}>
+            {t('monthlyHoroscopeV2ReflectTitle') || 'Reflect on'}
+          </Text>
+          <Text style={styles.sectionBodyMuted}>
+            {t(`monthlyHoroscopeReflectV2_${signKey}`)}
+          </Text>
+        </View>
+
+        {/* Block 7 — Disclaimer. Same pattern as Daily Reflection / Retrograde V2. */}
+        <View style={styles.disclaimerCard}>
+          <Text style={styles.disclaimerEyebrow}>
+            {t('monthlyHoroscopeV2DisclaimerTitle') || 'A reminder'}
+          </Text>
+          <Text style={styles.disclaimerBody}>
+            {t('monthlyHoroscopeV2DisclaimerBody') ||
+              'Use this as a monthly reflection tool, not a prediction.'}
+          </Text>
         </View>
       </ScrollView>
     </LinearGradient>
+  );
+}
+
+export default function MonthlyHoroscopeScreen() {
+  return (
+    <PremiumGate feature="monthly-horoscope">
+      <MonthlyReflectionContent />
+    </PremiumGate>
   );
 }
 
@@ -303,23 +405,54 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     ...(Platform.OS === 'web'
-      ? {
-          height: '100%' as any,
-          width: '100%' as any,
-        }
+      ? ({
+          height: '100%',
+          width: '100%',
+        } as any)
       : {}),
   },
   scrollView: {
     flex: 1,
     ...(Platform.OS === 'web'
-      ? {
-          height: 'calc(100vh - 120px)' as any,
-          overflowY: 'auto' as any,
-        }
+      ? ({
+          height: 'calc(100vh - 120px)',
+          overflowY: 'auto',
+        } as any)
       : {}),
   },
   scrollContent: {
     paddingBottom: 40,
+  },
+  centerFill: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  centerFillPadded: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorText: {
+    color: AppTheme.colors.textSecondary,
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 22,
+  },
+  errorButton: {
+    backgroundColor: AppTheme.colors.coral,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 14,
+    minHeight: 48,
+    justifyContent: 'center',
+  },
+  errorButtonText: {
+    color: AppTheme.colors.textOnAccent,
+    fontWeight: '600',
+    fontSize: 16,
   },
   header: {
     alignItems: 'center',
@@ -348,266 +481,229 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: AppTheme.colors.textPrimary,
     marginBottom: 4,
-  },
-  date: {
-    fontSize: 16,
-    color: AppTheme.colors.cosmic,
-    fontWeight: '600',
-  },
-  signCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(124, 108, 255, 0.14)',
-    marginHorizontal: 20,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(124, 108, 255, 0.22)',
-  },
-  signEmoji: {
-    fontSize: 40,
-    marginRight: 12,
-  },
-  signInfo: {
-    flex: 1,
-  },
-  signLabel: {
-    fontSize: 12,
-    color: AppTheme.colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  signName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: AppTheme.colors.textPrimary,
-  },
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: AppTheme.colors.textPrimary,
-    marginBottom: 12,
-  },
-  overviewCard: {
-    backgroundColor: AppTheme.colors.panel,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: AppTheme.colors.border,
-  },
-  overviewText: {
-    fontSize: 15,
-    color: AppTheme.colors.textSecondary,
-    lineHeight: 24,
-  },
-  themesRow: {
-    flexDirection: 'row',
-    gap: 10,
-    flexWrap: 'wrap',
-  },
-  themeTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(124, 108, 255, 0.16)',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    gap: 6,
-  },
-  themeEmoji: {
-    fontSize: 16,
-  },
-  themeText: {
-    fontSize: 13,
-    color: AppTheme.colors.textPrimary,
-  },
-  weekCard: {
-    backgroundColor: AppTheme.colors.panel,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: AppTheme.colors.border,
-  },
-  weekHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  weekBadge: {
-    backgroundColor: AppTheme.colors.cosmic,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    marginRight: 10,
-  },
-  weekNumber: {
-    color: AppTheme.colors.textOnAccent,
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  weekDates: {
-    color: AppTheme.colors.textSecondary,
-    fontSize: 14,
-    flex: 1,
-  },
-  energyBars: {
-    flexDirection: 'row',
-    gap: 3,
-  },
-  energyBar: {
-    width: 16,
-    height: 6,
-    borderRadius: 3,
-  },
-  weekTheme: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: AppTheme.colors.textPrimary,
-    marginBottom: 6,
-  },
-  weekAdvice: {
-    fontSize: 13,
-    color: AppTheme.colors.textSecondary,
-    lineHeight: 18,
-  },
-  aspectCard: {
-    backgroundColor: AppTheme.colors.panel,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: AppTheme.colors.border,
-  },
-  aspectHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  aspectDateBadge: {
-    borderWidth: 2,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    marginRight: 10,
-  },
-  aspectDate: {
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  aspectEmoji: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  aspectEvent: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    color: AppTheme.colors.textPrimary,
-  },
-  aspectDescription: {
-    fontSize: 13,
-    color: AppTheme.colors.textSecondary,
-    lineHeight: 18,
-  },
-  ratingsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  ratingItem: {
-    width: '47%',
-    backgroundColor: AppTheme.colors.panel,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: AppTheme.colors.border,
-  },
-  ratingEmoji: {
-    fontSize: 28,
-    marginBottom: 8,
-  },
-  ratingLabel: {
-    fontSize: 14,
-    color: AppTheme.colors.textPrimary,
-    marginBottom: 6,
-  },
-  ratingStars: {
-    fontSize: 14,
-    color: AppTheme.colors.warning,
-    letterSpacing: 2,
-  },
-  bestDaysCard: {
-    backgroundColor: 'rgba(124, 108, 255, 0.14)',
-    marginHorizontal: 20,
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(124, 108, 255, 0.22)',
-  },
-  bestDaysTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: AppTheme.colors.textPrimary,
     textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: AppTheme.colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  heroCard: {
+    marginHorizontal: 20,
     marginBottom: 16,
+    padding: 20,
+    borderRadius: 20,
+    backgroundColor: 'rgba(124, 108, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(124, 108, 255, 0.22)',
   },
-  bestDaysRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  bestDay: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  bestDayEmoji: {
-    fontSize: 24,
-    marginBottom: 6,
-  },
-  bestDayLabel: {
+  heroEyebrow: {
     fontSize: 11,
     color: AppTheme.colors.textMuted,
-    marginBottom: 4,
-    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 12,
   },
-  bestDayValue: {
-    fontSize: 12,
-    color: AppTheme.colors.textPrimary,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  premiumBadge: {
+  heroRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 14,
+    flexWrap: 'wrap',
+  },
+  heroGlyphCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(232,93,117,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(232,93,117,0.22)',
     justifyContent: 'center',
-    backgroundColor: 'rgba(124, 108, 255, 0.16)',
-    marginHorizontal: 60,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    gap: 8,
+    alignItems: 'center',
   },
-  premiumIcon: {
+  heroGlyph: {
+    fontSize: 26,
+    color: AppTheme.colors.textPrimary,
+  },
+  heroTextCol: {
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  heroSign: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: AppTheme.colors.textPrimary,
+  },
+  heroDate: {
+    fontSize: 13,
+    color: AppTheme.colors.textMuted,
+    marginTop: 2,
+  },
+  heroMoodBlock: {
+    marginTop: 18,
+  },
+  heroMoodLabel: {
+    fontSize: 10,
+    color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 6,
+  },
+  heroMoodText: {
     fontSize: 16,
+    color: AppTheme.colors.textPrimary,
+    lineHeight: 22,
   },
-  premiumText: {
+  sectionCard: {
+    marginHorizontal: 20,
+    marginBottom: 14,
+    padding: 18,
+    borderRadius: 18,
+    backgroundColor: AppTheme.colors.panel,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
+  },
+  sectionEyebrow: {
+    fontSize: 11,
+    color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 10,
+  },
+  sectionBody: {
+    fontSize: 14.5,
+    color: AppTheme.colors.textPrimary,
+    lineHeight: 22,
+  },
+  sectionBodyMuted: {
+    fontSize: 14,
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 22,
+  },
+  promptBody: {
+    fontSize: 15,
+    color: AppTheme.colors.textPrimary,
+    lineHeight: 23,
+  },
+  axesGrid: {
+    marginTop: 4,
+    gap: 10,
+  },
+  axisRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
+    gap: 12,
+  },
+  axisTextCol: {
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  axisLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: AppTheme.colors.textPrimary,
+  },
+  axisLevel: {
     fontSize: 12,
-    color: AppTheme.colors.cosmic,
+    color: AppTheme.colors.textMuted,
+    marginTop: 2,
+    textTransform: 'lowercase',
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  dotFilled: {
+    backgroundColor: AppTheme.colors.coral,
+  },
+  dotEmpty: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  datingCard: {
+    marginHorizontal: 20,
+    marginBottom: 14,
+    padding: 18,
+    borderRadius: 18,
+    backgroundColor: 'rgba(232, 93, 117, 0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(232, 93, 117, 0.24)',
+  },
+  datingEyebrow: {
+    fontSize: 11,
+    color: '#FFB7C7',
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 10,
     fontWeight: '600',
   },
+  disclaimerCard: {
+    marginHorizontal: 20,
+    marginTop: 6,
+    marginBottom: 24,
+    padding: 16,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  disclaimerEyebrow: {
+    fontSize: 11,
+    color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 6,
+  },
+  disclaimerBody: {
+    fontSize: 13,
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 20,
+  },
+  noSignCard: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    padding: 22,
+    borderRadius: 20,
+    backgroundColor: AppTheme.colors.panel,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
+  },
+  noSignTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: AppTheme.colors.textPrimary,
+    marginBottom: 10,
+    lineHeight: 26,
+  },
+  noSignBody: {
+    fontSize: 14,
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 22,
+    marginBottom: 18,
+  },
+  primaryButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: AppTheme.colors.coral,
+    paddingVertical: 12,
+    paddingHorizontal: 22,
+    borderRadius: 999,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  primaryButtonText: {
+    color: AppTheme.colors.textOnAccent,
+    fontWeight: '600',
+    fontSize: 14,
+  },
 });
-
-export default function MonthlyHoroscopeScreen() {
-  return (
-    <PremiumGate feature="monthly-horoscope">
-      <MonthlyHoroscopeScreenContent />
-    </PremiumGate>
-  );
-}
