@@ -82,7 +82,7 @@ Validation:
   to the live preference key (read + write) and the `"newMatches"`
   i18n label across `apps/mobile/locales/*.json`.
 
-## Phase D pass-1 — shipped (2026-05-13)
+## Phase D pass-1 — shipped + verified in prod (2026-05-13)
 
 `supabase/migrations/20260513000005_phase_d_pass1_drop_match_id_messages_rls.sql`
 
@@ -94,7 +94,18 @@ cleanup of the 5 unsalvageable orphan rows returned:
 | `SELECT count(*) FROM public.messages WHERE conversation_id IS NULL;` | **0** |
 | `SELECT count(*) FROM public.messages WHERE match_id IS NOT NULL AND conversation_id IS NULL;` | **0** |
 
-Both gating conditions met → pass-1 applied. The migration drops:
+Both gating conditions met → pass-1 applied.
+
+Post-deployment validation against production (2026-05-13):
+
+| Check | Result |
+|-------|--------|
+| **A.** RLS policies on `messages` still referencing `match_id` | **0 rows** |
+| **B.** `"Users can view messages in their conversations"` USING clause | Only references `public.conversations` (no `matches` OR-branch) |
+| **C.** Chat-read smoke check, both participants | Confirmed |
+
+Pass-1 is fully verified. Soak the change for one release cycle
+before scheduling pass-2. The migration drops:
 
 - `"Users can view match messages"` — legacy single-branch SELECT
   policy with no conversation_id path. Removed entirely.
