@@ -1233,5 +1233,10 @@
   "tag_music_rock": "ロック",
   "tag_music_lofi": "ローファイ",
   "lookingForText": "求めているもの",
-  "lookingForTextPlaceholder": "こんな人…"
+  "lookingForTextPlaceholder": "こんな人…",
+  "synastryV2Title": "シナストリーの振り返り",
+  "synastryV2Subtitle": "予測ではなく、対話の地図。",
+  "synastryV2HeroDisclaimer": "対話の出発点であり、判決ではありません。",
+  "synastryV2DisclaimerTitle": "ひとこと",
+  "synastryV2DisclaimerBody": "予測ではなく、対話の地図。"
 }

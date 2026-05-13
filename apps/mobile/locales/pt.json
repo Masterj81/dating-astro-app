@@ -1233,5 +1233,10 @@
   "tag_music_rock": "Rock",
   "tag_music_lofi": "Lo-fi",
   "lookingForText": "O que procuro",
-  "lookingForTextPlaceholder": "Alguém que…"
+  "lookingForTextPlaceholder": "Alguém que…",
+  "synastryV2Title": "Reflexão de sinastria",
+  "synastryV2Subtitle": "Um mapa de conversa, não uma previsão.",
+  "synastryV2HeroDisclaimer": "Um ponto de partida para conversar, não um veredito.",
+  "synastryV2DisclaimerTitle": "Um lembrete",
+  "synastryV2DisclaimerBody": "Um mapa de conversa, não uma previsão."
 }

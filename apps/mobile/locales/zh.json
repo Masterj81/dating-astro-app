@@ -1233,5 +1233,10 @@
   "tag_music_rock": "摇滚",
   "tag_music_lofi": "Lo-fi",
   "lookingForText": "我在找的",
-  "lookingForTextPlaceholder": "一个…的人"
+  "lookingForTextPlaceholder": "一个…的人",
+  "synastryV2Title": "合盘反思",
+  "synastryV2Subtitle": "一张对话地图,而非预言。",
+  "synastryV2HeroDisclaimer": "一段对话的起点,不是定论。",
+  "synastryV2DisclaimerTitle": "一点提醒",
+  "synastryV2DisclaimerBody": "一张对话地图,而非预言。"
 }

@@ -1233,5 +1233,10 @@
   "tag_music_rock": "روك",
   "tag_music_lofi": "لو-فاي",
   "lookingForText": "ما أبحث عنه",
-  "lookingForTextPlaceholder": "شخص…"
+  "lookingForTextPlaceholder": "شخص…",
+  "synastryV2Title": "تأمل التوافق",
+  "synastryV2Subtitle": "خريطة حوار، وليست تنبؤًا.",
+  "synastryV2HeroDisclaimer": "نقطة انطلاق للحوار، وليست حكمًا نهائيًا.",
+  "synastryV2DisclaimerTitle": "تذكير",
+  "synastryV2DisclaimerBody": "خريطة حوار، وليست تنبؤًا."
 }

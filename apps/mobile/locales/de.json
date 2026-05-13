@@ -1233,5 +1233,10 @@
   "tag_music_rock": "Rock",
   "tag_music_lofi": "Lo-fi",
   "lookingForText": "Was ich suche",
-  "lookingForTextPlaceholder": "Jemand, der…"
+  "lookingForTextPlaceholder": "Jemand, der…",
+  "synastryV2Title": "Synastrie-Reflexion",
+  "synastryV2Subtitle": "Eine Gesprächskarte, keine Vorhersage.",
+  "synastryV2HeroDisclaimer": "Ein Ausgangspunkt für ein Gespräch, kein Urteil.",
+  "synastryV2DisclaimerTitle": "Eine Erinnerung",
+  "synastryV2DisclaimerBody": "Eine Gesprächskarte, keine Vorhersage."
 }
