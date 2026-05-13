@@ -38,11 +38,6 @@ export default async function InvitePage({ params }: InvitePageProps) {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md text-center">
-        {/* Icon */}
-        <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-accent/15 text-5xl">
-          🎁
-        </div>
-
         {/* Title */}
         <h1 className="text-3xl font-bold text-white">
           {t("youveBeenInvited")}
@@ -101,7 +96,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
 
         {/* Footer */}
         <p className="mt-10 text-xs text-text-dim">
-          {t("footer")} ✨
+          {t("footer")}
         </p>
       </div>
     </div>

@@ -332,7 +332,7 @@ export function DiscoverOverview() {
               href={compatibilityHref}
               className="absolute left-5 top-5 flex items-center gap-2 rounded-full border border-purple/30 bg-[rgba(124,108,255,0.30)] px-4 py-2 text-sm font-semibold text-white backdrop-blur-md transition-colors hover:bg-[rgba(124,108,255,0.40)]"
             >
-              ✨ {t("findYourCompatibility")}
+              {t("findYourCompatibility")}
             </Link>
             <div className="absolute inset-x-0 bottom-0 p-6">
               <h2 className="text-3xl font-semibold text-white">
@@ -462,8 +462,7 @@ export function DiscoverOverview() {
                   and the in-card pitch would be noise for them. */}
               {isFreeTier ? (
                 <div className="mt-6 rounded-2xl border border-purple/25 bg-[linear-gradient(135deg,rgba(124,108,255,0.10),rgba(232,93,117,0.06))] p-5">
-                  <p className="text-2xl" aria-hidden="true">✨</p>
-                  <h4 className="mt-2 text-base font-semibold text-white">
+                  <h4 className="text-base font-semibold text-white">
                     {t("findYourCompatibility")}
                   </h4>
                   <p className="mt-1 text-sm leading-6 text-text-muted">
@@ -519,13 +518,13 @@ export function DiscoverOverview() {
                 href={compatibilityHref}
                 className="group flex items-center gap-2 rounded-full border border-purple/30 bg-purple/10 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-purple/20"
               >
-                ✨ {t("findYourCompatibility")}
+                {t("findYourCompatibility")}
               </Link>
               <button
                 type="button"
                 onClick={() => {
                   if (!currentProfile) return;
-                  const text = `Discovering real connections on AstroDating 🪐\nhttps://astrodatingapp.com`;
+                  const text = `Discovering real connections on AstroDating\nhttps://astrodatingapp.com`;
                   if (navigator.share) {
                     navigator.share({ text, title: t("shareTitle") }).catch(() => {});
                   } else if (navigator.clipboard) {

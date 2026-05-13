@@ -29,7 +29,6 @@ export default function DownloadPage() {
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="text-center">
-        <p className="text-4xl">🪐</p>
         <p className="mt-4 text-lg text-white">Redirecting to AstroDating...</p>
         <p className="mt-2 text-sm text-text-muted">
           Not redirected?{" "}

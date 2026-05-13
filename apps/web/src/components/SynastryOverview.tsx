@@ -334,7 +334,6 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
   if (state.tier === "free") {
     return (
       <EmptyState
-        icon="✨"
         eyebrow={t("natalChartNav")}
         title={t("synastryLockedTitle")}
         body={t("synastryLockedBody")}
