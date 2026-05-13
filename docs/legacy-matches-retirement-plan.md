@@ -192,6 +192,98 @@ commit;
 Pass-2 (column / FK / index drop) and Phase E (table drop) remain
 separate, future-pass concerns — see the sketches below.
 
+## Phase E preamble — app-side blockingService cleanup (2026-05-13)
+
+Mobile `apps/mobile/services/blockingService.ts` was the last app-side
+caller of the `matches` table. Cleaned up in commit `49b11c3`:
+
+- `unmatchUser()` deleted. Zero live callers verified — every
+  `BlockReportMenu` call site already passed `showUnmatch={false}`.
+- `blockUser()` no longer issues `UPDATE matches SET status='blocked'`.
+  The canonical block is the `blocked_users` insert; the
+  conversation-first message INSERT RLS policy already enforces the
+  block via `blocked_users`, not via `matches.status`.
+- `BlockReportMenu` API simplified: `matchId` / `onUnmatch` /
+  `showUnmatch` props, `handleUnmatch`, and the "Unmatch" menu item
+  are all removed.
+
+After this commit, `apps/` does NOT reference the `matches` table at
+all. Phase E (drop table `matches`) no longer needs an app-code
+change.
+
+## Phase E preamble — Supabase zombie trigger cleanup (2026-05-13)
+
+`supabase/migrations/20260513000006_phase_e_preamble_drop_zombie_match_triggers.sql`
+
+Drops four zombie triggers surfaced by the Phase D pass-1 prod audit:
+
+- `trigger_notify_new_match_on_activate` on `matches` (AFTER UPDATE)
+- `trigger_send_match_email_on_activate` on `matches` (AFTER UPDATE)
+- `trigger_activate_requested_match_on_reply` on `messages` (BEFORE INSERT)
+- Defensively re-drops the Phase A items in case prod is in a
+  partial-deploy state against `20260513000002`:
+  - `trigger_notify_new_match` on `matches`
+  - `trigger_send_match_email` on `matches`
+  - `trigger_check_match` on `swipes`
+
+Origin: the abandoned `message_requests` system (migrations
+`20260427000041_message_requests.sql`, `_42`, `_43`), of which only
+the RPC drop was captured in
+`20260428000003_drop_message_requests_artifacts.sql`. The remaining
+triggers were left in `pg_catalog`. Phase A retired their INSERT
+cousins; this migration retires the UPDATE / BEFORE variants.
+
+Kept intentionally for Phase E alongside the table drop:
+
+- `trigger_update_match_message` + `update_match_last_message()` —
+  no-op for new conversation-first messages (NEW.match_id IS NULL).
+  Tied to `matches.last_message_at`, cleaner to retire with the table.
+- `trigger_swipe_rate_limit` on `swipes` — defensive guard until the
+  `swipes` table itself is retired.
+
+Backing functions for the dropped triggers were NOT removed in this
+pass. Their canonical names are not in tracked migration history
+(created via Supabase Studio for `message_requests`); orphan plpgsql
+functions with no callers are harmless. A future audit can identify
+and DROP them.
+
+### Post-deployment validation (run after applying the preamble)
+
+```sql
+-- D. Confirm zero remaining zombie triggers.
+SELECT event_object_table, trigger_name, action_timing, event_manipulation
+FROM information_schema.triggers
+WHERE event_object_table IN ('swipes', 'matches', 'messages')
+ORDER BY event_object_table, trigger_name;
+-- Expected on matches: 0 rows (Phase E preamble cleared them).
+-- Expected on swipes:  only trigger_swipe_rate_limit.
+-- Expected on messages: trigger_message_rate_limit,
+--                       trigger_notify_new_message,
+--                       trigger_update_conversation_last_message,
+--                       trigger_update_match_message (kept for Phase E).
+```
+
+### Rollback (Phase E preamble)
+
+If a dropped trigger turns out to have been doing useful work for an
+undocumented flow:
+
+```sql
+-- Restore one or more zombie triggers (function bodies, if still in
+-- pg_proc, can be reused; otherwise the CREATE TRIGGER call will fail
+-- and surface the missing function name).
+CREATE TRIGGER trigger_notify_new_match_on_activate
+  AFTER UPDATE ON public.matches
+  FOR EACH ROW
+  EXECUTE FUNCTION public.notify_new_match_on_activate();
+-- Repeat for trigger_send_match_email_on_activate /
+-- trigger_activate_requested_match_on_reply as needed.
+```
+
+If a function was already orphaned, recreate it from the historical
+`message_requests` migrations (re-applied via the Supabase Studio
+SQL editor) before re-creating the trigger.
+
 ## Phase D pass-2 — deferred: column / FK / index drop
 
 Cannot ship until pass-1 has soaked in production for one release
@@ -399,7 +491,7 @@ is a concrete reason (cleanup audit, lint pass) to remove it.
    whether to delete or accept silent unreachability. Re-check
    Query 2 before scheduling pass-1.
 
-## Deployment order (Phase D pass-1, this commit)
+## Deployment order (Phase D pass-1, prior commit)
 
 Prereq: Phase D pre-step migration applied to prod AND post-cleanup
 Query 2 returns 0. (Both confirmed on 2026-05-13.)
@@ -419,3 +511,30 @@ Query 2 returns 0. (Both confirmed on 2026-05-13.)
 5. If a regression appears, apply the rollback SQL in the
    "Rollback (pass-1)" section. Otherwise schedule Phase D pass-2
    (column / FK / index drop) after the soak period.
+
+## Deployment order (Phase E preamble, this commit)
+
+The mobile blocking cleanup ships purely via the app store / EAS
+release path — there is nothing to apply against the DB for it. The
+Supabase trigger cleanup migration applies independently and can ship
+on either staging-first cadence.
+
+App-side (commit `49b11c3`):
+1. The TS change went out with the master push; CI ran clean. Bundled
+   into the next mobile release. No staged DB action required.
+
+Supabase trigger migration:
+1. Apply `20260513000006_phase_e_preamble_drop_zombie_match_triggers.sql`
+   against staging.
+2. Verify on staging with Query D (above) — `matches` table should
+   list zero triggers, `swipes` only `trigger_swipe_rate_limit`,
+   `messages` the four expected entries.
+3. Smoke test on staging:
+   - Send a chat message — INSERT path unchanged
+     (`trigger_update_conversation_last_message` is the live
+     conversation-first hook).
+   - Block / unblock a user from a chat header — `blocked_users` row
+     written / removed; no longer touches `matches`.
+4. Promote to production. Re-run Query D.
+5. If a regression appears (none expected), apply the rollback SQL
+   in the "Rollback (Phase E preamble)" section.
