@@ -9,6 +9,7 @@ import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-util
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
 import { DashboardGridSkeleton } from "@/components/Skeleton";
+import { PremiumGlyph } from "@/components/PremiumGlyph";
 
 type DiscoverPreviewProfile = {
   id: string;
@@ -340,8 +341,8 @@ export function DashboardOverview() {
           href="/app/premium/celestial/daily-horoscope"
           className="group flex items-center gap-5 rounded-2xl border border-[rgba(124,108,255,0.2)] bg-[linear-gradient(135deg,rgba(124,108,255,0.1),rgba(77,159,255,0.06))] px-6 py-4 transition-all hover:-translate-y-0.5 hover:border-[rgba(124,108,255,0.35)] hover:shadow-[0_12px_30px_rgba(124,108,255,0.12)]"
         >
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[rgba(124,108,255,0.15)] text-2xl">
-            🔮
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[rgba(124,108,255,0.15)] text-[#c4bcff]">
+            <PremiumGlyph name="daily" className="h-6 w-6" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs uppercase tracking-[0.22em] text-[#b4a8ff]">
@@ -362,8 +363,8 @@ export function DashboardOverview() {
           href="/app/plans"
           className="group flex items-center gap-5 rounded-2xl border border-[rgba(232,93,117,0.18)] bg-[linear-gradient(135deg,rgba(232,93,117,0.08),rgba(124,108,255,0.06))] px-6 py-4 transition-all hover:-translate-y-0.5 hover:border-[rgba(232,93,117,0.3)] hover:shadow-[0_12px_30px_rgba(232,93,117,0.1)]"
         >
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent/12 text-2xl">
-            ✨
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent/12 text-accent">
+            <PremiumGlyph name="natal" className="h-6 w-6" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-white">{t("dashboardFreeUpsellTitle")}</p>
@@ -410,7 +411,7 @@ export function DashboardOverview() {
                 {card.premiumNote && (
                   <div className="mt-3">
                     <span className="inline-flex items-center rounded-full border border-white/12 bg-black/20 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white/70">
-                      ✨ {card.premiumNote}
+                      {card.premiumNote}
                     </span>
                   </div>
                 )}
