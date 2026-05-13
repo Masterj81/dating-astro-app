@@ -1,8 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Platform,
   ScrollView,
   StyleSheet,
@@ -12,412 +11,209 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PremiumGate from '../../components/PremiumGate';
+import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
-import {
-  calculateDateScores,
-  DateScore,
-  formatHourRange,
-  getTop5Dates,
-} from '../../services/datePlannerService';
-import { BirthChart } from '../../services/astrologyService';
-import { calculateNatalChart } from '../../services/astrology';
-import { supabase } from '../../services/supabase';
-import { useAuth } from '../../contexts/AuthContext';
 
-const WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+// V2 — formerly "Astro Date Planner". Renamed editorially to
+// "Date Reflection". The V1 surface scored 30 future calendar dates
+// 0-100% based on derived ephemeris and surfaced a "Top 5 Best Dates"
+// carousel with a "RECOMMENDED" badge on hour ranges like
+// "11:00 AM - 1:30 PM". Framing a precise date and hour as best for a
+// real-world meeting between two people verges on prescriptive
+// relationship advice and presents fabricated certainty.
+//
+// V2 keeps:
+//   - The Cosmic gate (PremiumGate feature="date-planner")
+//   - The route `/premium-screens/date-planner` (deep links survive)
+//   - The optional `matchId` param (kept; used only to render a name
+//     in the heading if we ever wire that back up — for now, ignored
+//     to avoid the heavy chart fetch that powered the V1 scoring)
+//
+// V2 removes:
+//   - The "Top 5 Best Dates" carousel
+//   - Per-date overall scores (94%, 87%, etc.)
+//   - "Best hours" with "RECOMMENDED" badge
+//   - The 30-day score calendar
+//   - All ephemeris fetches (no edge function call, no own-profile RPC)
+//
+// V2 ships instead: a one-line framing ("Prepare for a better
+// conversation, not a perfect outcome."), an intention selector
+// (single-select chip group), a small bank of conversation prompts
+// keyed to the chosen intention, three low-pressure date ideas, a
+// consent and boundaries note, and a soft disclaimer.
 
-function getScoreColor(score: number): string {
-  if (score >= 85) return '#4ade80';
-  if (score >= 75) return '#a3e635';
-  if (score >= 65) return '#facc15';
-  if (score >= 55) return '#fb923c';
-  return '#f87171';
-}
+type Intention =
+  | 'curious'
+  | 'connect'
+  | 'know'
+  | 'fun';
 
-function getScoreEmoji(score: number): string {
-  if (score >= 85) return '✨';
-  if (score >= 75) return '⭐';
-  if (score >= 65) return '👍';
-  if (score >= 55) return '👌';
-  return '😐';
-}
+const INTENTIONS: { key: Intention; labelKey: string }[] = [
+  { key: 'curious', labelKey: 'dateReflectionIntentionCurious' },
+  { key: 'connect', labelKey: 'dateReflectionIntentionConnect' },
+  { key: 'know', labelKey: 'dateReflectionIntentionKnow' },
+  { key: 'fun', labelKey: 'dateReflectionIntentionFun' },
+];
 
-function DateCard({ dateScore, isSelected, onPress }: {
-  dateScore: DateScore;
-  isSelected: boolean;
-  onPress: () => void;
-}) {
+const PROMPT_KEYS_BY_INTENTION: Record<Intention, string[]> = {
+  curious: [
+    'dateReflectionPromptCurious1',
+    'dateReflectionPromptCurious2',
+    'dateReflectionPromptCurious3',
+  ],
+  connect: [
+    'dateReflectionPromptConnect1',
+    'dateReflectionPromptConnect2',
+    'dateReflectionPromptConnect3',
+  ],
+  know: [
+    'dateReflectionPromptKnow1',
+    'dateReflectionPromptKnow2',
+    'dateReflectionPromptKnow3',
+  ],
+  fun: [
+    'dateReflectionPromptFun1',
+    'dateReflectionPromptFun2',
+    'dateReflectionPromptFun3',
+  ],
+};
+
+const IDEA_KEYS = [
+  { titleKey: 'dateReflectionIdea1Title', bodyKey: 'dateReflectionIdea1Body' },
+  { titleKey: 'dateReflectionIdea2Title', bodyKey: 'dateReflectionIdea2Body' },
+  { titleKey: 'dateReflectionIdea3Title', bodyKey: 'dateReflectionIdea3Body' },
+];
+
+function DateReflectionContent() {
   const { t } = useLanguage();
-  const date = dateScore.date;
-  const dayNum = date.getDate();
-  const weekday = WEEKDAYS[date.getDay()];
-
-  return (
-    <TouchableOpacity
-      style={[
-        styles.dateCard,
-        isSelected && styles.dateCardSelected,
-        { borderLeftColor: getScoreColor(dateScore.overallScore) },
-      ]}
-      onPress={onPress}
-    >
-      <View style={styles.dateInfo}>
-        <Text style={styles.dateDay}>{t(weekday)}</Text>
-        <Text style={styles.dateNum}>{dayNum}</Text>
-      </View>
-      <View style={styles.dateScore}>
-        <Text style={styles.scoreEmoji}>{getScoreEmoji(dateScore.overallScore)}</Text>
-        <Text style={[styles.scoreValue, { color: getScoreColor(dateScore.overallScore) }]}>
-          {dateScore.overallScore}%
-        </Text>
-      </View>
-      <View style={styles.dateMoon}>
-        <Text style={styles.moonSign}>🌙 {dateScore.moonSign}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-function DateDetailView({ dateScore }: { dateScore: DateScore }) {
-  const { t } = useLanguage();
-  const date = dateScore.date;
-
-  const formatDate = (d: Date) => {
-    const months = ['january', 'february', 'march', 'april', 'may', 'june',
-      'july', 'august', 'september', 'october', 'november', 'december'];
-    const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    return `${t(weekdays[d.getDay()])}, ${t(months[d.getMonth()])} ${d.getDate()}`;
-  };
-
-  return (
-    <View style={styles.detailContainer}>
-      <View style={styles.detailHeader}>
-        <Text style={styles.detailDate}>{formatDate(date)}</Text>
-        <View style={[styles.detailScoreBadge, { backgroundColor: getScoreColor(dateScore.overallScore) }]}>
-          <Text style={styles.detailScoreText}>{dateScore.overallScore}%</Text>
-        </View>
-      </View>
-
-      <Text style={styles.detailDescription}>
-        {t(dateScore.description)}
-      </Text>
-
-      {/* Score Breakdown */}
-      <View style={styles.breakdownSection}>
-        <Text style={styles.sectionTitle}>{t('scoreBreakdown')}</Text>
-        <View style={styles.breakdownRow}>
-          <Text style={styles.breakdownLabel}>{t('moonPhase')}</Text>
-          <Text style={styles.breakdownValue}>{dateScore.moonPhaseScore}%</Text>
-        </View>
-        <View style={styles.breakdownRow}>
-          <Text style={styles.breakdownLabel}>{t('venus')}</Text>
-          <Text style={styles.breakdownValue}>{dateScore.venusScore}%</Text>
-        </View>
-        <View style={styles.breakdownRow}>
-          <Text style={styles.breakdownLabel}>{t('mars')}</Text>
-          <Text style={styles.breakdownValue}>{dateScore.marsScore}%</Text>
-        </View>
-      </View>
-
-      {/* Cosmic Info */}
-      <View style={styles.cosmicSection}>
-        <View style={styles.cosmicItem}>
-          <Text style={styles.cosmicEmoji}>🌙</Text>
-          <View>
-            <Text style={styles.cosmicLabel}>{t('moonIn')}</Text>
-            <Text style={styles.cosmicValue}>{dateScore.moonSign}</Text>
-          </View>
-        </View>
-        <View style={styles.cosmicItem}>
-          <Text style={styles.cosmicEmoji}>💕</Text>
-          <View>
-            <Text style={styles.cosmicLabel}>{t('venusIn')}</Text>
-            <Text style={styles.cosmicValue}>{dateScore.venusSign}</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Best Hours */}
-      <View style={styles.hoursSection}>
-        <Text style={styles.sectionTitle}>{t('bestHours')}</Text>
-        {dateScore.bestHours.map((hour, index) => (
-          <View key={index} style={styles.hourRow}>
-            <Text style={styles.hourIcon}>⏰</Text>
-            <Text style={styles.hourText}>
-              {formatHourRange(hour.start, hour.end)}
-            </Text>
-            {index === 0 && (
-              <View style={styles.recommendedBadge}>
-                <Text style={styles.recommendedText}>{t('recommended')}</Text>
-              </View>
-            )}
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function DatePlannerContent() {
-  const { t } = useLanguage();
-  const { user } = useAuth();
-  const { matchId } = useLocalSearchParams<{ matchId?: string }>();
   const insets = useSafeAreaInsets();
+  // `matchId` kept for forward-compat (deep links, share targets). Not
+  // used in the V2 layout — name lookup is intentionally removed so we
+  // don't fetch a partner's chart only to render a heading.
+  useLocalSearchParams<{ matchId?: string }>();
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [dateScores, setDateScores] = useState<DateScore[]>([]);
-  const [selectedDate, setSelectedDate] = useState<DateScore | null>(null);
-  const [matchName, setMatchName] = useState<string | null>(null);
+  const [intention, setIntention] = useState<Intention>('curious');
 
-  useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
-  }, [user, matchId]);
+  const prompts = useMemo(
+    () => PROMPT_KEYS_BY_INTENTION[intention],
+    [intention]
+  );
 
-  const loadData = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-
-    try {
-      // Phase 3-B: own profile via SECURITY DEFINER RPC; match chart via
-      // edge function (server computes the chart, never returns birth_*).
-      const { data: ownRows, error: ownErr } = await supabase.rpc('get_my_full_profile');
-      if (ownErr) throw ownErr;
-      const userProfile = Array.isArray(ownRows) ? ownRows[0] : null;
-
-      let userChart: BirthChart | undefined;
-      if (userProfile?.birth_date) {
-        const [year, month, day] = String(userProfile.birth_date).split('-').map(Number);
-        const birthDate = new Date(year, month - 1, day);
-        const localChart = calculateNatalChart(
-          birthDate,
-          userProfile.birth_time,
-          userProfile.birth_latitude || 45.5,
-          userProfile.birth_longitude || -73.5
-        );
-        userChart = {
-          sun: { ...localChart.sun, longitude: localChart.sun.longitude },
-          moon: { ...localChart.moon, longitude: localChart.moon.longitude },
-          rising: { ...localChart.rising, longitude: localChart.rising.longitude },
-          planets: {
-            mercury: { ...localChart.mercury, longitude: localChart.mercury.longitude },
-            venus: { ...localChart.venus, longitude: localChart.venus.longitude },
-            mars: { ...localChart.mars, longitude: localChart.mars.longitude },
-            jupiter: { ...localChart.jupiter, longitude: localChart.jupiter.longitude },
-            saturn: { ...localChart.saturn, longitude: localChart.saturn.longitude },
-          },
-          coordinates: { latitude: userProfile.birth_latitude || 45.5, longitude: userProfile.birth_longitude || -73.5 },
-          julianDay: 0,
-        } as BirthChart;
-      }
-
-      // Match chart — server-computed via get-profile-chart edge function.
-      let matchChart: BirthChart | undefined;
-      if (matchId) {
-        const { data: matchPayload, error: matchErr } = await supabase.functions.invoke(
-          'get-profile-chart',
-          { body: { targetUserId: matchId } },
-        );
-        if (matchErr) throw matchErr;
-
-        const payload = matchPayload as
-          | { success?: boolean; profile?: { name?: string }; chart?: any; error?: string }
-          | null;
-
-        if (payload?.success && payload.profile) {
-          setMatchName(payload.profile.name ?? null);
-          if (payload.chart) {
-            const c = payload.chart;
-            matchChart = {
-              sun: c.sun,
-              moon: c.moon,
-              rising: c.rising,
-              planets: {
-                mercury: c.planets?.mercury,
-                venus: c.planets?.venus,
-                mars: c.planets?.mars,
-                jupiter: c.planets?.jupiter,
-                saturn: c.planets?.saturn,
-              },
-              coordinates: c.coordinates ?? { latitude: 0, longitude: 0 },
-              julianDay: 0,
-            } as BirthChart;
-          }
-        }
-      }
-
-      // Calculate scores
-      const scores = calculateDateScores(userChart, matchChart, 30);
-      setDateScores(scores);
-
-      // Select the best date by default
-      const topDates = getTop5Dates(scores);
-      if (topDates.length > 0) {
-        setSelectedDate(topDates[0]);
-      }
-    } catch (err) {
-      console.error('Error loading date planner data:', err);
-      setError(t('loadingError') || 'Could not calculate date scores. Please try again.');
-    }
-
-    setLoading(false);
-  };
-
-  const top5Dates = getTop5Dates(dateScores);
-
-  // Fallbacks for web where SafeAreaProvider may not work
   const topInset = insets?.top ?? 0;
   const bottomInset = insets?.bottom ?? 0;
 
-  if (loading) {
-    return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#e94560" />
-          <Text style={styles.loadingText}>{t('calculatingDates') || 'Calculating ideal dates...'}</Text>
-        </View>
-      </LinearGradient>
-    );
-  }
-
-  if (error) {
-    return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={{ fontSize: 48, marginBottom: 16 }}>{'📅'}</Text>
-          <Text style={{ color: '#ccc', fontSize: 16, textAlign: 'center', marginBottom: 20, paddingHorizontal: 32 }}>{error}</Text>
+  return (
+    <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.header, { paddingTop: 40 + topInset }]}>
           <TouchableOpacity
-            onPress={loadData}
-            style={{ backgroundColor: '#e94560', paddingVertical: 14, paddingHorizontal: 28, borderRadius: 14, minHeight: 48 }}
+            style={[styles.backButton, { top: 30 + topInset }]}
+            onPress={() => router.back()}
+            accessibilityLabel={t('back') || 'Back'}
           >
-            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>{t('tryAgain') || 'Try Again'}</Text>
+            <Text style={styles.backText}>{'←'}</Text>
           </TouchableOpacity>
-        </View>
-      </LinearGradient>
-    );
-  }
-
-  const renderContent = () => (
-    <View>
-      {/* Top 5 Dates */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            ✨ {t('top5Dates')}
+          <Text style={styles.title}>{t('dateReflectionTitle') || 'Date Reflection'}</Text>
+          <Text style={styles.subtitle}>
+            {t('dateReflectionSubtitle') || 'Prepare for a better conversation.'}
           </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.top5Container}
-          >
-            {top5Dates.map((dateScore, index) => (
-              <DateCard
-                key={index}
-                dateScore={dateScore}
-                isSelected={selectedDate?.date.getTime() === dateScore.date.getTime()}
-                onPress={() => setSelectedDate(dateScore)}
-              />
-            ))}
-          </ScrollView>
         </View>
 
-        {/* Selected Date Detail */}
-        {selectedDate && (
-          <View style={styles.section}>
-            <DateDetailView dateScore={selectedDate} />
-          </View>
-        )}
+        {/* Hero framing */}
+        <View style={styles.heroCard}>
+          <Text style={styles.heroEyebrow}>
+            {t('dateReflectionFramingEyebrow') || 'Framing'}
+          </Text>
+          <Text style={styles.heroBody}>
+            {t('dateReflectionFramingBody') ||
+              'Prepare for a better conversation, not a perfect outcome.'}
+          </Text>
+        </View>
 
-        {/* All Dates Calendar */}
+        {/* Intention selector */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('next30Days')}</Text>
-          <View style={styles.calendarGrid}>
-            {dateScores.map((dateScore, index) => {
-              const isToday = dateScore.date.toDateString() === new Date().toDateString();
-              const isSelected = selectedDate?.date.getTime() === dateScore.date.getTime();
-
+          <Text style={styles.sectionEyebrow}>
+            {t('dateReflectionIntentionTitle') || 'Set An Intention'}
+          </Text>
+          <View style={styles.chipRow}>
+            {INTENTIONS.map((opt) => {
+              const active = intention === opt.key;
               return (
                 <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.calendarDay,
-                    isToday && styles.calendarDayToday,
-                    isSelected && styles.calendarDaySelected,
-                  ]}
-                  onPress={() => setSelectedDate(dateScore)}
+                  key={opt.key}
+                  style={[styles.chip, active && styles.chipActive]}
+                  onPress={() => setIntention(opt.key)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
                 >
-                  <Text style={[styles.calendarDayNum, isToday && styles.calendarDayNumToday]}>
-                    {dateScore.date.getDate()}
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                    {t(opt.labelKey)}
                   </Text>
-                  <View
-                    style={[
-                      styles.calendarDot,
-                      { backgroundColor: getScoreColor(dateScore.overallScore) },
-                    ]}
-                  />
                 </TouchableOpacity>
               );
             })}
           </View>
         </View>
 
-        {/* Legend */}
-        <View style={styles.legend}>
-          <Text style={styles.legendTitle}>{t('scoreLegend')}</Text>
-          <View style={styles.legendItems}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#4ade80' }]} />
-              <Text style={styles.legendText}>85%+ {t('excellent')}</Text>
+        {/* Conversation prompts */}
+        <View style={styles.section}>
+          <Text style={styles.sectionEyebrow}>
+            {t('dateReflectionPromptsTitle') || 'Conversation Prompts'}
+          </Text>
+          {prompts.map((pk) => (
+            <View key={pk} style={styles.promptCard}>
+              <Text style={styles.promptText}>{t(pk)}</Text>
             </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#facc15' }]} />
-              <Text style={styles.legendText}>65-84% {t('good')}</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#f87171' }]} />
-              <Text style={styles.legendText}>&lt;65% {t('challenging')}</Text>
-            </View>
-          </View>
+          ))}
         </View>
-    </View>
-  );
 
-  return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
-<ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + bottomInset }]}
-        showsVerticalScrollIndicator={false}
-      >
-      {/* Header - Fixed at top */}
-      <View style={[styles.header, { paddingTop: 30 + topInset }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.title}>{t('datePlanner')}</Text>
-          {matchName && (
-            <Text style={styles.subtitle}>
-              {t('planningWith')} {matchName}
-            </Text>
-          )}
+        {/* Low-pressure date ideas */}
+        <View style={styles.section}>
+          <Text style={styles.sectionEyebrow}>
+            {t('dateReflectionIdeasTitle') || 'Low-Pressure Ideas'}
+          </Text>
+          {IDEA_KEYS.map((idea) => (
+            <View key={idea.titleKey} style={styles.ideaCard}>
+              <Text style={styles.ideaTitle}>{t(idea.titleKey)}</Text>
+              <Text style={styles.ideaBody}>{t(idea.bodyKey)}</Text>
+            </View>
+          ))}
         </View>
-      </View>
 
-      
-        {renderContent()}
+        {/* Consent and boundaries */}
+        <View style={styles.consentCard}>
+          <Text style={styles.consentEyebrow}>
+            {t('dateReflectionConsentTitle') || 'Consent And Boundaries'}
+          </Text>
+          <Text style={styles.consentBody}>
+            {t('dateReflectionConsentBody') ||
+              'Both people should feel safe and free to leave at any point. Check in early. Match energy, not pressure.'}
+          </Text>
+        </View>
+
+        {/* Disclaimer */}
+        <View style={styles.disclaimerCard}>
+          <Text style={styles.disclaimerEyebrow}>
+            {t('dateReflectionDisclaimerTitle') || 'A Note'}
+          </Text>
+          <Text style={styles.disclaimerBody}>
+            {t('dateReflectionDisclaimerBody') ||
+              'Use this as a reflection tool, not a prediction.'}
+          </Text>
+        </View>
       </ScrollView>
     </LinearGradient>
   );
 }
 
-export default function DatePlannerScreen() {
+export default function DateReflectionScreen() {
   return (
     <PremiumGate feature="date-planner">
-      <DatePlannerContent />
+      <DateReflectionContent />
     </PremiumGate>
   );
 }
@@ -425,297 +221,189 @@ export default function DatePlannerScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    ...(Platform.OS === 'web' ? {
-      height: '100%' as any,
-      width: '100%' as any,
-    } : {}),
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: '#888',
-    marginTop: 16,
-    fontSize: 14,
+    ...(Platform.OS === 'web'
+      ? ({
+          height: '100%',
+          width: '100%',
+        } as any)
+      : {}),
   },
   scrollView: {
     flex: 1,
-    ...(Platform.OS === 'web' ? {
-      height: 'calc(100vh - 120px)' as any,
-      overflowY: 'auto' as any,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? ({
+          height: 'calc(100vh - 120px)',
+          overflowY: 'auto',
+        } as any)
+      : {}),
   },
   scrollContent: {
     paddingBottom: 40,
   },
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 50,
-    paddingHorizontal: 20,
+    paddingTop: 60,
     paddingBottom: 20,
+    paddingHorizontal: 20,
     zIndex: 10,
   },
   backButton: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: AppTheme.colors.panelStrong,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
   },
   backText: {
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
     fontSize: 24,
-  },
-  headerContent: {
-    flex: 1,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: AppTheme.colors.textPrimary,
+    marginBottom: 4,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
-    color: '#888',
-    marginTop: 2,
+    color: AppTheme.colors.textSecondary,
+    textAlign: 'center',
+  },
+  heroCard: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    padding: 20,
+    borderRadius: 20,
+    backgroundColor: 'rgba(124, 108, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(124, 108, 255, 0.22)',
+  },
+  heroEyebrow: {
+    fontSize: 11,
+    color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 10,
+  },
+  heroBody: {
+    fontSize: 15,
+    color: AppTheme.colors.textPrimary,
+    lineHeight: 22,
   },
   section: {
+    paddingHorizontal: 20,
     marginBottom: 24,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    paddingHorizontal: 20,
-    marginBottom: 12,
-  },
-  top5Container: {
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  dateCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 16,
-    padding: 16,
-    width: 100,
-    alignItems: 'center',
-    borderLeftWidth: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  dateCardSelected: {
-    backgroundColor: 'rgba(233, 69, 96, 0.15)',
-    borderColor: '#e94560',
-  },
-  dateInfo: {
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  dateDay: {
-    fontSize: 12,
-    color: '#888',
-    textTransform: 'uppercase',
-  },
-  dateNum: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  dateScore: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  scoreEmoji: {
-    fontSize: 14,
-  },
-  scoreValue: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  dateMoon: {
-    marginTop: 8,
-  },
-  moonSign: {
+  sectionEyebrow: {
     fontSize: 11,
-    color: '#888',
-  },
-  detailContainer: {
-    marginHorizontal: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  detailHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  detailDate: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  detailScoreBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  detailScoreText: {
-    color: '#000',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  detailDescription: {
-    fontSize: 15,
-    color: '#ccc',
-    lineHeight: 22,
-    marginBottom: 20,
-  },
-  breakdownSection: {
-    marginBottom: 20,
-  },
-  breakdownRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  breakdownLabel: {
-    fontSize: 14,
-    color: '#888',
-  },
-  breakdownValue: {
-    fontSize: 14,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  cosmicSection: {
-    flexDirection: 'row',
-    gap: 20,
-    marginBottom: 20,
-  },
-  cosmicItem: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 12,
-    padding: 12,
-  },
-  cosmicEmoji: {
-    fontSize: 24,
-  },
-  cosmicLabel: {
-    fontSize: 11,
-    color: '#666',
+    color: AppTheme.colors.textMuted,
     textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 14,
   },
-  cosmicValue: {
-    fontSize: 14,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  hoursSection: {},
-  hourRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    gap: 10,
-  },
-  hourIcon: {
-    fontSize: 18,
-  },
-  hourText: {
-    fontSize: 16,
-    color: '#fff',
-    flex: 1,
-  },
-  recommendedBadge: {
-    backgroundColor: '#4ade80',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  recommendedText: {
-    fontSize: 10,
-    color: '#000',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  calendarGrid: {
+  chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 20,
     gap: 8,
   },
-  calendarDay: {
-    width: 40,
-    height: 50,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  calendarDayToday: {
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 18,
+    backgroundColor: AppTheme.colors.panel,
     borderWidth: 1,
-    borderColor: '#e94560',
+    borderColor: AppTheme.colors.border,
   },
-  calendarDaySelected: {
-    backgroundColor: 'rgba(233, 69, 96, 0.2)',
+  chipActive: {
+    backgroundColor: 'rgba(232, 93, 117, 0.18)',
+    borderColor: AppTheme.colors.coral,
   },
-  calendarDayNum: {
-    fontSize: 14,
-    color: '#ccc',
+  chipText: {
+    fontSize: 13,
+    color: AppTheme.colors.textSecondary,
     fontWeight: '500',
   },
-  calendarDayNumToday: {
-    color: '#e94560',
+  chipTextActive: {
+    color: AppTheme.colors.textPrimary,
+    fontWeight: '600',
   },
-  calendarDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginTop: 4,
+  promptCard: {
+    backgroundColor: AppTheme.colors.panel,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
   },
-  legend: {
-    marginHorizontal: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 16,
-    padding: 16,
-  },
-  legendTitle: {
+  promptText: {
     fontSize: 14,
-    color: '#888',
-    marginBottom: 12,
+    color: AppTheme.colors.textPrimary,
+    lineHeight: 22,
   },
-  legendItems: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
+  ideaCard: {
+    backgroundColor: AppTheme.colors.panel,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.border,
   },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  ideaTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: AppTheme.colors.textPrimary,
+    marginBottom: 6,
   },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  ideaBody: {
+    fontSize: 13,
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 20,
   },
-  legendText: {
-    fontSize: 12,
-    color: '#666',
+  consentCard: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    padding: 18,
+    borderRadius: 18,
+    backgroundColor: 'rgba(232, 93, 117, 0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(232, 93, 117, 0.24)',
+  },
+  consentEyebrow: {
+    fontSize: 11,
+    color: AppTheme.colors.coral,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 10,
+  },
+  consentBody: {
+    fontSize: 14,
+    color: AppTheme.colors.textPrimary,
+    lineHeight: 22,
+  },
+  disclaimerCard: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    padding: 16,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  disclaimerEyebrow: {
+    fontSize: 11,
+    color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
+  disclaimerBody: {
+    fontSize: 13,
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 20,
   },
 });
