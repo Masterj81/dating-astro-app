@@ -430,7 +430,7 @@ export default function PreferencesScreen() {
             onPress={() => setPrefs(p => ({ ...p, onlyHighCompatibility: !p.onlyHighCompatibility }))}
           >
             <View style={s.compatLeft}>
-              <Text style={{ fontSize: 28 }}>💫</Text>
+              <Text style={{ fontSize: 22, color: '#DAB56D' }}>{'✦'}</Text>
               <View style={{ flex: 1 }}>
                 <Text style={s.compatTitle}>
                   {t('highCompatibilityOnly') || 'High Compatibility Only'}

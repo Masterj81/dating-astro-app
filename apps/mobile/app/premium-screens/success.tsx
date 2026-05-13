@@ -47,9 +47,9 @@ export default function PremiumSuccessScreen() {
             <Text style={styles.subtitle}>{t('premiumAccessGranted')}</Text>
 
             <View style={styles.features}>
-              <Text style={styles.featureItem}>✨ {t('unlimitedSwipes')}</Text>
-              <Text style={styles.featureItem}>🌙 {t('fullNatalChart')}</Text>
-              <Text style={styles.featureItem}>💫 {t('advancedSynastry')}</Text>
+              <Text style={styles.featureItem}>{'• '}{t('unlimitedSwipes')}</Text>
+              <Text style={styles.featureItem}>{'• '}{t('fullNatalChart')}</Text>
+              <Text style={styles.featureItem}>{'• '}{t('advancedSynastry')}</Text>
             </View>
 
             <TouchableOpacity

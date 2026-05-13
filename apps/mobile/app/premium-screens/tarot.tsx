@@ -144,7 +144,7 @@ function TarotScreenContent() {
             onPress={() => setMode('love')}
           >
             <Text style={[styles.modeText, mode === 'love' && styles.modeTextActive]}>
-              ❤️ {t('loveFocus') || 'Love'}
+              {t('loveFocus') || 'Love'}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -152,7 +152,7 @@ function TarotScreenContent() {
             onPress={() => setMode('general')}
           >
             <Text style={[styles.modeText, mode === 'general' && styles.modeTextActive]}>
-              ✨ {t('generalFocus') || 'General'}
+              {t('generalFocus') || 'General'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -266,7 +266,7 @@ function TarotScreenContent() {
         {/* Premium badge */}
         <View style={styles.badge}>
           <Text style={styles.badgeText}>
-            ✨ {isCosmic ? 'Cosmic' : 'Celestial'} {t('feature') || 'Feature'}
+            {isCosmic ? 'Cosmic' : 'Celestial'} {t('feature') || 'Feature'}
           </Text>
         </View>
       </ScrollView>

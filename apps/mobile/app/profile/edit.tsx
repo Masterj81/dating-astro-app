@@ -534,7 +534,7 @@ export default function EditProfileScreen() {
               </Text>
             </View>
             <View style={styles.tipRow}>
-              <Text style={styles.tipIcon}>✨</Text>
+              <Text style={styles.tipIcon}>{'•'}</Text>
               <Text style={styles.tipText}>
                 {t('tip2') || 'Complete profiles help people understand you faster'}
               </Text>
