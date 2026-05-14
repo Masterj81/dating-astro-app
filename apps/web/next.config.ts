@@ -6,6 +6,12 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 // Supabase project used for API, auth, and storage
 const SUPABASE_HOST = "qtihezzbuubnyvrjdkjd.supabase.co";
+const ALLOWED_IMAGE_HOSTS = [
+  SUPABASE_HOST,
+  "lh3.googleusercontent.com",
+  "randomuser.me",
+  "images.unsplash.com",
+];
 // Vercel Analytics + Speed Insights script + beacon endpoints.
 // In dev these are loaded from external origins; in prod they are proxied
 // through /_vercel/insights/* (first-party) but we keep the origins
@@ -27,8 +33,8 @@ const cspDirectives = [
   `script-src-elem 'self' 'unsafe-inline' ${VERCEL_INSIGHTS}`,
   // Styles: self + inline (Next.js / CSS-in-JS)
   `style-src 'self' 'unsafe-inline'`,
-  // Images: self + Supabase storage + Google profile pictures + data URIs + blobs
-  `img-src 'self' https://${SUPABASE_HOST} https://lh3.googleusercontent.com data: blob:`,
+  // Images: self + allowed profile image sources + data URIs + blobs
+  `img-src 'self' ${ALLOWED_IMAGE_HOSTS.map((host) => `https://${host}`).join(" ")} data: blob:`,
   // Fonts: self only (no external font providers detected)
   `font-src 'self'`,
   // API / WebSocket connections: self + Supabase + Vercel Analytics/Vitals beacons
@@ -51,14 +57,10 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: resolve(__dirname, "../../"),
   images: {
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: SUPABASE_HOST,
-      },
-      {
-        protocol: "https",
-        hostname: "lh3.googleusercontent.com",
-      },
+      ...ALLOWED_IMAGE_HOSTS.map((hostname) => ({
+        protocol: "https" as const,
+        hostname,
+      })),
     ],
   },
   async headers() {

@@ -10,7 +10,10 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
         Skip to main content
       </a>
       <Header />
-      <main id="main-content" className="flex-1">{children}</main>
+      {/* overflow-x-clip = horizontal-overflow safety net for the entire
+          marketing area. Doesn't create a new scroll context (unlike
+          overflow-hidden), so position:sticky on Header still works. */}
+      <main id="main-content" className="flex-1 overflow-x-clip">{children}</main>
       <Footer />
       {/* StickyDownloadBar is mobile-only and position:fixed.
           The pb-20 below ensures the footer never gets covered. */}
