@@ -13,8 +13,17 @@ An autonomous marketing agent for AstroDating — a dating app that uses real bi
 ## Architecture
 - `agent.ts` — Main CLI with generate/post/auto/list commands
 - `.pi/extensions/` — Pi extensions for specialized tasks
-- `posts.json` — Post storage with status tracking
-- `memory.json` — Short-term memory (recent topics, prevents repetition)
+
+### Runtime state files (gitignored — NOT in a fresh clone)
+`posts.json`, `memory.json`, `evolution-state.json`, `schedule.json` are
+mutated by the agent at run time and are **gitignored**. A fresh clone has
+none of them — this is expected. Every reader guards with `existsSync` and
+falls back to a hard-coded default, and the first write creates the file.
+You do not need to seed them. To reset state, just delete the file(s):
+- `posts.json` — generated/scheduled/posted posts (default: `[]`)
+- `memory.json` — short-term anti-repetition memory (default: empty memory object)
+- `evolution-state.json` — `npm run evolve` genetic-loop state (default: rules pool reset)
+- `schedule.json` — dashboard `setInterval` queue (default: `[]`)
 
 ## Key APIs
 - **Anthropic** — Content generation (Claude Sonnet)

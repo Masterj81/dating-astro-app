@@ -41,6 +41,12 @@ this if your project is already in production — these were already deployed.
 
 ## Daily use (you, the marketer)
 
+### First run on a fresh clone
+
+`posts.json`, `memory.json`, `evolution-state.json` and `schedule.json` are
+gitignored runtime state — a fresh clone won't have them, and that's fine.
+The CLI and dashboard create each one on first write. Nothing to seed or copy.
+
 ### Required local env (`marketingagent/.env`)
 
 In addition to your usual keys:
