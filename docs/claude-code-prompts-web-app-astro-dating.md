@@ -22,7 +22,7 @@ Je veux que tu:
 5. résumes les fichiers modifiés et les risques restants
 ```
 
-## 2. Premium Web Design
+## 2. Premium Web Design fait
 
 ```text
 Améliore le design de la web app Astro Dating pour la rendre plus premium, cosmique, moderne et mémorable.
@@ -43,7 +43,7 @@ Je veux que tu:
 5. résumes l’impact UX attendu
 ```
 
-## 3. Landing Page Conversion
+## 3. Landing Page Conversion fait
 
 ```text
 Analyse et améliore la landing page marketing de la web app Astro Dating pour augmenter les conversions.
@@ -80,7 +80,7 @@ Je veux que tu:
 5. résumes les changements et les limites restantes
 ```
 
-## 5. Auth / Signup / Login
+## 5. Auth / Signup / Login fait
 
 ```text
 Analyse et améliore les flows auth de la web app Astro Dating.
@@ -99,7 +99,7 @@ Je veux que tu:
 5. résumes les changements et scénarios couverts
 ```
 
-## 6. Web Onboarding / Account Setup
+## 6. Web Onboarding / Account Setup fait
 
 ```text
 Analyse et améliore l’onboarding web et la configuration du compte Astro Dating.
@@ -135,7 +135,7 @@ Je veux que tu:
 5. résumes l’impact sur engagement et rétention
 ```
 
-## 8. Discovery / Matching Web
+## 8. Discovery / Matching Web fait
 
 ```text
 Analyse et améliore l’expérience discovery/matching sur la web app Astro Dating.
@@ -153,7 +153,7 @@ Je veux que tu:
 5. résumes les changements
 ```
 
-## 9. Premium / Billing / Checkout Web
+## 9. Premium / Billing / Checkout Web fait
 
 ```text
 Analyse et améliore les flows premium, billing et checkout de la web app Astro Dating.
@@ -171,7 +171,7 @@ Je veux que tu:
 5. résumes les changements et risques restants
 ```
 
-## 10. Performance / Core Web Vitals
+## 10. Performance / Core Web Vitals fait
 
 ```text
 Analyse les performances de la web app Astro Dating avec un focus Core Web Vitals.
@@ -190,7 +190,7 @@ Je veux que tu:
 5. résumes les gains attendus
 ```
 
-## 11. Accessibility / Responsive UX
+## 11. Accessibility / Responsive UX faitr 
 
 ```text
 Analyse et améliore l’accessibilité et le responsive design de la web app Astro Dating.
@@ -226,7 +226,7 @@ Je veux que tu:
 5. résumes les risques corrigés et restants
 ```
 
-## 13. Internationalization / Locales
+## 13. Internationalization / Locales fait
 
 ```text
 Analyse et améliore l’internationalisation de la web app Astro Dating.

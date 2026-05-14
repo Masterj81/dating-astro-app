@@ -20,7 +20,7 @@ Je veux que tu:
 5. résumes les fichiers modifiés et les risques restants
 ```
 
-## 2. Design Premium
+## 2. Design Premium fait
 
 ```text
 Améliore le design de l’application Astro Dating pour qu’elle paraisse plus premium, plus cohérente et plus mémorable, tout en restant compatible avec la base actuelle.
@@ -40,7 +40,7 @@ Je veux que tu:
 5. résumes les changements et leur impact UX
 ```
 
-## 3. Onboarding
+## 3. Onboarding fait
 
 ```text
 Analyse et améliore le parcours d’onboarding de l’application Astro Dating pour réduire l’abandon et augmenter l’activation.
@@ -59,7 +59,7 @@ Je veux que tu:
 5. résumes les gains attendus
 ```
 
-## 4. Matching / Discovery
+## 4. Matching / Discovery fait
 
 ```text
 Analyse et améliore l’expérience de matching et discovery dans Astro Dating.
@@ -77,7 +77,7 @@ Je veux que tu:
 5. résumes les améliorations apportées
 ```
 
-## 5. Paywall
+## 5. Paywall fait 
 
 ```text
 Analyse et améliore le paywall et les écrans premium de l’application Astro Dating pour augmenter la conversion.
@@ -95,7 +95,7 @@ Je veux que tu:
 5. résumes les changements et l’impact attendu sur la conversion
 ```
 
-## 6. Notifications
+## 6. Notifications fait
 
 ```text
 Analyse et améliore le système de notifications de l’application Astro Dating.
@@ -113,7 +113,7 @@ Je veux que tu:
 5. résumes les changements et les risques restants
 ```
 
-## 7. Profil
+## 7. Profil fait
 
 ```text
 Analyse et améliore l’écran de profil et les écrans liés au compte dans Astro Dating.
@@ -128,10 +128,10 @@ Je veux que tu:
 2. proposes des améliorations UX et visuelles utiles
 3. implémentes directement les changements
 4. améliores la structure, les CTA, les états de chargement et les erreurs
-5. résumes les bénéfices utilisateur obtenus
+5. résumes les bénéfices utilisateur obtenus -
 ```
 
-## 8. Performances
+## 8. Performances fait 
 
 ```text
 Analyse les performances de l’application Astro Dating et optimise ce qui apporte le plus de valeur.
@@ -149,7 +149,7 @@ Je veux que tu:
 5. résumes les gains attendus
 ```
 
-## 9. Sécurité Supabase
+## 9. Sécurité Supabase fait
 
 ```text
 Analyse l’intégration Supabase de l’application Astro Dating avec un focus sécurité et robustesse.
@@ -167,7 +167,7 @@ Je veux que tu:
 5. résumes les risques corrigés et ceux qui restent
 ```
 
-## 10. Marketing In-App
+## 10. Marketing In-App fait
 
 ```text
 Analyse l’application Astro Dating avec un angle marketing in-app et améliore les moments qui peuvent augmenter la rétention, l’engagement et la conversion.
