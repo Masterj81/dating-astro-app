@@ -1,7 +1,9 @@
 # Supabase security posture & accepted lint exceptions
 
-Living document. Updated 2026-04-27 after Phase 1 → Phase 3-B closure of
-the `public.profiles` data leak.
+Living document. Updated 2026-05-14 — added
+`mark_conversation_messages_read` to the accepted `0029` exceptions.
+Previously updated 2026-04-27 after Phase 1 → Phase 3-B closure of the
+`public.profiles` data leak.
 
 ## Architecture in one paragraph
 
@@ -20,7 +22,7 @@ fields.
 
 ### Lint `0029_authenticated_security_definer_function_executable`
 
-Eleven `SECURITY DEFINER` functions are intentionally callable by the
+The `SECURITY DEFINER` functions below are intentionally callable by the
 `authenticated` role via `/rest/v1/rpc/<name>`. Each one is the only
 client-facing API for its capability and carries a strict `auth.uid()`
 guard (or rejects when `auth.uid()` does not match the requested user).
@@ -41,12 +43,13 @@ against.
 | `claim_push_token(uuid, text)` | strict `auth.uid() = p_user_id` | Legacy single-row push token |
 | `claim_push_token_v2(text, text, text)` | uses `auth.uid()` | Per-device push token, primary path |
 | `clear_push_token_v2(text)` | uses `auth.uid()` | Mobile logout |
+| `mark_conversation_messages_read(uuid)` | conversation membership check (`auth.uid()` is `user_a`/`user_b`) | Chat read receipts — `messages` UPDATE stays locked down; the RPC writes only `is_read`/`read_at` on the *other* participant's rows |
 
 `tier_at_least(text, text)` is `SECURITY INVOKER` and pure (no table
 access); it stays callable by anon/authenticated as a string comparison
 helper.
 
-These eleven exceptions are reviewed each time a new RPC is added. The
+These exceptions are reviewed each time a new RPC is added. The
 default for new RPCs is **not** to be exposed to `authenticated` — see
 the `ALTER DEFAULT PRIVILEGES … REVOKE EXECUTE … FROM PUBLIC` in
 `20260427000011_revoke_internal_functions_from_public.sql`.

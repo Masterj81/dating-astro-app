@@ -349,10 +349,46 @@ export async function sendLocalNotification(title: string, body: string) {
   });
 }
 
+export async function dismissMessageNotificationsForChat(chatId: string): Promise<void> {
+  if (Platform.OS === 'web' || !Notifications || !chatId) return;
+
+  try {
+    const delivered = await Notifications.getPresentedNotificationsAsync();
+    await Promise.all(
+      delivered
+        .filter((notification: any) => {
+          const data = notification?.request?.content?.data as NotificationPayload | undefined;
+          // Accept both the canonical 'message' and the legacy 'messages'
+          // spelling — notifications delivered before the notify_new_message
+          // trigger fix (migration 20260514000001) still carry 'messages'.
+          if (!data || (data.type !== 'message' && data.type !== 'messages')) return false;
+
+          const notificationChatId =
+            data.chatId ??
+            data.conversationId ??
+            data.conversation_id ??
+            data.matchId;
+
+          return notificationChatId === chatId;
+        })
+        .map((notification: any) =>
+          Notifications.dismissNotificationAsync(notification.request.identifier)
+        )
+    );
+  } catch (err) {
+    if (__DEV__) console.warn('Failed to dismiss chat notifications:', err);
+  }
+}
+
 // Notification payload types for type-safe handling
 export type NotificationType =
   | 'match'
   | 'message'
+  // Legacy alias for 'message'. The notify_new_message DB trigger emitted
+  // 'messages' (plural) until migration 20260514000001; notifications
+  // delivered before that deploy still carry it. Normalize to 'message'
+  // at the point of use rather than spreading the alias through routing.
+  | 'messages'
   | 'like'
   | 'dailyHoroscope'
   | 'retrogradeAlert'
@@ -362,6 +398,8 @@ export interface NotificationPayload {
   type: NotificationType;
   matchId?: string;
   chatId?: string;
+  conversationId?: string;
+  conversation_id?: string;
   screen?: string;
   [key: string]: unknown;
 }
@@ -373,6 +411,7 @@ export function getChannelForType(type: NotificationType): string {
     case 'like':
       return 'matches';
     case 'message':
+    case 'messages': // legacy alias — same channel as 'message'
       return 'messages';
     case 'dailyHoroscope':
     case 'retrogradeAlert':

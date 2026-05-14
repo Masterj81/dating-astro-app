@@ -517,24 +517,44 @@ function RootLayout() {
     const handleNotificationResponse = (response: any) => {
       const data = response?.notification?.request?.content?.data as NotificationPayload | undefined;
       if (!data || typeof data.type !== 'string') return;
-      if (!VALID_TYPES.includes(data.type as NotificationType)) return;
+      // Normalize the legacy 'messages' spelling to the canonical 'message'.
+      // The notify_new_message trigger emitted 'messages' until migration
+      // 20260514000001; notifications delivered before that deploy still
+      // carry it, and must still route correctly when tapped.
+      const notificationType: string =
+        data.type === 'messages' ? 'message' : data.type;
+      if (!VALID_TYPES.includes(notificationType as NotificationType)) return;
 
       // Don't navigate if user is not authenticated yet
       if (!user) return;
 
       // Validate any routable ID fields before building a URL from them.
       const safeMatchId = isValidUuid(data.matchId) ? data.matchId : null;
-      const safeChatId = isValidUuid(data.chatId) ? data.chatId : null;
+      const safeChatId =
+        isValidUuid(data.chatId)
+          ? data.chatId
+          : isValidUuid(data.conversationId)
+            ? data.conversationId
+            : isValidUuid(data.conversation_id)
+              ? data.conversation_id
+              : null;
       if (__DEV__) {
         if (data.matchId !== undefined && !safeMatchId) {
           console.warn('[Notifications] Ignoring non-UUID matchId in push payload:', data.matchId);
         }
-        if (data.chatId !== undefined && !safeChatId) {
-          console.warn('[Notifications] Ignoring non-UUID chatId in push payload:', data.chatId);
+        if (
+          (data.chatId !== undefined || data.conversationId !== undefined || data.conversation_id !== undefined) &&
+          !safeChatId
+        ) {
+          console.warn('[Notifications] Ignoring non-UUID chat payload:', {
+            chatId: data.chatId,
+            conversationId: data.conversationId,
+            conversation_id: data.conversation_id,
+          });
         }
       }
 
-      switch (data.type) {
+      switch (notificationType) {
         case 'match':
         case 'like':
           if (safeMatchId) {

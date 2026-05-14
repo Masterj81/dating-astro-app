@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { translateSign } from "@/lib/astrology-labels";
@@ -179,24 +179,45 @@ export function ChatThread({ conversationId, initialPrefill }: ChatThreadProps) 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const markMessagesRead = async (
-    supabase: ReturnType<typeof getSupabaseBrowser>,
-    currentUserId: string,
-    nextMessages: Message[]
-  ) => {
-    const unreadIds = nextMessages
-      .filter((message) => message.sender_id !== currentUserId && !message.is_read)
-      .map((message) => message.id);
+  const markMessagesRead = useCallback(
+    async (
+      supabase: ReturnType<typeof getSupabaseBrowser>,
+      currentUserId: string,
+      nextMessages: Message[]
+    ) => {
+      const hasUnreadIncoming = nextMessages
+        .filter((message) => message.sender_id !== currentUserId && !message.is_read)
+        .length > 0;
 
-    if (!unreadIds.length) {
-      return;
-    }
+      if (!hasUnreadIncoming) {
+        return;
+      }
 
-    await supabase
-      .from("messages")
-      .update({ is_read: true, read_at: new Date().toISOString() })
-      .in("id", unreadIds);
-  };
+      const { error: markReadError } = await supabase.rpc("mark_conversation_messages_read", {
+        p_conversation_id: conversationId,
+      });
+
+      if (markReadError) {
+        throw markReadError;
+      }
+
+      setMessages((current) =>
+        current.map((message) =>
+          message.sender_id !== currentUserId && !message.is_read
+            ? { ...message, is_read: true }
+            : message
+        )
+      );
+      setConversations((current) =>
+        current.map((conversation) =>
+          conversation.conversation_id === conversationId
+            ? { ...conversation, unread_count: 0 }
+            : conversation
+        )
+      );
+    },
+    [conversationId]
+  );
 
   const loadThread = async () => {
     setLoading(true);
@@ -336,7 +357,11 @@ export function ChatThread({ conversationId, initialPrefill }: ChatThreadProps) 
           });
 
           if (userId) {
-            await markMessagesRead(supabase, userId, [nextMessage]);
+            try {
+              await markMessagesRead(supabase, userId, [nextMessage]);
+            } catch (markReadFailure) {
+              console.error("Error marking messages as read:", markReadFailure);
+            }
           }
         }
       )
@@ -345,7 +370,7 @@ export function ChatThread({ conversationId, initialPrefill }: ChatThreadProps) 
     return () => {
       channel.unsubscribe();
     };
-  }, [conversationId, userId]);
+  }, [conversationId, userId, markMessagesRead]);
 
   const handleSend = async () => {
     if (!draft.trim() || !userId || !conversationInfo) {

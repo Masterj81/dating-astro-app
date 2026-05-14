@@ -23,6 +23,7 @@ import { DEFAULT_PROFILE_IMAGE, resolveProfileImage } from '../../utils/profileI
 import { throttleAction } from '../../utils/rateLimit';
 import { withRetry } from '../../utils/retry';
 import { useAuth } from '../../contexts/AuthContext';
+import { dismissMessageNotificationsForChat } from '../../services/notifications';
 
 type Message = {
   id: string;
@@ -91,14 +92,19 @@ export default function ChatScreen() {
   const markMessagesAsRead = useCallback(async () => {
     if (!conversationId || !user) return;
     try {
-      // is_read is the canonical column on messages; older code wrote `read`
-      // but the schema column is is_read.
-      await supabase
-        .from('messages')
-        .update({ is_read: true, read_at: new Date().toISOString() })
-        .eq('conversation_id', conversationId)
-        .neq('sender_id', user.id)
-        .eq('is_read', false);
+      const { error } = await supabase.rpc('mark_conversation_messages_read', {
+        p_conversation_id: conversationId,
+      });
+      if (error) throw error;
+
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.sender_id !== user.id && !message.is_read
+            ? { ...message, is_read: true }
+            : message
+        )
+      );
+      await dismissMessageNotificationsForChat(conversationId);
     } catch (err) {
       console.error('Error marking messages as read:', err);
     }
