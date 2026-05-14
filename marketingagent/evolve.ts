@@ -2,6 +2,7 @@ import "dotenv/config";
 import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync as readFS, existsSync as existsFS } from "fs";
 import { atomicWriteJson } from "./lib.js";
+import { EXTENDED_SLOP_WORDS as BANNED_WORDS } from "./constants.js";
 
 /**
  * Writing Evolution Engine
@@ -19,18 +20,6 @@ import { atomicWriteJson } from "./lib.js";
 // ── Config ──
 const EVOLUTION_FILE = "evolution-state.json";
 const DEFAULT_ITERATIONS = 50;
-
-const BANNED_WORDS = [
-  "delve", "tapestry", "unleash", "game-changer", "game changer",
-  "revolutionary", "groundbreaking", "realm", "landscape", "paradigm",
-  "synergy", "leverage", "elevate", "foster", "embark", "navigate",
-  "robust", "seamless", "holistic", "cutting-edge", "cutting edge",
-  "in today's world", "it's worth noting", "in conclusion",
-  "furthermore", "moreover", "comprehensive", "multifaceted",
-  "pivotal", "transformative", "harness", "empower", "streamline",
-  "curate", "resonate", "align", "optimize", "ecosystem",
-  "deep dive", "double down", "circle back",
-];
 
 // ── Types ──
 interface EvolutionRule {

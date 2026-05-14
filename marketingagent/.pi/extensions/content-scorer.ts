@@ -6,21 +6,8 @@
  * Posts must score < 20 to pass.
  */
 
-const BANNED_WORDS = [
-  // Classic AI-speak
-  "delve", "tapestry", "unleash", "game-changer", "game changer",
-  "revolutionary", "groundbreaking", "realm", "landscape", "paradigm",
-  "synergy", "leverage", "elevate", "foster", "embark", "navigate",
-  "robust", "seamless", "holistic", "cutting-edge", "cutting edge",
-  // Filler phrases
-  "in today's world", "it's worth noting", "in conclusion",
-  "furthermore", "moreover", "comprehensive", "multifaceted",
-  "pivotal", "transformative", "harness", "empower", "streamline",
-  // Overly polished
-  "curate", "resonate", "align", "optimize", "ecosystem",
-  "deep dive", "double down", "circle back", "move the needle",
-  "at the end of the day", "it goes without saying",
-];
+// Source of truth: ../../constants.ts
+import { EXTENDED_SLOP_WORDS as BANNED_WORDS } from "../../constants.js";
 
 const FILLER_PATTERNS = [
   /^(in a world|imagine a|picture this|let's talk about)/i,

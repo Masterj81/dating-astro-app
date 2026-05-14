@@ -72,11 +72,6 @@ async function buildImagePrompt(
     BRAND_STYLE,
   ].filter(Boolean).join(", ");
 
-  const geminiApiKey = resolveGeminiApiKey();
-  if (!geminiApiKey) {
-    return fallbackPrompt;
-  }
-
   // Variant directives let us request distinct compositions per call
   const variantDirectives = [
     "Composition: centered hero subject, symmetrical, frontal angle.",
@@ -85,36 +80,47 @@ async function buildImagePrompt(
   ];
   const variantHint = variantDirectives[variantIndex % variantDirectives.length];
 
-  try {
-    const { GoogleGenAI } = await import("@google/genai");
-    const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [
-        "Turn this social media post into one concise image-generation prompt.",
-        "Goal: create a striking astrology-themed social visual for a dating brand.",
-        "Requirements:",
-        "- describe only visuals, no copywriting analysis",
-        "- no text, letters, logos, UI, or watermark in the image",
-        "- keep it under 90 words",
-        "- modern, elegant, cinematic, social-media friendly",
-        `- format intent: ${TYPE_DIRECTIVES[postType]}`,
-        `- ${variantHint}`,
-        signColor ? `- use this accent color direction: ${signColor}` : "",
-        detectedSign ? `- subtly incorporate the energy of the ${detectedSign} sign` : "",
-        `Post: ${postText}`,
-        `Brand style: ${BRAND_STYLE}`,
-        "Return only the prompt.",
-      ].filter(Boolean).join("\n"),
-    });
+  const instruction = [
+    "Turn this social media post into one concise image-generation prompt.",
+    "Goal: create a striking astrology-themed social visual for a dating brand.",
+    "Requirements:",
+    "- describe only visuals, no copywriting analysis",
+    "- no text, letters, logos, UI, or watermark in the image",
+    "- keep it under 90 words",
+    "- modern, elegant, cinematic, social-media friendly",
+    `- format intent: ${TYPE_DIRECTIVES[postType]}`,
+    `- ${variantHint}`,
+    signColor ? `- use this accent color direction: ${signColor}` : "",
+    detectedSign ? `- subtly incorporate the energy of the ${detectedSign} sign` : "",
+    `Post: ${postText}`,
+    `Brand style: ${BRAND_STYLE}`,
+    "Return only the prompt.",
+  ].filter(Boolean).join("\n");
 
-    const prompt = response.text?.trim().replace(/^["']|["']$/g, "") || "";
-
-    return prompt || fallbackPrompt;
-  } catch (err) {
-    console.log(`   Prompt writer fallback: ${(err as Error).message}`);
-    return fallbackPrompt;
+  // Prefer Anthropic (Claude) for the prompt-writing step — it's cheaper than
+  // burning a Gemini text call and keeps the Gemini quota for image
+  // generation. Falls back to the template themes if ANTHROPIC_API_KEY is
+  // missing or the request fails.
+  if (process.env.ANTHROPIC_API_KEY) {
+    try {
+      const Anthropic = (await import("@anthropic-ai/sdk")).default;
+      const client = new Anthropic();
+      const msg = await client.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 400,
+        messages: [{ role: "user", content: instruction }],
+      });
+      const block = msg.content[0];
+      if (block && block.type === "text") {
+        const prompt = block.text.trim().replace(/^["']|["']$/g, "");
+        if (prompt) return prompt;
+      }
+    } catch (err) {
+      console.log(`   Anthropic prompt-writer fallback: ${(err as Error).message}`);
+    }
   }
+
+  return fallbackPrompt;
 }
 
 function resolveGeminiApiKey(): string | undefined {

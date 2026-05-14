@@ -1,142 +1,17 @@
 import "dotenv/config";
 import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync, existsSync } from "fs";
-import { ensurePublicUrl } from "./upload-image.js";
-import { atomicWriteJson, fetchWithTimeout } from "./lib.js";
-
-// ── Config ──────────────────────────────────────────────────────────
-const BANNED_WORDS = [
-  "delve", "tapestry", "unleash", "game-changer", "game changer",
-  "revolutionary", "groundbreaking", "realm", "landscape", "paradigm",
-  "synergy", "leverage", "elevate", "foster", "embark", "navigate",
-  "robust", "seamless", "holistic", "cutting-edge", "in today's world",
-  "it's worth noting", "in conclusion", "furthermore", "moreover",
-  "comprehensive", "multifaceted", "pivotal", "transformative",
-  "harness", "empower", "streamline", "cutting edge",
-];
-
-// Strict ban list for viral FB long-form posts
-const BANNED_WORDS_VIRAL = [
-  ...BANNED_WORDS,
-  "can", "may", "just", "very", "really", "literally", "actually", "certainly",
-  "probably", "basically", "could", "maybe", "enlightening", "esteemed",
-  "shed light", "craft", "crafting", "imagine", "game-changer", "unlock",
-  "discover", "skyrocket", "abyss", "you're not alone", "in a world where",
-  "revolutionize", "disruptive", "utilize", "utilizing", "dive deep",
-  "illuminate", "unveil", "enrich", "intricate", "elucidate", "hence",
-  "boost", "bustling", "opened up", "powerful", "inquiries", "ever-evolving",
-  "remarkable", "stark", "testament", "in summary", "glimpse into",
-];
-
-const TOPICS = [
-  "Zodiac compatibility — which signs match and why",
-  "Birth chart education — Sun vs Moon vs Rising, Venus in love",
-  "Dating tips through an astrology lens",
-  "Sign-specific humor and relatable content",
-  "App features — compatibility scores, tarot, horoscopes",
-  "Seasonal astrology — retrogrades, eclipses, sign seasons",
-  "Zodiac truth — sign-specific personality traits, superpowers, and real struggles",
-  "Sign love styles — how each sign loves, what they need in a partner, dating patterns",
-  "Best cosmic matches — which signs work best together and why",
-  "Tarot and card readings — daily pulls, love spreads, what the cards say about your love life",
-  "Planetary placements and transits — Mercury retrograde survival, Venus in signs, Mars energy, moon phases and dating",
-];
+import { atomicWriteJson } from "./lib.js";
+import {
+  BANNED_WORDS_VIRAL,
+  POSTS_FILE,
+  MEMORY_FILE,
+} from "./constants.js";
+import { scoreViralPost } from "./scoring.js";
+import { submitToBlotato, type BlotatoResult } from "./blotato.js";
 
 const MAX_RETRIES = 5;
 const ANTHROPIC_API_RETRIES = 4;
-const POSTS_FILE = "posts.json";
-const MEMORY_FILE = "memory.json";
-const BLOTATO_API_URL = "https://backend.blotato.com/v2/posts";
-
-// ── AI-language scorer ──────────────────────────────────────────────
-interface ScoreResult {
-  pass: boolean;
-  score: number; // 0 = perfectly human, 100 = AI slop
-  flagged: string[];
-  details: {
-    bannedWords: number;
-    sentenceVariety: number;
-    startsWithI: boolean;
-    tooLong: boolean;
-  };
-}
-
-function scorePost(text: string): ScoreResult {
-  const lower = text.toLowerCase();
-  const flagged = BANNED_WORDS.filter((w) => lower.includes(w));
-
-  // Score components
-  let score = 0;
-
-  // Banned words: 20 pts each
-  score += flagged.length * 20;
-
-  // Sentence variety: penalize if all sentences are similar length
-  const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0);
-  const avgLen = sentences.reduce((sum, s) => sum + s.length, 0) / Math.max(sentences.length, 1);
-  const variance = sentences.reduce((sum, s) => sum + Math.abs(s.length - avgLen), 0) / Math.max(sentences.length, 1);
-  const sentenceVariety = variance < 10 ? 15 : 0; // Low variety = AI-like
-  score += sentenceVariety;
-
-  // Starts with "I" pattern (AI tends to do this)
-  const startsWithI = /^(I |I'm |I've |I'll )/.test(text.trim());
-  if (startsWithI) score += 5;
-
-  // Too long for social media
-  const tooLong = text.length > 300;
-  if (tooLong) score += 10;
-
-  score = Math.min(score, 100);
-
-  return {
-    pass: score < 20 && flagged.length === 0,
-    score,
-    flagged,
-    details: { bannedWords: flagged.length, sentenceVariety, startsWithI, tooLong },
-  };
-}
-
-// ── Viral FB long-form scorer ───────────────────────────────────────
-function scoreViralPost(text: string): ScoreResult {
-  const lower = text.toLowerCase();
-  const flagged = BANNED_WORDS_VIRAL.filter((w) => {
-    const pattern = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
-    return pattern.test(lower);
-  });
-
-  let score = flagged.length * 15;
-
-  // Must have an opening hook (5-8 words on first line)
-  const firstLine = text.trim().split("\n")[0]?.trim() ?? "";
-  const firstLineWords = firstLine.split(/\s+/).filter(Boolean).length;
-  if (firstLineWords < 4 || firstLineWords > 12) score += 15;
-
-  // Must contain at least 3 emoji-bullet lines
-  const emojiBullets = (text.match(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}].+$/gmu) || []).length;
-  if (emojiBullets < 3) score += 10;
-
-  // Must use "you" or "your" (direct address)
-  if (!/\b(you|your|you're|you've|you'll)\b/i.test(text)) score += 10;
-
-  // Reject hashtags, asterisks, semicolons (per template rules)
-  if (/#\w+/.test(text)) score += 20;
-  if (/\*/.test(text)) score += 10;
-  if (/;/.test(text)) score += 5;
-
-  score = Math.min(score, 100);
-
-  return {
-    pass: score < 25 && flagged.length === 0,
-    score,
-    flagged,
-    details: {
-      bannedWords: flagged.length,
-      sentenceVariety: 0,
-      startsWithI: false,
-      tooLong: text.length > 2200,
-    },
-  };
-}
 
 // ── Short-term memory ───────────────────────────────────────────────
 interface Memory {
@@ -174,71 +49,9 @@ function isRetryableAnthropicError(err: unknown): boolean {
   return status === 429 || status === 529 || (status !== undefined && status >= 500);
 }
 
-// ── Anthropic generation ────────────────────────────────────────────
-async function generatePost(
-  client: Anthropic,
-  topic: string,
-  memory: Memory,
-): Promise<string> {
-  const recentContext = memory.recentPosts.length > 0
-    ? `\nRecent posts (DO NOT repeat similar ideas):\n${memory.recentPosts.slice(-5).map((p) => `- "${p}"`).join("\n")}`
-    : "";
-
-  const request = {
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 300,
-    messages: [
-      {
-        role: "user" as const,
-        content: `You are a social media copywriter for AstroDating — a dating app that uses real birth chart astrology (synastry) to match people.
-
-Write ONE short, punchy social media post (max 280 chars) about: "${topic}"
-
-Content themes we cover:
-${TOPICS.map((t) => `- ${t}`).join("\n")}
-
-Rules:
-- Sound like a real human, not a corporation or AI
-- Casual, witty tone — think Twitter/X energy
-- 1-2 relevant emojis max
-- No hashtags unless specifically about a trend
-- NEVER use these words: ${BANNED_WORDS.join(", ")}
-- Vary sentence structure — mix short and long
-- Don't start with "I" or "We"
-- Be specific to astrology/dating, not generic motivational
-${recentContext}
-
-Post:`,
-      },
-    ],
-  };
-
-  let lastError: unknown;
-
-  for (let attempt = 1; attempt <= ANTHROPIC_API_RETRIES; attempt++) {
-    try {
-      const msg = await client.messages.create(request);
-      const block = msg.content[0];
-      if (block.type !== "text") throw new Error("Unexpected response type");
-      return block.text.trim().replace(/^["']|["']$/g, "");
-    } catch (err) {
-      lastError = err;
-
-      if (!isRetryableAnthropicError(err) || attempt === ANTHROPIC_API_RETRIES) {
-        break;
-      }
-
-      const status = getAnthropicStatus(err);
-      const delayMs = (2 ** attempt) * 1000 + Math.floor(Math.random() * 400);
-      console.log(`   Anthropic temporarily unavailable (${status ?? "network"}). Retrying in ${Math.round(delayMs / 1000)}s...`);
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-    }
-  }
-
-  throw lastError instanceof Error ? lastError : new Error(String(lastError));
-}
-
 // ── Viral FB long-form generation ───────────────────────────────────
+// Short-post generation lives in ./generator.ts (generateShortPost), shared
+// with the dashboard. Only the viral long-form path stays inline here.
 async function generateViralPost(
   client: Anthropic,
   source: string,
@@ -316,112 +129,14 @@ Output ONLY the post text, no preamble, no explanation, no quotes around it.`,
 }
 
 // ── Blotato API ─────────────────────────────────────────────────────
-interface BlotaToResult {
-  success: boolean;
-  postId?: string;
-  error?: string;
-}
-
-async function submitToBlotato(
-  text: string,
-  platforms: string[],
-  imageUrl?: string,
-  options?: {
-    useNextFreeSlot?: boolean;
-    scheduledTime?: Date;
-  },
-): Promise<BlotaToResult> {
-  const apiKey = process.env.BLOTATO_API_KEY;
-  if (!apiKey) {
-    return { success: false, error: "BLOTATO_API_KEY not set" };
-  }
-
-  const fbPageId = process.env.BLOTATO_FB_PAGE_ID;
-
-  // Upload local images to Supabase Storage so Blotato gets a public URL
-  imageUrl = await ensurePublicUrl(imageUrl);
-
-  try {
-    const results: { platform: string; success: boolean; postId?: string; error?: string }[] = [];
-
-    for (const platform of platforms) {
-      const accountId = platform === 'instagram'
-        ? process.env.BLOTATO_IG_ACCOUNT_ID
-        : process.env.BLOTATO_FB_ACCOUNT_ID;
-      if (!accountId) {
-        results.push({ platform, success: false, error: `BLOTATO_${platform === 'instagram' ? 'IG' : 'FB'}_ACCOUNT_ID not set` });
-        continue;
-      }
-
-      // Instagram requires an image — skip if text-only
-      if (platform === 'instagram' && !imageUrl) {
-        results.push({ platform, success: false, error: 'Instagram requires an image — skipped' });
-        continue;
-      }
-
-      const target: Record<string, string> = { targetType: platform };
-      if (platform === "facebook") {
-        if (!fbPageId) {
-          results.push({ platform, success: false, error: "BLOTATO_FB_PAGE_ID not set — required for Facebook posts" });
-          continue;
-        }
-        target.pageId = fbPageId;
-      }
-
-      const response = await fetchWithTimeout(BLOTATO_API_URL, {
-        method: "POST",
-        timeoutMs: 30_000,
-        headers: {
-          "blotato-api-key": apiKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          post: {
-            accountId,
-            content: { text, mediaUrls: imageUrl ? [imageUrl] : [], platform },
-            target,
-          },
-          ...(options?.scheduledTime
-            ? { scheduledTime: options.scheduledTime.toISOString() }
-            : options?.useNextFreeSlot
-              ? { useNextFreeSlot: true }
-              : {}),
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        results.push({ platform, success: false, error: `Blotato API ${response.status}: ${errorText}` });
-        continue;
-      }
-
-      const data = await response.json();
-      results.push({ platform, success: true, postId: data.postSubmissionId || data.id || data.postId || "unknown" });
-    }
-
-    const allFailed = results.every((r) => !r.success);
-    const firstSuccess = results.find((r) => r.success);
-    const errors = results.filter((r) => !r.success).map((r) => `${r.platform}: ${r.error}`);
-
-    if (allFailed) {
-      return { success: false, error: `All platforms failed — ${errors.join("; ")}` };
-    }
-
-    return {
-      success: true,
-      postId: firstSuccess?.postId,
-      ...(errors.length > 0 ? { error: `Partial failure — ${errors.join("; ")}` } : {}),
-    };
-  } catch (err) {
-    return { success: false, error: `Network error posting to Blotato: ${(err as Error).message}` };
-  }
-}
+// All three flavours below delegate to ./blotato.ts so the per-platform loop,
+// env-var handling, and error aggregation live in one place.
 
 async function postToBlotato(
   text: string,
   platforms: string[] = ["facebook", "instagram"],
   imageUrl?: string,
-): Promise<BlotaToResult> {
+): Promise<BlotatoResult> {
   return submitToBlotato(text, platforms, imageUrl);
 }
 
@@ -429,17 +144,16 @@ async function sendDraftToBlotato(
   text: string,
   platforms: string[] = ["facebook", "instagram"],
   imageUrl?: string,
-): Promise<BlotaToResult> {
+): Promise<BlotatoResult> {
   return submitToBlotato(text, platforms, imageUrl, { useNextFreeSlot: true });
 }
 
-// ── Blotato native scheduling (no Supabase cron required) ──────────
 async function scheduleToBlotato(
   text: string,
   scheduledTime: Date,
   platforms: string[] = ["facebook", "instagram"],
   imageUrl?: string,
-): Promise<BlotaToResult> {
+): Promise<BlotatoResult> {
   return submitToBlotato(text, platforms, imageUrl, { scheduledTime });
 }
 
@@ -452,10 +166,12 @@ interface SavedPost {
   createdAt: string;
   status: "draft" | "approved" | "scheduled" | "posted" | "failed";
   imagePath?: string;
+  scheduledFor?: string;
   blotato?: {
     postId?: string;
     platforms: string[];
     postedAt?: string;
+    queueMode?: "scheduled-time" | "next-free-slot";
     error?: string;
   };
 }
@@ -522,9 +238,15 @@ async function syncDraftToBlotatoNextSlot(
   }
 
   target.status = "scheduled";
+  if (result.scheduledTime) {
+    target.scheduledFor = result.scheduledTime;
+  } else {
+    delete target.scheduledFor;
+  }
   target.blotato = {
     postId: result.postId,
     platforms: draftPlatforms,
+    queueMode: "next-free-slot",
     ...(result.error ? { error: result.error } : {}),
   };
   savePosts(posts);
@@ -548,45 +270,31 @@ async function cmdGenerate(
     process.exit(1);
   }
 
-  const client = new Anthropic();
-  const memory = loadMemory();
-
   console.log(`\n🎯 Topic: "${topic}"\n`);
 
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    console.log(`⏳ Attempt ${attempt}/${MAX_RETRIES} — generating...`);
+  const { generateShortPost } = await import("./generator.js");
+  const result = await generateShortPost(topic, { maxRetries: MAX_RETRIES });
 
-    const text = await generatePost(client, topic, memory);
-    const result = scorePost(text);
-
-    console.log(`   📝 "${text}"`);
-    console.log(`   🔍 AI score: ${result.score}/100 ${result.pass ? "✅" : "❌"}`);
-
-    if (result.pass) {
-      const saved = savePost(topic, text, result.score);
-      memory.recentTopics.push(topic);
-      memory.recentPosts.push(text);
-      memory.totalGenerated++;
-      saveMemory(memory);
-      console.log(`\n✅ Approved! Saved as post #${saved.id} → ${POSTS_FILE}`);
-      if (options?.syncDraftToBlotato !== false) {
-        return await syncDraftToBlotatoNextSlot(saved.id) ?? saved;
-      }
-      return saved;
-    }
-
-    if (result.flagged.length > 0) {
-      console.log(`   ❌ Flagged words: [${result.flagged.join(", ")}]`);
-    }
-    if (result.details.sentenceVariety > 0) {
-      console.log(`   ❌ Low sentence variety`);
-    }
-    if (result.details.tooLong) {
-      console.log(`   ❌ Too long (${text.length} chars)`);
+  // Replay the attempts in the same console-UX shape as before so external
+  // wrappers / screenshots stay stable.
+  for (const a of result.attempts) {
+    console.log(`⏳ Attempt ${a.attempt}/${MAX_RETRIES} — generating...`);
+    console.log(`   📝 "${a.text}"`);
+    console.log(`   🔍 AI score: ${a.score}/100 ${a.pass ? "✅" : "❌"}`);
+    if (a.flagged.length > 0) {
+      console.log(`   ❌ Flagged words: [${a.flagged.join(", ")}]`);
     }
   }
 
-  console.error(`\n🚫 Failed after ${MAX_RETRIES} attempts.`);
+  if (result.success && result.post) {
+    console.log(`\n✅ Approved! Saved as post #${result.post.id} → ${POSTS_FILE}`);
+    if (options?.syncDraftToBlotato !== false) {
+      return await syncDraftToBlotatoNextSlot(result.post.id) ?? result.post;
+    }
+    return result.post;
+  }
+
+  console.error(`\n🚫 ${result.error ?? `Failed after ${MAX_RETRIES} attempts.`}`);
   process.exit(1);
 }
 
@@ -787,11 +495,13 @@ async function cmdBlotatoSchedule(postId?: number, dateArg: string = "next") {
   );
 
   if (result.success) {
+    const scheduledFor = result.scheduledTime || scheduledTime.toISOString();
     target.status = "scheduled";
+    target.scheduledFor = scheduledFor;
     target.blotato = {
       postId: result.postId,
       platforms: ["facebook", "instagram"],
-      postedAt: scheduledTime.toISOString(),
+      queueMode: "scheduled-time",
       ...(result.error ? { error: result.error } : {}),
     };
     savePosts(posts);
@@ -882,6 +592,50 @@ async function main() {
       break;
     }
 
+    case "cloud-schedule": {
+      // Usage: npm run agent -- cloud-schedule <id> "<when>"
+      // Pushes the post into Supabase marketing_posts. The publish-scheduled-posts
+      // edge function (pg_cron every 5 min) will publish it — even if your PC is off.
+      if (!arg) {
+        console.error('Usage: npm run agent -- cloud-schedule <id> "<when>"');
+        console.error('       npm run agent -- cloud-schedule 21 "tomorrow 19:00"');
+        process.exit(1);
+      }
+      const { schedulePostServer } = await import("./schedule-server.js");
+      await schedulePostServer(parseInt(arg), process.argv[4] || "next");
+      break;
+    }
+
+    case "cloud-list": {
+      // Usage: npm run agent -- cloud-list [scheduled|posted|failed]
+      const { listCloudQueue } = await import("./cloud-scheduler.js");
+      const status = (arg as "scheduled" | "posted" | "failed" | undefined);
+      const rows = await listCloudQueue({ status });
+      if (rows.length === 0) {
+        console.log("Cloud queue is empty.");
+      } else {
+        console.log(`\n☁️ ${rows.length} cloud posts (most recent first):\n`);
+        for (const r of rows) {
+          const icon = r.status === "posted" ? "📤" : r.status === "failed" ? "❌" : "⏰";
+          const when = new Date(r.scheduled_for).toLocaleString();
+          console.log(`  ${icon} [${r.status}] ${when}  ${r.text.slice(0, 60)}...`);
+          if (r.error) console.log(`       └─ ${r.error.slice(0, 100)}`);
+        }
+      }
+      break;
+    }
+
+    case "cloud-sync": {
+      // Pull cloud statuses back into posts.json so the dashboard reflects reality.
+      const { syncCloudBackToLocal } = await import("./cloud-scheduler.js");
+      const report = await syncCloudBackToLocal();
+      console.log(
+        `Cloud sync: checked ${report.checked} posts, updated ${report.updated} ` +
+        `(${report.postedNow} newly posted, ${report.failedNow} newly failed).`,
+      );
+      break;
+    }
+
     default:
       // Legacy: treat first arg as topic for backward compat
       if (command) {
@@ -890,7 +644,7 @@ async function main() {
         console.log(`
 AstroDating Marketing Agent
 
-Commands:
+Generation / local publishing:
   npm run agent -- generate "<topic>"        Generate short post (≤280 chars)
   npm run agent -- viral "<source-or-file>"  Generate long-form viral FB post
   npm run agent -- post [id]                 Publish immediately to Blotato (latest approved or by ID)
@@ -898,7 +652,12 @@ Commands:
   npm run agent -- auto "<topic>"            Generate short + image + send draft to next Blotato slot
   npm run agent -- viral-auto "<source>"     Generate viral + image + send draft to next Blotato slot
   npm run agent -- blotato-schedule <id> "<when>"  Schedule directly in Blotato (no Supabase cron)
-  npm run agent -- list                      Show all posts
+  npm run agent -- list                      Show all posts (local view)
+
+Cloud-scheduled (PC off OK — uses Supabase pg_cron + edge function):
+  npm run agent -- cloud-schedule <id> "<when>"   Queue a post for server-side publication
+  npm run agent -- cloud-list [status]            Show cloud queue (status = scheduled|posted|failed)
+  npm run agent -- cloud-sync                     Pull cloud status back into posts.json
 `);
       }
   }
