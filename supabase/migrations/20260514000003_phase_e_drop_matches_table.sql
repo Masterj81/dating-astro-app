@@ -1,0 +1,484 @@
+-- ============================================================
+-- Phase E: drop the legacy public.matches table
+-- ============================================================
+--
+-- DEPLOYMENT STATUS: applied to production via the SQL editor on
+-- 2026-05-14 and verified. This was the final step of the legacy
+-- `matches` retirement. Prevalidation matched the expected results
+-- exactly (P1/P2/P3b/P4 = 0, P3 = the single orphan
+-- check_and_create_match, P5 = the three orphan functions, P6 = 11
+-- test-only rows). Post-validation confirmed the end state:
+-- public.matches dropped, no orphan idx_matches_* indexes, no orphan
+-- RLS policies, the three orphan functions gone, and public.messages
+-- unaffected (match_id absent, conversation_id NOT NULL). This file
+-- is the canonical idempotent record — safe to re-run; a fresh DB /
+-- future `db push` reaches the same end state.
+--
+-- Reference plan: docs/legacy-matches-retirement-plan.md
+--   §"Phase E — deferred: drop `matches` table".
+--
+-- ------------------------------------------------------------
+-- CONTEXT
+-- ------------------------------------------------------------
+--
+--   The product moved to conversation-first messaging in
+--   20260428000002_conversations_first.sql. Every phase of the
+--   `matches` retirement that had to land before the table itself
+--   could be dropped is already shipped and prod-verified:
+--
+--     Phase A  (20260513000002) — dropped the unreachable creation /
+--              notification TRIGGERS (trigger_check_match on swipes,
+--              trigger_notify_new_match / trigger_send_match_email on
+--              matches). NOTE: Phase A dropped the triggers but NOT
+--              their backing functions. A prod pg_proc audit at
+--              Phase E time (prevalidation P3 + P5) found
+--              check_and_create_match, notify_new_match and
+--              send_match_email STILL present as orphan functions —
+--              no trigger wires any of them (P3b = 0). This migration
+--              retires those three orphans itself (Step 1) before
+--              dropping the table.
+--     Phase B  (20260513000003) — dropped get_user_matches(uuid).
+--     Phase C  (edge-function deploy) — removed the new_match email
+--              template + the match notification dispatch branches.
+--     Phase D pre-step (20260513000004) — backfilled legacy
+--              match-only messages onto conversation_id.
+--     Phase D pass-1 (20260513000005) — dropped the RLS policies on
+--              public.messages that referenced match_id.
+--     Phase E preamble (20260513000006) — dropped the zombie
+--              message_requests triggers on matches / messages /
+--              swipes.
+--     Phase D pass-2 (20260514000002) — dropped messages.match_id,
+--              its FK (messages_match_id_fkey), its three indexes,
+--              retired update_match_last_message() +
+--              trigger_update_match_message, rewrote
+--              notify_new_message() conversation-only, and
+--              defensively dropped get_user_matches(uuid) +
+--              activate_requested_match_on_reply().
+--
+--   After pass-2, plus a dedicated Phase E prevalidation pass against
+--   prod, the state is:
+--     - public.messages.match_id is gone; conversation_id is NOT NULL.
+--     - No FK anywhere points into public.matches            (P1 = 0).
+--     - No trigger is attached to public.matches             (P2 = 0).
+--     - No view depends on public.matches                    (P4 = 0).
+--     - get_user_matches, activate_requested_match_on_reply,
+--       update_match_last_message are absent from prod.
+--     - BUT: three orphan functions survive — check_and_create_match
+--       (its body still references the matches table, P3),
+--       notify_new_match and send_match_email (trigger functions for
+--       the matches table, found by P5). No trigger wires any of them
+--       (P3b = 0): Phase A dropped their triggers but not the
+--       functions. They are unreachable dead code, so they cannot
+--       break the DROP TABLE at runtime — but they reference a table
+--       that is about to disappear, so this migration retires them
+--       (Step 1) rather than leaving the dangling thread.
+--
+--   public.matches is therefore an isolated leaf table at the schema
+--   level: inbound FKs to public.profiles only, no inbound FKs from
+--   any other table, no triggers, no view dependency, and — once
+--   Step 1 has run — no function references it either. Dropping it
+--   (Step 2) is then a clean, dependency-free leaf removal.
+--
+-- ------------------------------------------------------------
+-- WHAT THIS MIGRATION DOES
+-- ------------------------------------------------------------
+--
+--   Two steps, in execution order:
+--
+--   1. DROP the three orphan match functions left behind by Phase A:
+--        - check_and_create_match()  (its body INSERTs into matches)
+--        - notify_new_match()        (trigger fn for the matches table)
+--        - send_match_email()        (trigger fn for the matches table)
+--      Phase A dropped their triggers; the functions were left in
+--      pg_proc. P3b = 0 confirms no trigger wires any of them — they
+--      are unreachable dead code. They are dropped here so that, by
+--      the time Step 2 runs, NOTHING in the schema references the
+--      matches table. All three are trigger functions (no arguments);
+--      DROP FUNCTION IF EXISTS ... () is guarded and idempotent. No
+--      CASCADE — a surprise dependency must fail loudly, not be
+--      silently dropped.
+--
+--   2. DROP TABLE IF EXISTS public.matches.
+--      This drops, as table-local dependents:
+--        - the table's five indexes (idx_matches_user1,
+--          idx_matches_user2, idx_matches_recent,
+--          idx_matches_last_message, idx_matches_status — all from
+--          00000000000000_full_schema.sql lines 246-250);
+--        - the table's constraints (PK, unique_match, ordered_users,
+--          and the two inbound-to-profiles FKs user1_id / user2_id);
+--        - the table's RLS policies ("Users can view own matches",
+--          "Users can update own matches", "System can insert
+--          matches" — full_schema.sql lines 387-388 +
+--          20260206_fix_security_warnings.sql line 62).
+--      None of these are referenced from outside the table, so they
+--      all fall away with it and nothing else is affected.
+--
+--   NO CASCADE. `DROP TABLE` (without CASCADE) fails loudly if any
+--   object outside the table still depends on it — exactly the
+--   safety property we want. The audit + the prevalidation queries
+--   below establish that nothing does; if prod has drifted, the
+--   un-CASCADE'd drop surfaces the drift as a hard error instead of
+--   silently dropping a still-wired dependent. If the drop ever does
+--   fail on a dependency, STOP — do not add CASCADE — identify the
+--   dependent, write a forward migration to retire it explicitly,
+--   then re-run this one.
+--
+-- ------------------------------------------------------------
+-- AUDIT (references to public.matches at Phase E time)
+-- ------------------------------------------------------------
+--
+--   SQL — server objects referencing public.matches:
+--     * Three ORPHAN FUNCTIONS — check_and_create_match,
+--       notify_new_match, send_match_email. Phase A dropped their
+--       triggers but not the functions; the Phase E prevalidation
+--       pass (P3 + P5) found them still in prod, P3b = 0 confirmed no
+--       trigger wires them. They are dead code, but they belong to
+--       the matches feature — Step 1 of this migration drops them.
+--     * No TRIGGERS on matches (P2 = 0). Phase A + the Phase E
+--       preamble (20260513000006) retired them all.
+--     * No FKs and no VIEWS referencing matches (P1 = 0, P4 = 0).
+--     * update_match_last_message, get_user_matches,
+--       activate_requested_match_on_reply were retired by Phase D
+--       pass-2 / Phase B — confirmed absent (P5).
+--     * The only other references are the table's own RLS policies,
+--       which are table-local and drop with the table in Step 2.
+--
+--   SQL — FKs pointing INTO public.matches:
+--     * NONE. The only one that ever existed was
+--       messages.match_id -> matches(id), dropped by Phase D pass-2.
+--       swipes has no FK to matches (full_schema.sql lines 211-218 —
+--       swipes references profiles only). conversations references
+--       profiles only (20260428000002 lines 39-40).
+--
+--   Edge functions (supabase/functions/):
+--     * Zero references to the matches *table*. The string "matches"
+--       in send-email/index.ts is English marketing prose ("Your
+--       matches are waiting"); in send-notification/index.ts the
+--       `like: "matches"` / `likes: "matches"` map values are
+--       notification_preferences JSON pref-key names, not the table.
+--       Neither is a database dependency. (Verified by grep.)
+--
+--   App code (apps/mobile + apps/web):
+--     * Zero `.from('matches')` / `INSERT INTO matches` /
+--       `UPDATE matches` calls. The Phase E preamble (commit
+--       49b11c3) removed the last caller — blockingService.ts no
+--       longer issues `UPDATE matches SET status='blocked'` and
+--       unmatchUser() is deleted. The remaining `matchId` hits in
+--       apps/ are route-param / push-payload back-compat names
+--       (web .../chat/[matchId]/page.tsx, mobile _layout.tsx,
+--       notifications.ts, synastry.tsx, date-planner.tsx,
+--       match/[id].tsx) — naming-only, not table access. The
+--       redirect-only routes (web /app/matches, mobile (tabs)/matches)
+--       are likewise UI shells, not DB readers. None are touched by
+--       this migration; renaming them is optional cosmetic cleanup
+--       for a later app-side commit and is out of scope for a SQL
+--       migration.
+--
+--   Naming / back-compat — intentionally NOT touched:
+--     * notification_preferences.newMatches JSON key on profiles —
+--       live UI contract (mobile Settings -> Notifications "New
+--       connections" toggle). Unrelated to the matches table.
+--     * The `matchId` route params and `{ matchId }`-shaped push
+--       payload keys in apps/ — back-compat names, no table access.
+--
+--   Historical-only (NOT touched — do not "fix" on reflex):
+--     * 00000000000000_full_schema.sql, 20260206_fix_security_warnings.sql,
+--       20260320_fix_swipe_triggers_search_path.sql,
+--       20260320_fix_get_user_matches_search_path.sql,
+--       20260323_fix_message_trigger_functions.sql,
+--       20260419000002_rpc_auth_guards.sql,
+--       20260420000001_subscriptions_user_fk.sql,
+--       20260423_fix_notify_new_match_search_path.sql,
+--       20260427000022_revoke_anon_from_user_facing_rpcs.sql,
+--       20260428000002_conversations_first.sql,
+--       20260504000001_secure_user_facing_rpcs.sql, and
+--       run_pending.sql all contain `matches` / `match_id`. They are
+--       immutable deployment history. Only forward migrations count.
+--
+-- ------------------------------------------------------------
+-- WHAT THIS MIGRATION EXPLICITLY DOES NOT TOUCH
+-- ------------------------------------------------------------
+--   * public.swipes / trigger_swipe_rate_limit — the swipes table is
+--     a separate retirement concern (it has no live writers but also
+--     no FK relationship to matches). Left in place; retire it in its
+--     own future pass if desired.
+--   * notification_preferences.newMatches JSON key — live UI
+--     contract. Untouched.
+--   * public.conversations / public.messages and all their wiring —
+--     the conversation-first model is the live system. Untouched.
+--   * Any app code — no app change is required (the Phase E preamble
+--     already removed the last app-side caller). The cosmetic
+--     `matchId` route-param renames noted in the audit are optional
+--     and out of scope for a SQL migration.
+--   * Edge functions — no edge-function change is required.
+--
+-- ------------------------------------------------------------
+-- IDEMPOTENCE
+-- ------------------------------------------------------------
+--   * DROP TABLE IF EXISTS — guarded; a second apply is a no-op. A
+--     fresh DB / future `db push` reaches the same end state (the
+--     table never gets created because full_schema.sql still creates
+--     it, then this migration drops it — net: absent).
+--   * No CASCADE: the drop never silently widens. If a dependency
+--     exists the migration fails rather than dropping extra objects.
+--
+-- ------------------------------------------------------------
+-- RISK
+-- ------------------------------------------------------------
+--   Low — but IRREVERSIBLE for the data. This is a leaf-table drop
+--   with zero inbound dependencies (audited above + gated by the
+--   prevalidation queries). No live code path reads or writes the
+--   table. The structural change is metadata-only and fast.
+--
+--   The irreversible part is the DATA: once DROP TABLE runs, every
+--   row in public.matches is gone permanently. There is no way to
+--   recover the historical compatibility scores / matched_at /
+--   status values after the drop. See ROLLBACK below for what
+--   "rollback" can and cannot mean here. Take a snapshot / logical
+--   backup of public.matches before applying if there is ANY chance
+--   the historical rows have analytical value.
+--
+-- ------------------------------------------------------------
+-- ROLLBACK
+-- ------------------------------------------------------------
+--   IMPORTANT: a DROP TABLE rollback can only restore the STRUCTURE,
+--   never the DATA. The rows of public.matches are not recoverable
+--   from this migration. "Rollback" here means one of:
+--
+--   (a) Point-in-time restore / restore-from-backup of the whole
+--       database to just before this migration was applied. This is
+--       the ONLY way to get the rows back. Prefer this if the data
+--       mattered.
+--
+--   (b) Re-create the empty table structure, if some unforeseen
+--       code path needs the relation to exist (it should not — the
+--       audit shows none does). Re-create it verbatim from
+--       00000000000000_full_schema.sql lines 227-250 +
+--       20260206_fix_security_warnings.sql (the "System can insert
+--       matches" policy). It will come back EMPTY:
+--
+--   begin;
+--
+--   CREATE TABLE IF NOT EXISTS public.matches (
+--     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--     user1_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+--     user2_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+--     compatibility_overall INTEGER,
+--     compatibility_emotional INTEGER,
+--     compatibility_communication INTEGER,
+--     compatibility_passion INTEGER,
+--     compatibility_long_term INTEGER,
+--     compatibility_values INTEGER,
+--     compatibility_growth INTEGER,
+--     status TEXT DEFAULT 'active'
+--       CHECK (status IN ('active', 'unmatched', 'blocked')),
+--     matched_at TIMESTAMPTZ DEFAULT NOW(),
+--     last_message_at TIMESTAMPTZ,
+--     created_at TIMESTAMPTZ DEFAULT NOW(),
+--     CONSTRAINT unique_match UNIQUE (user1_id, user2_id),
+--     CONSTRAINT ordered_users CHECK (user1_id < user2_id)
+--   );
+--
+--   CREATE INDEX IF NOT EXISTS idx_matches_user1
+--     ON public.matches(user1_id) WHERE status = 'active';
+--   CREATE INDEX IF NOT EXISTS idx_matches_user2
+--     ON public.matches(user2_id) WHERE status = 'active';
+--   CREATE INDEX IF NOT EXISTS idx_matches_recent
+--     ON public.matches(matched_at DESC);
+--   CREATE INDEX IF NOT EXISTS idx_matches_last_message
+--     ON public.matches(last_message_at DESC NULLS LAST);
+--   CREATE INDEX IF NOT EXISTS idx_matches_status
+--     ON public.matches(status);
+--
+--   ALTER TABLE public.matches ENABLE ROW LEVEL SECURITY;
+--   CREATE POLICY "Users can view own matches" ON public.matches
+--     FOR SELECT USING (auth.uid() = user1_id OR auth.uid() = user2_id);
+--   CREATE POLICY "Users can update own matches" ON public.matches
+--     FOR UPDATE USING (auth.uid() = user1_id OR auth.uid() = user2_id);
+--   CREATE POLICY "System can insert matches" ON public.matches
+--     FOR INSERT WITH CHECK (auth.uid() = user1_id OR auth.uid() = user2_id);
+--
+--   commit;
+--
+--   NOTE: re-creating the table does NOT re-create the Phase A /
+--   Phase D triggers, functions, or the messages.match_id column /
+--   FK — those were retired by their own migrations and are not in
+--   scope for a Phase E rollback. If the legacy match flow genuinely
+--   needed to come back, every retired phase would have to be
+--   reverted in reverse order, which is not a realistic operation —
+--   option (a), a PITR restore, is the real answer.
+--
+-- ------------------------------------------------------------
+-- PREVALIDATION (run against PROD before applying — all must pass)
+-- ------------------------------------------------------------
+--   -- P1. No FK anywhere points into public.matches. EXPECT: 0 rows.
+--   SELECT tc.table_schema, tc.table_name, tc.constraint_name,
+--          kcu.column_name
+--   FROM information_schema.table_constraints tc
+--   JOIN information_schema.key_column_usage kcu
+--     ON tc.constraint_name = kcu.constraint_name
+--    AND tc.table_schema   = kcu.table_schema
+--   JOIN information_schema.constraint_column_usage ccu
+--     ON ccu.constraint_name = tc.constraint_name
+--    AND ccu.table_schema    = tc.table_schema
+--   WHERE tc.constraint_type = 'FOREIGN KEY'
+--     AND ccu.table_schema   = 'public'
+--     AND ccu.table_name     = 'matches';
+--
+--   -- P2. No trigger is attached to public.matches. EXPECT: 0 rows.
+--   SELECT event_object_table, trigger_name, action_timing,
+--          event_manipulation
+--   FROM information_schema.triggers
+--   WHERE event_object_schema = 'public'
+--     AND event_object_table  = 'matches';
+--
+--   -- P3. Functions whose body references the matches table.
+--   --     NOTE: pg_get_functiondef() throws "array_agg is an
+--   --     aggregate function" if it hits an aggregate, so restrict to
+--   --     normal functions (prokind = 'f') and match prosrc directly.
+--   --     EXPECT at Phase E time: exactly ONE row — check_and_create_match
+--   --     (retired by Step 1). Any OTHER name is an unaudited
+--   --     dependency: STOP and investigate.
+--   SELECT p.proname
+--   FROM pg_proc p
+--   JOIN pg_namespace n ON n.oid = p.pronamespace
+--   WHERE n.nspname = 'public' AND p.prokind = 'f'
+--     AND p.prosrc ~ '\mmatches\M';
+--
+--   -- P3b. Are check_and_create_match / notify_new_match /
+--   --      send_match_email still wired to any trigger?
+--   --      EXPECT: 0 rows — they are orphans, Step 1 drops them.
+--   SELECT tg.tgname, c.relname AS tbl, p.proname AS fn
+--   FROM pg_trigger tg
+--   JOIN pg_proc  p ON p.oid = tg.tgfoid
+--   JOIN pg_class c ON c.oid = tg.tgrelid
+--   WHERE NOT tg.tgisinternal
+--     AND p.proname IN ('check_and_create_match','notify_new_match',
+--                       'send_match_email');
+--
+--   -- P4. No view / materialized view depends on public.matches.
+--   --     EXPECT: 0 rows.
+--   SELECT DISTINCT v.schemaname, v.viewname
+--   FROM pg_catalog.pg_depend d
+--   JOIN pg_catalog.pg_rewrite r ON r.oid = d.objid
+--   JOIN pg_catalog.pg_class   c ON c.oid = r.ev_class
+--   JOIN pg_catalog.pg_views   v ON v.viewname = c.relname
+--   JOIN pg_catalog.pg_class   t ON t.oid = d.refobjid
+--   JOIN pg_catalog.pg_namespace tn ON tn.oid = t.relnamespace
+--   WHERE tn.nspname = 'public' AND t.relname = 'matches';
+--
+--   -- P5. Legacy match functions still present in prod. EXPECT at
+--   --     Phase E time: exactly THREE rows — check_and_create_match,
+--   --     notify_new_match, send_match_email (all retired by Step 1).
+--   --     get_user_matches, activate_requested_match_on_reply and
+--   --     update_match_last_message MUST be absent (retired by
+--   --     Phase B / Phase D pass-2). If any of those three appears,
+--   --     STOP — a prior phase did not actually land in prod.
+--   SELECT n.nspname, p.proname
+--   FROM pg_proc p
+--   JOIN pg_namespace n ON n.oid = p.pronamespace
+--   WHERE n.nspname = 'public'
+--     AND p.proname IN ('get_user_matches',
+--                       'activate_requested_match_on_reply',
+--                       'update_match_last_message',
+--                       'check_and_create_match',
+--                       'notify_new_match',
+--                       'send_match_email');
+--
+--   -- P6. (Informational, NOT a blocker) How many rows will be lost.
+--   --     Phase E prevalidation returned 11 rows; the product owner
+--   --     confirmed these are TEST DATA ONLY — no backup required.
+--   SELECT count(*) AS matches_rows_to_be_dropped FROM public.matches;
+--
+--   DECISION RULE:
+--     - P1, P2, P3b, P4 must return 0 rows.
+--     - P3 must return ONLY check_and_create_match (exactly 1 row).
+--     - P5 must return ONLY check_and_create_match, notify_new_match,
+--       send_match_email (exactly 3 rows) — none of get_user_matches,
+--       activate_requested_match_on_reply, update_match_last_message.
+--     - P6 is informational (11 rows, test data, no backup).
+--   Any deviation — an unexpected name in P3 or P5, any row in
+--   P1/P2/P3b/P4 — means the table is not the clean leaf this
+--   migration assumes. STOP, identify the dependency, retire it in
+--   its own forward migration, then re-run prevalidation. Do NOT
+--   reach for CASCADE.
+--
+--   STATUS: prevalidation was run against prod on 2026-05-14 and
+--   matched the expected results above exactly (P1/P2/P3b/P4 = 0,
+--   P3 = check_and_create_match, P5 = the three orphans, P6 = 11
+--   test rows). This migration is cleared to apply.
+--
+-- ------------------------------------------------------------
+-- POST-VALIDATION (run against PROD after applying)
+-- ------------------------------------------------------------
+--   -- Q1. The table is gone. EXPECT: 0 rows.
+--   SELECT schemaname, tablename
+--   FROM pg_tables
+--   WHERE schemaname = 'public' AND tablename = 'matches';
+--
+--   -- Q2. No orphaned index named idx_matches_* remains.
+--   --     EXPECT: 0 rows.
+--   SELECT schemaname, indexname
+--   FROM pg_indexes
+--   WHERE schemaname = 'public' AND indexname LIKE 'idx_matches_%';
+--
+--   -- Q3. No orphaned RLS policy remains for the table.
+--   --     EXPECT: 0 rows.
+--   SELECT schemaname, tablename, policyname
+--   FROM pg_policies
+--   WHERE schemaname = 'public' AND tablename = 'matches';
+--
+--   -- Q4. Chat still works end to end — conversation-first path is
+--   --     entirely independent of matches. Smoke test: send a
+--   --     message in a chat thread as each participant; confirm it
+--   --     persists and the new-message push fires. (No SQL — app
+--   --     smoke test, same as prior phases.)
+--
+--   -- Q5. The messages table is unaffected — still conversation-only.
+--   --     EXPECT: match_id absent, conversation_id present + NOT NULL.
+--   SELECT column_name, is_nullable
+--   FROM information_schema.columns
+--   WHERE table_schema = 'public' AND table_name = 'messages'
+--     AND column_name IN ('match_id', 'conversation_id');
+--
+--   -- Q6. The three orphan functions are gone (Step 1). EXPECT: 0 rows.
+--   SELECT n.nspname, p.proname
+--   FROM pg_proc p
+--   JOIN pg_namespace n ON n.oid = p.pronamespace
+--   WHERE n.nspname = 'public'
+--     AND p.proname IN ('check_and_create_match','notify_new_match',
+--                       'send_match_email');
+--
+-- ============================================================
+
+begin;
+
+-- ------------------------------------------------------------
+-- Step 1: retire the three orphan match functions Phase A left
+--   behind (it dropped their triggers but not the functions).
+--   Prevalidation P3b = 0 confirmed no trigger wires any of them —
+--   they are unreachable dead code. Dropped here, before the table,
+--   so that by Step 2 nothing in the schema references public.matches.
+--   All three are trigger functions (zero arguments). DROP FUNCTION
+--   IF EXISTS ... () is guarded and idempotent. No CASCADE — a
+--   surprise dependency must fail loudly rather than be dropped
+--   silently.
+-- ------------------------------------------------------------
+DROP FUNCTION IF EXISTS public.check_and_create_match();
+DROP FUNCTION IF EXISTS public.notify_new_match();
+DROP FUNCTION IF EXISTS public.send_match_email();
+
+-- ------------------------------------------------------------
+-- Step 2: drop the legacy public.matches table.
+--   No CASCADE — the prevalidation queries above prove the table is
+--   a clean leaf (no inbound FKs, no triggers, no view dependency;
+--   after Step 1, no function references it either; only its own
+--   table-local indexes, constraints, and RLS policies, which drop
+--   with it). If prod has drifted and a dependency still exists,
+--   this un-CASCADE'd DROP TABLE fails loudly — that is the intended
+--   safety behaviour. Do NOT add CASCADE; retire the surprise
+--   dependency in its own migration first.
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS public.matches;
+
+commit;
