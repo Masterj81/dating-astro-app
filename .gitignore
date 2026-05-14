@@ -63,7 +63,18 @@ packages/*/dist/
 # Turbo
 .turbo/
 
-.vercel
-
 # Maestro test credentials
 .maestro/.env
+
+# Local dev logs & crash dumps
+*.log
+*.stackdump
+
+# Local build / tooling scratch dirs
+.gradle-local/
+.maestro/logs/
+tmp-screenshots/
+.tmp_pypdf/
+
+# Marketing agent — generated image artifacts (not source code)
+marketingagent/generated-images/
