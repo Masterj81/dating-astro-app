@@ -84,3 +84,9 @@ marketingagent/evolution-state.json
 marketingagent/memory.json
 marketingagent/posts.json
 marketingagent/schedule.json
+
+# Stray root artifacts — expo / tsc run from the monorepo root drops these
+# stubs; the real files live in apps/mobile/ and tsconfig.base.json. Anchored
+# to the root so they never shadow apps/mobile/app.json etc.
+/app.json
+/tsconfig.json
