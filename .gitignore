@@ -78,3 +78,9 @@ tmp-screenshots/
 
 # Marketing agent — generated image artifacts (not source code)
 marketingagent/generated-images/
+
+# Marketing agent — runtime state mutated by the agent at run time (not source)
+marketingagent/evolution-state.json
+marketingagent/memory.json
+marketingagent/posts.json
+marketingagent/schedule.json
