@@ -6,11 +6,15 @@ import type {
   AwarenessVariant,
   CampaignCalendar,
   CampaignWindow,
+  CreatorBrief,
+  CreatorBriefSection,
   GenericFlag,
   OfferKind,
   OfferDiagnosis,
   OfferRecommendation,
   ScoreDimension,
+  ShotList,
+  ShotListItem,
   Strategy,
   StrategyScore,
 } from "@/types/strategy";
@@ -33,6 +37,8 @@ type Tab =
   | "experiments"
   | "offers"
   | "calendar"
+  | "briefs"
+  | "shots"
   | "export";
 
 const TABS: { id: Tab; label: string }[] = [
@@ -47,6 +53,8 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "experiments", label: "Experiments" },
   { id: "offers", label: "Offers" },
   { id: "calendar", label: "Calendar" },
+  { id: "briefs", label: "Briefs" },
+  { id: "shots", label: "Shots" },
   { id: "export", label: "Export brief" },
 ];
 
@@ -110,6 +118,8 @@ export function StrategyView({ input, strategy, hasMeaningfulInput }: Props) {
         {tab === "experiments" && <ExperimentsTab strategy={strategy} />}
         {tab === "offers" && <OffersTab strategy={strategy} />}
         {tab === "calendar" && <CalendarTab calendar={strategy.campaignCalendar} />}
+        {tab === "briefs" && <BriefsTab strategy={strategy} />}
+        {tab === "shots" && <ShotsTab strategy={strategy} />}
         {tab === "export" && <ExportTab brief={strategy.exportBrief} />}
       </div>
     </section>
@@ -887,6 +897,345 @@ function CalendarWindowCard({ window: w, index }: { window: CampaignWindow; inde
       </p>
       <p className="mt-2 text-sm text-ink-100">{w.notes}</p>
     </div>
+  );
+}
+
+// ---------------- Briefs tab ----------------
+
+function BriefsTab({ strategy }: { strategy: Strategy }) {
+  return (
+    <div className="flex flex-col gap-5">
+      <SectionTitle>Creator Briefs</SectionTitle>
+      <p className="text-xs text-ink-400">
+        One production brief per top-ranked angle. Each brief carries a
+        framing rule, alternate hook openers, a four-section spine
+        (hook / problem / solution / CTA), and the deliverable list a
+        creator is paid against. Briefs are deterministic — the same
+        inputs always produce the same briefs.
+      </p>
+      <div className="flex flex-col gap-3">
+        {strategy.creatorBriefs.map((brief) => (
+          <BriefCard key={brief.id} brief={brief} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BriefCard({ brief }: { brief: CreatorBrief }) {
+  const exportText = briefToText(brief);
+  return (
+    <div className="hairline relative rounded-lg bg-ink-900 p-4">
+      <div className="absolute right-3 top-3">
+        <CopyMini text={exportText} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 pr-16">
+        <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+          {brief.id}
+        </span>
+        <p className="text-sm font-medium text-ink-50">{brief.forAngle}</p>
+        <Tag>~{brief.durationSeconds}s</Tag>
+      </div>
+      <p className="mt-3 text-xs text-ink-300">
+        <span className="text-ink-400">Framing: </span>
+        {brief.framing}
+      </p>
+      {brief.notes ? (
+        <p className="mt-2 text-xs text-ink-400">{brief.notes}</p>
+      ) : null}
+
+      <div className="mt-4">
+        <p className="text-xxs uppercase tracking-wide text-ink-400">
+          Alt hooks
+        </p>
+        <ul className="mt-1 list-inside list-disc space-y-1 text-xs text-ink-100">
+          {brief.altHooks.map((h, i) => (
+            <li key={i}>{h}</li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-3">
+        {brief.sections.map((s) => (
+          <BriefSectionBlock key={s.kind} section={s} />
+        ))}
+      </div>
+
+      <div className="mt-4">
+        <p className="text-xxs uppercase tracking-wide text-ink-400">
+          Deliverables
+        </p>
+        <ul className="mt-1 list-inside list-disc space-y-1 text-xs text-ink-100">
+          {brief.deliverables.map((d, i) => (
+            <li key={i}>{d}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function BriefSectionBlock({ section: s }: { section: CreatorBriefSection }) {
+  return (
+    <div className="rounded-md border border-ink-800 bg-ink-950/40 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+          {briefSectionLabel(s.kind)}
+        </span>
+        <p className="text-sm font-medium text-ink-50">{s.label}</p>
+        <Tag>~{s.durationSeconds}s</Tag>
+      </div>
+      <p className="mt-2 text-xs text-ink-200">{s.beat}</p>
+      {s.whatToSay && s.whatToSay.length > 0 ? (
+        <div className="mt-3">
+          <p className="text-xxs uppercase tracking-wide text-ink-400">Say</p>
+          <ul className="mt-1 list-inside list-disc space-y-1 text-xs text-ink-100">
+            {s.whatToSay.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {s.whatToShow && s.whatToShow.length > 0 ? (
+        <div className="mt-3">
+          <p className="text-xxs uppercase tracking-wide text-ink-400">Show</p>
+          <ul className="mt-1 list-inside list-disc space-y-1 text-xs text-ink-100">
+            {s.whatToShow.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {s.doNot && s.doNot.length > 0 ? (
+        <div className="mt-3">
+          <p className="text-xxs uppercase tracking-wide text-ink-400">
+            Do not
+          </p>
+          <ul className="mt-1 list-inside list-disc space-y-1 text-xs text-ink-100">
+            {s.doNot.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function briefToText(brief: CreatorBrief): string {
+  const lines: string[] = [];
+  lines.push(`Brief ${brief.id} — ${brief.forAngle}`);
+  lines.push(`Total ~${brief.durationSeconds}s`);
+  lines.push(`Framing: ${brief.framing}`);
+  if (brief.notes) lines.push(`Note: ${brief.notes}`);
+  lines.push("");
+  lines.push("Alt hooks:");
+  for (const h of brief.altHooks) lines.push(`- ${h}`);
+  lines.push("");
+  for (const s of brief.sections) {
+    lines.push(`${briefSectionLabel(s.kind)} — ${s.label} (~${s.durationSeconds}s)`);
+    lines.push(s.beat);
+    if (s.whatToSay && s.whatToSay.length > 0) {
+      lines.push("  Say:");
+      for (const x of s.whatToSay) lines.push(`    - ${x}`);
+    }
+    if (s.whatToShow && s.whatToShow.length > 0) {
+      lines.push("  Show:");
+      for (const x of s.whatToShow) lines.push(`    - ${x}`);
+    }
+    if (s.doNot && s.doNot.length > 0) {
+      lines.push("  Do not:");
+      for (const x of s.doNot) lines.push(`    - ${x}`);
+    }
+    lines.push("");
+  }
+  lines.push("Deliverables:");
+  for (const d of brief.deliverables) lines.push(`- ${d}`);
+  return lines.join("\n");
+}
+
+function briefSectionLabel(kind: string): string {
+  return (
+    {
+      hook: "Hook",
+      problem: "Problem",
+      "solution-or-proof": "Solution / proof",
+      cta: "CTA",
+    }[kind] ?? kind
+  );
+}
+
+// ---------------- Shots tab ----------------
+
+function ShotsTab({ strategy }: { strategy: Strategy }) {
+  return (
+    <div className="flex flex-col gap-5">
+      <SectionTitle>Shot Lists</SectionTitle>
+      <p className="text-xs text-ink-400">
+        One numbered shot list per brief. Shots cover all four section
+        beats — hook, problem, solution, CTA — with kind, framing,
+        camera angle, duration envelope, props, and sound direction.
+        The total midpoint duration tracks the brief's envelope.
+      </p>
+      <div className="flex flex-col gap-3">
+        {strategy.shotLists.map((list) => {
+          const matched = strategy.creatorBriefs.find(
+            (b) => b.id === list.briefId
+          );
+          return (
+            <ShotListCard
+              key={list.briefId}
+              list={list}
+              angleRef={matched?.forAngle ?? list.briefId}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ShotListCard({
+  list,
+  angleRef,
+}: {
+  list: ShotList;
+  angleRef: string;
+}) {
+  const exportText = shotListToText(list, angleRef);
+  return (
+    <div className="hairline relative rounded-lg bg-ink-900 p-4">
+      <div className="absolute right-3 top-3">
+        <CopyMini text={exportText} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 pr-16">
+        <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+          {list.briefId}
+        </span>
+        <p className="text-sm font-medium text-ink-50">{angleRef}</p>
+        <Tag>{list.totalShots} shots</Tag>
+      </div>
+
+      {/* Desktop / wide: table-like layout. Mobile: stacked cards. */}
+      <div className="mt-4 hidden md:block">
+        <table className="w-full table-auto border-collapse text-xs">
+          <thead>
+            <tr className="border-b border-ink-800 text-ink-400">
+              <th className="py-2 pr-3 text-left font-medium">#</th>
+              <th className="py-2 pr-3 text-left font-medium">Kind</th>
+              <th className="py-2 pr-3 text-left font-medium">Framing</th>
+              <th className="py-2 pr-3 text-left font-medium">Angle</th>
+              <th className="py-2 pr-3 text-left font-medium">Duration</th>
+              <th className="py-2 pr-3 text-left font-medium">Props</th>
+              <th className="py-2 pr-3 text-left font-medium">Sound</th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.items.map((it) => (
+              <tr key={it.index} className="border-b border-ink-900/60 align-top">
+                <td className="py-2 pr-3 text-ink-300">{it.index}</td>
+                <td className="py-2 pr-3">
+                  <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+                    {shotKindLabel(it.kind)}
+                  </span>
+                </td>
+                <td className="py-2 pr-3 text-ink-100">{it.framing}</td>
+                <td className="py-2 pr-3 text-ink-200">{cameraAngleLabel(it.angle)}</td>
+                <td className="py-2 pr-3 text-ink-200">{it.duration}</td>
+                <td className="py-2 pr-3 text-ink-100">
+                  <ul className="list-inside list-disc space-y-0.5">
+                    {it.props.map((p, i) => (
+                      <li key={i}>{p}</li>
+                    ))}
+                  </ul>
+                </td>
+                <td className="py-2 pr-3 text-ink-100">
+                  {it.sound}
+                  {it.bRollNotes ? (
+                    <span className="mt-1 block text-xxs text-ink-400">
+                      Note: {it.bRollNotes}
+                    </span>
+                  ) : null}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-2 md:hidden">
+        {list.items.map((it) => (
+          <div
+            key={it.index}
+            className="rounded-md border border-ink-800 bg-ink-950/40 p-3"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+                #{it.index}
+              </span>
+              <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+                {shotKindLabel(it.kind)}
+              </span>
+              <Tag>{it.duration}</Tag>
+              <Tag>{cameraAngleLabel(it.angle)}</Tag>
+            </div>
+            <p className="mt-2 text-xs text-ink-100">{it.framing}</p>
+            <p className="mt-1 text-xxs text-ink-400">Props</p>
+            <ul className="list-inside list-disc text-xs text-ink-100">
+              {it.props.map((p, i) => (
+                <li key={i}>{p}</li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xxs text-ink-400">Sound</p>
+            <p className="text-xs text-ink-100">{it.sound}</p>
+            {it.bRollNotes ? (
+              <p className="mt-1 text-xxs text-ink-400">Note: {it.bRollNotes}</p>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function shotListToText(list: ShotList, angleRef: string): string {
+  const lines: string[] = [];
+  lines.push(`Shot list ${list.briefId} — ${angleRef}`);
+  lines.push(`Total shots: ${list.totalShots}`);
+  lines.push("");
+  for (const it of list.items) {
+    lines.push(
+      `${it.index}. ${shotKindLabel(it.kind)} — ${it.framing} (${cameraAngleLabel(it.angle)}, ${it.duration})`
+    );
+    lines.push(`   Props: ${it.props.join("; ")}`);
+    lines.push(`   Sound: ${it.sound}`);
+    if (it.bRollNotes) lines.push(`   Note: ${it.bRollNotes}`);
+  }
+  return lines.join("\n");
+}
+
+function shotKindLabel(kind: string): string {
+  return (
+    {
+      "talking-head": "Talking head",
+      "product-shot": "Product shot",
+      "b-roll": "B-roll",
+      screenshot: "Screenshot",
+      "ugc-selfie": "UGC selfie",
+      lifestyle: "Lifestyle",
+    }[kind] ?? kind
+  );
+}
+
+function cameraAngleLabel(angle: string): string {
+  return (
+    {
+      "eye-level": "Eye-level",
+      high: "High",
+      low: "Low",
+      "over-shoulder": "Over-shoulder",
+      pov: "POV",
+    }[angle] ?? angle
   );
 }
 

@@ -142,6 +142,74 @@ export function generateExportBrief(
   });
   lines.push("");
 
+  // 5d. Creator briefs
+  section(lines, "Creator Briefs");
+  if (strategy.creatorBriefs.length === 0) {
+    lines.push("_No briefs generated for this input._");
+    lines.push("");
+  } else {
+    strategy.creatorBriefs.forEach((brief) => {
+      lines.push(`### ${brief.forAngle}`);
+      lines.push("");
+      lines.push(`- **Brief ID:** ${brief.id}`);
+      lines.push(`- **Total duration:** ~${brief.durationSeconds}s`);
+      lines.push(`- **Framing:** ${brief.framing}`);
+      if (brief.notes) {
+        lines.push(`- **Note:** ${brief.notes}`);
+      }
+      lines.push("");
+      lines.push(`**Alt hooks:**`);
+      for (const h of brief.altHooks) lines.push(`- ${h}`);
+      lines.push("");
+      lines.push(`**Sections:**`);
+      for (const s of brief.sections) {
+        lines.push(
+          `- **${briefSectionLabel(s.kind)} — ${s.label}** (~${s.durationSeconds}s). ${s.beat}`
+        );
+        if (s.whatToSay && s.whatToSay.length > 0) {
+          for (const line of s.whatToSay) lines.push(`  - Say: ${line}`);
+        }
+        if (s.whatToShow && s.whatToShow.length > 0) {
+          for (const line of s.whatToShow) lines.push(`  - Show: ${line}`);
+        }
+        if (s.doNot && s.doNot.length > 0) {
+          for (const line of s.doNot) lines.push(`  - Do not: ${line}`);
+        }
+      }
+      lines.push("");
+      lines.push(`**Deliverables:**`);
+      for (const d of brief.deliverables) lines.push(`- ${d}`);
+      lines.push("");
+    });
+  }
+
+  // 5e. Shot lists
+  section(lines, "Shot Lists");
+  if (strategy.shotLists.length === 0) {
+    lines.push("_No shot lists generated for this input._");
+    lines.push("");
+  } else {
+    strategy.shotLists.forEach((list) => {
+      const matched = strategy.creatorBriefs.find((b) => b.id === list.briefId);
+      const angleRef = matched ? matched.forAngle : list.briefId;
+      lines.push(`### ${list.briefId} — ${angleRef}`);
+      lines.push("");
+      lines.push(`Total shots: ${list.totalShots}.`);
+      lines.push("");
+      lines.push(`| # | Kind | Framing | Angle | Duration | Sound | Props |`);
+      lines.push(`|---|------|---------|-------|----------|-------|-------|`);
+      for (const it of list.items) {
+        const propsCell = it.props.join("; ");
+        const sound = it.sound.replace(/\|/g, "/");
+        const framing = it.framing.replace(/\|/g, "/");
+        lines.push(
+          `| ${it.index} | ${shotKindLabel(it.kind)} | ${framing} | ${cameraAngleLabel(it.angle)} | ${it.duration} | ${sound} | ${propsCell} |`
+        );
+      }
+      lines.push("");
+    });
+  }
+
   // 6. Top angles (ranked)
   section(lines, "Top angles (ranked by fit)");
   strategy.rankedAngles.forEach((a, i) => {
@@ -268,4 +336,40 @@ function campaignTypeLabel(type: string): string {
 function formatRange(startOffset: number, duration: number): string {
   const start = startOffset === 0 ? "Day 0" : startOffset > 0 ? `Day +${startOffset}` : `Day ${startOffset}`;
   return `${start} for ${duration} ${duration === 1 ? "day" : "days"}`;
+}
+
+function briefSectionLabel(kind: string): string {
+  return (
+    {
+      hook: "Hook",
+      problem: "Problem",
+      "solution-or-proof": "Solution / proof",
+      cta: "CTA",
+    }[kind] ?? kind
+  );
+}
+
+function shotKindLabel(kind: string): string {
+  return (
+    {
+      "talking-head": "Talking head",
+      "product-shot": "Product shot",
+      "b-roll": "B-roll",
+      screenshot: "Screenshot",
+      "ugc-selfie": "UGC selfie",
+      lifestyle: "Lifestyle",
+    }[kind] ?? kind
+  );
+}
+
+function cameraAngleLabel(angle: string): string {
+  return (
+    {
+      "eye-level": "Eye-level",
+      high: "High",
+      low: "Low",
+      "over-shoulder": "Over-shoulder",
+      pov: "POV",
+    }[angle] ?? angle
+  );
 }

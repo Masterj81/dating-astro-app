@@ -254,5 +254,77 @@ export interface Strategy {
   offers: OfferRecommendation[];
   campaignCalendar: CampaignCalendar;
 
+  // V4 additions — Creator Brief Generator and Shot List Generator.
+  creatorBriefs: CreatorBrief[];
+  shotLists: ShotList[];
+
   exportBrief: string;
+}
+
+// ---- V4 production-plan types ----
+
+export type BriefSectionKind =
+  | "hook"
+  | "problem"
+  | "solution-or-proof"
+  | "cta";
+
+export type ShotKind =
+  | "talking-head"
+  | "product-shot"
+  | "b-roll"
+  | "screenshot"
+  | "ugc-selfie"
+  | "lifestyle";
+
+export type CameraAngle =
+  | "eye-level"
+  | "high"
+  | "low"
+  | "over-shoulder"
+  | "pov";
+
+export type ShotDuration =
+  | "1-2s"
+  | "2-4s"
+  | "4-6s"
+  | "6-10s"
+  | "10s+";
+
+export interface CreatorBriefSection {
+  kind: BriefSectionKind;
+  label: string;            // BigAd voice short label
+  beat: string;             // 1-2 sentence direction
+  durationSeconds: number;
+  whatToSay?: string[];     // 2-4 bullet directions
+  whatToShow?: string[];    // visual cues
+  doNot?: string[];         // 1-3 anti-patterns
+}
+
+export interface CreatorBrief {
+  id: string;               // deterministic id, e.g. "brief-1"
+  forAngle: string;         // one of the existing angles[] entries
+  durationSeconds: number;  // total
+  framing: string;          // 1 sentence framing rule
+  altHooks: string[];       // 2-3 alternate hook openers
+  sections: CreatorBriefSection[];
+  deliverables: string[];   // 2-5 deliverable bullets
+  notes?: string;
+}
+
+export interface ShotListItem {
+  index: number;
+  kind: ShotKind;
+  framing: string;          // e.g. "MCU, eye-level, indoor soft window light"
+  angle: CameraAngle;
+  duration: ShotDuration;
+  props: string[];
+  sound: string;            // e.g. "Voiceover line: ...", "Ambient room tone"
+  bRollNotes?: string;
+}
+
+export interface ShotList {
+  briefId: string;          // CreatorBrief.id
+  totalShots: number;
+  items: ShotListItem[];
 }

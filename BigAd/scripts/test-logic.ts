@@ -20,9 +20,17 @@ import {
   generateExportBrief,
   rankAngles,
   scoreStrategy,
+  sumShotMidpoints,
 } from "../src/lib/engine";
 import { ASTRO_DATING_EXAMPLE, NOTION_LIKE_EXAMPLE } from "../src/lib/example";
-import type { CampaignType, ProductInput } from "../src/types/strategy";
+import type {
+  BriefSectionKind,
+  CameraAngle,
+  CampaignType,
+  ProductInput,
+  ShotDuration,
+  ShotKind,
+} from "../src/types/strategy";
 
 type Check = { name: string; ok: boolean; detail?: string };
 
@@ -371,6 +379,183 @@ record(
 // Export brief picks up both new sections.
 expectContains("export brief contains Offer Architecture", brief, "## Offer Architecture");
 expectContains("export brief contains Campaign Calendar", brief, "## Campaign Calendar");
+
+// ---- V4: Creator Briefs ----
+
+const VALID_BRIEF_SECTION_ORDER: BriefSectionKind[] = [
+  "hook",
+  "problem",
+  "solution-or-proof",
+  "cta",
+];
+
+for (const [label, strat] of [
+  ["astro", a],
+  ["plotline", b],
+] as const) {
+  record(
+    `${label}: creatorBriefs.length >= 2`,
+    strat.creatorBriefs.length >= 2,
+    `Got ${strat.creatorBriefs.length}`
+  );
+  const angleNames = strat.angles.map((g) => g.name);
+  for (const brief of strat.creatorBriefs) {
+    record(
+      `${label}: brief ${brief.id} has 4 sections`,
+      brief.sections.length === 4,
+      `Got ${brief.sections.length}`
+    );
+    const kinds = brief.sections.map((s) => s.kind);
+    record(
+      `${label}: brief ${brief.id} section order is hook -> problem -> solution -> cta`,
+      JSON.stringify(kinds) === JSON.stringify(VALID_BRIEF_SECTION_ORDER)
+    );
+    record(
+      `${label}: brief ${brief.id} every section has non-empty label/beat and duration > 0`,
+      brief.sections.every(
+        (s) =>
+          s.label.length > 0 &&
+          s.beat.length > 0 &&
+          typeof s.durationSeconds === "number" &&
+          s.durationSeconds > 0
+      )
+    );
+    record(
+      `${label}: brief ${brief.id} forAngle is one of strategy.angles[].name`,
+      angleNames.includes(brief.forAngle),
+      `Brief angle "${brief.forAngle}" not in [${angleNames.join(", ")}]`
+    );
+    record(
+      `${label}: brief ${brief.id} altHooks >= 2`,
+      brief.altHooks.length >= 2,
+      `Got ${brief.altHooks.length}`
+    );
+    record(
+      `${label}: brief ${brief.id} deliverables >= 2`,
+      brief.deliverables.length >= 2,
+      `Got ${brief.deliverables.length}`
+    );
+  }
+}
+
+// Changing campaignType must change the deliverables array (proves
+// campaignType wiring through into the brief).
+const launchBriefs = buildStrategy({
+  ...ASTRO_DATING_EXAMPLE,
+  campaignType: "launch",
+}).creatorBriefs;
+const alwaysOnBriefs = buildStrategy({
+  ...ASTRO_DATING_EXAMPLE,
+  campaignType: "always-on",
+}).creatorBriefs;
+record(
+  "campaignType launch vs always-on yields different deliverables for top brief",
+  JSON.stringify(launchBriefs[0]?.deliverables) !==
+    JSON.stringify(alwaysOnBriefs[0]?.deliverables)
+);
+
+// Two different examples produce different brief contents.
+expectDifferent(
+  "briefs differ between astro and plotline examples",
+  a.creatorBriefs,
+  b.creatorBriefs
+);
+
+// Determinism: same input twice produces identical briefs.
+record(
+  "buildStrategy is deterministic for creatorBriefs",
+  JSON.stringify(aTwice.creatorBriefs) === JSON.stringify(a.creatorBriefs)
+);
+
+// ---- V4: Shot Lists ----
+
+const VALID_SHOT_KINDS: ShotKind[] = [
+  "talking-head",
+  "product-shot",
+  "b-roll",
+  "screenshot",
+  "ugc-selfie",
+  "lifestyle",
+];
+const VALID_CAMERA_ANGLES: CameraAngle[] = [
+  "eye-level",
+  "high",
+  "low",
+  "over-shoulder",
+  "pov",
+];
+const VALID_SHOT_DURATIONS: ShotDuration[] = [
+  "1-2s",
+  "2-4s",
+  "4-6s",
+  "6-10s",
+  "10s+",
+];
+
+for (const [label, strat] of [
+  ["astro", a],
+  ["plotline", b],
+] as const) {
+  record(
+    `${label}: shotLists.length === creatorBriefs.length`,
+    strat.shotLists.length === strat.creatorBriefs.length,
+    `Got ${strat.shotLists.length} vs ${strat.creatorBriefs.length}`
+  );
+  // IDs match 1:1, in order.
+  const idsMatch = strat.shotLists.every(
+    (list, i) => list.briefId === strat.creatorBriefs[i]?.id
+  );
+  record(`${label}: shotLists share IDs 1:1 with creatorBriefs`, idsMatch);
+
+  for (let i = 0; i < strat.shotLists.length; i++) {
+    const list = strat.shotLists[i];
+    const brief = strat.creatorBriefs[i];
+    record(
+      `${label}: shot list ${list.briefId} has 4-8 items`,
+      list.items.length >= 4 && list.items.length <= 8,
+      `Got ${list.items.length}`
+    );
+    const midpointSum = sumShotMidpoints(list);
+    record(
+      `${label}: shot list ${list.briefId} midpoint sum within +-2s of brief duration`,
+      Math.abs(midpointSum - brief.durationSeconds) <= 2,
+      `Sum=${midpointSum}, briefDuration=${brief.durationSeconds}`
+    );
+    record(
+      `${label}: shot list ${list.briefId} every shot has valid kind/angle/duration and non-empty framing/sound`,
+      list.items.every(
+        (it) =>
+          VALID_SHOT_KINDS.includes(it.kind) &&
+          VALID_CAMERA_ANGLES.includes(it.angle) &&
+          VALID_SHOT_DURATIONS.includes(it.duration) &&
+          typeof it.framing === "string" &&
+          it.framing.length > 0 &&
+          typeof it.sound === "string" &&
+          it.sound.length > 0
+      )
+    );
+    // Scene indexes are 1..N contiguous.
+    const idxOk = list.items.every((it, j) => it.index === j + 1);
+    record(`${label}: shot list ${list.briefId} indexes are 1..N contiguous`, idxOk);
+  }
+}
+
+// Two different examples produce different shot list contents.
+expectDifferent(
+  "shotLists differ between astro and plotline examples",
+  a.shotLists,
+  b.shotLists
+);
+
+// Determinism: same input twice produces identical shot lists.
+record(
+  "buildStrategy is deterministic for shotLists",
+  JSON.stringify(aTwice.shotLists) === JSON.stringify(a.shotLists)
+);
+
+// Export brief picks up both new sections.
+expectContains("export brief contains Creator Briefs", brief, "## Creator Briefs");
+expectContains("export brief contains Shot Lists", brief, "## Shot Lists");
 
 // ---- Sanity: example-only strict checks ----
 

@@ -18,6 +18,8 @@ import { generateAwarenessVariants } from "./awareness-variants";
 import { detectGenericCopy } from "./generic-guard";
 import { recommendOffers } from "./offers";
 import { buildCalendar } from "./calendar";
+import { generateCreatorBriefs } from "./briefs";
+import { generateShotLists } from "./shotlist";
 import { generateExportBrief } from "./export-brief";
 
 // buildStrategy — deterministic local strategy generator. No API calls.
@@ -40,6 +42,12 @@ export function buildStrategy(input: ProductInput): Strategy {
   const offers = recommendOffers(input);
   const campaignCalendar = buildCalendar(input);
 
+  // Creator Briefs derive from the ranked angles + offer recommendations,
+  // so they run after both. Shot Lists then mirror the briefs 1:1.
+  const angleNames = rankedAngles.map((a) => a.name);
+  const creatorBriefs = generateCreatorBriefs(input, angleNames, offers);
+  const shotLists = generateShotLists(creatorBriefs, input);
+
   const partial: Omit<Strategy, "genericFlags" | "exportBrief"> = {
     positioning,
     awarenessNotes,
@@ -60,6 +68,8 @@ export function buildStrategy(input: ProductInput): Strategy {
     awarenessVariants: generateAwarenessVariants(input),
     offers,
     campaignCalendar,
+    creatorBriefs,
+    shotLists,
   };
 
   // Generic-copy guard runs against the strategy we just produced. If
@@ -126,4 +136,10 @@ export {
 export { recommendOffers } from "./offers";
 export { computeBreakevenROAS } from "./breakeven";
 export { buildCalendar, windowKindLabel } from "./calendar";
+export { generateCreatorBriefs } from "./briefs";
+export {
+  generateShotLists,
+  sumShotMidpoints,
+  SHOT_DURATION_MIDPOINT,
+} from "./shotlist";
 export { generateExportBrief } from "./export-brief";

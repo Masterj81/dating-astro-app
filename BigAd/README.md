@@ -25,6 +25,8 @@ For any product you describe, BigAd produces:
 - A **generic-copy guard** that scans the generated strategy for hollow phrases ("boost your business", "take it to the next level", "revolutionary", "game-changing", "unlock your potential", "seamless solution", "world-class", "synergy", "best-in-class", "cutting-edge", "leverage the power of", "next-generation", "one-stop shop") and proposes a specific replacement seeded from your inputs
 - A ranked **offer architecture** — 7 canonical offer levers (discount, bundle, guarantee, free shipping, free gift, payment plan, free trial) ordered by fit to your business model and price tier, each with a stickiness risk, an awareness fit, and (when you fill in COGS % and target margin %) the breakeven ROAS the offer implies
 - A phased **campaign calendar** with named windows (lead-in / warm-up / ramp / peak / echo / tail, or evergreen test/scale cycles for always-on), each carrying a KPI to watch, a readiness gate that must pass before it opens, a recommended offer kind, and a flag for forecast soft windows
+- A set of **creator briefs** — one per top-ranked angle, each with a framing rule, alternate hook openers, a four-section spine (hook / problem / solution-or-proof / CTA), and a campaign-type-aware deliverable list
+- A **shot list** per brief — 4 to 8 numbered shots covering every beat, with shot kind, framing, camera angle, duration envelope, props, and sound direction, with the midpoint duration tracking the brief's envelope
 - A one-press **export brief** — a clean markdown document that bundles every section above, ready to paste into Notion, Linear, or any doc
 
 Every output is built from the inputs you provide — name, category, audience, pain, differentiator, goal, awareness, sophistication, optional commercial inputs (COGS %, target margin %, current AOV, target ROAS), and a campaign type (launch / seasonal / always-on) — so the same prompt never produces identical copy across two different products.
@@ -36,6 +38,14 @@ The Offer Architect ranks the seven canonical offer levers — discount, bundle,
 ## Campaign Calendar
 
 The Campaign Calendar turns the strategy from a snapshot into a phased plan. Pick a campaign type — launch, seasonal, or always-on — and the engine emits 6–7 windows on a timeline relative to an anchor day. Each window names the KPI to watch, the readiness gate that must pass before it opens, the offer kind that fits, and whether a soft window is forecast inside it (e.g. ramp dips and post-peak hangovers). The shape generalises to non-retail products; the window names stay neutral.
+
+## Creator Briefs
+
+The Creator Brief Generator turns the top-ranked angles into one-page production briefs a creator can shoot from. Each brief consumes the angle name, the input's business model, awareness, price tier, and campaign type, plus the top offer recommendation. It emits a four-section spine (hook → problem → solution / proof → CTA) with a beat, on-camera direction, visual cues, and an anti-pattern list per section. Two to three alternate hook openers are filmed back-to-back so the editor can A/B the opening cut without re-shooting the body. The deliverables list (aspect ratios, durations, source-file expectations) varies with campaign type so the creator is paid against the right cut-down set.
+
+## Shot Lists
+
+The Shot List Generator mirrors each brief 1:1 with a numbered shooting plan. Each list carries four to eight shots covering all four brief beats, with shot kind (talking head / product shot / B-roll / screenshot / UGC selfie / lifestyle), framing note, camera angle, duration envelope, props, and sound direction. The sum of shot-duration midpoints stays within ±2 seconds of the brief's total duration so the cut lands in the right envelope. Output is fully deterministic — same inputs always produce the same list, in the same order.
 
 ## Running it
 
@@ -96,7 +106,7 @@ BigAd/
 │   │   └── page.tsx        Workspace UI (split panel: inputs / strategy)
 │   ├── components/
 │   │   ├── InputPanel.tsx       Left rail — Product / Audience / Market / Competitors / Goal
-│   │   ├── StrategyView.tsx     Right pane — tabbed strategy output (Score / Positioning / Awareness / Diagnosis / Offer / Ads / Landing / App Store / Experiments / Export)
+│   │   ├── StrategyView.tsx     Right pane — tabbed strategy output (Score / Positioning / Awareness / Diagnosis / Offer / Ads / Landing / App Store / Experiments / Offers / Calendar / Briefs / Shots / Export)
 │   │   └── CopyableCard.tsx     Reusable card with a small copy button
 │   ├── lib/
 │   │   ├── engine/              Deterministic strategy engine (no API)
@@ -117,13 +127,15 @@ BigAd/
 │   │   │   ├── breakeven.ts            computeBreakevenROAS() — pure unit-economics math
 │   │   │   ├── offers.ts               recommendOffers() — Offer Architect
 │   │   │   ├── calendar.ts             buildCalendar() — Campaign Calendar
+│   │   │   ├── briefs.ts               generateCreatorBriefs() — Creator Brief Generator
+│   │   │   ├── shotlist.ts             generateShotLists() — Shot List Generator
 │   │   │   └── export-brief.ts         generateExportBrief() — markdown bundle
 │   │   ├── example.ts          The "Load example" payload (AstroDating)
 │   │   └── llm.ts              Adapter interface for plugging an LLM later
 │   └── types/
 │       └── strategy.ts         Shared TypeScript types
 ├── scripts/
-│   └── test-logic.ts           `npm run test:logic` — 53 checks
+│   └── test-logic.ts           `npm run test:logic` — 147 checks
 ├── public/
 ├── next.config.ts
 ├── tailwind.config.ts
