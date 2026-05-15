@@ -90,3 +90,7 @@ marketingagent/schedule.json
 # to the root so they never shadow apps/mobile/app.json etc.
 /app.json
 /tsconfig.json
+
+# Local research / release notes kept outside the repo
+/BigAd/docs/
+/Release-Checklist-48h.doc
