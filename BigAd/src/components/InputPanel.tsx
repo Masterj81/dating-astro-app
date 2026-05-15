@@ -3,6 +3,8 @@
 import type {
   AwarenessLevel,
   BusinessModel,
+  CampaignType,
+  OfferContext,
   ProductInput,
   SophisticationLevel,
 } from "@/types/strategy";
@@ -40,10 +42,37 @@ const BUSINESS_MODEL_OPTIONS: { value: BusinessModel; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
+const CAMPAIGN_TYPE_OPTIONS: { value: CampaignType; label: string }[] = [
+  { value: "launch", label: "Launch" },
+  { value: "seasonal", label: "Seasonal" },
+  { value: "always-on", label: "Always-on" },
+];
+
 export function InputPanel({ value, onChange, onLoadExample, onReset }: Props) {
   function set<K extends keyof ProductInput>(key: K, v: ProductInput[K]) {
     onChange({ ...value, [key]: v });
   }
+
+  function setOfferCtx<K extends keyof OfferContext>(
+    key: K,
+    v: OfferContext[K]
+  ) {
+    const next: OfferContext = { ...(value.offerContext ?? {}) };
+    if (v === undefined || v === null || (typeof v === "number" && !Number.isFinite(v))) {
+      delete next[key];
+    } else {
+      next[key] = v;
+    }
+    onChange({ ...value, offerContext: next });
+  }
+
+  function parseNumber(raw: string): number | undefined {
+    if (raw.trim() === "") return undefined;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : undefined;
+  }
+
+  const ctx = value.offerContext ?? {};
 
   return (
     <aside className="flex h-full w-full flex-col gap-4 overflow-y-auto border-r border-ink-700 bg-ink-950 p-5">
@@ -206,6 +235,78 @@ export function InputPanel({ value, onChange, onLoadExample, onReset }: Props) {
             placeholder="get 1,000 paying users, find a thesis, …"
           />
         </Field>
+        <Field label="Campaign type">
+          <select
+            className={inputClass}
+            value={value.campaignType ?? "always-on"}
+            onChange={(e) => set("campaignType", e.target.value as CampaignType)}
+          >
+            {CAMPAIGN_TYPE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </Section>
+
+      <Section title="Commercial (optional)">
+        <p className="-mt-1 text-xxs leading-relaxed text-ink-400">
+          Fill in any of these to unlock breakeven ROAS on the Offers tab.
+          All optional.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="COGS %">
+            <input
+              className={inputClass}
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={100}
+              step="any"
+              value={ctx.cogsPercent ?? ""}
+              onChange={(e) => setOfferCtx("cogsPercent", parseNumber(e.target.value))}
+              placeholder="30"
+            />
+          </Field>
+          <Field label="Target margin %">
+            <input
+              className={inputClass}
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={100}
+              step="any"
+              value={ctx.targetMarginPercent ?? ""}
+              onChange={(e) => setOfferCtx("targetMarginPercent", parseNumber(e.target.value))}
+              placeholder="20"
+            />
+          </Field>
+          <Field label="Current AOV">
+            <input
+              className={inputClass}
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="any"
+              value={ctx.currentAOV ?? ""}
+              onChange={(e) => setOfferCtx("currentAOV", parseNumber(e.target.value))}
+              placeholder="60"
+            />
+          </Field>
+          <Field label="Target ROAS">
+            <input
+              className={inputClass}
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="any"
+              value={ctx.targetROAS ?? ""}
+              onChange={(e) => setOfferCtx("targetROAS", parseNumber(e.target.value))}
+              placeholder="2.5"
+            />
+          </Field>
+        </div>
       </Section>
 
       <div className="mt-2 rounded-md border border-ink-700 bg-ink-900 p-3 text-xxs leading-relaxed text-ink-400">

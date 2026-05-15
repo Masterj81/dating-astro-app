@@ -4,8 +4,12 @@ import { useState } from "react";
 import type {
   Angle,
   AwarenessVariant,
+  CampaignCalendar,
+  CampaignWindow,
   GenericFlag,
+  OfferKind,
   OfferDiagnosis,
+  OfferRecommendation,
   ScoreDimension,
   Strategy,
   StrategyScore,
@@ -13,6 +17,7 @@ import type {
 import { awarenessLabel } from "@/lib/engine/awareness";
 import { sophisticationLabel } from "@/lib/engine/sophistication";
 import { scoreLabel } from "@/lib/engine/score";
+import { windowKindLabel } from "@/lib/engine/calendar";
 import { CopyableCard } from "./CopyableCard";
 import type { ProductInput } from "@/types/strategy";
 
@@ -26,6 +31,8 @@ type Tab =
   | "landing"
   | "store"
   | "experiments"
+  | "offers"
+  | "calendar"
   | "export";
 
 const TABS: { id: Tab; label: string }[] = [
@@ -38,6 +45,8 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "landing", label: "Landing" },
   { id: "store", label: "App Store" },
   { id: "experiments", label: "Experiments" },
+  { id: "offers", label: "Offers" },
+  { id: "calendar", label: "Calendar" },
   { id: "export", label: "Export brief" },
 ];
 
@@ -99,6 +108,8 @@ export function StrategyView({ input, strategy, hasMeaningfulInput }: Props) {
         {tab === "landing" && <LandingTab strategy={strategy} />}
         {tab === "store" && <StoreTab strategy={strategy} />}
         {tab === "experiments" && <ExperimentsTab strategy={strategy} />}
+        {tab === "offers" && <OffersTab strategy={strategy} />}
+        {tab === "calendar" && <CalendarTab calendar={strategy.campaignCalendar} />}
         {tab === "export" && <ExportTab brief={strategy.exportBrief} />}
       </div>
     </section>
@@ -685,6 +696,196 @@ function ExperimentsTab({ strategy }: { strategy: Strategy }) {
           <p className="mt-1 text-ink-100">{e.metric}</p>
         </CopyableCard>
       ))}
+    </div>
+  );
+}
+
+// ---------------- Offers tab ----------------
+
+function OffersTab({ strategy }: { strategy: Strategy }) {
+  return (
+    <div className="flex flex-col gap-5">
+      <SectionTitle>Offer Architecture</SectionTitle>
+      <p className="text-xs text-ink-400">
+        Ranked offer recommendations drawn from seven canonical levers.
+        Ordering is deterministic and reflects your business model, price
+        tier, and awareness. Fill in COGS % and target margin % under
+        Commercial on the left to see the breakeven ROAS each offer
+        implies.
+      </p>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {strategy.offers.map((o, i) => (
+          <OfferCard key={`offer-${i}`} offer={o} rank={i + 1} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function OfferCard({ offer, rank }: { offer: OfferRecommendation; rank: number }) {
+  const riskTone =
+    offer.stickinessRisk === "low"
+      ? "border-emerald-500/40 text-emerald-300"
+      : offer.stickinessRisk === "medium"
+      ? "border-amber-500/40 text-amber-300"
+      : "border-rose-500/40 text-rose-300";
+  const exportText =
+    `Offer ${rank}: ${offerKindLabel(offer.kind)} — ${offer.label}\n` +
+    `Breakeven ROAS: ${offer.breakevenROAS === null ? "—" : offer.breakevenROAS.toFixed(2) + "x"}\n` +
+    `Stickiness risk: ${offer.stickinessRisk}\n` +
+    `Awareness fit: ${offer.awarenessFit.join(", ") || "—"}\n` +
+    `Why: ${offer.rationale}` +
+    (offer.notes ? `\nNote: ${offer.notes}` : "");
+  return (
+    <div className="hairline relative rounded-lg bg-ink-900 p-4">
+      <div className="absolute right-3 top-3">
+        <CopyMini text={exportText} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 pr-16">
+        <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+          #{rank}
+        </span>
+        <span className="rounded-sm border border-ink-700 bg-ink-800 px-2 py-0.5 text-xxs text-ink-100">
+          {offerKindLabel(offer.kind)}
+        </span>
+        <p className="text-sm font-medium text-ink-50">{offer.label}</p>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        <span
+          className="rounded-sm border border-ink-700 bg-ink-900 px-1.5 py-0.5 text-xxs text-ink-200"
+          title="Required ROAS to break even at this offer's give-away"
+        >
+          Breakeven ROAS:{" "}
+          {offer.breakevenROAS === null ? "—" : `${offer.breakevenROAS.toFixed(2)}x`}
+        </span>
+        <span className={`rounded-sm border bg-ink-900 px-1.5 py-0.5 text-xxs ${riskTone}`}>
+          Stickiness risk: {offer.stickinessRisk}
+        </span>
+        {typeof offer.discountPercent === "number" ? (
+          <span className="rounded-sm border border-ink-700 bg-ink-900 px-1.5 py-0.5 text-xxs text-ink-200">
+            Assumed: {offer.discountPercent}% off
+          </span>
+        ) : null}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {offer.awarenessFit.map((a) => (
+          <span
+            key={a}
+            className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200"
+          >
+            {labelFor(a)}
+          </span>
+        ))}
+      </div>
+      <p className="mt-3 text-sm text-ink-100">{offer.rationale}</p>
+      {offer.notes ? (
+        <p className="mt-2 text-xs text-ink-400">{offer.notes}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function offerKindLabel(kind: OfferKind): string {
+  return (
+    {
+      discount: "Discount",
+      bundle: "Bundle",
+      guarantee: "Guarantee",
+      "free-shipping": "Free shipping",
+      "free-gift": "Free gift",
+      "payment-plan": "Payment plan",
+      "free-trial": "Free trial",
+    }[kind] ?? kind
+  );
+}
+
+// ---------------- Calendar tab ----------------
+
+function CalendarTab({ calendar }: { calendar: CampaignCalendar }) {
+  const typeLabel =
+    {
+      launch: "Launch",
+      seasonal: "Seasonal",
+      "always-on": "Always-on",
+    }[calendar.campaignType] ?? calendar.campaignType;
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <SectionTitle>Campaign Calendar</SectionTitle>
+        <span className="rounded-sm border border-ink-700 bg-ink-800 px-2 py-0.5 text-xxs text-ink-100">
+          {typeLabel}
+        </span>
+        <span className="rounded-sm border border-ink-700 bg-ink-800 px-2 py-0.5 text-xxs text-ink-200">
+          Anchor: {calendar.anchorLabel}
+        </span>
+      </div>
+      <p className="text-xs text-ink-400">
+        Each window names the KPI to watch, the readiness gate that must
+        pass before it opens, and the offer kind that fits. Windows with
+        a forecast soft window are marked.
+      </p>
+      <ol className="flex flex-col gap-3">
+        {calendar.windows.map((w, i) => (
+          <li key={`win-${i}`}>
+            <CalendarWindowCard window={w} index={i + 1} />
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function CalendarWindowCard({ window: w, index }: { window: CampaignWindow; index: number }) {
+  const startLabel =
+    w.startOffsetDays === 0
+      ? "Day 0"
+      : w.startOffsetDays > 0
+      ? `Day +${w.startOffsetDays}`
+      : `Day ${w.startOffsetDays}`;
+  const dipBorder = w.expectedDip
+    ? "border-amber-500/40"
+    : "border-transparent";
+  const exportText =
+    `Window ${index}: ${windowKindLabel(w.kind)} — ${w.label}\n` +
+    `When: ${startLabel} for ${w.durationDays} ${w.durationDays === 1 ? "day" : "days"}\n` +
+    `KPI: ${w.primaryKPI}\n` +
+    `Readiness gate: ${w.readinessGate}\n` +
+    `Recommended offer: ${w.recommendedOfferKind ? offerKindLabel(w.recommendedOfferKind) : "—"}\n` +
+    `Forecast dip: ${w.expectedDip ? "yes" : "no"}\n` +
+    `Notes: ${w.notes}`;
+  return (
+    <div className={`hairline relative rounded-lg border bg-ink-900 p-4 ${dipBorder}`}>
+      <div className="absolute right-3 top-3">
+        <CopyMini text={exportText} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 pr-16">
+        <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+          #{index}
+        </span>
+        <span className="rounded-sm border border-ink-700 bg-ink-800 px-2 py-0.5 text-xxs text-ink-100">
+          {windowKindLabel(w.kind)}
+        </span>
+        <p className="text-sm font-medium text-ink-50">{w.label}</p>
+        {w.expectedDip ? (
+          <span className="rounded-sm border border-amber-500/40 bg-amber-950/30 px-1.5 py-0.5 text-xxs text-amber-300">
+            Forecast dip
+          </span>
+        ) : null}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        <Tag>
+          {startLabel} · {w.durationDays} {w.durationDays === 1 ? "day" : "days"}
+        </Tag>
+        <Tag>KPI: {w.primaryKPI}</Tag>
+        {w.recommendedOfferKind ? (
+          <Tag>Offer: {offerKindLabel(w.recommendedOfferKind)}</Tag>
+        ) : null}
+      </div>
+      <p className="mt-3 text-xs text-ink-300">
+        <span className="text-ink-400">Readiness gate: </span>
+        {w.readinessGate}
+      </p>
+      <p className="mt-2 text-sm text-ink-100">{w.notes}</p>
     </div>
   );
 }

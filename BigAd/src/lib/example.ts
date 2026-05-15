@@ -20,6 +20,13 @@ export const ASTRO_DATING_EXAMPLE: ProductInput = {
   goal: "find a relationship with depth, not just another inbox of small talk",
   awareness: "solution-aware",
   sophistication: "mature-market",
+  campaignType: "launch",
+  offerContext: {
+    cogsPercent: 25,
+    targetMarginPercent: 25,
+    currentAOV: 60,
+    targetROAS: 2.5,
+  },
 };
 
 // A second example, used by the test:logic script to prove that two
@@ -40,4 +47,11 @@ export const NOTION_LIKE_EXAMPLE: ProductInput = {
   goal: "finish a draft they're proud of without rewriting forever",
   awareness: "problem-aware",
   sophistication: "amplified-claims",
+  campaignType: "always-on",
+  offerContext: {
+    cogsPercent: 20,
+    targetMarginPercent: 40,
+    currentAOV: 144,
+    targetROAS: 2.0,
+  },
 };

@@ -23,9 +23,19 @@ For any product you describe, BigAd produces:
 - 3 Facebook / Meta ad concepts
 - 5 starter A/B **experiments** with hypothesis, variants, and the metric to watch
 - A **generic-copy guard** that scans the generated strategy for hollow phrases ("boost your business", "take it to the next level", "revolutionary", "game-changing", "unlock your potential", "seamless solution", "world-class", "synergy", "best-in-class", "cutting-edge", "leverage the power of", "next-generation", "one-stop shop") and proposes a specific replacement seeded from your inputs
+- A ranked **offer architecture** — 7 canonical offer levers (discount, bundle, guarantee, free shipping, free gift, payment plan, free trial) ordered by fit to your business model and price tier, each with a stickiness risk, an awareness fit, and (when you fill in COGS % and target margin %) the breakeven ROAS the offer implies
+- A phased **campaign calendar** with named windows (lead-in / warm-up / ramp / peak / echo / tail, or evergreen test/scale cycles for always-on), each carrying a KPI to watch, a readiness gate that must pass before it opens, a recommended offer kind, and a flag for forecast soft windows
 - A one-press **export brief** — a clean markdown document that bundles every section above, ready to paste into Notion, Linear, or any doc
 
-Every output is built from the inputs you provide — name, category, audience, pain, differentiator, goal, awareness, sophistication — so the same prompt never produces identical copy across two different products.
+Every output is built from the inputs you provide — name, category, audience, pain, differentiator, goal, awareness, sophistication, optional commercial inputs (COGS %, target margin %, current AOV, target ROAS), and a campaign type (launch / seasonal / always-on) — so the same prompt never produces identical copy across two different products.
+
+## Offer Architect
+
+The Offer Architect ranks the seven canonical offer levers — discount, bundle, guarantee, free shipping, free gift, payment plan, free trial — against your business model and price tier. Subscription / freemium products lead with trial and guarantee; high-ticket leads with guarantee and payment plan; one-time leads with bundle and discount. Stickiness risk flags how strongly a given offer trains the audience to wait for the next one. When you fill in COGS % and target margin %, each recommendation also shows the breakeven ROAS at the offer's assumed give-away, so you can re-baseline before launching.
+
+## Campaign Calendar
+
+The Campaign Calendar turns the strategy from a snapshot into a phased plan. Pick a campaign type — launch, seasonal, or always-on — and the engine emits 6–7 windows on a timeline relative to an anchor day. Each window names the KPI to watch, the readiness gate that must pass before it opens, the offer kind that fits, and whether a soft window is forecast inside it (e.g. ramp dips and post-peak hangovers). The shape generalises to non-retail products; the window names stay neutral.
 
 ## Running it
 
@@ -41,8 +51,10 @@ npm run dev
 ```bash
 npm run build       # production Next.js build
 npm run typecheck   # tsc --noEmit
-npm run test:logic  # zero-framework engine correctness check (53 checks)
+npm run test:logic  # zero-framework engine correctness check
 ```
+
+The strategy engine is **fully deterministic** — no API calls, no LLM, no external data fetching. Identical inputs always produce an identical strategy, including offer rankings and the campaign calendar. The `test:logic` script verifies that property explicitly alongside its other assertions.
 
 The `test:logic` script feeds two materially different inputs (AstroDating + a writing tool) through the engine and asserts that the two strategies are not identical at the level of headlines, angles, positioning, and landing hero — and that each strategy actually mentions the specific things that make it that product. It also covers the V2 quality engine: scoring, offer diagnosis, angle ranking, awareness-stage variants, generic-copy detection, and the markdown export brief.
 
@@ -102,6 +114,9 @@ BigAd/
 │   │   │   ├── diagnosis.ts            diagnoseOffer() — strongest / weakest / missing / objection / asset
 │   │   │   ├── awareness-variants.ts   generateAwarenessVariants() — 5 stages × 3 outputs
 │   │   │   ├── generic-guard.ts        detectGenericCopy() + BANNED_PHRASES
+│   │   │   ├── breakeven.ts            computeBreakevenROAS() — pure unit-economics math
+│   │   │   ├── offers.ts               recommendOffers() — Offer Architect
+│   │   │   ├── calendar.ts             buildCalendar() — Campaign Calendar
 │   │   │   └── export-brief.ts         generateExportBrief() — markdown bundle
 │   │   ├── example.ts          The "Load example" payload (AstroDating)
 │   │   └── llm.ts              Adapter interface for plugging an LLM later

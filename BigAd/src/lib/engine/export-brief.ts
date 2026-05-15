@@ -1,6 +1,7 @@
 import type { ProductInput, Strategy } from "@/types/strategy";
 import { awarenessLabel } from "./awareness";
 import { sophisticationLabel } from "./sophistication";
+import { windowKindLabel } from "./calendar";
 
 // generateExportBrief — assembles a clean, single-page markdown brief
 // covering every section of the strategy. Designed to be pasted into
@@ -35,6 +36,24 @@ export function generateExportBrief(
   lines.push(`- **Goal:** ${input.goal || "—"}`);
   lines.push(`- **Awareness:** ${awarenessLabel(input.awareness)}`);
   lines.push(`- **Sophistication:** ${sophisticationLabel(input.sophistication)}`);
+  if (input.campaignType) {
+    lines.push(`- **Campaign type:** ${campaignTypeLabel(input.campaignType)}`);
+  }
+  const ctx = input.offerContext;
+  if (ctx) {
+    if (typeof ctx.cogsPercent === "number") {
+      lines.push(`- **COGS %:** ${ctx.cogsPercent}`);
+    }
+    if (typeof ctx.targetMarginPercent === "number") {
+      lines.push(`- **Target margin %:** ${ctx.targetMarginPercent}`);
+    }
+    if (typeof ctx.currentAOV === "number") {
+      lines.push(`- **Current AOV:** ${ctx.currentAOV}`);
+    }
+    if (typeof ctx.targetROAS === "number") {
+      lines.push(`- **Target ROAS:** ${ctx.targetROAS}x`);
+    }
+  }
   lines.push("");
 
   // 2. Quality score
@@ -81,6 +100,46 @@ export function generateExportBrief(
   lines.push(
     `- **Recommended proof asset:** ${strategy.diagnosis.recommendedAsset} — ${strategy.diagnosis.recommendedAssetReason}`
   );
+  lines.push("");
+
+  // 5b. Offer architecture
+  section(lines, "Offer Architecture");
+  strategy.offers.forEach((o, i) => {
+    const roas =
+      typeof o.breakevenROAS === "number"
+        ? `${o.breakevenROAS.toFixed(2)}x breakeven ROAS`
+        : "breakeven ROAS not computed";
+    lines.push(
+      `${i + 1}. **${offerKindLabel(o.kind)} — ${o.label}.** ${roas}; stickiness risk: ${o.stickinessRisk}; awareness fit: ${o.awarenessFit.join(", ") || "—"}.`
+    );
+    lines.push(`   - Why: ${o.rationale}`);
+    if (typeof o.discountPercent === "number") {
+      lines.push(`   - Assumed discount: ${o.discountPercent}%`);
+    }
+    if (o.notes) {
+      lines.push(`   - Note: ${o.notes}`);
+    }
+  });
+  lines.push("");
+
+  // 5c. Campaign calendar
+  section(lines, "Campaign Calendar");
+  lines.push(
+    `Campaign type: **${campaignTypeLabel(strategy.campaignCalendar.campaignType)}** — anchor: ${strategy.campaignCalendar.anchorLabel}.`
+  );
+  lines.push("");
+  strategy.campaignCalendar.windows.forEach((w, i) => {
+    const range = formatRange(w.startOffsetDays, w.durationDays);
+    const dipFlag = w.expectedDip ? "  (forecast dip)" : "";
+    const offer = w.recommendedOfferKind ? offerKindLabel(w.recommendedOfferKind) : "—";
+    lines.push(
+      `${i + 1}. **${windowKindLabel(w.kind)} — ${w.label}.** ${range}${dipFlag}`
+    );
+    lines.push(`   - KPI: ${w.primaryKPI}`);
+    lines.push(`   - Readiness gate: ${w.readinessGate}`);
+    lines.push(`   - Recommended offer: ${offer}`);
+    lines.push(`   - Notes: ${w.notes}`);
+  });
   lines.push("");
 
   // 6. Top angles (ranked)
@@ -180,4 +239,33 @@ function stageLabel(stage: string): string {
     "product-aware": "Product-aware",
     "most-aware": "Most-aware",
   }[stage] ?? stage;
+}
+
+function offerKindLabel(kind: string): string {
+  return (
+    {
+      discount: "Discount",
+      bundle: "Bundle",
+      guarantee: "Guarantee",
+      "free-shipping": "Free shipping",
+      "free-gift": "Free gift",
+      "payment-plan": "Payment plan",
+      "free-trial": "Free trial",
+    }[kind] ?? kind
+  );
+}
+
+function campaignTypeLabel(type: string): string {
+  return (
+    {
+      launch: "Launch",
+      seasonal: "Seasonal",
+      "always-on": "Always-on",
+    }[type] ?? type
+  );
+}
+
+function formatRange(startOffset: number, duration: number): string {
+  const start = startOffset === 0 ? "Day 0" : startOffset > 0 ? `Day +${startOffset}` : `Day ${startOffset}`;
+  return `${start} for ${duration} ${duration === 1 ? "day" : "days"}`;
 }

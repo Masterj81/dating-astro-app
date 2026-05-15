@@ -13,6 +13,7 @@
 import {
   BANNED_PHRASES,
   buildStrategy,
+  computeBreakevenROAS,
   detectGenericInText,
   diagnoseOffer,
   generateAwarenessVariants,
@@ -21,7 +22,7 @@ import {
   scoreStrategy,
 } from "../src/lib/engine";
 import { ASTRO_DATING_EXAMPLE, NOTION_LIKE_EXAMPLE } from "../src/lib/example";
-import type { ProductInput } from "../src/types/strategy";
+import type { CampaignType, ProductInput } from "../src/types/strategy";
 
 type Check = { name: string; ok: boolean; detail?: string };
 
@@ -240,6 +241,136 @@ expectContains("export brief mentions the astrodating differentiator", brief.toL
 // AstroDating Strategy fields are present and well-shaped.
 record("strategy has rankedAngles", Array.isArray(a.rankedAngles) && a.rankedAngles.length === 5);
 record("strategy.exportBrief is non-trivial", a.exportBrief.length > 800);
+
+// ---- V3: Offer Architect ----
+
+record(
+  "buildStrategy emits >= 3 offers for astro example",
+  a.offers.length >= 3,
+  `Got ${a.offers.length}`
+);
+record(
+  "buildStrategy emits >= 3 offers for plotline example",
+  b.offers.length >= 3,
+  `Got ${b.offers.length}`
+);
+
+// Two different inputs must produce different offer sets (order or content).
+expectDifferent(
+  "offers differ between astro and plotline examples",
+  a.offers,
+  b.offers
+);
+
+// Every offer is well-shaped.
+const offerShapeOk = a.offers.every(
+  (o) =>
+    typeof o.label === "string" && o.label.length > 0 &&
+    typeof o.rationale === "string" && o.rationale.length > 0 &&
+    ["low", "medium", "high"].includes(o.stickinessRisk) &&
+    Array.isArray(o.awarenessFit) && o.awarenessFit.length > 0 &&
+    (o.breakevenROAS === null || typeof o.breakevenROAS === "number")
+);
+record("every offer has label, rationale, stickinessRisk, awarenessFit, breakeven", offerShapeOk);
+
+// Breakeven math.
+const be0 = computeBreakevenROAS({ cogsPercent: 30, targetMarginPercent: 20, discountPercent: 0 });
+const be10 = computeBreakevenROAS({ cogsPercent: 30, targetMarginPercent: 20, discountPercent: 10 });
+const be20 = computeBreakevenROAS({ cogsPercent: 30, targetMarginPercent: 20, discountPercent: 20 });
+record(
+  "computeBreakevenROAS(30/20/0) = 2.0",
+  be0 !== null && Math.abs(be0 - 2.0) < 1e-9,
+  `Got ${be0}`
+);
+record(
+  "computeBreakevenROAS(30/20/10) ~ 2.5",
+  be10 !== null && Math.abs(be10 - 2.5) < 1e-9,
+  `Got ${be10}`
+);
+record(
+  "computeBreakevenROAS(30/20/20) ~ 3.3333",
+  be20 !== null && Math.abs(be20 - 10 / 3) < 1e-9,
+  `Got ${be20}`
+);
+record(
+  "breakeven ROAS is monotonic in discount",
+  be0 !== null && be10 !== null && be20 !== null && be0 < be10 && be10 < be20
+);
+record(
+  "computeBreakevenROAS returns null when contribution non-positive",
+  computeBreakevenROAS({ cogsPercent: 60, targetMarginPercent: 40, discountPercent: 10 }) === null
+);
+record(
+  "computeBreakevenROAS returns null when inputs missing",
+  computeBreakevenROAS({ discountPercent: 10 }) === null
+);
+
+// ---- V3: Campaign Calendar ----
+
+record(
+  "campaignCalendar has >= 5 windows for astro example",
+  a.campaignCalendar.windows.length >= 5,
+  `Got ${a.campaignCalendar.windows.length}`
+);
+record(
+  "campaignCalendar has >= 5 windows for plotline example",
+  b.campaignCalendar.windows.length >= 5,
+  `Got ${b.campaignCalendar.windows.length}`
+);
+
+const windowShapeOk = a.campaignCalendar.windows.every(
+  (w) =>
+    typeof w.primaryKPI === "string" && w.primaryKPI.length > 0 &&
+    typeof w.readinessGate === "string" && w.readinessGate.length > 0 &&
+    typeof w.notes === "string" && w.notes.length > 0
+);
+record("every campaign window has KPI and readiness gate populated", windowShapeOk);
+
+// At least one window forecasts a dip — the pattern always includes one.
+record(
+  "calendar includes at least one window with expectedDip = true",
+  a.campaignCalendar.windows.some((w) => w.expectedDip) &&
+    b.campaignCalendar.windows.some((w) => w.expectedDip)
+);
+
+// Switching campaignType must change the calendar shape.
+const campaignTypes: CampaignType[] = ["launch", "seasonal", "always-on"];
+const calendarsByType = campaignTypes.map((ct) =>
+  buildStrategy({ ...ASTRO_DATING_EXAMPLE, campaignType: ct }).campaignCalendar
+);
+const launchCal = calendarsByType[0];
+const seasonalCal = calendarsByType[1];
+const alwaysOnCal = calendarsByType[2];
+record(
+  "launch vs seasonal calendars differ in first window kind or count",
+  launchCal.windows[0].kind !== seasonalCal.windows[0].kind ||
+    launchCal.windows.length !== seasonalCal.windows.length
+);
+record(
+  "launch vs always-on calendars differ in first window kind or count",
+  launchCal.windows[0].kind !== alwaysOnCal.windows[0].kind ||
+    launchCal.windows.length !== alwaysOnCal.windows.length
+);
+record(
+  "seasonal vs always-on calendars differ in first window kind or count",
+  seasonalCal.windows[0].kind !== alwaysOnCal.windows[0].kind ||
+    seasonalCal.windows.length !== alwaysOnCal.windows.length
+);
+
+// Determinism: same input twice produces identical offers and calendar.
+const aTwice = buildStrategy(ASTRO_DATING_EXAMPLE);
+record(
+  "buildStrategy is deterministic for offers",
+  JSON.stringify(aTwice.offers) === JSON.stringify(a.offers)
+);
+record(
+  "buildStrategy is deterministic for campaignCalendar",
+  JSON.stringify(aTwice.campaignCalendar) === JSON.stringify(a.campaignCalendar)
+);
+
+// Export brief picks up both new sections.
+expectContains("export brief contains Offer Architecture", brief, "## Offer Architecture");
+expectContains("export brief contains Campaign Calendar", brief, "## Campaign Calendar");
 
 // ---- Sanity: example-only strict checks ----
 

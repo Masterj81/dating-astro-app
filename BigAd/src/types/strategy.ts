@@ -25,6 +25,70 @@ export type BusinessModel =
   | "services"
   | "other";
 
+export type CampaignType = "launch" | "seasonal" | "always-on";
+
+export type OfferKind =
+  | "discount"
+  | "bundle"
+  | "guarantee"
+  | "free-shipping"
+  | "free-gift"
+  | "payment-plan"
+  | "free-trial";
+
+export type AwarenessStage =
+  | "unaware"
+  | "problem-aware"
+  | "solution-aware"
+  | "product-aware"
+  | "most-aware";
+
+export interface OfferContext {
+  cogsPercent?: number; // 0-100, optional
+  targetMarginPercent?: number; // 0-100, optional
+  currentAOV?: number; // optional
+  targetROAS?: number; // optional, e.g. 2.5
+}
+
+export interface OfferRecommendation {
+  kind: OfferKind;
+  label: string; // short brand-safe phrasing, BigAd voice
+  rationale: string; // why this fits — paraphrased, BigAd voice
+  breakevenROAS: number | null; // null when not computable
+  stickinessRisk: "low" | "medium" | "high";
+  awarenessFit: AwarenessStage[];
+  discountPercent?: number; // for "discount" kind
+  notes?: string;
+}
+
+export type CampaignWindowKind =
+  | "lead-in"
+  | "warmup"
+  | "ramp"
+  | "peak"
+  | "echo"
+  | "tail"
+  | "evergreen-test"
+  | "evergreen-scale";
+
+export interface CampaignWindow {
+  kind: CampaignWindowKind;
+  label: string;
+  startOffsetDays: number; // relative to campaign anchor (0 = anchor day)
+  durationDays: number;
+  primaryKPI: string; // e.g. "CTR > 1.2%", "CPA <= $24"
+  readinessGate: string; // pre-condition before this window can start
+  recommendedOfferKind: OfferKind | null;
+  expectedDip: boolean; // forecasted soft window
+  notes: string;
+}
+
+export interface CampaignCalendar {
+  campaignType: CampaignType;
+  anchorLabel: string; // e.g. "Launch Day", "Peak Day", "Always-On Start"
+  windows: CampaignWindow[];
+}
+
 export interface ProductInput {
   name: string;
   category: string;
@@ -38,6 +102,11 @@ export interface ProductInput {
   goal: string;
   awareness: AwarenessLevel;
   sophistication: SophisticationLevel;
+  // Optional commercial context for the Offer Architect.
+  offerContext?: OfferContext;
+  // Optional campaign type for the Calendar generator. Defaults to
+  // "always-on" inside the engine when absent.
+  campaignType?: CampaignType;
 }
 
 export interface Positioning {
@@ -180,5 +249,10 @@ export interface Strategy {
   diagnosis: OfferDiagnosis;
   awarenessVariants: AwarenessVariant[];
   genericFlags: GenericFlag[];
+
+  // V3 additions — Offer Architect and Campaign Calendar.
+  offers: OfferRecommendation[];
+  campaignCalendar: CampaignCalendar;
+
   exportBrief: string;
 }

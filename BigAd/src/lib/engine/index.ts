@@ -16,6 +16,8 @@ import { scoreStrategy } from "./score";
 import { diagnoseOffer } from "./diagnosis";
 import { generateAwarenessVariants } from "./awareness-variants";
 import { detectGenericCopy } from "./generic-guard";
+import { recommendOffers } from "./offers";
+import { buildCalendar } from "./calendar";
 import { generateExportBrief } from "./export-brief";
 
 // buildStrategy — deterministic local strategy generator. No API calls.
@@ -32,6 +34,11 @@ export function buildStrategy(input: ProductInput): Strategy {
 
   const angles = generateAngles(input);
   const rankedAngles = rankAngles(angles);
+
+  // Offer Architect runs before the Calendar so windows can reference
+  // a coherent offer kind from the recommendation set.
+  const offers = recommendOffers(input);
+  const campaignCalendar = buildCalendar(input);
 
   const partial: Omit<Strategy, "genericFlags" | "exportBrief"> = {
     positioning,
@@ -51,6 +58,8 @@ export function buildStrategy(input: ProductInput): Strategy {
     score: scoreStrategy(input),
     diagnosis: diagnoseOffer(input),
     awarenessVariants: generateAwarenessVariants(input),
+    offers,
+    campaignCalendar,
   };
 
   // Generic-copy guard runs against the strategy we just produced. If
@@ -114,4 +123,7 @@ export {
   detectGenericInText,
   BANNED_PHRASES,
 } from "./generic-guard";
+export { recommendOffers } from "./offers";
+export { computeBreakevenROAS } from "./breakeven";
+export { buildCalendar, windowKindLabel } from "./calendar";
 export { generateExportBrief } from "./export-brief";
