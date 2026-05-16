@@ -7,6 +7,7 @@
 import type {
   AdReviewChecklist,
   CreatorBrief,
+  JourneyBlocker,
   JourneyStage,
   JourneyStatus,
   KpiDiagnosis,
@@ -45,35 +46,65 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     variantSets,
   } = args;
 
-  const blockers: string[] = [];
-  const warnings: string[] = [];
+  const blockers: JourneyBlocker[] = [];
+  const warnings: JourneyBlocker[] = [];
 
   // Collect tracking blockers / warnings into journey-level reasons.
   for (const c of trackingReadiness.checks) {
     if (c.status === "blocker") {
-      blockers.push(`${c.label}: ${c.rationale}`);
+      blockers.push({
+        kind: "tracking",
+        severity: "blocker",
+        message: `${c.label}: ${c.rationale}`,
+        sourceCheck: c.kind,
+      });
     } else if (c.status === "warning" || c.status === "unknown") {
-      warnings.push(`${c.label}: ${c.rationale}`);
+      warnings.push({
+        kind: "tracking",
+        severity: "warning",
+        message: `${c.label}: ${c.rationale}`,
+        sourceCheck: c.kind,
+      });
     }
   }
 
   // Brief / script / shot list / variant set sanity warnings.
   if (creatorBriefs.length === 0) {
-    blockers.push(`No creator briefs yet — without a brief the production loop cannot start.`);
+    blockers.push({
+      kind: "creative",
+      severity: "blocker",
+      message: `No creator briefs yet — without a brief the production loop cannot start.`,
+    });
   }
   if (shotLists.length !== creatorBriefs.length) {
-    warnings.push(`Shot list count (${shotLists.length}) does not match brief count (${creatorBriefs.length}).`);
+    warnings.push({
+      kind: "creative",
+      severity: "warning",
+      message: `Shot list count (${shotLists.length}) does not match brief count (${creatorBriefs.length}).`,
+    });
   }
   if (videoScripts.length !== creatorBriefs.length) {
-    warnings.push(`Video script count (${videoScripts.length}) does not match brief count (${creatorBriefs.length}).`);
+    warnings.push({
+      kind: "creative",
+      severity: "warning",
+      message: `Video script count (${videoScripts.length}) does not match brief count (${creatorBriefs.length}).`,
+    });
   }
   if (variantSets.length === 0 && creatorBriefs.length > 0) {
-    warnings.push(`No variant sets — without spin variants, the test plan has no breadth.`);
+    warnings.push({
+      kind: "creative",
+      severity: "warning",
+      message: `No variant sets — without spin variants, the test plan has no breadth.`,
+    });
   }
 
   // KPI ladder sanity.
   if (!kpiLadder || kpiLadder.targets.length === 0) {
-    warnings.push(`KPI ladder is empty — kill / keep / scale decisions have no anchor.`);
+    warnings.push({
+      kind: "kpi",
+      severity: "warning",
+      message: `KPI ladder is empty — kill / keep / scale decisions have no anchor.`,
+    });
   }
 
   // Stage selection — earliest match wins.

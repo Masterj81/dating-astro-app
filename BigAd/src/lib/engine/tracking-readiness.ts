@@ -9,15 +9,15 @@
 
 import type {
   ProductInput,
-  ReadinessCheck,
-  ReadinessCheckKind,
+  TrackingReadinessCheck,
+  TrackingReadinessCheckKind,
   TrackingReadinessScore,
 } from "@/types/strategy";
 
 interface CheckSpec {
-  kind: ReadinessCheckKind;
+  kind: TrackingReadinessCheckKind;
   label: string;
-  evaluate: (input: ProductInput) => Pick<ReadinessCheck, "status" | "rationale" | "fix">;
+  evaluate: (input: ProductInput) => Pick<TrackingReadinessCheck, "status" | "rationale" | "fix">;
 }
 
 const CHECK_SPECS: CheckSpec[] = [
@@ -251,7 +251,7 @@ const CHECK_SPECS: CheckSpec[] = [
 export function assessTrackingReadiness(
   input: ProductInput
 ): TrackingReadinessScore {
-  const checks: ReadinessCheck[] = CHECK_SPECS.map((spec) => {
+  const checks: TrackingReadinessCheck[] = CHECK_SPECS.map((spec) => {
     const evaluated = spec.evaluate(input);
     return {
       kind: spec.kind,

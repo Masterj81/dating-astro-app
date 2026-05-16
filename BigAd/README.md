@@ -75,9 +75,13 @@ The KPI Diagnosis Engine takes a snapshot of measured KPIs, compares each value 
 
 The Ad Review Checklist is a 15-axis pre-handoff list — hook clarity, first-3s payoff, claim specificity, proof strength, offer visibility, CTA clarity, platform fit, tone match, awareness fit, pacing, visual hierarchy, captions / overlay, audio quality, brand presence, and a tracking-readiness reference. Each axis has a weight (1, 2, or 3) that varies with campaign type and price tier so the operator's attention lands where the run actually fails.
 
+`applyAdReview(target, input, checklist)` evaluates a target — either a `CreatorBrief` (paired with its optional `VideoScript`) or a `BaseConcept` — against the checklist and returns an `AppliedAdReview`: per-axis `AdReviewFinding`s (verdict ∈ passed / partial / missing / unknown, an evidence sentence, an optional fix, the weight, and the score contribution), a `totalScore` and `maxScore`, an integer `scorePercent`, and a verdict pill (`ready` ≥ 80% / `almost` 50–79% / `not-ready` < 50%). `buildStrategy()` computes one applied review per brief and exposes the array on `Strategy.appliedAdReviews`. The Briefs tab renders each evaluation under its brief card, and the export brief includes a per-brief `## Applied Ad Reviews` table.
+
 ## Journey Status
 
-The Journey Status block sits above the tab strip and shows where the strategy is on a six-stage spine: strategy-drafted → creative-planned → tracking-ready → KPI-aligned → review-passed → ready-to-spend. The block synthesises Tracking Readiness, KPI Ladder, KPI Diagnosis, Ad Review, Creator Briefs, Shot Lists, Video Scripts, and Variant Sets into one current stage plus a single concrete next step. Blockers and warnings surface as chips. Ready-to-spend flips green when every gate passes.
+The Journey Status block sits above the tab strip and shows where the strategy is on a six-stage spine: strategy-drafted → creative-planned → tracking-ready → KPI-aligned → review-passed → ready-to-spend. The block synthesises Tracking Readiness, KPI Ladder, KPI Diagnosis, Ad Review, Creator Briefs, Shot Lists, Video Scripts, and Variant Sets into one current stage plus a single concrete next step. Blockers and warnings surface as chips — both arrays are typed `JourneyBlocker[]` carrying `kind` (tracking / kpi / review / creative / scope), severity, message, and an optional `sourceCheck` for traceability back to the underlying readiness check, review axis, or KPI diagnosis category. Ready-to-spend flips green when every gate passes.
+
+The Tracking Readiness check structure is exposed as `TrackingReadinessCheck` / `TrackingReadinessCheckKind` (the previous `ReadinessCheck` names were renamed for cohesion with the rest of the tracking module).
 
 ## Running it
 
@@ -175,7 +179,7 @@ BigAd/
 │   └── types/
 │       └── strategy.ts         Shared TypeScript types
 ├── scripts/
-│   └── test-logic.ts           `npm run test:logic` — 334 checks
+│   └── test-logic.ts           `npm run test:logic` — 377 checks
 ├── public/
 ├── next.config.ts
 ├── tailwind.config.ts

@@ -24,7 +24,9 @@ import type {
   OfferKind,
   OfferDiagnosis,
   OfferRecommendation,
-  ReadinessCheck,
+  TrackingReadinessCheck,
+  AppliedAdReview,
+  AdReviewFinding,
   ScoreDimension,
   ScriptLine,
   ShotList,
@@ -1148,16 +1150,25 @@ function BriefsTab({ strategy }: { strategy: Strategy }) {
         (hook / problem / solution / CTA), and the deliverable list a
         creator is paid against. Each brief now also carries a
         line-level video script with VO / on-camera / overlay / SFX
-        cues. Briefs are deterministic — the same inputs always produce
-        the same briefs.
+        cues, plus an applied Ad Review evaluation against the
+        checklist. Briefs are deterministic — the same inputs always
+        produce the same briefs.
       </p>
       <div className="flex flex-col gap-3">
         {strategy.creatorBriefs.map((brief) => {
           const script = strategy.videoScripts.find(
             (s) => s.briefId === brief.id
           );
+          const applied = strategy.appliedAdReviews.find(
+            (r) => r.targetId === brief.id
+          );
           return (
-            <BriefCard key={brief.id} brief={brief} script={script} />
+            <BriefCard
+              key={brief.id}
+              brief={brief}
+              script={script}
+              applied={applied}
+            />
           );
         })}
       </div>
@@ -1168,9 +1179,11 @@ function BriefsTab({ strategy }: { strategy: Strategy }) {
 function BriefCard({
   brief,
   script,
+  applied,
 }: {
   brief: CreatorBrief;
   script?: VideoScript;
+  applied?: AppliedAdReview;
 }) {
   const exportText = briefToText(brief);
   return (
@@ -1222,7 +1235,148 @@ function BriefCard({
       </div>
 
       {script ? <VideoScriptBlock script={script} /> : null}
+      {applied ? <AppliedReviewBlock applied={applied} /> : null}
     </div>
+  );
+}
+
+function AppliedReviewBlock({ applied }: { applied: AppliedAdReview }) {
+  const verdictTone =
+    applied.verdict === "ready"
+      ? "border-emerald-500/40 text-emerald-300 bg-emerald-950/30"
+      : applied.verdict === "almost"
+      ? "border-amber-500/40 text-amber-300 bg-amber-950/30"
+      : "border-rose-500/40 text-rose-300 bg-rose-950/30";
+  return (
+    <div className="mt-4 rounded-md border border-ink-800 bg-ink-950/40 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-xxs uppercase tracking-wide text-ink-400">
+            Applied review
+          </p>
+          <Tag>
+            {applied.totalScore}/{applied.maxScore}
+          </Tag>
+          <Tag>{applied.scorePercent}%</Tag>
+          <span
+            className={`rounded-sm border px-2 py-0.5 text-xxs ${verdictTone}`}
+          >
+            {appliedVerdictUiLabel(applied.verdict)}
+          </span>
+        </div>
+      </div>
+      <div className="mt-3 hidden md:block">
+        <table className="w-full table-auto border-collapse text-xs">
+          <thead>
+            <tr className="border-b border-ink-800 text-ink-400">
+              <th className="py-2 pr-3 text-left font-medium">Axis</th>
+              <th className="py-2 pr-3 text-left font-medium">Verdict</th>
+              <th className="py-2 pr-3 text-left font-medium">Score</th>
+              <th className="py-2 pr-3 text-left font-medium">Evidence</th>
+              <th className="py-2 pr-3 text-left font-medium">Fix</th>
+            </tr>
+          </thead>
+          <tbody>
+            {applied.findings.map((f) => (
+              <tr
+                key={f.axis}
+                className="border-b border-ink-900/60 align-top"
+              >
+                <td className="py-2 pr-3 text-ink-200">
+                  {reviewAxisLabelUi(f.axis)}
+                </td>
+                <td className="py-2 pr-3">
+                  <FindingVerdictPill verdict={f.verdict} />
+                </td>
+                <td className="py-2 pr-3 text-ink-200">
+                  {f.scoreContribution}/{f.weight}
+                </td>
+                <td className="py-2 pr-3 text-ink-100">{f.evidence}</td>
+                <td className="py-2 pr-3 text-ink-300">{f.fix ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-3 flex flex-col gap-2 md:hidden">
+        {applied.findings.map((f) => (
+          <FindingRow key={f.axis} finding={f} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FindingRow({ finding: f }: { finding: AdReviewFinding }) {
+  return (
+    <div className="rounded-sm border border-ink-800 bg-ink-950/40 p-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+          {reviewAxisLabelUi(f.axis)}
+        </span>
+        <FindingVerdictPill verdict={f.verdict} />
+        <Tag>
+          {f.scoreContribution}/{f.weight}
+        </Tag>
+      </div>
+      <p className="mt-1 text-xs text-ink-100">{f.evidence}</p>
+      {f.fix ? (
+        <p className="mt-1 text-xxs text-ink-400">
+          <span className="text-ink-500">Fix: </span>
+          {f.fix}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function FindingVerdictPill({ verdict }: { verdict: string }) {
+  const tone =
+    verdict === "passed"
+      ? "border-emerald-500/40 text-emerald-300"
+      : verdict === "partial"
+      ? "border-amber-500/40 text-amber-300"
+      : verdict === "missing"
+      ? "border-rose-500/40 text-rose-300"
+      : "border-ink-700 text-ink-300";
+  return (
+    <span
+      className={`rounded-sm border bg-ink-900 px-1.5 py-0.5 text-xxs ${tone}`}
+    >
+      {verdict}
+    </span>
+  );
+}
+
+function appliedVerdictUiLabel(verdict: string): string {
+  return (
+    {
+      ready: "Ready",
+      almost: "Almost",
+      "not-ready": "Not ready",
+    }[verdict] ?? verdict
+  );
+}
+
+function reviewAxisLabelUi(axis: string): string {
+  return (
+    {
+      "hook-clarity": "Hook clarity",
+      "first-3s-payoff": "First-3s payoff",
+      "claim-specificity": "Claim specificity",
+      "proof-strength": "Proof strength",
+      "offer-visibility": "Offer visibility",
+      "cta-clarity": "CTA clarity",
+      "platform-fit": "Platform fit",
+      "tone-match": "Tone match",
+      "awareness-fit": "Awareness fit",
+      pacing: "Pacing",
+      "visual-hierarchy": "Visual hierarchy",
+      "captions-overlay": "Captions / overlay",
+      "audio-quality": "Audio quality",
+      "brand-presence": "Brand presence",
+      "tracking-readiness-ref": "Tracking ref",
+    }[axis] ?? axis
   );
 }
 
@@ -1675,23 +1829,37 @@ function JourneyStatusBlock({ status }: { status: JourneyStatus }) {
             <span
               key={`bk-${i}`}
               className="rounded-sm border border-rose-500/40 bg-rose-950/30 px-1.5 py-0.5 text-xxs text-rose-200"
-              title={b}
+              title={b.message}
             >
-              {truncateChip(b)}
+              <span className="mr-1 opacity-70">{journeyBlockerKindLabel(b.kind)}</span>
+              {truncateChip(b.message)}
             </span>
           ))}
           {status.warnings.slice(0, 4).map((w, i) => (
             <span
               key={`wn-${i}`}
               className="rounded-sm border border-amber-500/30 bg-amber-950/20 px-1.5 py-0.5 text-xxs text-amber-200"
-              title={w}
+              title={w.message}
             >
-              {truncateChip(w)}
+              <span className="mr-1 opacity-70">{journeyBlockerKindLabel(w.kind)}</span>
+              {truncateChip(w.message)}
             </span>
           ))}
         </div>
       ) : null}
     </div>
+  );
+}
+
+function journeyBlockerKindLabel(kind: string): string {
+  return (
+    {
+      tracking: "tracking",
+      kpi: "kpi",
+      review: "review",
+      creative: "creative",
+      scope: "scope",
+    }[kind] ?? kind
   );
 }
 
@@ -1762,7 +1930,7 @@ function TrackingReadinessBlock({ readiness }: { readiness: TrackingReadinessSco
   );
 }
 
-function ReadinessRow({ check }: { check: ReadinessCheck }) {
+function ReadinessRow({ check }: { check: TrackingReadinessCheck }) {
   const tone =
     check.status === "passed"
       ? "border-emerald-500/40 text-emerald-300"

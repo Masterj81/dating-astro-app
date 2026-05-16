@@ -25,7 +25,7 @@ import { generateVariantSets } from "./variants";
 import { assessTrackingReadiness } from "./tracking-readiness";
 import { buildKpiLadder } from "./kpi-ladder";
 import { diagnoseKpi, defaultSnapshotFromInput } from "./kpi-diagnosis";
-import { buildAdReviewChecklist } from "./ad-review";
+import { buildAdReviewChecklist, applyAdReview } from "./ad-review";
 import { buildJourneyStatus } from "./journey-status";
 import { generateExportBrief } from "./export-brief";
 
@@ -65,6 +65,17 @@ export function buildStrategy(input: ProductInput): Strategy {
   const defaultSnapshot = defaultSnapshotFromInput(input, kpiLadder);
   const kpiDiagnosis = diagnoseKpi(defaultSnapshot, kpiLadder, input);
   const adReview = buildAdReviewChecklist(input);
+
+  // Applied reviews — one per brief, evaluating the checklist against the
+  // realized brief and (when present) its matched video script.
+  const appliedAdReviews = creatorBriefs.map((brief) => {
+    const matchedScript = videoScripts.find((s) => s.briefId === brief.id);
+    return applyAdReview(
+      { kind: "brief", brief, videoScript: matchedScript },
+      input,
+      adReview
+    );
+  });
 
   // Journey status is computed last because it synthesises everything above.
   const journeyStatus = buildJourneyStatus({
@@ -106,6 +117,7 @@ export function buildStrategy(input: ProductInput): Strategy {
     kpiLadder,
     kpiDiagnosis,
     adReview,
+    appliedAdReviews,
     journeyStatus,
   };
 
@@ -190,5 +202,5 @@ export {
 export { assessTrackingReadiness } from "./tracking-readiness";
 export { buildKpiLadder } from "./kpi-ladder";
 export { diagnoseKpi, defaultSnapshotFromInput } from "./kpi-diagnosis";
-export { buildAdReviewChecklist } from "./ad-review";
+export { buildAdReviewChecklist, applyAdReview } from "./ad-review";
 export { buildJourneyStatus } from "./journey-status";

@@ -308,6 +308,36 @@ export function generateExportBrief(
   }
   lines.push("");
 
+  // 5k-bis. Applied Ad Reviews — per-brief evaluation against the checklist.
+  section(lines, "Applied Ad Reviews");
+  if (strategy.appliedAdReviews.length === 0) {
+    lines.push("_No briefs were evaluated against the checklist._");
+    lines.push("");
+  } else {
+    for (const review of strategy.appliedAdReviews) {
+      const matched = strategy.creatorBriefs.find(
+        (b) => b.id === review.targetId
+      );
+      const ref = matched ? matched.forAngle : review.targetId;
+      lines.push(`### ${review.targetId} — ${ref}`);
+      lines.push("");
+      lines.push(
+        `Score: **${review.totalScore}/${review.maxScore} (${review.scorePercent}%)** — verdict: **${appliedVerdictLabel(review.verdict)}**.`
+      );
+      lines.push("");
+      lines.push(`| Axis | Verdict | Score | Evidence | Fix |`);
+      lines.push(`|------|---------|-------|----------|-----|`);
+      for (const f of review.findings) {
+        const evidence = f.evidence.replace(/\|/g, "/");
+        const fix = (f.fix ?? "—").replace(/\|/g, "/");
+        lines.push(
+          `| ${reviewAxisLabel(f.axis)} | ${appliedFindingVerdictLabel(f.verdict)} | ${f.scoreContribution}/${f.weight} | ${evidence} | ${fix} |`
+        );
+      }
+      lines.push("");
+    }
+  }
+
   // 5l. Journey Status
   section(lines, "Journey Status");
   const js = strategy.journeyStatus;
@@ -319,12 +349,18 @@ export function generateExportBrief(
   lines.push("");
   if (js.blockers.length > 0) {
     lines.push(`**Blockers:**`);
-    for (const b of js.blockers) lines.push(`- ${b}`);
+    for (const b of js.blockers) {
+      const src = b.sourceCheck ? ` (source: ${b.sourceCheck})` : "";
+      lines.push(`- [${b.kind}] ${b.message}${src}`);
+    }
     lines.push("");
   }
   if (js.warnings.length > 0) {
     lines.push(`**Warnings:**`);
-    for (const w of js.warnings) lines.push(`- ${w}`);
+    for (const w of js.warnings) {
+      const src = w.sourceCheck ? ` (source: ${w.sourceCheck})` : "";
+      lines.push(`- [${w.kind}] ${w.message}${src}`);
+    }
     lines.push("");
   }
 
@@ -602,4 +638,47 @@ function journeyStageLabel(stage: string): string {
 function fmtMetric(n: number | undefined): string {
   if (typeof n !== "number" || !Number.isFinite(n)) return "—";
   return String(n);
+}
+
+function appliedVerdictLabel(verdict: string): string {
+  return (
+    {
+      ready: "Ready",
+      almost: "Almost",
+      "not-ready": "Not ready",
+    }[verdict] ?? verdict
+  );
+}
+
+function appliedFindingVerdictLabel(verdict: string): string {
+  return (
+    {
+      passed: "Passed",
+      partial: "Partial",
+      missing: "Missing",
+      unknown: "Unknown",
+    }[verdict] ?? verdict
+  );
+}
+
+function reviewAxisLabel(axis: string): string {
+  return (
+    {
+      "hook-clarity": "Hook clarity",
+      "first-3s-payoff": "First-3s payoff",
+      "claim-specificity": "Claim specificity",
+      "proof-strength": "Proof strength",
+      "offer-visibility": "Offer visibility",
+      "cta-clarity": "CTA clarity",
+      "platform-fit": "Platform fit",
+      "tone-match": "Tone match",
+      "awareness-fit": "Awareness fit",
+      pacing: "Pacing",
+      "visual-hierarchy": "Visual hierarchy",
+      "captions-overlay": "Captions / overlay",
+      "audio-quality": "Audio quality",
+      "brand-presence": "Brand presence",
+      "tracking-readiness-ref": "Tracking readiness ref",
+    }[axis] ?? axis
+  );
 }

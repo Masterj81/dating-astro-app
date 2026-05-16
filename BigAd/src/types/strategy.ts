@@ -265,6 +265,8 @@ export interface Strategy {
   kpiLadder: KpiTargetLadder;
   kpiDiagnosis: KpiDiagnosis;
   adReview: AdReviewChecklist;
+  // Applied per-brief evaluations against the Ad Review checklist.
+  appliedAdReviews: AppliedAdReview[];
   journeyStatus: JourneyStatus;
 
   exportBrief: string;
@@ -416,7 +418,7 @@ export interface VariantSet {
 
 // ---- V5: Ops/Data H1 — Tracking Readiness ----
 
-export type ReadinessCheckKind =
+export type TrackingReadinessCheckKind =
   | "pixel-installed"
   | "conversion-events"
   | "exclusion-audiences"
@@ -428,8 +430,8 @@ export type ReadinessCheckKind =
   | "post-purchase-survey"
   | "test-purchase-confirmed";
 
-export interface ReadinessCheck {
-  kind: ReadinessCheckKind;
+export interface TrackingReadinessCheck {
+  kind: TrackingReadinessCheckKind;
   label: string;
   status: "passed" | "warning" | "blocker" | "unknown";
   rationale: string;
@@ -441,7 +443,7 @@ export interface TrackingReadinessScore {
   status: "ready" | "almost" | "not-ready";
   blockers: number;
   warnings: number;
-  checks: ReadinessCheck[];
+  checks: TrackingReadinessCheck[];
 }
 
 // ---- V5: Ops/Data H1 — KPI Target Ladder ----
@@ -540,6 +542,30 @@ export interface AdReviewChecklist {
   totalWeight: number;
 }
 
+// ---- V5: Applied Ad Review (evaluates a target against the checklist) ----
+
+export type FindingVerdict = "passed" | "partial" | "missing" | "unknown";
+
+export interface AdReviewFinding {
+  axis: ReviewAxisKind;
+  verdict: FindingVerdict;
+  evidence: string;          // 1 sentence on what was observed / inferred
+  fix?: string;              // present when verdict !== "passed"
+  weight: 1 | 2 | 3;          // mirrors the axis weight
+  scoreContribution: number;  // 0..weight, integer
+}
+
+export interface AppliedAdReview {
+  targetId: string;             // e.g. brief.id or concept id
+  targetKind: "brief" | "concept";
+  axes: ReviewAxis[];           // snapshot of the checklist used
+  findings: AdReviewFinding[];
+  totalScore: number;           // sum of scoreContribution
+  maxScore: number;             // sum of axis weights
+  scorePercent: number;         // 0..100 integer
+  verdict: "ready" | "almost" | "not-ready";
+}
+
 // ---- V5: Ops/Data H1 — Journey Status ----
 
 export type JourneyStage =
@@ -550,10 +576,25 @@ export type JourneyStage =
   | "review-passed"
   | "ready-to-spend";
 
+export type JourneyBlockerKind =
+  | "tracking"
+  | "kpi"
+  | "review"
+  | "creative"
+  | "scope";
+
+export interface JourneyBlocker {
+  kind: JourneyBlockerKind;
+  message: string;
+  severity: "warning" | "blocker";
+  // For traceability: which underlying check raised this blocker, when available.
+  sourceCheck?: TrackingReadinessCheckKind | ReviewAxisKind | DiagnosisCategory;
+}
+
 export interface JourneyStatus {
   currentStage: JourneyStage;
   readyToSpend: boolean;
-  blockers: string[];
-  warnings: string[];
+  blockers: JourneyBlocker[];   // severity === "blocker"
+  warnings: JourneyBlocker[];   // severity === "warning"
   nextStep: string;
 }

@@ -26,6 +26,7 @@ import {
   buildKpiLadder,
   assessTrackingReadiness,
   buildAdReviewChecklist,
+  applyAdReview,
   buildJourneyStatus,
   spinAdVariants,
   baseConceptFromBrief,
@@ -1034,6 +1035,192 @@ record(
 record(
   "buildStrategy: deterministic for journeyStatus",
   JSON.stringify(aThird.journeyStatus) === JSON.stringify(a.journeyStatus)
+);
+
+// ---- Refinement 2: structured JourneyBlocker payload ----
+
+record(
+  "journeyStatus.blockers is an array",
+  Array.isArray(a.journeyStatus.blockers)
+);
+record(
+  "journeyStatus.warnings is an array",
+  Array.isArray(a.journeyStatus.warnings)
+);
+record(
+  "journeyStatus: every blocker has kind, severity === 'blocker', non-empty message",
+  a.journeyStatus.blockers.every(
+    (b) =>
+      typeof b.kind === "string" &&
+      b.kind.length > 0 &&
+      b.severity === "blocker" &&
+      typeof b.message === "string" &&
+      b.message.length > 0
+  )
+);
+record(
+  "journeyStatus: every warning has kind, severity === 'warning', non-empty message",
+  a.journeyStatus.warnings.every(
+    (w) =>
+      typeof w.kind === "string" &&
+      w.kind.length > 0 &&
+      w.severity === "warning" &&
+      typeof w.message === "string" &&
+      w.message.length > 0
+  )
+);
+const validBlockerKinds = new Set(["tracking", "kpi", "review", "creative", "scope"]);
+record(
+  "journeyStatus: every blocker.kind is a valid JourneyBlockerKind",
+  a.journeyStatus.blockers.every((b) => validBlockerKinds.has(b.kind))
+);
+record(
+  "journeyStatus: every warning.kind is a valid JourneyBlockerKind",
+  a.journeyStatus.warnings.every((w) => validBlockerKinds.has(w.kind))
+);
+record(
+  "journeyStatus: tracking-sourced warnings carry a sourceCheck",
+  a.journeyStatus.warnings
+    .filter((w) => w.kind === "tracking")
+    .every((w) => typeof w.sourceCheck === "string" && w.sourceCheck.length > 0)
+);
+// Determinism on the structured payload — entire JourneyStatus including blockers/warnings.
+record(
+  "journeyStatus: structured payload is deterministic across runs",
+  JSON.stringify(a.journeyStatus.blockers) ===
+    JSON.stringify(aThird.journeyStatus.blockers) &&
+    JSON.stringify(a.journeyStatus.warnings) ===
+      JSON.stringify(aThird.journeyStatus.warnings)
+);
+
+// ---- Refinement 3: Applied Ad Review ----
+
+const VALID_FINDING_VERDICTS = new Set([
+  "passed",
+  "partial",
+  "missing",
+  "unknown",
+]);
+
+record(
+  "appliedAdReviews: one per brief (astro)",
+  a.appliedAdReviews.length === a.creatorBriefs.length,
+  `Got ${a.appliedAdReviews.length} vs ${a.creatorBriefs.length}`
+);
+record(
+  "appliedAdReviews: one per brief (plotline)",
+  b.appliedAdReviews.length === b.creatorBriefs.length
+);
+
+for (const review of a.appliedAdReviews) {
+  record(
+    `appliedAdReviews: ${review.targetId} findings length === checklist axes`,
+    review.findings.length === a.adReview.axes.length
+  );
+  record(
+    `appliedAdReviews: ${review.targetId} every finding has a valid verdict`,
+    review.findings.every((f) => VALID_FINDING_VERDICTS.has(f.verdict))
+  );
+  // Every finding's weight matches the axis weight at the same kind in the checklist.
+  const axisWeightByKind = new Map(
+    a.adReview.axes.map((ax) => [ax.kind, ax.weight] as const)
+  );
+  record(
+    `appliedAdReviews: ${review.targetId} finding.weight === axis.weight`,
+    review.findings.every((f) => axisWeightByKind.get(f.axis) === f.weight)
+  );
+  // scoreContribution matches verdict→contribution rule.
+  record(
+    `appliedAdReviews: ${review.targetId} scoreContribution matches verdict rule`,
+    review.findings.every((f) => {
+      if (f.verdict === "passed") return f.scoreContribution === f.weight;
+      if (f.verdict === "partial")
+        return f.scoreContribution === Math.ceil(f.weight / 2);
+      return f.scoreContribution === 0;
+    })
+  );
+  record(
+    `appliedAdReviews: ${review.targetId} totalScore <= maxScore`,
+    review.totalScore <= review.maxScore
+  );
+  expectBetween(
+    `appliedAdReviews: ${review.targetId} scorePercent in [0, 100]`,
+    review.scorePercent,
+    0,
+    100
+  );
+  // Verdict threshold check: percent >= 80 → ready, [50..79] → almost, else not-ready.
+  const expectedVerdict =
+    review.scorePercent >= 80
+      ? "ready"
+      : review.scorePercent >= 50
+      ? "almost"
+      : "not-ready";
+  record(
+    `appliedAdReviews: ${review.targetId} verdict matches scorePercent threshold`,
+    review.verdict === expectedVerdict,
+    `percent=${review.scorePercent} verdict=${review.verdict} expected=${expectedVerdict}`
+  );
+  // Every fix is present when verdict !== "passed".
+  record(
+    `appliedAdReviews: ${review.targetId} non-passed findings carry a fix`,
+    review.findings
+      .filter((f) => f.verdict !== "passed")
+      .every((f) => typeof f.fix === "string" && f.fix.length > 0)
+  );
+  // Every evidence is non-empty.
+  record(
+    `appliedAdReviews: ${review.targetId} every finding has non-empty evidence`,
+    review.findings.every((f) => f.evidence.length > 0)
+  );
+}
+
+// applyAdReview against a concept also produces a valid AppliedAdReview.
+const sampleConcept = baseConceptFromBrief(
+  a.creatorBriefs[0],
+  ASTRO_DATING_EXAMPLE,
+  a.offers
+);
+const conceptReview = applyAdReview(
+  { kind: "concept", concept: sampleConcept },
+  ASTRO_DATING_EXAMPLE,
+  a.adReview
+);
+record(
+  "applyAdReview(concept): findings length === axes",
+  conceptReview.findings.length === a.adReview.axes.length
+);
+record(
+  "applyAdReview(concept): targetKind === 'concept'",
+  conceptReview.targetKind === "concept"
+);
+record(
+  "applyAdReview(concept): scorePercent in [0, 100]",
+  conceptReview.scorePercent >= 0 && conceptReview.scorePercent <= 100
+);
+
+// Determinism on the full applied review across runs.
+const aFourth = buildStrategy(ASTRO_DATING_EXAMPLE);
+record(
+  "appliedAdReviews: deterministic across runs (full payload)",
+  JSON.stringify(aFourth.appliedAdReviews) ===
+    JSON.stringify(a.appliedAdReviews)
+);
+const conceptReviewTwice = applyAdReview(
+  { kind: "concept", concept: sampleConcept },
+  ASTRO_DATING_EXAMPLE,
+  a.adReview
+);
+record(
+  "applyAdReview(concept): deterministic across runs",
+  JSON.stringify(conceptReviewTwice) === JSON.stringify(conceptReview)
+);
+
+// Export brief contains Applied Ad Reviews section.
+expectContains(
+  "export brief contains Applied Ad Reviews",
+  brief,
+  "## Applied Ad Reviews"
 );
 
 // Report.
