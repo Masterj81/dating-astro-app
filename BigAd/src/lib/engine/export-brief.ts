@@ -434,6 +434,120 @@ export function generateExportBrief(
   });
   lines.push("");
 
+  // 11b. CTA Bank
+  section(lines, "CTA Bank");
+  if (strategy.ctaBank.variants.length === 0) {
+    lines.push("_No CTA variants generated._");
+    lines.push("");
+  } else {
+    // Group by surface so the editor scans a clean table per placement.
+    const ctaSurfaces = [
+      "meta-feed",
+      "meta-reels",
+      "tiktok",
+      "landing-primary",
+      "email",
+    ] as const;
+    for (const surface of ctaSurfaces) {
+      const inSurface = strategy.ctaBank.variants.filter(
+        (v) => v.surface === surface
+      );
+      if (inSurface.length === 0) continue;
+      lines.push(`### ${ctaSurfaceLabel(surface)}`);
+      lines.push("");
+      lines.push(`| Style | Text | Rationale |`);
+      lines.push(`|-------|------|-----------|`);
+      for (const v of inSurface) {
+        lines.push(
+          `| ${ctaStyleLabel(v.style)} | ${v.text.replace(/\|/g, "/")} | ${v.rationale.replace(/\|/g, "/")} |`
+        );
+      }
+      lines.push("");
+    }
+  }
+
+  // 11c. Static Briefs
+  section(lines, "Static Briefs");
+  if (strategy.staticBriefs.length === 0) {
+    lines.push("_No static briefs generated._");
+    lines.push("");
+  } else {
+    // Group by briefId.
+    const byBrief = new Map<string, typeof strategy.staticBriefs>();
+    for (const s of strategy.staticBriefs) {
+      const list = byBrief.get(s.briefId) ?? [];
+      list.push(s);
+      byBrief.set(s.briefId, list);
+    }
+    for (const [briefId, statics] of byBrief) {
+      const matched = strategy.creatorBriefs.find((b) => b.id === briefId);
+      const ref = matched ? matched.forAngle : briefId;
+      lines.push(`### ${briefId} — ${ref}`);
+      lines.push("");
+      for (const s of statics) {
+        lines.push(`#### ${s.size}`);
+        lines.push("");
+        lines.push(`| Field | Value |`);
+        lines.push(`|-------|-------|`);
+        lines.push(`| Headline overlay | ${s.headlineOverlay.replace(/\|/g, "/")} |`);
+        if (s.subOverlay) {
+          lines.push(`| Sub overlay | ${s.subOverlay.replace(/\|/g, "/")} |`);
+        }
+        lines.push(`| Hero element | ${s.heroElement.replace(/\|/g, "/")} |`);
+        lines.push(`| Proof element | ${s.proofElement.replace(/\|/g, "/")} |`);
+        lines.push(`| CTA badge | ${s.ctaBadge.replace(/\|/g, "/")} |`);
+        lines.push(`| Reading order | ${s.visualHierarchy.replace(/\|/g, "/")} |`);
+        lines.push("");
+      }
+    }
+  }
+
+  // 11d. Creative QA
+  section(lines, "Creative QA");
+  if (strategy.creativeQa.length === 0) {
+    lines.push("_No QA report generated._");
+    lines.push("");
+  } else {
+    for (const cq of strategy.creativeQa) {
+      const matched =
+        cq.scope === "all"
+          ? null
+          : strategy.creatorBriefs.find((b) => b.id === cq.scope);
+      const heading =
+        cq.scope === "all"
+          ? "Aggregate"
+          : matched
+          ? `${cq.scope} — ${matched.forAngle}`
+          : cq.scope;
+      lines.push(`### ${heading}`);
+      lines.push("");
+      lines.push(
+        `Blockers: ${cq.blockerCount}. Warnings: ${cq.warningCount}.`
+      );
+      lines.push("");
+      lines.push(`| Rule | Severity | Message | Suggestion |`);
+      lines.push(`|------|----------|---------|------------|`);
+      for (const f of cq.findings) {
+        lines.push(
+          `| ${f.rule} | ${f.severity} | ${f.message.replace(/\|/g, "/")} | ${(f.suggestion || "—").replace(/\|/g, "/")} |`
+        );
+      }
+      lines.push("");
+    }
+  }
+
+  // 11e. Editor Handoff
+  section(lines, "Editor Handoff");
+  if (strategy.editorHandoffs.length === 0) {
+    lines.push("_No editor handoffs generated._");
+    lines.push("");
+  } else {
+    for (const h of strategy.editorHandoffs) {
+      lines.push(h.markdown);
+      lines.push("");
+    }
+  }
+
   // 12. Generic-copy flags (if any)
   if (strategy.genericFlags.length > 0) {
     section(lines, "Generic-copy flags");
@@ -658,6 +772,30 @@ function appliedFindingVerdictLabel(verdict: string): string {
       missing: "Missing",
       unknown: "Unknown",
     }[verdict] ?? verdict
+  );
+}
+
+function ctaSurfaceLabel(surface: string): string {
+  return (
+    {
+      "meta-feed": "Meta feed",
+      "meta-reels": "Meta reels",
+      tiktok: "TikTok",
+      "landing-primary": "Landing primary",
+      email: "Email",
+    }[surface] ?? surface
+  );
+}
+
+function ctaStyleLabel(style: string): string {
+  return (
+    {
+      direct: "Direct",
+      curious: "Curious",
+      "time-boxed": "Time-boxed",
+      "proof-led": "Proof-led",
+      "low-pressure": "Low-pressure",
+    }[style] ?? style
   );
 }
 

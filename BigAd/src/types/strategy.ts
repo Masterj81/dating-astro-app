@@ -269,6 +269,12 @@ export interface Strategy {
   appliedAdReviews: AppliedAdReview[];
   journeyStatus: JourneyStatus;
 
+  // V6 additions — H2 Execution / Ops modules.
+  ctaBank: CtaBank;
+  staticBriefs: StaticAdBrief[];
+  creativeQa: CreativeQA[];
+  editorHandoffs: EditorHandoff[];
+
   exportBrief: string;
 }
 
@@ -597,4 +603,103 @@ export interface JourneyStatus {
   blockers: JourneyBlocker[];   // severity === "blocker"
   warnings: JourneyBlocker[];   // severity === "warning"
   nextStep: string;
+}
+
+// ---- V6: H2 Execution / Ops — CTA Bank ----
+
+export type CtaStyle =
+  | "direct"
+  | "curious"
+  | "time-boxed"
+  | "proof-led"
+  | "low-pressure";
+
+export type CtaSurface =
+  | "meta-feed"
+  | "meta-reels"
+  | "tiktok"
+  | "landing-primary"
+  | "email";
+
+export interface CtaVariant {
+  style: CtaStyle;
+  surface: CtaSurface;
+  text: string;          // concise CTA copy, BigAd voice
+  rationale: string;     // 1 sentence why this fits the surface + style
+}
+
+export interface CtaBank {
+  variants: CtaVariant[];
+}
+
+// ---- V6: H2 — First-Frame Static Brief ----
+
+export type StaticAdSize = "1:1" | "4:5" | "9:16";
+
+export type StaticLayoutZone =
+  | "top-band"
+  | "hero"
+  | "proof-strip"
+  | "bottom-band"
+  | "edge-badge";
+
+export interface StaticLayoutPiece {
+  zone: StaticLayoutZone;
+  copy: string;          // BigAd voice, short
+  visualNote: string;    // designer-facing
+}
+
+export interface StaticAdBrief {
+  briefId: string;                  // matches CreatorBrief.id
+  forAngle: string;
+  size: StaticAdSize;
+  headlineOverlay: string;          // primary line
+  subOverlay: string;               // optional secondary line
+  heroElement: string;              // focal visual description
+  proofElement: string;             // proof artifact description
+  ctaBadge: string;                 // text on the CTA chip
+  layout: StaticLayoutPiece[];      // 3-5 zones
+  visualHierarchy: string;          // 1 sentence reading order
+  notes?: string;
+}
+
+// ---- V6: H2 — Creative QA Checklist ----
+
+export type QaSeverity = "ok" | "warning" | "blocker";
+
+export type QaRule =
+  | "hook-clarity"
+  | "proof-visibility"
+  | "offer-visibility"
+  | "cta-clarity"
+  | "first-frame-clarity"
+  | "format-coverage"
+  | "runtime-coherence"
+  | "one-variable-testing"
+  | "visual-hierarchy"
+  | "message-angle-alignment"
+  | "audience-pain-present"
+  | "differentiation-present";
+
+export interface QaFinding {
+  rule: QaRule;
+  severity: QaSeverity;
+  message: string;
+  suggestion: string;
+  source?: string;
+}
+
+export interface CreativeQA {
+  scope: "all" | string;            // "all" for aggregate, briefId for per-brief
+  findings: QaFinding[];
+  blockerCount: number;
+  warningCount: number;
+}
+
+// ---- V6: H2 — Editor Handoff Brief ----
+
+export interface EditorHandoff {
+  briefId: string;
+  markdown: string;                 // self-contained handoff
+  assetChecklist: string[];         // 4-8 bullets
 }

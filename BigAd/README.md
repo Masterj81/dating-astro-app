@@ -83,6 +83,22 @@ The Journey Status block sits above the tab strip and shows where the strategy i
 
 The Tracking Readiness check structure is exposed as `TrackingReadinessCheck` / `TrackingReadinessCheckKind` (the previous `ReadinessCheck` names were renamed for cohesion with the rest of the tracking module).
 
+## CTA Bank
+
+`buildCtaBank(input, offers, campaignType)` emits a deterministic bank of concise CTA variants across five styles (direct / curious / time-boxed / proof-led / low-pressure) and five surfaces (Meta feed / Meta reels / TikTok / landing primary / email). Each variant is seeded from product name, audience, pain, and the top offer kind. Reels and TikTok variants stay under seven words; landing-primary variants stay under eight; feed and email under ten. Each variant carries a one-sentence rationale and is exposed on `Strategy.ctaBank`.
+
+## First-Frame Static Brief
+
+`buildStaticAdBriefs(briefs, input, ctaBank)` emits a designer-actionable first-frame brief for each top-3 creator brief in all three sizes (1:1, 4:5, 9:16). Each brief carries a headline overlay, optional sub overlay, hero element, proof element, CTA badge, a 3-5 zone layout plan, and a one-sentence reading-order note. Headlines pull from the brief's first alt-hook (label stripped) and CTA badges pull from the CTA bank, matching reels for 9:16 and feed for 1:1 / 4:5.
+
+## Creative QA Checklist
+
+`runCreativeQA(args)` evaluates the strategy against twelve deterministic rules — hook clarity, proof visibility, offer visibility, CTA clarity, first-frame clarity, format coverage, runtime coherence, one-variable testing, visual hierarchy, message-angle alignment, audience-pain present, differentiation present — and returns one `CreativeQA` per brief plus one aggregate. Each finding carries a severity (ok / warning / blocker), a one-sentence message, and a concrete suggestion when not ok. Blocker / warning counts surface as chips under each brief, and a tripwire summary sits above the brief list.
+
+## Editor Handoff Brief
+
+`buildEditorHandoffs(args)` builds a self-contained markdown handoff for each brief — concept thesis, target audience, hook + alt-hooks, video script table, shot list table, static briefs by size, top three CTA picks, offer context, QA findings table, applied-review snapshot, variant axis info, and a 4-8 item asset checklist tuned to the campaign type. The Briefs tab exposes a copy button and an expand toggle on each handoff; the markdown export bundles every handoff into a `## Editor Handoff` section.
+
 ## Running it
 
 ```bash
@@ -142,7 +158,7 @@ BigAd/
 │   │   └── page.tsx        Workspace UI (split panel: inputs / strategy)
 │   ├── components/
 │   │   ├── InputPanel.tsx       Left rail — Product / Audience / Market / Competitors / Goal
-│   │   ├── StrategyView.tsx     Right pane — Journey Status banner + tabbed strategy output (Score / Positioning / Awareness / Diagnosis / Offer / Ads / Landing / App Store / Experiments / Offers / Calendar / Launch / Briefs / Shots / Export)
+│   │   ├── StrategyView.tsx     Right pane — Journey Status banner + tabbed strategy output (Score / Positioning / Awareness / Diagnosis / Offer / Ads (+CTA bank + Static briefs) / Landing / App Store / Experiments / Offers / Calendar / Launch / Briefs (+QA + Editor handoff) / Shots / Export)
 │   │   └── CopyableCard.tsx     Reusable card with a small copy button
 │   ├── lib/
 │   │   ├── engine/              Deterministic strategy engine (no API)
@@ -173,13 +189,17 @@ BigAd/
 │   │   │   ├── kpi-diagnosis.ts        diagnoseKpi() — decision-tree diagnosis
 │   │   │   ├── ad-review.ts            buildAdReviewChecklist() — 15-axis pre-handoff list
 │   │   │   ├── journey-status.ts       buildJourneyStatus() — 6-stage journey synthesis
+│   │   │   ├── cta-bank.ts             buildCtaBank() — 5 styles × 5 surfaces CTA bank
+│   │   │   ├── static-brief.ts         buildStaticAdBriefs() — first-frame designer briefs
+│   │   │   ├── creative-qa.ts          runCreativeQA() — 12-rule creative checklist
+│   │   │   ├── editor-handoff.ts       buildEditorHandoffs() — markdown handoff per brief
 │   │   │   └── export-brief.ts         generateExportBrief() — markdown bundle
 │   │   ├── example.ts          The "Load example" payload (AstroDating)
 │   │   └── llm.ts              Adapter interface for plugging an LLM later
 │   └── types/
 │       └── strategy.ts         Shared TypeScript types
 ├── scripts/
-│   └── test-logic.ts           `npm run test:logic` — 377 checks
+│   └── test-logic.ts           `npm run test:logic` — 480 checks
 ├── public/
 ├── next.config.ts
 ├── tailwind.config.ts

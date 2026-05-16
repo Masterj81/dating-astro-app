@@ -8,8 +8,14 @@ import type {
   AwarenessVariant,
   CampaignCalendar,
   CampaignWindow,
+  CreativeQA,
   CreatorBrief,
   CreatorBriefSection,
+  CtaBank,
+  CtaStyle,
+  CtaSurface,
+  CtaVariant,
+  EditorHandoff,
   GenericFlag,
   HookCritique,
   HookFlag,
@@ -24,6 +30,10 @@ import type {
   OfferKind,
   OfferDiagnosis,
   OfferRecommendation,
+  QaFinding,
+  QaSeverity,
+  StaticAdBrief,
+  StaticAdSize,
   TrackingReadinessCheck,
   AppliedAdReview,
   AdReviewFinding,
@@ -620,6 +630,25 @@ function AdsTab({ strategy, input }: { strategy: Strategy; input: ProductInput }
         })}
       </div>
 
+      <SectionTitle>CTA Bank</SectionTitle>
+      <p className="text-xs text-ink-400">
+        Concise CTA copy across five styles (direct / curious / time-boxed /
+        proof-led / low-pressure) and five surfaces (Meta feed / Meta reels /
+        TikTok / landing primary / email). Each variant is parameterised on
+        the product, audience, and top offer kind. Copy a single variant or
+        a whole surface row.
+      </p>
+      <CtaBankBlock bank={strategy.ctaBank} />
+
+      <SectionTitle>Static Briefs</SectionTitle>
+      <p className="text-xs text-ink-400">
+        First-frame designer briefs per top brief. Each brief is shown in
+        all three sizes (1:1, 4:5, 9:16) with headline overlay, sub
+        overlay, hero element, proof element, CTA badge, and a layout
+        plan. Designer-actionable on its own — no extra context required.
+      </p>
+      <StaticBriefsBlock strategy={strategy} />
+
       <SectionTitle>TikTok / Reels scripts</SectionTitle>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         {strategy.tiktokScripts.map((s, i) => (
@@ -1141,19 +1170,19 @@ function CalendarWindowCard({ window: w, index }: { window: CampaignWindow; inde
 // ---------------- Briefs tab ----------------
 
 function BriefsTab({ strategy }: { strategy: Strategy }) {
+  const aggregateQa = strategy.creativeQa.find((q) => q.scope === "all");
   return (
     <div className="flex flex-col gap-5">
       <SectionTitle>Creator Briefs</SectionTitle>
       <p className="text-xs text-ink-400">
         One production brief per top-ranked angle. Each brief carries a
         framing rule, alternate hook openers, a four-section spine
-        (hook / problem / solution / CTA), and the deliverable list a
-        creator is paid against. Each brief now also carries a
-        line-level video script with VO / on-camera / overlay / SFX
-        cues, plus an applied Ad Review evaluation against the
-        checklist. Briefs are deterministic — the same inputs always
-        produce the same briefs.
+        (hook / problem / solution / CTA), the deliverable list, a
+        line-level video script, an applied Ad Review evaluation, a
+        Creative QA strip, and a copy-paste editor handoff. Briefs are
+        deterministic — the same inputs always produce the same briefs.
       </p>
+      {aggregateQa ? <AggregateQaSummary qa={aggregateQa} /> : null}
       <div className="flex flex-col gap-3">
         {strategy.creatorBriefs.map((brief) => {
           const script = strategy.videoScripts.find(
@@ -1162,12 +1191,18 @@ function BriefsTab({ strategy }: { strategy: Strategy }) {
           const applied = strategy.appliedAdReviews.find(
             (r) => r.targetId === brief.id
           );
+          const qa = strategy.creativeQa.find((q) => q.scope === brief.id);
+          const handoff = strategy.editorHandoffs.find(
+            (h) => h.briefId === brief.id
+          );
           return (
             <BriefCard
               key={brief.id}
               brief={brief}
               script={script}
               applied={applied}
+              qa={qa}
+              handoff={handoff}
             />
           );
         })}
@@ -1180,10 +1215,14 @@ function BriefCard({
   brief,
   script,
   applied,
+  qa,
+  handoff,
 }: {
   brief: CreatorBrief;
   script?: VideoScript;
   applied?: AppliedAdReview;
+  qa?: CreativeQA;
+  handoff?: EditorHandoff;
 }) {
   const exportText = briefToText(brief);
   return (
@@ -1236,6 +1275,8 @@ function BriefCard({
 
       {script ? <VideoScriptBlock script={script} /> : null}
       {applied ? <AppliedReviewBlock applied={applied} /> : null}
+      {qa ? <CreativeQaBlock qa={qa} /> : null}
+      {handoff ? <EditorHandoffBlock handoff={handoff} /> : null}
     </div>
   );
 }
@@ -2200,6 +2241,361 @@ function kpiCategoryLabel(cat: string): string {
       fatigue: "Fatigue",
       healthy: "Healthy",
     }[cat] ?? cat
+  );
+}
+
+// ---------------- CTA Bank ----------------
+
+function CtaBankBlock({ bank }: { bank: CtaBank }) {
+  if (bank.variants.length === 0) {
+    return (
+      <div className="hairline rounded-lg bg-ink-900 p-4 text-xs text-ink-400">
+        CTA bank is empty. Fill in audience, name, and category in the input
+        panel to seed the bank.
+      </div>
+    );
+  }
+  const surfaces: CtaSurface[] = [
+    "meta-feed",
+    "meta-reels",
+    "tiktok",
+    "landing-primary",
+    "email",
+  ];
+  return (
+    <div className="flex flex-col gap-3">
+      {surfaces.map((surface) => {
+        const inSurface = bank.variants.filter((v) => v.surface === surface);
+        if (inSurface.length === 0) return null;
+        const surfaceCopy = inSurface
+          .map((v) => `${ctaStyleLabelUi(v.style)}: ${v.text}`)
+          .join("\n");
+        return (
+          <div
+            key={surface}
+            className="hairline relative rounded-lg bg-ink-900 p-4"
+          >
+            <div className="absolute right-3 top-3">
+              <CopyMini text={surfaceCopy} />
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pr-16">
+              <span className="rounded-sm border border-ink-700 bg-ink-800 px-2 py-0.5 text-xxs uppercase tracking-wide text-ink-200">
+                {ctaSurfaceLabelUi(surface)}
+              </span>
+              <Tag>{inSurface.length} variants</Tag>
+            </div>
+            <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+              {inSurface.map((v) => (
+                <CtaVariantRow key={`${v.surface}-${v.style}`} variant={v} />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CtaVariantRow({ variant }: { variant: CtaVariant }) {
+  return (
+    <div className="relative rounded-md border border-ink-800 bg-ink-950/40 p-3">
+      <div className="absolute right-2 top-2">
+        <CopyMini text={variant.text} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 pr-12">
+        <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+          {ctaStyleLabelUi(variant.style)}
+        </span>
+      </div>
+      <p className="mt-2 text-sm text-ink-50">{variant.text}</p>
+      <p className="mt-1 text-xxs text-ink-400">{variant.rationale}</p>
+    </div>
+  );
+}
+
+function ctaStyleLabelUi(style: CtaStyle): string {
+  return (
+    {
+      direct: "Direct",
+      curious: "Curious",
+      "time-boxed": "Time-boxed",
+      "proof-led": "Proof-led",
+      "low-pressure": "Low-pressure",
+    }[style] ?? style
+  );
+}
+
+function ctaSurfaceLabelUi(surface: CtaSurface): string {
+  return (
+    {
+      "meta-feed": "Meta feed",
+      "meta-reels": "Meta reels",
+      tiktok: "TikTok",
+      "landing-primary": "Landing primary",
+      email: "Email",
+    }[surface] ?? surface
+  );
+}
+
+// ---------------- Static Briefs ----------------
+
+function StaticBriefsBlock({ strategy }: { strategy: Strategy }) {
+  if (strategy.staticBriefs.length === 0) {
+    return (
+      <div className="hairline rounded-lg bg-ink-900 p-4 text-xs text-ink-400">
+        No static briefs generated. Fill in audience pain and differentiator
+        to seed the first-frame copy.
+      </div>
+    );
+  }
+  // Group by briefId.
+  const grouped = new Map<string, StaticAdBrief[]>();
+  for (const s of strategy.staticBriefs) {
+    const list = grouped.get(s.briefId) ?? [];
+    list.push(s);
+    grouped.set(s.briefId, list);
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      {Array.from(grouped.entries()).map(([briefId, statics]) => {
+        const matched = strategy.creatorBriefs.find((b) => b.id === briefId);
+        const angleRef = matched?.forAngle ?? briefId;
+        return (
+          <div
+            key={briefId}
+            className="hairline rounded-lg bg-ink-900 p-4"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+                {briefId}
+              </span>
+              <p className="text-sm font-medium text-ink-50">{angleRef}</p>
+              <Tag>{statics.length} sizes</Tag>
+            </div>
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+              {statics.map((s) => (
+                <StaticSizeCard key={s.size} brief={s} />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function StaticSizeCard({ brief }: { brief: StaticAdBrief }) {
+  const exportText = staticBriefToText(brief);
+  return (
+    <div className="relative rounded-md border border-ink-800 bg-ink-950/40 p-3">
+      <div className="absolute right-2 top-2">
+        <CopyMini text={exportText} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 pr-12">
+        <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs uppercase tracking-wide text-ink-200">
+          {brief.size}
+        </span>
+      </div>
+      <p className="mt-2 text-sm font-medium text-ink-50">
+        {brief.headlineOverlay}
+      </p>
+      {brief.subOverlay ? (
+        <p className="mt-1 text-xs text-ink-300">{brief.subOverlay}</p>
+      ) : null}
+      <div className="mt-3 space-y-2 text-xs">
+        <KeyVal label="Hero" value={brief.heroElement} />
+        <KeyVal label="Proof" value={brief.proofElement} />
+        <KeyVal label="CTA" value={brief.ctaBadge} />
+        <KeyVal label="Reading order" value={brief.visualHierarchy} />
+      </div>
+      <div className="mt-3">
+        <p className="text-xxs uppercase tracking-wide text-ink-400">Layout</p>
+        <ul className="mt-1 space-y-1 text-xs text-ink-100">
+          {brief.layout.map((piece, i) => (
+            <li key={i}>
+              <span className="text-ink-400">[{piece.zone}]</span>{" "}
+              {piece.copy}{" "}
+              <span className="text-ink-500">— {piece.visualNote}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function KeyVal({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="text-ink-200">
+      <span className="text-ink-400">{label}: </span>
+      {value}
+    </div>
+  );
+}
+
+function staticBriefToText(brief: StaticAdBrief): string {
+  const lines: string[] = [];
+  lines.push(`Static brief ${brief.briefId} — ${brief.size}`);
+  lines.push(`Angle: ${brief.forAngle}`);
+  lines.push("");
+  lines.push(`Headline: ${brief.headlineOverlay}`);
+  if (brief.subOverlay) lines.push(`Sub: ${brief.subOverlay}`);
+  lines.push(`Hero: ${brief.heroElement}`);
+  lines.push(`Proof: ${brief.proofElement}`);
+  lines.push(`CTA: ${brief.ctaBadge}`);
+  lines.push(`Reading order: ${brief.visualHierarchy}`);
+  lines.push("");
+  lines.push("Layout:");
+  for (const piece of brief.layout) {
+    lines.push(`- [${piece.zone}] ${piece.copy} — ${piece.visualNote}`);
+  }
+  return lines.join("\n");
+}
+
+// ---------------- Creative QA ----------------
+
+function AggregateQaSummary({ qa }: { qa: CreativeQA }) {
+  if (qa.blockerCount === 0 && qa.warningCount === 0) {
+    return (
+      <div className="hairline rounded-lg border border-emerald-500/20 bg-ink-900 p-3 text-xs text-emerald-300">
+        Aggregate Creative QA: all checks pass across briefs.
+      </div>
+    );
+  }
+  return (
+    <div className="hairline rounded-lg bg-ink-900 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-xxs uppercase tracking-wide text-ink-400">
+          Aggregate QA
+        </p>
+        <span className="rounded-sm border border-rose-500/40 bg-rose-950/30 px-1.5 py-0.5 text-xxs text-rose-300">
+          {qa.blockerCount} blocker{qa.blockerCount === 1 ? "" : "s"}
+        </span>
+        <span className="rounded-sm border border-amber-500/40 bg-amber-950/30 px-1.5 py-0.5 text-xxs text-amber-300">
+          {qa.warningCount} warning{qa.warningCount === 1 ? "" : "s"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function CreativeQaBlock({ qa }: { qa: CreativeQA }) {
+  return (
+    <div className="mt-4 rounded-md border border-ink-800 bg-ink-950/40 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-xxs uppercase tracking-wide text-ink-400">
+          Creative QA
+        </p>
+        <Tag>
+          {qa.blockerCount} blocker{qa.blockerCount === 1 ? "" : "s"}
+        </Tag>
+        <Tag>
+          {qa.warningCount} warning{qa.warningCount === 1 ? "" : "s"}
+        </Tag>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {qa.findings.map((f) => (
+          <QaChip key={f.rule} finding={f} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function QaChip({ finding }: { finding: QaFinding }) {
+  const [open, setOpen] = useState(false);
+  const tone =
+    finding.severity === "blocker"
+      ? "border-rose-500/40 text-rose-200 bg-rose-950/30"
+      : finding.severity === "warning"
+      ? "border-amber-500/40 text-amber-200 bg-amber-950/30"
+      : "border-emerald-500/40 text-emerald-200 bg-emerald-950/20";
+  return (
+    <div className="inline-flex flex-col">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`rounded-sm border px-1.5 py-0.5 text-xxs ${tone}`}
+        title={`${finding.message} ${finding.suggestion ? "— " + finding.suggestion : ""}`}
+      >
+        {qaRuleLabel(finding.rule)} · {finding.severity}
+      </button>
+      {open ? (
+        <div className="mt-1 max-w-sm rounded-sm border border-ink-800 bg-ink-950/80 p-2 text-xxs text-ink-200">
+          <p>{finding.message}</p>
+          {finding.suggestion ? (
+            <p className="mt-1 text-ink-400">
+              <span className="text-ink-500">Suggestion: </span>
+              {finding.suggestion}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function qaRuleLabel(rule: string): string {
+  return (
+    {
+      "hook-clarity": "Hook clarity",
+      "proof-visibility": "Proof visibility",
+      "offer-visibility": "Offer visibility",
+      "cta-clarity": "CTA clarity",
+      "first-frame-clarity": "First-frame clarity",
+      "format-coverage": "Format coverage",
+      "runtime-coherence": "Runtime coherence",
+      "one-variable-testing": "One-variable testing",
+      "visual-hierarchy": "Visual hierarchy",
+      "message-angle-alignment": "Message-angle alignment",
+      "audience-pain-present": "Audience pain present",
+      "differentiation-present": "Differentiation present",
+    }[rule] ?? rule
+  );
+}
+
+// ---------------- Editor Handoff ----------------
+
+function EditorHandoffBlock({ handoff }: { handoff: EditorHandoff }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-4 rounded-md border border-ink-800 bg-ink-950/40 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-xxs uppercase tracking-wide text-ink-400">
+            Editor handoff
+          </p>
+          <Tag>
+            {handoff.assetChecklist.length} deliverable{handoff.assetChecklist.length === 1 ? "" : "s"}
+          </Tag>
+        </div>
+        <div className="flex items-center gap-2">
+          <CopyMini text={handoff.markdown} />
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="rounded-sm border border-ink-700 bg-ink-800 px-2 py-0.5 text-xxs text-ink-200 hover:border-accent hover:text-white"
+          >
+            {open ? "Hide handoff" : "Copy editor handoff"}
+          </button>
+        </div>
+      </div>
+      <div className="mt-3">
+        <p className="text-xxs uppercase tracking-wide text-ink-400">
+          Asset checklist
+        </p>
+        <ul className="mt-1 list-inside list-disc space-y-1 text-xs text-ink-100">
+          {handoff.assetChecklist.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ul>
+      </div>
+      {open ? (
+        <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-sm border border-ink-800 bg-ink-950 p-3 text-xxs text-ink-200">
+          {handoff.markdown}
+        </pre>
+      ) : null}
+    </div>
   );
 }
 

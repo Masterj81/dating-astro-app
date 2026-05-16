@@ -31,20 +31,29 @@ import {
   spinAdVariants,
   baseConceptFromBrief,
   generateVideoScripts,
+  buildCtaBank,
+  buildStaticAdBriefs,
+  runCreativeQA,
+  buildEditorHandoffs,
 } from "../src/lib/engine";
 import { ASTRO_DATING_EXAMPLE, NOTION_LIKE_EXAMPLE } from "../src/lib/example";
 import type {
   BriefSectionKind,
   CameraAngle,
   CampaignType,
+  CtaStyle,
+  CtaSurface,
   DiagnosisCategory,
   JourneyStage,
   KpiName,
   KpiSnapshot,
   LadderTier,
   ProductInput,
+  QaRule,
+  QaSeverity,
   ShotDuration,
   ShotKind,
+  StaticAdSize,
   VariantAxis,
 } from "../src/types/strategy";
 
@@ -1221,6 +1230,404 @@ expectContains(
   "export brief contains Applied Ad Reviews",
   brief,
   "## Applied Ad Reviews"
+);
+
+// ---- V6: H2 — CTA Bank ----
+
+const VALID_CTA_STYLES = new Set<CtaStyle>([
+  "direct",
+  "curious",
+  "time-boxed",
+  "proof-led",
+  "low-pressure",
+]);
+const VALID_CTA_SURFACES = new Set<CtaSurface>([
+  "meta-feed",
+  "meta-reels",
+  "tiktok",
+  "landing-primary",
+  "email",
+]);
+
+record(
+  "ctaBank: total variants >= 15 for astro",
+  a.ctaBank.variants.length >= 15,
+  `Got ${a.ctaBank.variants.length}`
+);
+record(
+  "ctaBank: total variants >= 15 for plotline",
+  b.ctaBank.variants.length >= 15
+);
+
+// Every style appears at least once.
+for (const style of VALID_CTA_STYLES) {
+  record(
+    `ctaBank: style ${style} present at least once`,
+    a.ctaBank.variants.some((v) => v.style === style)
+  );
+}
+// Every surface appears at least once.
+for (const surface of VALID_CTA_SURFACES) {
+  record(
+    `ctaBank: surface ${surface} present at least once`,
+    a.ctaBank.variants.some((v) => v.surface === surface)
+  );
+}
+
+record(
+  "ctaBank: every variant has non-empty text",
+  a.ctaBank.variants.every((v) => v.text.length > 0)
+);
+record(
+  "ctaBank: every variant has non-empty rationale",
+  a.ctaBank.variants.every((v) => v.rationale.length > 0)
+);
+record(
+  "ctaBank: every variant.style is a valid kind",
+  a.ctaBank.variants.every((v) => VALID_CTA_STYLES.has(v.style))
+);
+record(
+  "ctaBank: every variant.surface is a valid kind",
+  a.ctaBank.variants.every((v) => VALID_CTA_SURFACES.has(v.surface))
+);
+
+// Reels and TikTok variants are concise (≤ 7 words).
+record(
+  "ctaBank: meta-reels variants are ≤ 7 words",
+  a.ctaBank.variants
+    .filter((v) => v.surface === "meta-reels")
+    .every((v) => v.text.trim().split(/\s+/).length <= 7)
+);
+record(
+  "ctaBank: tiktok variants are ≤ 7 words",
+  a.ctaBank.variants
+    .filter((v) => v.surface === "tiktok")
+    .every((v) => v.text.trim().split(/\s+/).length <= 7)
+);
+record(
+  "ctaBank: meta-feed variants are ≤ 10 words",
+  a.ctaBank.variants
+    .filter((v) => v.surface === "meta-feed")
+    .every((v) => v.text.trim().split(/\s+/).length <= 10)
+);
+record(
+  "ctaBank: landing-primary variants are ≤ 8 words",
+  a.ctaBank.variants
+    .filter((v) => v.surface === "landing-primary")
+    .every((v) => v.text.trim().split(/\s+/).length <= 8)
+);
+
+// Different examples produce different banks.
+expectDifferent(
+  "ctaBank: differs between astro and plotline",
+  a.ctaBank,
+  b.ctaBank
+);
+
+// Determinism.
+const ctaBankTwice = buildCtaBank(
+  ASTRO_DATING_EXAMPLE,
+  a.offers,
+  ASTRO_DATING_EXAMPLE.campaignType
+);
+record(
+  "ctaBank: deterministic across calls",
+  JSON.stringify(ctaBankTwice) === JSON.stringify(a.ctaBank)
+);
+
+// ---- V6: H2 — Static Briefs ----
+
+const VALID_STATIC_SIZES = new Set<StaticAdSize>(["1:1", "4:5", "9:16"]);
+
+record(
+  "staticBriefs: at least one per top-3 brief × 3 sizes (astro)",
+  a.staticBriefs.length >= Math.min(a.creatorBriefs.length, 3) * 3,
+  `Got ${a.staticBriefs.length}`
+);
+record(
+  "staticBriefs: at least one per top-3 brief × 3 sizes (plotline)",
+  b.staticBriefs.length >= Math.min(b.creatorBriefs.length, 3) * 3
+);
+
+// For each brief, all three sizes present.
+for (const brief of a.creatorBriefs.slice(0, 3)) {
+  const sizes = new Set(
+    a.staticBriefs.filter((s) => s.briefId === brief.id).map((s) => s.size)
+  );
+  record(
+    `staticBriefs: ${brief.id} has 1:1`,
+    sizes.has("1:1")
+  );
+  record(
+    `staticBriefs: ${brief.id} has 4:5`,
+    sizes.has("4:5")
+  );
+  record(
+    `staticBriefs: ${brief.id} has 9:16`,
+    sizes.has("9:16")
+  );
+}
+
+record(
+  "staticBriefs: every size is a valid kind",
+  a.staticBriefs.every((s) => VALID_STATIC_SIZES.has(s.size))
+);
+record(
+  "staticBriefs: every brief has non-empty headlineOverlay",
+  a.staticBriefs.every((s) => s.headlineOverlay.length > 0)
+);
+record(
+  "staticBriefs: every headlineOverlay ≤ 80 chars",
+  a.staticBriefs.every((s) => s.headlineOverlay.length <= 80)
+);
+record(
+  "staticBriefs: every brief has non-empty heroElement",
+  a.staticBriefs.every((s) => s.heroElement.length > 0)
+);
+record(
+  "staticBriefs: every brief has non-empty proofElement",
+  a.staticBriefs.every((s) => s.proofElement.length > 0)
+);
+record(
+  "staticBriefs: every brief has non-empty ctaBadge",
+  a.staticBriefs.every((s) => s.ctaBadge.length > 0)
+);
+record(
+  "staticBriefs: every brief has 3-5 layout zones",
+  a.staticBriefs.every(
+    (s) => s.layout.length >= 3 && s.layout.length <= 5
+  )
+);
+record(
+  "staticBriefs: every brief has non-empty visualHierarchy",
+  a.staticBriefs.every((s) => s.visualHierarchy.length > 0)
+);
+
+// Different examples produce different static briefs.
+expectDifferent(
+  "staticBriefs: differs between astro and plotline",
+  a.staticBriefs,
+  b.staticBriefs
+);
+
+// Determinism.
+const staticTwice = buildStaticAdBriefs(
+  a.creatorBriefs,
+  ASTRO_DATING_EXAMPLE,
+  a.ctaBank
+);
+record(
+  "staticBriefs: deterministic across calls",
+  JSON.stringify(staticTwice) === JSON.stringify(a.staticBriefs)
+);
+
+// ---- V6: H2 — Creative QA ----
+
+const VALID_QA_SEVERITIES = new Set<QaSeverity>(["ok", "warning", "blocker"]);
+const VALID_QA_RULES = new Set<QaRule>([
+  "hook-clarity",
+  "proof-visibility",
+  "offer-visibility",
+  "cta-clarity",
+  "first-frame-clarity",
+  "format-coverage",
+  "runtime-coherence",
+  "one-variable-testing",
+  "visual-hierarchy",
+  "message-angle-alignment",
+  "audience-pain-present",
+  "differentiation-present",
+]);
+
+record(
+  "creativeQa: returns >= briefs.length + 1 entries (astro)",
+  a.creativeQa.length >= a.creatorBriefs.length + 1,
+  `Got ${a.creativeQa.length} vs ${a.creatorBriefs.length + 1}`
+);
+record(
+  "creativeQa: returns >= briefs.length + 1 entries (plotline)",
+  b.creativeQa.length >= b.creatorBriefs.length + 1
+);
+
+// Aggregate has scope === "all".
+record(
+  "creativeQa: aggregate (scope=all) present",
+  a.creativeQa.some((q) => q.scope === "all")
+);
+
+// Per-brief QA entries match brief ids.
+for (const brief of a.creatorBriefs) {
+  record(
+    `creativeQa: per-brief entry exists for ${brief.id}`,
+    a.creativeQa.some((q) => q.scope === brief.id)
+  );
+}
+
+// Every finding has rule, severity, message, suggestion.
+for (const cq of a.creativeQa) {
+  record(
+    `creativeQa: ${cq.scope} every finding has all required fields`,
+    cq.findings.every(
+      (f) =>
+        VALID_QA_RULES.has(f.rule) &&
+        VALID_QA_SEVERITIES.has(f.severity) &&
+        typeof f.message === "string" &&
+        f.message.length > 0 &&
+        typeof f.suggestion === "string"
+    )
+  );
+  record(
+    `creativeQa: ${cq.scope} non-ok findings carry suggestion`,
+    cq.findings
+      .filter((f) => f.severity !== "ok")
+      .every((f) => f.suggestion.length > 0)
+  );
+  record(
+    `creativeQa: ${cq.scope} blockerCount equals blocker findings`,
+    cq.blockerCount ===
+      cq.findings.filter((f) => f.severity === "blocker").length
+  );
+  record(
+    `creativeQa: ${cq.scope} warningCount equals warning findings`,
+    cq.warningCount ===
+      cq.findings.filter((f) => f.severity === "warning").length
+  );
+}
+
+// Intentionally-weak example produces at least one warning or blocker.
+const weakInput: ProductInput = {
+  name: "",
+  category: "",
+  description: "",
+  price: "",
+  businessModel: "other",
+  audience: "",
+  audiencePain: "",
+  competitors: "",
+  differentiator: "",
+  goal: "",
+  awareness: "unaware",
+  sophistication: "fresh-market",
+};
+const weakStrategy = buildStrategy(weakInput);
+record(
+  "creativeQa: weak input produces at least one warning or blocker",
+  weakStrategy.creativeQa.some(
+    (q) => q.blockerCount + q.warningCount > 0
+  )
+);
+
+// Determinism.
+const qaTwice = runCreativeQA({
+  briefs: a.creatorBriefs,
+  videoScripts: a.videoScripts,
+  shotLists: a.shotLists,
+  staticBriefs: a.staticBriefs,
+  variantSets: a.variantSets,
+  input: ASTRO_DATING_EXAMPLE,
+  ctaBank: a.ctaBank,
+  angles: a.angles,
+});
+record(
+  "creativeQa: deterministic across calls",
+  JSON.stringify(qaTwice) === JSON.stringify(a.creativeQa)
+);
+
+// ---- V6: H2 — Editor Handoff ----
+
+record(
+  "editorHandoffs: one per brief (astro)",
+  a.editorHandoffs.length === a.creatorBriefs.length
+);
+record(
+  "editorHandoffs: one per brief (plotline)",
+  b.editorHandoffs.length === b.creatorBriefs.length
+);
+
+for (const h of a.editorHandoffs) {
+  record(
+    `editorHandoffs: ${h.briefId} markdown contains "Concept thesis"`,
+    h.markdown.includes("## Concept thesis")
+  );
+  record(
+    `editorHandoffs: ${h.briefId} markdown contains "Target audience"`,
+    h.markdown.includes("## Target audience")
+  );
+  record(
+    `editorHandoffs: ${h.briefId} markdown contains "Hook"`,
+    h.markdown.includes("## Hook")
+  );
+  record(
+    `editorHandoffs: ${h.briefId} markdown contains "Video script"`,
+    h.markdown.includes("## Video script")
+  );
+  record(
+    `editorHandoffs: ${h.briefId} markdown contains "Shot list"`,
+    h.markdown.includes("## Shot list")
+  );
+  record(
+    `editorHandoffs: ${h.briefId} markdown contains "CTA picks"`,
+    h.markdown.includes("## CTA picks")
+  );
+  record(
+    `editorHandoffs: ${h.briefId} markdown contains "QA"`,
+    h.markdown.includes("## QA findings")
+  );
+  record(
+    `editorHandoffs: ${h.briefId} assetChecklist has 4-8 items`,
+    h.assetChecklist.length >= 4 && h.assetChecklist.length <= 8,
+    `Got ${h.assetChecklist.length}`
+  );
+}
+
+// Determinism.
+const handoffsTwice = buildEditorHandoffs({
+  briefs: a.creatorBriefs,
+  videoScripts: a.videoScripts,
+  shotLists: a.shotLists,
+  staticBriefs: a.staticBriefs,
+  ctaBank: a.ctaBank,
+  variantSets: a.variantSets,
+  creativeQa: a.creativeQa,
+  appliedAdReviews: a.appliedAdReviews,
+  input: ASTRO_DATING_EXAMPLE,
+  offers: a.offers,
+});
+record(
+  "editorHandoffs: deterministic across calls",
+  JSON.stringify(handoffsTwice) === JSON.stringify(a.editorHandoffs)
+);
+
+// ---- V6: Export brief contains H2 section headers ----
+
+expectContains("export brief contains CTA Bank", brief, "## CTA Bank");
+expectContains("export brief contains Static Briefs", brief, "## Static Briefs");
+expectContains("export brief contains Creative QA", brief, "## Creative QA");
+expectContains("export brief contains Editor Handoff", brief, "## Editor Handoff");
+
+// ---- V6: buildStrategy determinism across the new fields ----
+
+const aFifth = buildStrategy(ASTRO_DATING_EXAMPLE);
+record(
+  "buildStrategy: deterministic for ctaBank",
+  JSON.stringify(aFifth.ctaBank) === JSON.stringify(a.ctaBank)
+);
+record(
+  "buildStrategy: deterministic for staticBriefs",
+  JSON.stringify(aFifth.staticBriefs) === JSON.stringify(a.staticBriefs)
+);
+record(
+  "buildStrategy: deterministic for creativeQa",
+  JSON.stringify(aFifth.creativeQa) === JSON.stringify(a.creativeQa)
+);
+record(
+  "buildStrategy: deterministic for editorHandoffs",
+  JSON.stringify(aFifth.editorHandoffs) === JSON.stringify(a.editorHandoffs)
+);
+// Full deep-equal across two calls.
+record(
+  "buildStrategy: full output deep-equal across two calls (astro)",
+  JSON.stringify(aFifth) === JSON.stringify(a)
 );
 
 // Report.

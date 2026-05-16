@@ -27,6 +27,10 @@ import { buildKpiLadder } from "./kpi-ladder";
 import { diagnoseKpi, defaultSnapshotFromInput } from "./kpi-diagnosis";
 import { buildAdReviewChecklist, applyAdReview } from "./ad-review";
 import { buildJourneyStatus } from "./journey-status";
+import { buildCtaBank } from "./cta-bank";
+import { buildStaticAdBriefs } from "./static-brief";
+import { runCreativeQA } from "./creative-qa";
+import { buildEditorHandoffs } from "./editor-handoff";
 import { generateExportBrief } from "./export-brief";
 
 // buildStrategy — deterministic local strategy generator. No API calls.
@@ -89,6 +93,34 @@ export function buildStrategy(input: ProductInput): Strategy {
     variantSets,
   });
 
+  // V6 — H2 execution modules. Order matters: CTA bank first, static
+  // briefs pull from the CTA bank, QA reads both, handoffs read all of
+  // the above plus the applied reviews.
+  const ctaBank = buildCtaBank(input, offers, input.campaignType);
+  const staticBriefs = buildStaticAdBriefs(creatorBriefs, input, ctaBank);
+  const creativeQa = runCreativeQA({
+    briefs: creatorBriefs,
+    videoScripts,
+    shotLists,
+    staticBriefs,
+    variantSets,
+    input,
+    ctaBank,
+    angles,
+  });
+  const editorHandoffs = buildEditorHandoffs({
+    briefs: creatorBriefs,
+    videoScripts,
+    shotLists,
+    staticBriefs,
+    ctaBank,
+    variantSets,
+    creativeQa,
+    appliedAdReviews,
+    input,
+    offers,
+  });
+
   const partial: Omit<Strategy, "genericFlags" | "exportBrief"> = {
     positioning,
     awarenessNotes,
@@ -119,6 +151,10 @@ export function buildStrategy(input: ProductInput): Strategy {
     adReview,
     appliedAdReviews,
     journeyStatus,
+    ctaBank,
+    staticBriefs,
+    creativeQa,
+    editorHandoffs,
   };
 
   // Generic-copy guard runs against the strategy we just produced. If
@@ -204,3 +240,7 @@ export { buildKpiLadder } from "./kpi-ladder";
 export { diagnoseKpi, defaultSnapshotFromInput } from "./kpi-diagnosis";
 export { buildAdReviewChecklist, applyAdReview } from "./ad-review";
 export { buildJourneyStatus } from "./journey-status";
+export { buildCtaBank } from "./cta-bank";
+export { buildStaticAdBriefs } from "./static-brief";
+export { runCreativeQA } from "./creative-qa";
+export { buildEditorHandoffs } from "./editor-handoff";
