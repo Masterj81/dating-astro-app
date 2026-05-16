@@ -47,6 +47,38 @@ The Creator Brief Generator turns the top-ranked angles into one-page production
 
 The Shot List Generator mirrors each brief 1:1 with a numbered shooting plan. Each list carries four to eight shots covering all four brief beats, with shot kind (talking head / product shot / B-roll / screenshot / UGC selfie / lifestyle), framing note, camera angle, duration envelope, props, and sound direction. The sum of shot-duration midpoints stays within ±2 seconds of the brief's total duration so the cut lands in the right envelope. Output is fully deterministic — same inputs always produce the same list, in the same order.
 
+## Hook Critic
+
+The Hook Critic scores a draft hook line on demand against eight axes — length, opener strength, stakes, specificity, payoff placement, passive voice, category-blandness, and tone-vs-awareness. The 0-100 score starts at 100 and subtracts per flag (-20 / -10 / -5 by severity), then proposes one concrete rewrite seeded from the product's category, audience pain, differentiator, and name. The critic is on-demand — exposed via `critiqueHook(draft, input)` — and runs entirely in the browser. No data leaves the page.
+
+## Video Script Generator
+
+The Video Script Generator turns each creator brief into a numbered line-level script. For every brief section it emits two-to-three lines mixing VO, on-camera, on-screen text, and SFX cues, each carrying a start time and a duration. Per-section duration sums stay within ±1 second of the brief section's envelope, and the total duration stays within ±2 seconds of the brief total — same envelope discipline the Shot List uses. Fully deterministic and parameterised on `input.product`, `input.audience`, and the brief's source angle.
+
+## Ad Variant Spinner
+
+The Variant Spinner takes a base concept (hook / hold / proof / CTA / offer) and emits exactly five variants — one per axis — where the named axis differs from the base and the other four are byte-identical. Hook swap rotates archetypes (question / contrarian / stat / before-after). Hold swap rotates pacing edits. Proof swap rotates modality (testimonial / before-after / demo / data callout). CTA swap rotates framing (commit / explore / save). Offer swap pulls from the recommendation set. Each variant carries a one-sentence rationale.
+
+## Tracking Readiness
+
+The Tracking Readiness Score is a deterministic 0-100 check against ten measurement pre-flight items (pixel, conversion events, exclusions, permissions, naming, UTMs, landing speed, consent, post-purchase survey, test purchase). Each check resolves from the inputs to passed / warning / blocker / unknown. Score is `floor(100 × passed / total) - 10 × blockers - 5 × warnings`, clamped to [0, 100], with a status of `ready` / `almost` / `not-ready`. This is the gate the Journey Status block reads before flipping to ready-to-spend.
+
+## KPI Target Ladder
+
+The KPI Target Ladder emits 24 targets — 8 KPIs (CTR, CPC, CPM, CPA, CVR, ROAS, hook rate, hold rate) × 3 tiers (starter / healthy / scaling). Each target carries two thresholds: `breakeven` (below this kills the test) and `scaling` (above this scales). Defaults vary by price tier, business model, campaign type, and the optional commercial context (target ROAS, COGS %, margin %, current AOV). Higher-better KPIs have `scaling >= breakeven`; lower-better KPIs have `scaling <= breakeven`.
+
+## KPI Diagnosis
+
+The KPI Diagnosis Engine takes a snapshot of measured KPIs, compares each value against the healthy-tier envelope of the ladder, and walks a deterministic decision tree — high CPM + low CTR → creative, normal CPM + high CTR + low CVR → landing-page or offer, healthy upper funnel + low ROAS → offer or audience, and so on. When `buildStrategy` runs, the engine synthesises a default near-breakeven snapshot so the UI has content; the Launch tab lets the user enter real numbers to re-run the diagnosis client-side via `diagnoseKpi(snapshot, ladder, input)`.
+
+## Ad Review Checklist
+
+The Ad Review Checklist is a 15-axis pre-handoff list — hook clarity, first-3s payoff, claim specificity, proof strength, offer visibility, CTA clarity, platform fit, tone match, awareness fit, pacing, visual hierarchy, captions / overlay, audio quality, brand presence, and a tracking-readiness reference. Each axis has a weight (1, 2, or 3) that varies with campaign type and price tier so the operator's attention lands where the run actually fails.
+
+## Journey Status
+
+The Journey Status block sits above the tab strip and shows where the strategy is on a six-stage spine: strategy-drafted → creative-planned → tracking-ready → KPI-aligned → review-passed → ready-to-spend. The block synthesises Tracking Readiness, KPI Ladder, KPI Diagnosis, Ad Review, Creator Briefs, Shot Lists, Video Scripts, and Variant Sets into one current stage plus a single concrete next step. Blockers and warnings surface as chips. Ready-to-spend flips green when every gate passes.
+
 ## Running it
 
 ```bash
@@ -106,7 +138,7 @@ BigAd/
 │   │   └── page.tsx        Workspace UI (split panel: inputs / strategy)
 │   ├── components/
 │   │   ├── InputPanel.tsx       Left rail — Product / Audience / Market / Competitors / Goal
-│   │   ├── StrategyView.tsx     Right pane — tabbed strategy output (Score / Positioning / Awareness / Diagnosis / Offer / Ads / Landing / App Store / Experiments / Offers / Calendar / Briefs / Shots / Export)
+│   │   ├── StrategyView.tsx     Right pane — Journey Status banner + tabbed strategy output (Score / Positioning / Awareness / Diagnosis / Offer / Ads / Landing / App Store / Experiments / Offers / Calendar / Launch / Briefs / Shots / Export)
 │   │   └── CopyableCard.tsx     Reusable card with a small copy button
 │   ├── lib/
 │   │   ├── engine/              Deterministic strategy engine (no API)
@@ -129,13 +161,21 @@ BigAd/
 │   │   │   ├── calendar.ts             buildCalendar() — Campaign Calendar
 │   │   │   ├── briefs.ts               generateCreatorBriefs() — Creator Brief Generator
 │   │   │   ├── shotlist.ts             generateShotLists() — Shot List Generator
+│   │   │   ├── hook-critic.ts          critiqueHook() — on-demand hook critic
+│   │   │   ├── scripts-line.ts         generateVideoScripts() — line-level scripts per brief
+│   │   │   ├── variants.ts             generateVariantSets() / spinAdVariants() — one-axis-swap variants
+│   │   │   ├── tracking-readiness.ts   assessTrackingReadiness() — 10-check pre-flight score
+│   │   │   ├── kpi-ladder.ts           buildKpiLadder() — 8 × 3 KPI targets
+│   │   │   ├── kpi-diagnosis.ts        diagnoseKpi() — decision-tree diagnosis
+│   │   │   ├── ad-review.ts            buildAdReviewChecklist() — 15-axis pre-handoff list
+│   │   │   ├── journey-status.ts       buildJourneyStatus() — 6-stage journey synthesis
 │   │   │   └── export-brief.ts         generateExportBrief() — markdown bundle
 │   │   ├── example.ts          The "Load example" payload (AstroDating)
 │   │   └── llm.ts              Adapter interface for plugging an LLM later
 │   └── types/
 │       └── strategy.ts         Shared TypeScript types
 ├── scripts/
-│   └── test-logic.ts           `npm run test:logic` — 147 checks
+│   └── test-logic.ts           `npm run test:logic` — 334 checks
 ├── public/
 ├── next.config.ts
 ├── tailwind.config.ts

@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type {
+  AdReviewChecklist,
+  AdVariant,
   Angle,
   AwarenessVariant,
   CampaignCalendar,
@@ -9,19 +11,36 @@ import type {
   CreatorBrief,
   CreatorBriefSection,
   GenericFlag,
+  HookCritique,
+  HookFlag,
+  JourneyStage,
+  JourneyStatus,
+  KpiDiagnosis,
+  KpiName,
+  KpiSnapshot,
+  KpiTarget,
+  KpiTargetLadder,
+  LadderTier,
   OfferKind,
   OfferDiagnosis,
   OfferRecommendation,
+  ReadinessCheck,
   ScoreDimension,
+  ScriptLine,
   ShotList,
   ShotListItem,
   Strategy,
   StrategyScore,
+  TrackingReadinessScore,
+  VariantSet,
+  VideoScript,
 } from "@/types/strategy";
 import { awarenessLabel } from "@/lib/engine/awareness";
 import { sophisticationLabel } from "@/lib/engine/sophistication";
 import { scoreLabel } from "@/lib/engine/score";
 import { windowKindLabel } from "@/lib/engine/calendar";
+import { critiqueHook } from "@/lib/engine/hook-critic";
+import { diagnoseKpi } from "@/lib/engine/kpi-diagnosis";
 import { CopyableCard } from "./CopyableCard";
 import type { ProductInput } from "@/types/strategy";
 
@@ -37,6 +56,7 @@ type Tab =
   | "experiments"
   | "offers"
   | "calendar"
+  | "launch"
   | "briefs"
   | "shots"
   | "export";
@@ -53,6 +73,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "experiments", label: "Experiments" },
   { id: "offers", label: "Offers" },
   { id: "calendar", label: "Calendar" },
+  { id: "launch", label: "Launch" },
   { id: "briefs", label: "Briefs" },
   { id: "shots", label: "Shots" },
   { id: "export", label: "Export brief" },
@@ -86,6 +107,7 @@ export function StrategyView({ input, strategy, hasMeaningfulInput }: Props) {
             <FlagPill count={strategy.genericFlags.length} />
           ) : null}
         </div>
+        <JourneyStatusBlock status={strategy.journeyStatus} />
         <nav className="flex flex-wrap gap-1">
           {TABS.map((t) => (
             <button
@@ -112,12 +134,13 @@ export function StrategyView({ input, strategy, hasMeaningfulInput }: Props) {
         )}
         {tab === "diagnosis" && <DiagnosisTab diagnosis={strategy.diagnosis} />}
         {tab === "offer" && <OfferTab strategy={strategy} />}
-        {tab === "ads" && <AdsTab strategy={strategy} />}
+        {tab === "ads" && <AdsTab strategy={strategy} input={input} />}
         {tab === "landing" && <LandingTab strategy={strategy} />}
         {tab === "store" && <StoreTab strategy={strategy} />}
         {tab === "experiments" && <ExperimentsTab strategy={strategy} />}
         {tab === "offers" && <OffersTab strategy={strategy} />}
         {tab === "calendar" && <CalendarTab calendar={strategy.campaignCalendar} />}
+        {tab === "launch" && <LaunchTab strategy={strategy} input={input} />}
         {tab === "briefs" && <BriefsTab strategy={strategy} />}
         {tab === "shots" && <ShotsTab strategy={strategy} />}
         {tab === "export" && <ExportTab brief={strategy.exportBrief} />}
@@ -557,13 +580,43 @@ function Tag({ children }: { children: React.ReactNode }) {
 
 // ---------------- Ads tab ----------------
 
-function AdsTab({ strategy }: { strategy: Strategy }) {
+function AdsTab({ strategy, input }: { strategy: Strategy; input: ProductInput }) {
   return (
     <div className="flex flex-col gap-5">
       <SectionTitle>Top angle to test first</SectionTitle>
       {strategy.rankedAngles[0] ? (
         <AngleCard angle={strategy.rankedAngles[0]} rank={1} />
       ) : null}
+
+      <SectionTitle>Hook Critic</SectionTitle>
+      <p className="text-xs text-ink-400">
+        Paste a draft hook line. The critic scores it deterministically
+        against eight axes — length, opener, stakes, specificity, payoff
+        placement, voice, category bland, tone-vs-awareness — and
+        proposes a rewrite seeded from your input. No API call.
+      </p>
+      <HookCriticBlock input={input} />
+
+      <SectionTitle>Variant Spinner</SectionTitle>
+      <p className="text-xs text-ink-400">
+        For each top brief, the engine emits five variants — one per axis
+        (hook / hold / proof / CTA / offer). Each variant changes exactly
+        one axis from the base concept so the test plan stays clean.
+      </p>
+      <div className="flex flex-col gap-3">
+        {strategy.variantSets.map((vset, i) => {
+          const brief = strategy.creatorBriefs.find(
+            (b) => vset.baseConceptId.startsWith(b.id + "-")
+          );
+          return (
+            <VariantSetCard
+              key={vset.baseConceptId}
+              vset={vset}
+              briefLabel={brief?.forAngle ?? `Base ${i + 1}`}
+            />
+          );
+        })}
+      </div>
 
       <SectionTitle>TikTok / Reels scripts</SectionTitle>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -608,6 +661,189 @@ function AdsTab({ strategy }: { strategy: Strategy }) {
       </div>
     </div>
   );
+}
+
+function HookCriticBlock({ input }: { input: ProductInput }) {
+  const [draft, setDraft] = useState("");
+  const critique: HookCritique | null = useMemo(() => {
+    if (!draft.trim()) return null;
+    return critiqueHook(draft, input);
+  }, [draft, input]);
+
+  return (
+    <div className="hairline rounded-lg bg-ink-900 p-4">
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder="Type or paste a draft hook line…"
+        className="hairline w-full resize-y rounded-md border border-ink-700 bg-ink-950 px-3 py-2 text-sm text-ink-100 placeholder:text-ink-500"
+        rows={2}
+        spellCheck
+      />
+      {critique ? (
+        <div className="mt-4 flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <HookScorePill score={critique.score} />
+            <span className="text-xxs text-ink-400">
+              {critique.flags.length}{" "}
+              flag{critique.flags.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          {critique.flags.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {critique.flags.map((f, i) => (
+                <HookFlagChip key={i} flag={f} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-emerald-300">
+              No flags. The draft already opens cleanly.
+            </p>
+          )}
+          <div className="rounded-md border border-ink-800 bg-ink-950/40 p-3">
+            <p className="text-xxs uppercase tracking-wide text-ink-400">
+              Suggested rewrite
+            </p>
+            <p className="mt-1 text-sm text-ink-50">{critique.rewrite}</p>
+            <p className="mt-2 text-xs text-ink-300">
+              <span className="text-ink-400">Rationale: </span>
+              {critique.rationale}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-3 text-xs text-ink-500">
+          Critique renders here as soon as you type.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function HookScorePill({ score }: { score: number }) {
+  const tone =
+    score >= 75
+      ? "border-emerald-500/40 text-emerald-300"
+      : score >= 55
+      ? "border-amber-500/40 text-amber-300"
+      : "border-rose-500/40 text-rose-300";
+  return (
+    <span
+      className={`rounded-sm border bg-ink-900 px-2 py-0.5 text-xs ${tone}`}
+    >
+      {score}/100
+    </span>
+  );
+}
+
+function HookFlagChip({ flag }: { flag: HookFlag }) {
+  const tone =
+    flag.severity === "high"
+      ? "border-rose-500/40 text-rose-200"
+      : flag.severity === "medium"
+      ? "border-amber-500/40 text-amber-200"
+      : "border-ink-700 text-ink-200";
+  return (
+    <span
+      className={`rounded-sm border bg-ink-950 px-1.5 py-0.5 text-xxs ${tone}`}
+      title={`${flag.message} Fix: ${flag.fix}`}
+    >
+      {flag.kind} · {flag.severity}
+    </span>
+  );
+}
+
+function VariantSetCard({
+  vset,
+  briefLabel,
+}: {
+  vset: VariantSet;
+  briefLabel: string;
+}) {
+  const exportText = variantSetToText(vset, briefLabel);
+  return (
+    <div className="hairline relative rounded-lg bg-ink-900 p-4">
+      <div className="absolute right-3 top-3">
+        <CopyMini text={exportText} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 pr-16">
+        <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+          {vset.baseConceptId}
+        </span>
+        <p className="text-sm font-medium text-ink-50">{briefLabel}</p>
+        <Tag>{vset.variants.length} variants</Tag>
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+        {vset.variants.map((v) => (
+          <VariantCard key={v.id} variant={v} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VariantCard({ variant }: { variant: AdVariant }) {
+  return (
+    <div className="rounded-md border border-ink-800 bg-ink-950/40 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-sm border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-xxs text-ink-100">
+          axis: {variant.changedAxis}
+        </span>
+        <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+          {variant.id}
+        </span>
+      </div>
+      <div className="mt-2 grid grid-cols-1 gap-1 text-xs">
+        <Field axis="hook" highlight={variant.changedAxis === "hook"} value={variant.hook} />
+        <Field axis="hold" highlight={variant.changedAxis === "hold"} value={variant.hold} />
+        <Field axis="proof" highlight={variant.changedAxis === "proof"} value={variant.proof} />
+        <Field axis="cta" highlight={variant.changedAxis === "cta"} value={variant.cta} />
+        <Field axis="offer" highlight={variant.changedAxis === "offer"} value={variant.offer} />
+      </div>
+      <p className="mt-2 text-xxs text-ink-300">
+        <span className="text-ink-400">Why: </span>
+        {variant.rationale}
+      </p>
+    </div>
+  );
+}
+
+function Field({
+  axis,
+  value,
+  highlight,
+}: {
+  axis: string;
+  value: string;
+  highlight: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-sm px-2 py-1 ${
+        highlight ? "bg-ink-900 ring-1 ring-accent/40" : "bg-transparent"
+      }`}
+    >
+      <span className="text-xxs uppercase tracking-wide text-ink-400">{axis}: </span>
+      <span className="text-ink-100">{value}</span>
+    </div>
+  );
+}
+
+function variantSetToText(vset: VariantSet, briefLabel: string): string {
+  const lines: string[] = [];
+  lines.push(`Variant set ${vset.baseConceptId} — ${briefLabel}`);
+  lines.push("");
+  for (const v of vset.variants) {
+    lines.push(`${v.id} — axis: ${v.changedAxis}`);
+    lines.push(`  Hook:  ${v.hook}`);
+    lines.push(`  Hold:  ${v.hold}`);
+    lines.push(`  Proof: ${v.proof}`);
+    lines.push(`  CTA:   ${v.cta}`);
+    lines.push(`  Offer: ${v.offer}`);
+    lines.push(`  Why:   ${v.rationale}`);
+    lines.push("");
+  }
+  return lines.join("\n");
 }
 
 // ---------------- Landing / Store / Experiments tabs ----------------
@@ -910,19 +1146,32 @@ function BriefsTab({ strategy }: { strategy: Strategy }) {
         One production brief per top-ranked angle. Each brief carries a
         framing rule, alternate hook openers, a four-section spine
         (hook / problem / solution / CTA), and the deliverable list a
-        creator is paid against. Briefs are deterministic — the same
-        inputs always produce the same briefs.
+        creator is paid against. Each brief now also carries a
+        line-level video script with VO / on-camera / overlay / SFX
+        cues. Briefs are deterministic — the same inputs always produce
+        the same briefs.
       </p>
       <div className="flex flex-col gap-3">
-        {strategy.creatorBriefs.map((brief) => (
-          <BriefCard key={brief.id} brief={brief} />
-        ))}
+        {strategy.creatorBriefs.map((brief) => {
+          const script = strategy.videoScripts.find(
+            (s) => s.briefId === brief.id
+          );
+          return (
+            <BriefCard key={brief.id} brief={brief} script={script} />
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function BriefCard({ brief }: { brief: CreatorBrief }) {
+function BriefCard({
+  brief,
+  script,
+}: {
+  brief: CreatorBrief;
+  script?: VideoScript;
+}) {
   const exportText = briefToText(brief);
   return (
     <div className="hairline relative rounded-lg bg-ink-900 p-4">
@@ -971,7 +1220,108 @@ function BriefCard({ brief }: { brief: CreatorBrief }) {
           ))}
         </ul>
       </div>
+
+      {script ? <VideoScriptBlock script={script} /> : null}
     </div>
+  );
+}
+
+function VideoScriptBlock({ script }: { script: VideoScript }) {
+  const exportText = scriptToText(script);
+  return (
+    <div className="mt-4 rounded-md border border-ink-800 bg-ink-950/40 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-xxs uppercase tracking-wide text-ink-400">
+            Video script
+          </p>
+          <Tag>{script.lines.length} lines</Tag>
+          <Tag>~{script.totalDurationSeconds}s</Tag>
+        </div>
+        <CopyMini text={exportText} />
+      </div>
+      <div className="mt-3 hidden md:block">
+        <table className="w-full table-auto border-collapse text-xs">
+          <thead>
+            <tr className="border-b border-ink-800 text-ink-400">
+              <th className="py-2 pr-3 text-left font-medium">#</th>
+              <th className="py-2 pr-3 text-left font-medium">Section</th>
+              <th className="py-2 pr-3 text-left font-medium">Kind</th>
+              <th className="py-2 pr-3 text-left font-medium">Start</th>
+              <th className="py-2 pr-3 text-left font-medium">Dur</th>
+              <th className="py-2 pr-3 text-left font-medium">Text</th>
+            </tr>
+          </thead>
+          <tbody>
+            {script.lines.map((ln) => (
+              <tr key={ln.index} className="border-b border-ink-900/60 align-top">
+                <td className="py-2 pr-3 text-ink-300">{ln.index}</td>
+                <td className="py-2 pr-3 text-ink-200">
+                  {briefSectionIndexLabelShort(ln.briefSectionIndex)}
+                </td>
+                <td className="py-2 pr-3">
+                  <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+                    {scriptKindLabel(ln.kind)}
+                  </span>
+                </td>
+                <td className="py-2 pr-3 text-ink-200">{ln.startSeconds}s</td>
+                <td className="py-2 pr-3 text-ink-200">{ln.durationSeconds}s</td>
+                <td className="py-2 pr-3 text-ink-100">{ln.text}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-3 flex flex-col gap-2 md:hidden">
+        {script.lines.map((ln) => (
+          <div
+            key={ln.index}
+            className="rounded-sm border border-ink-800 bg-ink-950/40 p-2"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+                #{ln.index}
+              </span>
+              <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+                {scriptKindLabel(ln.kind)}
+              </span>
+              <Tag>
+                {briefSectionIndexLabelShort(ln.briefSectionIndex)} · {ln.startSeconds}s · {ln.durationSeconds}s
+              </Tag>
+            </div>
+            <p className="mt-1 text-xs text-ink-100">{ln.text}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function scriptToText(script: VideoScript): string {
+  const lines: string[] = [];
+  lines.push(`Video script ${script.briefId} — ${script.totalDurationSeconds}s total`);
+  lines.push("");
+  for (const ln of script.lines) {
+    lines.push(
+      `${ln.index}. [${briefSectionIndexLabelShort(ln.briefSectionIndex)}] ${scriptKindLabel(ln.kind)} @ ${ln.startSeconds}s for ${ln.durationSeconds}s`
+    );
+    lines.push(`   ${ln.text}`);
+  }
+  return lines.join("\n");
+}
+
+function briefSectionIndexLabelShort(i: number): string {
+  return ["Hook", "Problem", "Sol.", "CTA"][i] ?? `S${i + 1}`;
+}
+
+function scriptKindLabel(kind: string): string {
+  return (
+    {
+      vo: "VO",
+      "on-camera": "On-cam",
+      "on-screen-text": "Overlay",
+      sfx: "SFX",
+    }[kind] ?? kind
   );
 }
 
@@ -1260,6 +1610,428 @@ function ExportTab({ brief }: { brief: string }) {
         spellCheck={false}
       />
     </div>
+  );
+}
+
+// ---------------- Journey Status block ----------------
+
+const JOURNEY_STAGES: { stage: JourneyStage; label: string }[] = [
+  { stage: "strategy-drafted", label: "Strategy" },
+  { stage: "creative-planned", label: "Creative" },
+  { stage: "tracking-ready", label: "Tracking" },
+  { stage: "kpi-aligned", label: "KPIs" },
+  { stage: "review-passed", label: "Review" },
+  { stage: "ready-to-spend", label: "Spend" },
+];
+
+function JourneyStatusBlock({ status }: { status: JourneyStatus }) {
+  const currentIdx = JOURNEY_STAGES.findIndex(
+    (s) => s.stage === status.currentStage
+  );
+  const badgeTone = status.readyToSpend
+    ? "border-emerald-500/40 text-emerald-300 bg-emerald-950/30"
+    : status.blockers.length > 0
+    ? "border-rose-500/40 text-rose-200 bg-rose-950/30"
+    : "border-amber-500/40 text-amber-200 bg-amber-950/30";
+
+  return (
+    <div className="hairline rounded-md border border-ink-800 bg-ink-950/40 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {JOURNEY_STAGES.map((s, i) => {
+            const isCurrent = i === currentIdx;
+            const isPast = i < currentIdx;
+            const tone = isCurrent
+              ? "border-accent/60 bg-ink-900 text-ink-50"
+              : isPast
+              ? "border-emerald-500/30 bg-emerald-950/30 text-emerald-200"
+              : "border-ink-700 bg-ink-900 text-ink-400";
+            return (
+              <span
+                key={s.stage}
+                className={`rounded-sm border px-2 py-0.5 text-xxs ${tone}`}
+                title={s.stage}
+              >
+                {i + 1}. {s.label}
+              </span>
+            );
+          })}
+        </div>
+        <span className={`rounded-sm border px-2 py-0.5 text-xxs ${badgeTone}`}>
+          {status.readyToSpend
+            ? "Ready to spend"
+            : status.blockers.length > 0
+            ? `${status.blockers.length} blocker${status.blockers.length === 1 ? "" : "s"}`
+            : "Pre-flight"}
+        </span>
+      </div>
+      <p className="mt-2 text-xs text-ink-200">
+        <span className="text-ink-400">Next step: </span>
+        {status.nextStep}
+      </p>
+      {status.blockers.length > 0 || status.warnings.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {status.blockers.slice(0, 4).map((b, i) => (
+            <span
+              key={`bk-${i}`}
+              className="rounded-sm border border-rose-500/40 bg-rose-950/30 px-1.5 py-0.5 text-xxs text-rose-200"
+              title={b}
+            >
+              {truncateChip(b)}
+            </span>
+          ))}
+          {status.warnings.slice(0, 4).map((w, i) => (
+            <span
+              key={`wn-${i}`}
+              className="rounded-sm border border-amber-500/30 bg-amber-950/20 px-1.5 py-0.5 text-xxs text-amber-200"
+              title={w}
+            >
+              {truncateChip(w)}
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function truncateChip(s: string): string {
+  if (s.length <= 50) return s;
+  return s.slice(0, 47).trimEnd() + "…";
+}
+
+// ---------------- Launch tab ----------------
+
+function LaunchTab({
+  strategy,
+  input,
+}: {
+  strategy: Strategy;
+  input: ProductInput;
+}) {
+  return (
+    <div className="flex flex-col gap-6">
+      <TrackingReadinessBlock readiness={strategy.trackingReadiness} />
+      <KpiLadderBlock ladder={strategy.kpiLadder} />
+      <KpiDiagnosisBlock
+        ladder={strategy.kpiLadder}
+        diagnosis={strategy.kpiDiagnosis}
+        input={input}
+      />
+      <AdReviewBlock checklist={strategy.adReview} />
+    </div>
+  );
+}
+
+function TrackingReadinessBlock({ readiness }: { readiness: TrackingReadinessScore }) {
+  const tone =
+    readiness.status === "ready"
+      ? "border-emerald-500/40 text-emerald-300"
+      : readiness.status === "almost"
+      ? "border-amber-500/40 text-amber-300"
+      : "border-rose-500/40 text-rose-300";
+  return (
+    <div className="flex flex-col gap-3">
+      <SectionTitle>Tracking Readiness</SectionTitle>
+      <p className="text-xs text-ink-400">
+        Ten pre-flight checks against the measurement layer. Each check
+        resolves from the inputs to passed / warning / blocker /
+        unknown. The score drops 10 per blocker and 5 per warning.
+      </p>
+      <div className="hairline rounded-lg bg-ink-900 p-4">
+        <div className="flex flex-wrap items-baseline gap-3">
+          <p className="text-3xl font-semibold text-ink-50">
+            {readiness.score}
+            <span className="ml-1 text-base text-ink-400">/100</span>
+          </p>
+          <span
+            className={`rounded-sm border bg-ink-900 px-2 py-0.5 text-xs ${tone}`}
+          >
+            {readiness.status}
+          </span>
+          <Tag>{readiness.blockers} blocker{readiness.blockers === 1 ? "" : "s"}</Tag>
+          <Tag>{readiness.warnings} warning{readiness.warnings === 1 ? "" : "s"}</Tag>
+        </div>
+        <div className="mt-4 flex flex-col gap-2">
+          {readiness.checks.map((c) => (
+            <ReadinessRow key={c.kind} check={c} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReadinessRow({ check }: { check: ReadinessCheck }) {
+  const tone =
+    check.status === "passed"
+      ? "border-emerald-500/40 text-emerald-300"
+      : check.status === "warning"
+      ? "border-amber-500/40 text-amber-300"
+      : check.status === "blocker"
+      ? "border-rose-500/40 text-rose-300"
+      : "border-ink-700 text-ink-300";
+  return (
+    <div className="rounded-md border border-ink-800 bg-ink-950/40 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`rounded-sm border bg-ink-900 px-1.5 py-0.5 text-xxs ${tone}`}>
+          {check.status}
+        </span>
+        <p className="text-sm font-medium text-ink-100">{check.label}</p>
+      </div>
+      <p className="mt-1 text-xs text-ink-300">{check.rationale}</p>
+      {check.fix ? (
+        <p className="mt-1 text-xxs text-ink-400">
+          <span className="text-ink-500">Fix: </span>
+          {check.fix}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+const KPI_DISPLAY_ORDER: KpiName[] = [
+  "ctr",
+  "cpc",
+  "cpm",
+  "cpa",
+  "cvr",
+  "roas",
+  "hookRate",
+  "holdRate",
+];
+
+const TIER_DISPLAY_ORDER: LadderTier[] = ["starter", "healthy", "scaling"];
+
+function KpiLadderBlock({ ladder }: { ladder: KpiTargetLadder }) {
+  // Index lookup.
+  const byKey = new Map<string, KpiTarget>();
+  for (const t of ladder.targets) {
+    byKey.set(`${t.kpi}|${t.tier}`, t);
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <SectionTitle>KPI Target Ladder</SectionTitle>
+      <p className="text-xs text-ink-400">
+        Eight KPIs × three tiers. Each cell carries a breakeven and a
+        scaling threshold. Sit between them, do not increase budget.
+        Cross the scaling threshold sustained, scale.
+      </p>
+      <div className="hairline overflow-x-auto rounded-lg bg-ink-900 p-3">
+        <table className="w-full table-auto border-collapse text-xs">
+          <thead>
+            <tr className="border-b border-ink-800 text-ink-400">
+              <th className="py-2 pr-3 text-left font-medium">KPI</th>
+              {TIER_DISPLAY_ORDER.map((tier) => (
+                <th
+                  key={tier}
+                  className="py-2 pr-3 text-left font-medium"
+                  colSpan={2}
+                >
+                  {kpiTierLabel(tier)} (break / scale)
+                </th>
+              ))}
+              <th className="py-2 pr-3 text-left font-medium">Direction</th>
+            </tr>
+          </thead>
+          <tbody>
+            {KPI_DISPLAY_ORDER.map((kpi) => (
+              <tr key={kpi} className="border-b border-ink-900/60 align-top">
+                <td className="py-2 pr-3 font-medium text-ink-100">
+                  {kpiNameLabelUi(kpi)}
+                </td>
+                {TIER_DISPLAY_ORDER.map((tier) => {
+                  const t = byKey.get(`${kpi}|${tier}`);
+                  return (
+                    <>
+                      <td key={`${kpi}-${tier}-be`} className="py-2 pr-2 text-ink-200">
+                        {t ? t.breakeven : "—"}
+                      </td>
+                      <td key={`${kpi}-${tier}-sc`} className="py-2 pr-3 text-ink-300">
+                        {t ? t.scaling : "—"}
+                      </td>
+                    </>
+                  );
+                })}
+                <td className="py-2 pr-3 text-xxs text-ink-400">
+                  {ladder.targets.find((t) => t.kpi === kpi)?.direction ?? "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function KpiDiagnosisBlock({
+  ladder,
+  diagnosis,
+  input,
+}: {
+  ladder: KpiTargetLadder;
+  diagnosis: KpiDiagnosis;
+  input: ProductInput;
+}) {
+  const [snap, setSnap] = useState<KpiSnapshot>(diagnosis.snapshot);
+
+  const liveDiag = useMemo(
+    () => diagnoseKpi(snap, ladder, input),
+    [snap, ladder, input]
+  );
+
+  return (
+    <div className="flex flex-col gap-3">
+      <SectionTitle>KPI Diagnosis</SectionTitle>
+      <p className="text-xs text-ink-400">
+        Enter a live snapshot below. The deterministic decision tree
+        infers the most likely bottleneck and a concrete next action. No
+        data leaves the browser.
+      </p>
+      <div className="hairline rounded-lg bg-ink-900 p-4">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          {KPI_DISPLAY_ORDER.map((kpi) => (
+            <SnapshotField
+              key={kpi}
+              kpi={kpi}
+              value={snap[kpi]}
+              onChange={(v) => setSnap({ ...snap, [kpi]: v })}
+            />
+          ))}
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="rounded-sm border border-accent/40 bg-accent/10 px-2 py-0.5 text-xs text-ink-100">
+            Primary: {kpiCategoryLabel(liveDiag.primaryCategory)}
+          </span>
+          <Tag>{liveDiag.findings.length} finding{liveDiag.findings.length === 1 ? "" : "s"}</Tag>
+        </div>
+        <div className="mt-3 flex flex-col gap-2">
+          {liveDiag.findings.map((f, i) => (
+            <div
+              key={i}
+              className="rounded-md border border-ink-800 bg-ink-950/40 p-3"
+            >
+              <p className="text-xs font-medium text-ink-100">
+                {kpiCategoryLabel(f.category)} — {f.signal}
+              </p>
+              <p className="mt-1 text-xs text-ink-300">{f.inference}</p>
+              <p className="mt-1 text-xxs text-ink-400">
+                <span className="text-ink-500">Action: </span>
+                {f.recommendedAction}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SnapshotField({
+  kpi,
+  value,
+  onChange,
+}: {
+  kpi: KpiName;
+  value: number | undefined;
+  onChange: (v: number | undefined) => void;
+}) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-xxs uppercase tracking-wide text-ink-400">
+        {kpiNameLabelUi(kpi)}
+      </span>
+      <input
+        type="number"
+        step="0.01"
+        value={typeof value === "number" ? value : ""}
+        onChange={(e) => {
+          const t = e.target.value.trim();
+          if (t === "") onChange(undefined);
+          else {
+            const n = Number(t);
+            if (Number.isFinite(n)) onChange(n);
+          }
+        }}
+        className="hairline rounded-sm border border-ink-700 bg-ink-950 px-2 py-1 text-xs text-ink-100"
+      />
+    </label>
+  );
+}
+
+function AdReviewBlock({ checklist }: { checklist: AdReviewChecklist }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <SectionTitle>Ad Review Checklist</SectionTitle>
+      <p className="text-xs text-ink-400">
+        A 15-axis pre-handoff checklist. Weights vary by campaign type
+        and price tier so attention lands where it matters for the run.
+        Walk through this before any spend.
+      </p>
+      <div className="hairline rounded-lg bg-ink-900 p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Tag>{checklist.axes.length} axes</Tag>
+          <Tag>Total weight: {checklist.totalWeight}</Tag>
+        </div>
+        <ul className="mt-3 flex flex-col gap-2">
+          {checklist.axes.map((ax) => (
+            <li
+              key={ax.kind}
+              className="rounded-md border border-ink-800 bg-ink-950/40 p-3"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+                  w{ax.weight}
+                </span>
+                <p className="text-sm font-medium text-ink-100">{ax.label}</p>
+              </div>
+              <p className="mt-1 text-xs text-ink-300">{ax.question}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function kpiNameLabelUi(name: KpiName): string {
+  return (
+    {
+      ctr: "CTR (%)",
+      cpc: "CPC",
+      cpm: "CPM",
+      cpa: "CPA",
+      cvr: "CVR (%)",
+      roas: "ROAS",
+      hookRate: "Hook %",
+      holdRate: "Hold %",
+    }[name] ?? name
+  );
+}
+
+function kpiTierLabel(tier: LadderTier): string {
+  return (
+    {
+      starter: "Starter",
+      healthy: "Healthy",
+      scaling: "Scaling",
+    }[tier] ?? tier
+  );
+}
+
+function kpiCategoryLabel(cat: string): string {
+  return (
+    {
+      creative: "Creative",
+      "landing-page": "Landing page",
+      offer: "Offer",
+      audience: "Audience",
+      tracking: "Tracking",
+      fatigue: "Fatigue",
+      healthy: "Healthy",
+    }[cat] ?? cat
   );
 }
 

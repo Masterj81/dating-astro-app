@@ -20,6 +20,13 @@ import { recommendOffers } from "./offers";
 import { buildCalendar } from "./calendar";
 import { generateCreatorBriefs } from "./briefs";
 import { generateShotLists } from "./shotlist";
+import { generateVideoScripts } from "./scripts-line";
+import { generateVariantSets } from "./variants";
+import { assessTrackingReadiness } from "./tracking-readiness";
+import { buildKpiLadder } from "./kpi-ladder";
+import { diagnoseKpi, defaultSnapshotFromInput } from "./kpi-diagnosis";
+import { buildAdReviewChecklist } from "./ad-review";
+import { buildJourneyStatus } from "./journey-status";
 import { generateExportBrief } from "./export-brief";
 
 // buildStrategy — deterministic local strategy generator. No API calls.
@@ -48,6 +55,29 @@ export function buildStrategy(input: ProductInput): Strategy {
   const creatorBriefs = generateCreatorBriefs(input, angleNames, offers);
   const shotLists = generateShotLists(creatorBriefs, input);
 
+  // V5 — Execution H1: line-level scripts and per-brief variant sets.
+  const videoScripts = generateVideoScripts(creatorBriefs, input);
+  const variantSets = generateVariantSets(creatorBriefs, input, offers);
+
+  // V5 — Ops/Data H1: readiness, KPI ladder, synthetic diagnosis, review.
+  const trackingReadiness = assessTrackingReadiness(input);
+  const kpiLadder = buildKpiLadder(input);
+  const defaultSnapshot = defaultSnapshotFromInput(input, kpiLadder);
+  const kpiDiagnosis = diagnoseKpi(defaultSnapshot, kpiLadder, input);
+  const adReview = buildAdReviewChecklist(input);
+
+  // Journey status is computed last because it synthesises everything above.
+  const journeyStatus = buildJourneyStatus({
+    trackingReadiness,
+    kpiLadder,
+    kpiDiagnosis,
+    adReview,
+    creatorBriefs,
+    shotLists,
+    videoScripts,
+    variantSets,
+  });
+
   const partial: Omit<Strategy, "genericFlags" | "exportBrief"> = {
     positioning,
     awarenessNotes,
@@ -70,6 +100,13 @@ export function buildStrategy(input: ProductInput): Strategy {
     campaignCalendar,
     creatorBriefs,
     shotLists,
+    videoScripts,
+    variantSets,
+    trackingReadiness,
+    kpiLadder,
+    kpiDiagnosis,
+    adReview,
+    journeyStatus,
   };
 
   // Generic-copy guard runs against the strategy we just produced. If
@@ -143,3 +180,15 @@ export {
   SHOT_DURATION_MIDPOINT,
 } from "./shotlist";
 export { generateExportBrief } from "./export-brief";
+export { critiqueHook } from "./hook-critic";
+export { generateVideoScripts } from "./scripts-line";
+export {
+  generateVariantSets,
+  spinAdVariants,
+  baseConceptFromBrief,
+} from "./variants";
+export { assessTrackingReadiness } from "./tracking-readiness";
+export { buildKpiLadder } from "./kpi-ladder";
+export { diagnoseKpi, defaultSnapshotFromInput } from "./kpi-diagnosis";
+export { buildAdReviewChecklist } from "./ad-review";
+export { buildJourneyStatus } from "./journey-status";

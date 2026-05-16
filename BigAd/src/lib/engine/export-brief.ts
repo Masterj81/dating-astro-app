@@ -210,6 +210,124 @@ export function generateExportBrief(
     });
   }
 
+  // 5f. Video scripts
+  section(lines, "Video Scripts");
+  if (strategy.videoScripts.length === 0) {
+    lines.push("_No video scripts generated for this input._");
+    lines.push("");
+  } else {
+    strategy.videoScripts.forEach((script) => {
+      const matched = strategy.creatorBriefs.find((b) => b.id === script.briefId);
+      const ref = matched ? matched.forAngle : script.briefId;
+      lines.push(`### ${script.briefId} — ${ref}`);
+      lines.push("");
+      lines.push(`Total duration: ~${script.totalDurationSeconds}s.`);
+      lines.push("");
+      lines.push(`| # | Section | Kind | Start | Duration | Text |`);
+      lines.push(`|---|---------|------|-------|----------|------|`);
+      for (const ln of script.lines) {
+        const text = ln.text.replace(/\|/g, "/");
+        lines.push(
+          `| ${ln.index} | ${briefSectionIndexLabel(ln.briefSectionIndex)} | ${scriptLineKindLabel(ln.kind)} | ${ln.startSeconds}s | ${ln.durationSeconds}s | ${text} |`
+        );
+      }
+      lines.push("");
+    });
+  }
+
+  // 5g. Ad variants
+  section(lines, "Ad Variants");
+  if (strategy.variantSets.length === 0) {
+    lines.push("_No variant sets generated for this input._");
+    lines.push("");
+  } else {
+    strategy.variantSets.forEach((vset) => {
+      lines.push(`### Base concept ${vset.baseConceptId}`);
+      lines.push("");
+      vset.variants.forEach((v, i) => {
+        lines.push(
+          `${i + 1}. **Axis changed: ${variantAxisLabel(v.changedAxis)}** — ${v.rationale}`
+        );
+        lines.push(`   - Hook: ${v.hook}`);
+        lines.push(`   - Hold: ${v.hold}`);
+        lines.push(`   - Proof: ${v.proof}`);
+        lines.push(`   - CTA: ${v.cta}`);
+        lines.push(`   - Offer: ${v.offer}`);
+      });
+      lines.push("");
+    });
+  }
+
+  // 5h. Tracking Readiness
+  section(lines, "Tracking Readiness");
+  const tr = strategy.trackingReadiness;
+  lines.push(
+    `Score: **${tr.score}/100** — status: **${trackingStatusLabel(tr.status)}**. Blockers: ${tr.blockers}. Warnings: ${tr.warnings}.`
+  );
+  lines.push("");
+  for (const c of tr.checks) {
+    lines.push(`- **${c.label} — ${readinessStatusLabel(c.status)}.** ${c.rationale}`);
+    if (c.fix) lines.push(`  - Fix: ${c.fix}`);
+  }
+  lines.push("");
+
+  // 5i. KPI Target Ladder
+  section(lines, "KPI Target Ladder");
+  lines.push(`| KPI | Tier | Breakeven | Scaling | Direction |`);
+  lines.push(`|-----|------|-----------|---------|-----------|`);
+  for (const t of strategy.kpiLadder.targets) {
+    lines.push(
+      `| ${kpiNameLabel(t.kpi)} | ${ladderTierLabel(t.tier)} | ${t.breakeven} | ${t.scaling} | ${t.direction} |`
+    );
+  }
+  lines.push("");
+
+  // 5j. KPI Diagnosis
+  section(lines, "KPI Diagnosis");
+  lines.push(
+    `Primary category: **${diagnosisCategoryLabel(strategy.kpiDiagnosis.primaryCategory)}**. Synthetic sample anchored near healthy-tier breakeven.`
+  );
+  lines.push("");
+  const snap = strategy.kpiDiagnosis.snapshot;
+  lines.push(
+    `Snapshot: CTR ${fmtMetric(snap.ctr)}, CPC ${fmtMetric(snap.cpc)}, CPM ${fmtMetric(snap.cpm)}, CPA ${fmtMetric(snap.cpa)}, CVR ${fmtMetric(snap.cvr)}, ROAS ${fmtMetric(snap.roas)}, Hook-rate ${fmtMetric(snap.hookRate)}, Hold-rate ${fmtMetric(snap.holdRate)}.`
+  );
+  lines.push("");
+  for (const f of strategy.kpiDiagnosis.findings) {
+    lines.push(`- **${diagnosisCategoryLabel(f.category)} — ${f.signal}.** ${f.inference}`);
+    lines.push(`  - Action: ${f.recommendedAction}`);
+  }
+  lines.push("");
+
+  // 5k. Ad Review Checklist
+  section(lines, "Ad Review Checklist");
+  lines.push(`Total weight: ${strategy.adReview.totalWeight}.`);
+  lines.push("");
+  for (const a of strategy.adReview.axes) {
+    lines.push(`- **${a.label} (weight ${a.weight}).** ${a.question}`);
+  }
+  lines.push("");
+
+  // 5l. Journey Status
+  section(lines, "Journey Status");
+  const js = strategy.journeyStatus;
+  lines.push(
+    `Current stage: **${journeyStageLabel(js.currentStage)}** — ready to spend: ${js.readyToSpend ? "yes" : "no"}.`
+  );
+  lines.push("");
+  lines.push(`**Next step.** ${js.nextStep}`);
+  lines.push("");
+  if (js.blockers.length > 0) {
+    lines.push(`**Blockers:**`);
+    for (const b of js.blockers) lines.push(`- ${b}`);
+    lines.push("");
+  }
+  if (js.warnings.length > 0) {
+    lines.push(`**Warnings:**`);
+    for (const w of js.warnings) lines.push(`- ${w}`);
+    lines.push("");
+  }
+
   // 6. Top angles (ranked)
   section(lines, "Top angles (ranked by fit)");
   strategy.rankedAngles.forEach((a, i) => {
@@ -372,4 +490,116 @@ function cameraAngleLabel(angle: string): string {
       pov: "POV",
     }[angle] ?? angle
   );
+}
+
+function briefSectionIndexLabel(i: number): string {
+  return (
+    [
+      "Hook",
+      "Problem",
+      "Solution / proof",
+      "CTA",
+    ][i] ?? `Section ${i + 1}`
+  );
+}
+
+function scriptLineKindLabel(kind: string): string {
+  return (
+    {
+      vo: "VO",
+      "on-camera": "On-camera",
+      "on-screen-text": "On-screen text",
+      sfx: "SFX",
+    }[kind] ?? kind
+  );
+}
+
+function variantAxisLabel(axis: string): string {
+  return (
+    {
+      hook: "Hook",
+      hold: "Hold",
+      proof: "Proof",
+      cta: "CTA",
+      offer: "Offer",
+    }[axis] ?? axis
+  );
+}
+
+function trackingStatusLabel(status: string): string {
+  return (
+    {
+      ready: "Ready",
+      almost: "Almost ready",
+      "not-ready": "Not ready",
+    }[status] ?? status
+  );
+}
+
+function readinessStatusLabel(status: string): string {
+  return (
+    {
+      passed: "Passed",
+      warning: "Warning",
+      blocker: "Blocker",
+      unknown: "Unknown",
+    }[status] ?? status
+  );
+}
+
+function kpiNameLabel(name: string): string {
+  return (
+    {
+      ctr: "CTR",
+      cpc: "CPC",
+      cpm: "CPM",
+      cpa: "CPA",
+      cvr: "CVR",
+      roas: "ROAS",
+      hookRate: "Hook rate",
+      holdRate: "Hold rate",
+    }[name] ?? name
+  );
+}
+
+function ladderTierLabel(tier: string): string {
+  return (
+    {
+      starter: "Starter",
+      healthy: "Healthy",
+      scaling: "Scaling",
+    }[tier] ?? tier
+  );
+}
+
+function diagnosisCategoryLabel(cat: string): string {
+  return (
+    {
+      creative: "Creative",
+      "landing-page": "Landing page",
+      offer: "Offer",
+      audience: "Audience",
+      tracking: "Tracking",
+      fatigue: "Fatigue",
+      healthy: "Healthy",
+    }[cat] ?? cat
+  );
+}
+
+function journeyStageLabel(stage: string): string {
+  return (
+    {
+      "strategy-drafted": "Strategy drafted",
+      "creative-planned": "Creative planned",
+      "tracking-ready": "Tracking ready",
+      "kpi-aligned": "KPI aligned",
+      "review-passed": "Review passed",
+      "ready-to-spend": "Ready to spend",
+    }[stage] ?? stage
+  );
+}
+
+function fmtMetric(n: number | undefined): string {
+  if (typeof n !== "number" || !Number.isFinite(n)) return "—";
+  return String(n);
 }

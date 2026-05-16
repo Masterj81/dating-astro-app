@@ -21,15 +21,30 @@ import {
   rankAngles,
   scoreStrategy,
   sumShotMidpoints,
+  critiqueHook,
+  diagnoseKpi,
+  buildKpiLadder,
+  assessTrackingReadiness,
+  buildAdReviewChecklist,
+  buildJourneyStatus,
+  spinAdVariants,
+  baseConceptFromBrief,
+  generateVideoScripts,
 } from "../src/lib/engine";
 import { ASTRO_DATING_EXAMPLE, NOTION_LIKE_EXAMPLE } from "../src/lib/example";
 import type {
   BriefSectionKind,
   CameraAngle,
   CampaignType,
+  DiagnosisCategory,
+  JourneyStage,
+  KpiName,
+  KpiSnapshot,
+  LadderTier,
   ProductInput,
   ShotDuration,
   ShotKind,
+  VariantAxis,
 } from "../src/types/strategy";
 
 type Check = { name: string; ok: boolean; detail?: string };
@@ -562,6 +577,464 @@ expectContains("export brief contains Shot Lists", brief, "## Shot Lists");
 // Make sure the example payload still parses correctly.
 const sample: ProductInput = ASTRO_DATING_EXAMPLE;
 record("example payload is still valid", !!sample.differentiator);
+
+// ---- V5: Hook Critic ----
+
+const VALID_FLAG_SEVERITIES = new Set(["low", "medium", "high"]);
+
+const hc1 = critiqueHook(
+  "Buy AstroDating today — it's the best dating app you'll ever try.",
+  ASTRO_DATING_EXAMPLE
+);
+expectBetween("hook critic: score is 0-100", hc1.score, 0, 100);
+record("hook critic: returns rewrite string", hc1.rewrite.length > 0);
+record("hook critic: returns rationale string", hc1.rationale.length > 0);
+record("hook critic: returns flags array", Array.isArray(hc1.flags));
+record(
+  "hook critic: bland or product-name-leading hook returns at least one flag",
+  hc1.flags.length >= 1
+);
+record(
+  "hook critic: every flag has a valid severity",
+  hc1.flags.every((f) => VALID_FLAG_SEVERITIES.has(f.severity))
+);
+record(
+  "hook critic: every flag has non-empty message and fix",
+  hc1.flags.every((f) => f.message.length > 0 && f.fix.length > 0)
+);
+
+// Determinism.
+const hc1Twice = critiqueHook(
+  "Buy AstroDating today — it's the best dating app you'll ever try.",
+  ASTRO_DATING_EXAMPLE
+);
+record(
+  "hook critic: deterministic for identical inputs",
+  JSON.stringify(hc1) === JSON.stringify(hc1Twice)
+);
+
+// Long draft → too-long flag.
+const longDraft =
+  "If you have been swiping for years and still feel like nothing real ever lands in the inbox, that very particular tired feeling is the part of dating that no one names out loud.";
+const hcLong = critiqueHook(longDraft, ASTRO_DATING_EXAMPLE);
+record(
+  "hook critic: long draft yields too-long flag",
+  hcLong.flags.some((f) => f.kind === "too-long")
+);
+
+// Empty draft does not throw.
+const hcEmpty = critiqueHook("", ASTRO_DATING_EXAMPLE);
+record("hook critic: empty draft returns object without throwing", typeof hcEmpty.score === "number");
+
+// Strong draft → higher score than weak draft on same input.
+const hcStrong = critiqueHook(
+  "Tired of shallow swiping? Voice intros change the first reply.",
+  ASTRO_DATING_EXAMPLE
+);
+record(
+  "hook critic: stronger draft scores higher than weak one",
+  hcStrong.score >= hc1.score
+);
+
+// ---- V5: Video Scripts ----
+
+record(
+  "videoScripts: one per brief (astro)",
+  a.videoScripts.length === a.creatorBriefs.length
+);
+record(
+  "videoScripts: one per brief (plotline)",
+  b.videoScripts.length === b.creatorBriefs.length
+);
+
+for (const strat of [a, b]) {
+  for (const script of strat.videoScripts) {
+    const brief = strat.creatorBriefs.find((br) => br.id === script.briefId);
+    if (!brief) {
+      record(`videoScripts: ${script.briefId} brief lookup`, false);
+      continue;
+    }
+    // Sum of line durations per section within ±1s of section duration.
+    for (let i = 0; i < brief.sections.length; i++) {
+      const sectionLines = script.lines.filter((l) => l.briefSectionIndex === i);
+      record(
+        `videoScripts: ${script.briefId} section ${i} has >= 1 line`,
+        sectionLines.length >= 1
+      );
+      const sectionSum = sectionLines.reduce((acc, l) => acc + l.durationSeconds, 0);
+      const target = brief.sections[i].durationSeconds;
+      const within = Math.abs(sectionSum - target) <= 1;
+      record(
+        `videoScripts: ${script.briefId} section ${i} duration sum within +-1s`,
+        within,
+        within ? undefined : `sum=${sectionSum} target=${target}`
+      );
+    }
+    const within = Math.abs(script.totalDurationSeconds - brief.durationSeconds) <= 2;
+    record(
+      `videoScripts: ${script.briefId} total duration within +-2s of brief`,
+      within,
+      within
+        ? undefined
+        : `total=${script.totalDurationSeconds} brief=${brief.durationSeconds}`
+    );
+  }
+}
+
+// Determinism: generated again equals first.
+const scriptsTwice = generateVideoScripts(a.creatorBriefs, ASTRO_DATING_EXAMPLE);
+record(
+  "videoScripts: deterministic across calls",
+  JSON.stringify(scriptsTwice) === JSON.stringify(a.videoScripts)
+);
+
+// Two materially different inputs produce different scripts.
+expectDifferent(
+  "videoScripts: differ between astro and plotline",
+  a.videoScripts,
+  b.videoScripts
+);
+
+// ---- V5: Variant Spinner ----
+
+record(
+  "variantSets: one per brief (astro)",
+  a.variantSets.length === a.creatorBriefs.length
+);
+record(
+  "variantSets: one per brief (plotline)",
+  b.variantSets.length === b.creatorBriefs.length
+);
+
+const VALID_AXES: VariantAxis[] = ["hook", "hold", "proof", "cta", "offer"];
+
+for (const strat of [a, b]) {
+  for (const vset of strat.variantSets) {
+    record(
+      `variantSets: ${vset.baseConceptId} has exactly 5 variants`,
+      vset.variants.length === 5
+    );
+    const axisSet = new Set(vset.variants.map((v) => v.changedAxis));
+    record(
+      `variantSets: ${vset.baseConceptId} covers all 5 axes`,
+      VALID_AXES.every((ax) => axisSet.has(ax))
+    );
+    record(
+      `variantSets: ${vset.baseConceptId} every variant has non-empty rationale`,
+      vset.variants.every((v) => v.rationale.length > 0)
+    );
+  }
+}
+
+// Each variant changes exactly ONE axis (other 4 byte-identical to base).
+const sampleBase = baseConceptFromBrief(
+  a.creatorBriefs[0],
+  ASTRO_DATING_EXAMPLE,
+  a.offers
+);
+const sampleSet = spinAdVariants(sampleBase, ASTRO_DATING_EXAMPLE, a.offers);
+for (const v of sampleSet.variants) {
+  const fieldsToCheck: { axis: VariantAxis; baseVal: string; variantVal: string }[] = [
+    { axis: "hook", baseVal: sampleBase.hook, variantVal: v.hook },
+    { axis: "hold", baseVal: sampleBase.hold, variantVal: v.hold },
+    { axis: "proof", baseVal: sampleBase.proof, variantVal: v.proof },
+    { axis: "cta", baseVal: sampleBase.cta, variantVal: v.cta },
+    { axis: "offer", baseVal: sampleBase.offer, variantVal: v.offer },
+  ];
+  // Exactly one mismatch, on the named axis.
+  const mismatches = fieldsToCheck.filter((f) => f.baseVal !== f.variantVal);
+  record(
+    `variantSets: variant ${v.id} mutates exactly one axis`,
+    mismatches.length === 1
+  );
+  record(
+    `variantSets: variant ${v.id} mutated axis matches changedAxis`,
+    mismatches.length === 1 && mismatches[0].axis === v.changedAxis
+  );
+}
+
+// Determinism.
+const sampleSetTwice = spinAdVariants(sampleBase, ASTRO_DATING_EXAMPLE, a.offers);
+record(
+  "variantSets: deterministic across calls",
+  JSON.stringify(sampleSet) === JSON.stringify(sampleSetTwice)
+);
+
+// ---- V5: Tracking Readiness ----
+
+const tr = a.trackingReadiness;
+expectBetween("trackingReadiness: score 0-100", tr.score, 0, 100);
+record(
+  "trackingReadiness: status is one of three",
+  tr.status === "ready" || tr.status === "almost" || tr.status === "not-ready"
+);
+record("trackingReadiness: blockers count >= 0", tr.blockers >= 0);
+record("trackingReadiness: warnings count >= 0", tr.warnings >= 0);
+record("trackingReadiness: at least 8 checks", tr.checks.length >= 8);
+record(
+  "trackingReadiness: every check has label and rationale",
+  tr.checks.every((c) => c.label.length > 0 && c.rationale.length > 0)
+);
+
+// Determinism.
+const trTwice = assessTrackingReadiness(ASTRO_DATING_EXAMPLE);
+record(
+  "trackingReadiness: deterministic across calls",
+  JSON.stringify(trTwice) === JSON.stringify(tr)
+);
+
+// ---- V5: KPI Ladder ----
+
+const ladder = a.kpiLadder;
+record(
+  "kpiLadder: tiers length === 3",
+  ladder.tiers.length === 3
+);
+record(
+  "kpiLadder: exactly 24 targets (8 KPIs × 3 tiers)",
+  ladder.targets.length === 24,
+  `Got ${ladder.targets.length}`
+);
+
+const expectedKpis: KpiName[] = ["ctr", "cpc", "cpm", "cpa", "cvr", "roas", "hookRate", "holdRate"];
+const expectedTiers: LadderTier[] = ["starter", "healthy", "scaling"];
+for (const k of expectedKpis) {
+  for (const t of expectedTiers) {
+    const target = ladder.targets.find((x) => x.kpi === k && x.tier === t);
+    record(
+      `kpiLadder: target present for ${k} × ${t}`,
+      !!target
+    );
+    if (target) {
+      if (target.direction === "higher-better") {
+        record(
+          `kpiLadder: ${k}/${t} higher-better has scaling >= breakeven`,
+          target.scaling >= target.breakeven,
+          `scaling=${target.scaling} breakeven=${target.breakeven}`
+        );
+      } else {
+        record(
+          `kpiLadder: ${k}/${t} lower-better has scaling <= breakeven`,
+          target.scaling <= target.breakeven,
+          `scaling=${target.scaling} breakeven=${target.breakeven}`
+        );
+      }
+    }
+  }
+}
+
+// Determinism.
+const ladderTwice = buildKpiLadder(ASTRO_DATING_EXAMPLE);
+record(
+  "kpiLadder: deterministic across calls",
+  JSON.stringify(ladderTwice) === JSON.stringify(ladder)
+);
+
+// ---- V5: KPI Diagnosis ----
+
+const VALID_DIAG_CATS: DiagnosisCategory[] = [
+  "creative",
+  "landing-page",
+  "offer",
+  "audience",
+  "tracking",
+  "fatigue",
+  "healthy",
+];
+
+record(
+  "kpiDiagnosis: primaryCategory is a valid kind",
+  VALID_DIAG_CATS.includes(a.kpiDiagnosis.primaryCategory)
+);
+record(
+  "kpiDiagnosis: findings non-empty for default snapshot",
+  a.kpiDiagnosis.findings.length > 0
+);
+
+// Healthy snapshot → primaryCategory === "healthy". Build one from the
+// scaling tier so every value is in the "above-breakeven" envelope.
+const scalingTargets = a.kpiLadder.targets.filter((t) => t.tier === "scaling");
+const healthySnap: KpiSnapshot = {};
+for (const t of scalingTargets) {
+  const value = t.direction === "higher-better" ? t.scaling : t.scaling; // scaling tightens both directions
+  // Use values that are inside healthy-tier envelope:
+  const ht = a.kpiLadder.targets.find((x) => x.kpi === t.kpi && x.tier === "healthy");
+  if (!ht) continue;
+  if (ht.direction === "higher-better") {
+    healthySnap[t.kpi] = ht.breakeven + (ht.scaling - ht.breakeven) / 2;
+  } else {
+    healthySnap[t.kpi] = ht.scaling + (ht.breakeven - ht.scaling) / 2;
+  }
+}
+const healthyDiag = diagnoseKpi(healthySnap, a.kpiLadder, ASTRO_DATING_EXAMPLE);
+record(
+  "kpiDiagnosis: healthy snapshot returns primaryCategory 'healthy'",
+  healthyDiag.primaryCategory === "healthy",
+  `Got ${healthyDiag.primaryCategory}`
+);
+
+// Determinism.
+const diagTwice = diagnoseKpi(a.kpiDiagnosis.snapshot, a.kpiLadder, ASTRO_DATING_EXAMPLE);
+record(
+  "kpiDiagnosis: deterministic across calls",
+  JSON.stringify(diagTwice) === JSON.stringify(a.kpiDiagnosis)
+);
+
+// ---- V5: Ad Review Checklist ----
+
+const review = a.adReview;
+record("adReview: axes >= 12", review.axes.length >= 12, `Got ${review.axes.length}`);
+record("adReview: totalWeight > 0", review.totalWeight > 0);
+record(
+  "adReview: every axis has non-empty label and question",
+  review.axes.every((ax) => ax.label.length > 0 && ax.question.length > 0)
+);
+record(
+  "adReview: every weight is 1, 2, or 3",
+  review.axes.every((ax) => ax.weight === 1 || ax.weight === 2 || ax.weight === 3)
+);
+
+// Determinism.
+const reviewTwice = buildAdReviewChecklist(ASTRO_DATING_EXAMPLE);
+record(
+  "adReview: deterministic across calls",
+  JSON.stringify(reviewTwice) === JSON.stringify(review)
+);
+
+// ---- V5: Journey Status ----
+
+const VALID_STAGES: JourneyStage[] = [
+  "strategy-drafted",
+  "creative-planned",
+  "tracking-ready",
+  "kpi-aligned",
+  "review-passed",
+  "ready-to-spend",
+];
+
+record(
+  "journeyStatus: currentStage is a valid stage",
+  VALID_STAGES.includes(a.journeyStatus.currentStage)
+);
+record(
+  "journeyStatus: readyToSpend is boolean",
+  typeof a.journeyStatus.readyToSpend === "boolean"
+);
+record(
+  "journeyStatus: nextStep non-empty",
+  a.journeyStatus.nextStep.length > 0
+);
+
+// Zero briefs → "strategy-drafted".
+const emptyJourney = buildJourneyStatus({
+  trackingReadiness: a.trackingReadiness,
+  kpiLadder: a.kpiLadder,
+  kpiDiagnosis: a.kpiDiagnosis,
+  adReview: a.adReview,
+  creatorBriefs: [],
+  shotLists: [],
+  videoScripts: [],
+  variantSets: [],
+});
+record(
+  "journeyStatus: zero briefs → 'strategy-drafted'",
+  emptyJourney.currentStage === "strategy-drafted"
+);
+
+// All-green case — synthesise inputs that pass every gate.
+const allGreenTracking = {
+  ...a.trackingReadiness,
+  score: 95,
+  blockers: 0,
+  warnings: 0,
+  checks: a.trackingReadiness.checks.map((c) => ({ ...c, status: "passed" as const, fix: undefined })),
+  status: "ready" as const,
+};
+const allGreenDiag = {
+  ...a.kpiDiagnosis,
+  primaryCategory: "healthy" as const,
+  findings: [
+    {
+      category: "healthy" as const,
+      signal: "all sampled KPIs within healthy bounds",
+      inference: "sample is within healthy envelope",
+      recommendedAction: "scale in 20% steps",
+    },
+  ],
+};
+const greenJourney = buildJourneyStatus({
+  trackingReadiness: allGreenTracking,
+  kpiLadder: a.kpiLadder,
+  kpiDiagnosis: allGreenDiag,
+  adReview: a.adReview,
+  creatorBriefs: a.creatorBriefs,
+  shotLists: a.shotLists,
+  videoScripts: a.videoScripts,
+  variantSets: a.variantSets,
+});
+record(
+  "journeyStatus: all-green inputs → 'ready-to-spend'",
+  greenJourney.currentStage === "ready-to-spend",
+  `Got ${greenJourney.currentStage}`
+);
+
+// Determinism.
+const jsTwice = buildJourneyStatus({
+  trackingReadiness: a.trackingReadiness,
+  kpiLadder: a.kpiLadder,
+  kpiDiagnosis: a.kpiDiagnosis,
+  adReview: a.adReview,
+  creatorBriefs: a.creatorBriefs,
+  shotLists: a.shotLists,
+  videoScripts: a.videoScripts,
+  variantSets: a.variantSets,
+});
+record(
+  "journeyStatus: deterministic across calls",
+  JSON.stringify(jsTwice) === JSON.stringify(a.journeyStatus)
+);
+
+// ---- V5: Export brief contains every new section header ----
+
+expectContains("export brief contains Video Scripts", brief, "## Video Scripts");
+expectContains("export brief contains Ad Variants", brief, "## Ad Variants");
+expectContains("export brief contains Tracking Readiness", brief, "## Tracking Readiness");
+expectContains("export brief contains KPI Target Ladder", brief, "## KPI Target Ladder");
+expectContains("export brief contains KPI Diagnosis", brief, "## KPI Diagnosis");
+expectContains("export brief contains Ad Review Checklist", brief, "## Ad Review Checklist");
+expectContains("export brief contains Journey Status", brief, "## Journey Status");
+
+// ---- V5: buildStrategy determinism over the entire return ----
+
+const aThird = buildStrategy(ASTRO_DATING_EXAMPLE);
+record(
+  "buildStrategy: deterministic for videoScripts",
+  JSON.stringify(aThird.videoScripts) === JSON.stringify(a.videoScripts)
+);
+record(
+  "buildStrategy: deterministic for variantSets",
+  JSON.stringify(aThird.variantSets) === JSON.stringify(a.variantSets)
+);
+record(
+  "buildStrategy: deterministic for trackingReadiness",
+  JSON.stringify(aThird.trackingReadiness) === JSON.stringify(a.trackingReadiness)
+);
+record(
+  "buildStrategy: deterministic for kpiLadder",
+  JSON.stringify(aThird.kpiLadder) === JSON.stringify(a.kpiLadder)
+);
+record(
+  "buildStrategy: deterministic for kpiDiagnosis",
+  JSON.stringify(aThird.kpiDiagnosis) === JSON.stringify(a.kpiDiagnosis)
+);
+record(
+  "buildStrategy: deterministic for adReview",
+  JSON.stringify(aThird.adReview) === JSON.stringify(a.adReview)
+);
+record(
+  "buildStrategy: deterministic for journeyStatus",
+  JSON.stringify(aThird.journeyStatus) === JSON.stringify(a.journeyStatus)
+);
 
 // Report.
 let failed = 0;

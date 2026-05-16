@@ -258,6 +258,15 @@ export interface Strategy {
   creatorBriefs: CreatorBrief[];
   shotLists: ShotList[];
 
+  // V5 additions — Execution + Ops/Data H1 modules.
+  videoScripts: VideoScript[];
+  variantSets: VariantSet[];
+  trackingReadiness: TrackingReadinessScore;
+  kpiLadder: KpiTargetLadder;
+  kpiDiagnosis: KpiDiagnosis;
+  adReview: AdReviewChecklist;
+  journeyStatus: JourneyStatus;
+
   exportBrief: string;
 }
 
@@ -327,4 +336,224 @@ export interface ShotList {
   briefId: string;          // CreatorBrief.id
   totalShots: number;
   items: ShotListItem[];
+}
+
+// ---- V5: Execution H1 — Hook Critic ----
+
+export type HookFlagKind =
+  | "too-long"
+  | "weak-opener"
+  | "no-stakes"
+  | "no-specificity"
+  | "buried-payoff"
+  | "passive-voice"
+  | "category-bland"
+  | "off-tone"
+  | "off-awareness";
+
+export interface HookFlag {
+  kind: HookFlagKind;
+  severity: "low" | "medium" | "high";
+  message: string;
+  fix: string;
+}
+
+export interface HookCritique {
+  draft: string;
+  score: number; // 0-100
+  flags: HookFlag[];
+  rewrite: string;
+  rationale: string;
+}
+
+// ---- V5: Execution H1 — Video Script ----
+
+export type ScriptLineKind = "vo" | "on-camera" | "on-screen-text" | "sfx";
+
+export interface ScriptLine {
+  index: number;
+  briefSectionIndex: number; // 0..3
+  kind: ScriptLineKind;
+  text: string;
+  startSeconds: number;
+  durationSeconds: number;
+}
+
+export interface VideoScript {
+  briefId: string;
+  totalDurationSeconds: number;
+  lines: ScriptLine[];
+}
+
+// ---- V5: Execution H1 — Ad Variant Spinner ----
+
+export type VariantAxis = "hook" | "hold" | "proof" | "cta" | "offer";
+
+export interface BaseConcept {
+  id: string;
+  hook: string;
+  hold: string;
+  proof: string;
+  cta: string;
+  offer: string;
+}
+
+export interface AdVariant {
+  id: string;
+  changedAxis: VariantAxis;
+  hook: string;
+  hold: string;
+  proof: string;
+  cta: string;
+  offer: string;
+  rationale: string;
+}
+
+export interface VariantSet {
+  baseConceptId: string;
+  variants: AdVariant[];
+}
+
+// ---- V5: Ops/Data H1 — Tracking Readiness ----
+
+export type ReadinessCheckKind =
+  | "pixel-installed"
+  | "conversion-events"
+  | "exclusion-audiences"
+  | "permissions-set"
+  | "naming-convention"
+  | "utm-template"
+  | "landing-fast"
+  | "consent-banner"
+  | "post-purchase-survey"
+  | "test-purchase-confirmed";
+
+export interface ReadinessCheck {
+  kind: ReadinessCheckKind;
+  label: string;
+  status: "passed" | "warning" | "blocker" | "unknown";
+  rationale: string;
+  fix?: string;
+}
+
+export interface TrackingReadinessScore {
+  score: number;
+  status: "ready" | "almost" | "not-ready";
+  blockers: number;
+  warnings: number;
+  checks: ReadinessCheck[];
+}
+
+// ---- V5: Ops/Data H1 — KPI Target Ladder ----
+
+export type KpiName =
+  | "ctr"
+  | "cpc"
+  | "cpm"
+  | "cpa"
+  | "cvr"
+  | "roas"
+  | "hookRate"
+  | "holdRate";
+
+export type LadderTier = "starter" | "healthy" | "scaling";
+
+export interface KpiTarget {
+  kpi: KpiName;
+  tier: LadderTier;
+  breakeven: number;
+  scaling: number;
+  direction: "higher-better" | "lower-better";
+  unit: "ratio" | "percent" | "currency" | "dimensionless";
+  notes?: string;
+}
+
+export interface KpiTargetLadder {
+  tiers: LadderTier[];
+  targets: KpiTarget[];
+}
+
+// ---- V5: Ops/Data H1 — KPI Diagnosis ----
+
+export interface KpiSnapshot {
+  ctr?: number;
+  cpc?: number;
+  cpm?: number;
+  cpa?: number;
+  cvr?: number;
+  roas?: number;
+  hookRate?: number;
+  holdRate?: number;
+}
+
+export type DiagnosisCategory =
+  | "creative"
+  | "landing-page"
+  | "offer"
+  | "audience"
+  | "tracking"
+  | "fatigue"
+  | "healthy";
+
+export interface DiagnosisFinding {
+  category: DiagnosisCategory;
+  signal: string;
+  inference: string;
+  recommendedAction: string;
+}
+
+export interface KpiDiagnosis {
+  snapshot: KpiSnapshot;
+  ladder: KpiTargetLadder;
+  findings: DiagnosisFinding[];
+  primaryCategory: DiagnosisCategory;
+}
+
+// ---- V5: Ops/Data H1 — Ad Review Checklist ----
+
+export type ReviewAxisKind =
+  | "hook-clarity"
+  | "first-3s-payoff"
+  | "claim-specificity"
+  | "proof-strength"
+  | "offer-visibility"
+  | "cta-clarity"
+  | "platform-fit"
+  | "tone-match"
+  | "awareness-fit"
+  | "pacing"
+  | "visual-hierarchy"
+  | "captions-overlay"
+  | "audio-quality"
+  | "brand-presence"
+  | "tracking-readiness-ref";
+
+export interface ReviewAxis {
+  kind: ReviewAxisKind;
+  label: string;
+  question: string;
+  weight: 1 | 2 | 3;
+}
+
+export interface AdReviewChecklist {
+  axes: ReviewAxis[];
+  totalWeight: number;
+}
+
+// ---- V5: Ops/Data H1 — Journey Status ----
+
+export type JourneyStage =
+  | "strategy-drafted"
+  | "creative-planned"
+  | "tracking-ready"
+  | "kpi-aligned"
+  | "review-passed"
+  | "ready-to-spend";
+
+export interface JourneyStatus {
+  currentStage: JourneyStage;
+  readyToSpend: boolean;
+  blockers: string[];
+  warnings: string[];
+  nextStep: string;
 }
