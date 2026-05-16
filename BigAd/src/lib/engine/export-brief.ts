@@ -130,7 +130,7 @@ export function generateExportBrief(
   lines.push("");
   strategy.campaignCalendar.windows.forEach((w, i) => {
     const range = formatRange(w.startOffsetDays, w.durationDays);
-    const dipFlag = w.expectedDip ? "  (forecast dip)" : "";
+    const dipFlag = w.dipForecasts.length > 0 ? "  (forecast dips)" : "";
     const offer = w.recommendedOfferKind ? offerKindLabel(w.recommendedOfferKind) : "—";
     lines.push(
       `${i + 1}. **${windowKindLabel(w.kind)} — ${w.label}.** ${range}${dipFlag}`
@@ -138,6 +138,36 @@ export function generateExportBrief(
     lines.push(`   - KPI: ${w.primaryKPI}`);
     lines.push(`   - Readiness gate: ${w.readinessGate}`);
     lines.push(`   - Recommended offer: ${offer}`);
+    // Audience architecture
+    const arch = w.recommendedArchitecture;
+    const archLabel = arch.kind === "promo-3-tier" ? "Promo 3-tier" : "Single-tier";
+    const tierNames = arch.tiers.map((t) => t.name).join(" / ");
+    lines.push(
+      `   - Architecture: ${archLabel} — ${tierNames}${arch.budgetSplitHint ? ` (budget split ${arch.budgetSplitHint})` : ""}.`
+    );
+    lines.push(`     - Rationale: ${arch.rationale}`);
+    for (const t of arch.tiers) {
+      lines.push(
+        `     - ${t.name} (${audienceIntentLabel(t.intent)})${t.notes ? `: ${t.notes}` : ""}`
+      );
+    }
+    // Dip forecasts
+    if (w.dipForecasts.length > 0) {
+      lines.push(`   - Dip forecasts:`);
+      for (const dip of w.dipForecasts) {
+        lines.push(
+          `     - ${dipMechanismLabel(dip.mechanism)} (${dip.severity}, ~day +${dip.expectedAroundDayOffset} into window): ${dip.rationale}`
+        );
+      }
+    }
+    // Retrospective gate
+    if (w.retrospectiveGate) {
+      lines.push(`   - Pre-peak retrospective gate (${w.retrospectiveGate.questions.length} questions):`);
+      for (const q of w.retrospectiveGate.questions) {
+        lines.push(`     - **[${q.topic}]** ${q.question}`);
+        lines.push(`       - Why it matters: ${q.whyItMatters}`);
+      }
+    }
     lines.push(`   - Notes: ${w.notes}`);
   });
   lines.push("");
@@ -796,6 +826,27 @@ function ctaStyleLabel(style: string): string {
       "proof-led": "Proof-led",
       "low-pressure": "Low-pressure",
     }[style] ?? style
+  );
+}
+
+function dipMechanismLabel(m: string): string {
+  return (
+    {
+      "warm-cohort-saturation": "Warm-cohort saturation",
+      "warm-cohort-exhaustion": "Warm-cohort exhaustion",
+      "urgency-collapse": "Urgency collapse",
+      "post-peak-reset": "Post-peak reset",
+    }[m] ?? m
+  );
+}
+
+function audienceIntentLabel(intent: string): string {
+  return (
+    {
+      prospecting: "Prospecting",
+      "engagement-retargeting": "Engagement retargeting",
+      "site-retargeting": "Site retargeting",
+    }[intent] ?? intent
   );
 }
 

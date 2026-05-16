@@ -71,6 +71,53 @@ export type CampaignWindowKind =
   | "evergreen-test"
   | "evergreen-scale";
 
+export type DipMechanism =
+  | "warm-cohort-saturation"   // engaged-audience pool getting hammered
+  | "warm-cohort-exhaustion"   // pool fully tapped out
+  | "urgency-collapse"          // urgency window expired, momentum lost
+  | "post-peak-reset";          // expected calm after a peak
+
+export interface DipForecast {
+  mechanism: DipMechanism;
+  rationale: string;          // 1 short sentence, BigAd voice
+  severity: "soft" | "notable" | "hard";
+  expectedAroundDayOffset: number;  // relative to window's startOffsetDays
+}
+
+export type CampaignArchitectureKind = "single-tier" | "promo-3-tier";
+
+export interface AudienceTier {
+  name: string;             // e.g. "Cold broad", "Engaged (last 60 days)", "Site visitors (last 90 days)"
+  intent: "prospecting" | "engagement-retargeting" | "site-retargeting";
+  notes?: string;
+}
+
+export interface CampaignArchitecture {
+  kind: CampaignArchitectureKind;
+  rationale: string;         // 1-2 sentences, BigAd voice
+  tiers: AudienceTier[];     // single-tier → 1 tier (cold broad); promo-3-tier → 3 tiers
+  budgetSplitHint?: string;  // e.g. "60/25/15 cold/engaged/site"
+}
+
+export interface RetrospectiveQuestion {
+  topic:
+    | "prior-winning-creative"
+    | "prior-offer-performance"
+    | "list-quality"
+    | "returning-customer-angle"
+    | "landing-bottleneck"
+    | "shipping-deadline-constraint"
+    | "margin-guardrail"
+    | "next-cycle-learning";
+  question: string;            // BigAd voice, one sentence
+  whyItMatters: string;        // 1 sentence
+}
+
+export interface RetrospectiveGate {
+  windowKind: CampaignWindowKind;
+  questions: RetrospectiveQuestion[];   // exactly 8, one per topic
+}
+
 export interface CampaignWindow {
   kind: CampaignWindowKind;
   label: string;
@@ -79,7 +126,9 @@ export interface CampaignWindow {
   primaryKPI: string; // e.g. "CTR > 1.2%", "CPA <= $24"
   readinessGate: string; // pre-condition before this window can start
   recommendedOfferKind: OfferKind | null;
-  expectedDip: boolean; // forecasted soft window
+  dipForecasts: DipForecast[]; // 0-2 forecasted soft windows inside this window
+  recommendedArchitecture: CampaignArchitecture; // audience architecture for this window
+  retrospectiveGate?: RetrospectiveGate; // 8-question pre-peak retrospective; only on the first peak in seasonal (and optionally launch)
   notes: string;
 }
 

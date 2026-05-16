@@ -6,12 +6,15 @@ import type {
   AdVariant,
   Angle,
   AwarenessVariant,
+  CampaignArchitecture,
   CampaignCalendar,
   CampaignWindow,
   CreativeQA,
   CreatorBrief,
   CreatorBriefSection,
   CtaBank,
+  DipForecast,
+  RetrospectiveGate,
   CtaStyle,
   CtaSurface,
   CtaVariant,
@@ -1098,8 +1101,11 @@ function CalendarTab({ calendar }: { calendar: CampaignCalendar }) {
       </div>
       <p className="text-xs text-ink-400">
         Each window names the KPI to watch, the readiness gate that must
-        pass before it opens, and the offer kind that fits. Windows with
-        a forecast soft window are marked.
+        pass before it opens, and the offer kind that fits. Forecast soft
+        windows render as mechanism chips, and the recommended audience
+        architecture (single-tier outside a promo, three-tier inside one)
+        sits under each card. Pre-peak windows in seasonal campaigns also
+        carry an eight-question retrospective gate.
       </p>
       <ol className="flex flex-col gap-3">
         {calendar.windows.map((w, i) => (
@@ -1119,17 +1125,39 @@ function CalendarWindowCard({ window: w, index }: { window: CampaignWindow; inde
       : w.startOffsetDays > 0
       ? `Day +${w.startOffsetDays}`
       : `Day ${w.startOffsetDays}`;
-  const dipBorder = w.expectedDip
-    ? "border-amber-500/40"
-    : "border-transparent";
+  const hasDip = w.dipForecasts.length > 0;
+  const dipBorder = hasDip ? "border-amber-500/40" : "border-transparent";
+  const dipLines =
+    w.dipForecasts.length === 0
+      ? "Forecast dips: none"
+      : `Forecast dips:\n${w.dipForecasts
+          .map(
+            (d) =>
+              `  - ${dipMechanismLabel(d.mechanism)} (${d.severity}, ~day +${d.expectedAroundDayOffset}): ${d.rationale}`
+          )
+          .join("\n")}`;
+  const archLines =
+    `Architecture: ${w.recommendedArchitecture.kind === "promo-3-tier" ? "Promo 3-tier" : "Single-tier"}\n` +
+    `  Tiers: ${w.recommendedArchitecture.tiers.map((t) => `${t.name} (${audienceIntentLabel(t.intent)})`).join("; ")}` +
+    (w.recommendedArchitecture.budgetSplitHint
+      ? `\n  Budget split: ${w.recommendedArchitecture.budgetSplitHint}`
+      : "") +
+    `\n  Rationale: ${w.recommendedArchitecture.rationale}`;
+  const retroLines = w.retrospectiveGate
+    ? `\nRetrospective gate (${w.retrospectiveGate.questions.length} questions):\n${w.retrospectiveGate.questions
+        .map((q) => `  - [${q.topic}] ${q.question}`)
+        .join("\n")}`
+    : "";
   const exportText =
     `Window ${index}: ${windowKindLabel(w.kind)} — ${w.label}\n` +
     `When: ${startLabel} for ${w.durationDays} ${w.durationDays === 1 ? "day" : "days"}\n` +
     `KPI: ${w.primaryKPI}\n` +
     `Readiness gate: ${w.readinessGate}\n` +
     `Recommended offer: ${w.recommendedOfferKind ? offerKindLabel(w.recommendedOfferKind) : "—"}\n` +
-    `Forecast dip: ${w.expectedDip ? "yes" : "no"}\n` +
-    `Notes: ${w.notes}`;
+    `${dipLines}\n` +
+    `${archLines}` +
+    retroLines +
+    `\nNotes: ${w.notes}`;
   return (
     <div className={`hairline relative rounded-lg border bg-ink-900 p-4 ${dipBorder}`}>
       <div className="absolute right-3 top-3">
@@ -1143,11 +1171,6 @@ function CalendarWindowCard({ window: w, index }: { window: CampaignWindow; inde
           {windowKindLabel(w.kind)}
         </span>
         <p className="text-sm font-medium text-ink-50">{w.label}</p>
-        {w.expectedDip ? (
-          <span className="rounded-sm border border-amber-500/40 bg-amber-950/30 px-1.5 py-0.5 text-xxs text-amber-300">
-            Forecast dip
-          </span>
-        ) : null}
       </div>
       <div className="mt-2 flex flex-wrap gap-1.5">
         <Tag>
@@ -1158,12 +1181,138 @@ function CalendarWindowCard({ window: w, index }: { window: CampaignWindow; inde
           <Tag>Offer: {offerKindLabel(w.recommendedOfferKind)}</Tag>
         ) : null}
       </div>
+      {hasDip ? (
+        <div className="mt-3">
+          <p className="text-xxs uppercase tracking-wide text-ink-400">
+            Dip forecasts
+          </p>
+          <div className="mt-1 flex flex-col gap-1.5">
+            {w.dipForecasts.map((d, i) => (
+              <DipForecastChip key={`dip-${i}`} dip={d} />
+            ))}
+          </div>
+        </div>
+      ) : null}
+      <ArchitectureBlock arch={w.recommendedArchitecture} />
+      {w.retrospectiveGate ? (
+        <RetrospectiveGateBlock gate={w.retrospectiveGate} />
+      ) : null}
       <p className="mt-3 text-xs text-ink-300">
         <span className="text-ink-400">Readiness gate: </span>
         {w.readinessGate}
       </p>
       <p className="mt-2 text-sm text-ink-100">{w.notes}</p>
     </div>
+  );
+}
+
+function DipForecastChip({ dip }: { dip: DipForecast }) {
+  // Severity → colour. Soft = amber/yellow, notable = orange, hard = red.
+  const palette =
+    dip.severity === "hard"
+      ? "border-red-500/50 bg-red-950/30 text-red-300"
+      : dip.severity === "notable"
+      ? "border-orange-500/50 bg-orange-950/30 text-orange-300"
+      : "border-amber-500/40 bg-amber-950/30 text-amber-300";
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span
+        className={`rounded-sm border px-1.5 py-0.5 text-xxs ${palette}`}
+        title={dip.rationale}
+      >
+        {dipMechanismLabel(dip.mechanism)} · {dip.severity} · ~day +
+        {dip.expectedAroundDayOffset}
+      </span>
+      <span className="text-xxs text-ink-400">{dip.rationale}</span>
+    </div>
+  );
+}
+
+function ArchitectureBlock({ arch }: { arch: CampaignArchitecture }) {
+  const badge =
+    arch.kind === "promo-3-tier"
+      ? "border-emerald-500/40 bg-emerald-950/30 text-emerald-300"
+      : "border-ink-700 bg-ink-800 text-ink-200";
+  const badgeText = arch.kind === "promo-3-tier" ? "Promo 3-tier" : "Single-tier";
+  return (
+    <div className="mt-3 rounded-md border border-ink-800 bg-ink-950/40 p-2.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-xxs uppercase tracking-wide text-ink-400">
+          Architecture
+        </p>
+        <span className={`rounded-sm border px-1.5 py-0.5 text-xxs ${badge}`}>
+          {badgeText}
+        </span>
+        {arch.budgetSplitHint ? (
+          <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+            Split: {arch.budgetSplitHint}
+          </span>
+        ) : null}
+      </div>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {arch.tiers.map((t, i) => (
+          <span
+            key={`tier-${i}`}
+            className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-100"
+            title={t.notes ?? ""}
+          >
+            {t.name} · {audienceIntentLabel(t.intent)}
+          </span>
+        ))}
+      </div>
+      <p className="mt-1.5 text-xxs text-ink-400">{arch.rationale}</p>
+    </div>
+  );
+}
+
+function RetrospectiveGateBlock({ gate }: { gate: RetrospectiveGate }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-3 rounded-md border border-indigo-500/30 bg-indigo-950/20 p-2.5">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between text-left"
+      >
+        <span className="text-xxs uppercase tracking-wide text-indigo-300">
+          Pre-peak retrospective gate ({gate.questions.length} questions)
+        </span>
+        <span className="text-xxs text-indigo-400">{open ? "Hide" : "Show"}</span>
+      </button>
+      {open ? (
+        <ol className="mt-2 flex list-inside list-decimal flex-col gap-2 text-xs text-ink-100">
+          {gate.questions.map((q, i) => (
+            <li key={`retro-${i}`}>
+              <span className="font-medium">{q.question}</span>
+              <p className="mt-0.5 text-xxs text-ink-400">
+                Why it matters: {q.whyItMatters}
+              </p>
+            </li>
+          ))}
+        </ol>
+      ) : null}
+    </div>
+  );
+}
+
+function dipMechanismLabel(m: DipForecast["mechanism"]): string {
+  return (
+    {
+      "warm-cohort-saturation": "Warm-cohort saturation",
+      "warm-cohort-exhaustion": "Warm-cohort exhaustion",
+      "urgency-collapse": "Urgency collapse",
+      "post-peak-reset": "Post-peak reset",
+    }[m] ?? m
+  );
+}
+
+function audienceIntentLabel(intent: string): string {
+  return (
+    {
+      prospecting: "Prospecting",
+      "engagement-retargeting": "Engagement retargeting",
+      "site-retargeting": "Site retargeting",
+    }[intent] ?? intent
   );
 }
 

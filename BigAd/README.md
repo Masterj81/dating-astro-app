@@ -24,7 +24,7 @@ For any product you describe, BigAd produces:
 - 5 starter A/B **experiments** with hypothesis, variants, and the metric to watch
 - A **generic-copy guard** that scans the generated strategy for hollow phrases ("boost your business", "take it to the next level", "revolutionary", "game-changing", "unlock your potential", "seamless solution", "world-class", "synergy", "best-in-class", "cutting-edge", "leverage the power of", "next-generation", "one-stop shop") and proposes a specific replacement seeded from your inputs
 - A ranked **offer architecture** — 7 canonical offer levers (discount, bundle, guarantee, free shipping, free gift, payment plan, free trial) ordered by fit to your business model and price tier, each with a stickiness risk, an awareness fit, and (when you fill in COGS % and target margin %) the breakeven ROAS the offer implies
-- A phased **campaign calendar** with named windows (lead-in / warm-up / ramp / peak / echo / tail, or evergreen test/scale cycles for always-on), each carrying a KPI to watch, a readiness gate that must pass before it opens, a recommended offer kind, and a flag for forecast soft windows
+- A phased **campaign calendar** with named windows (lead-in / warm-up / ramp / peak / echo / tail, or evergreen test/scale cycles for always-on), each carrying a KPI to watch, a readiness gate that must pass before it opens, a recommended offer kind, a typed list of **dip forecasts** for the soft windows inside it (mechanism + severity + day offset), a recommended **audience architecture** (single-tier prospecting outside a promo push, three-tier prospecting + engagement + site retargeting inside one, with a budget split hint), and on the first peak of a seasonal campaign an eight-question **retrospective gate**
 - A set of **creator briefs** — one per top-ranked angle, each with a framing rule, alternate hook openers, a four-section spine (hook / problem / solution-or-proof / CTA), and a campaign-type-aware deliverable list
 - A **shot list** per brief — 4 to 8 numbered shots covering every beat, with shot kind, framing, camera angle, duration envelope, props, and sound direction, with the midpoint duration tracking the brief's envelope
 - A one-press **export brief** — a clean markdown document that bundles every section above, ready to paste into Notion, Linear, or any doc
@@ -37,7 +37,13 @@ The Offer Architect ranks the seven canonical offer levers — discount, bundle,
 
 ## Campaign Calendar
 
-The Campaign Calendar turns the strategy from a snapshot into a phased plan. Pick a campaign type — launch, seasonal, or always-on — and the engine emits 6–7 windows on a timeline relative to an anchor day. Each window names the KPI to watch, the readiness gate that must pass before it opens, the offer kind that fits, and whether a soft window is forecast inside it (e.g. ramp dips and post-peak hangovers). The shape generalises to non-retail products; the window names stay neutral.
+The Campaign Calendar turns the strategy from a snapshot into a phased plan. Pick a campaign type — launch, seasonal, or always-on — and the engine emits 6–7 windows on a timeline relative to an anchor day. Each window names the KPI to watch, the readiness gate that must pass before it opens, and the offer kind that fits. The shape generalises to non-retail products; the window names stay neutral.
+
+Three enrichments sit on every window:
+
+- **`dipForecasts: DipForecast[]`** — a typed list of forecasted soft windows (replaces the old `expectedDip` boolean). Each forecast carries a `mechanism` (`warm-cohort-saturation` / `warm-cohort-exhaustion` / `urgency-collapse` / `post-peak-reset`), a `severity` (`soft` / `notable` / `hard`), a `rationale`, and an `expectedAroundDayOffset` relative to the window's start. Peak windows forecast a post-peak reset; echo windows forecast warm-cohort saturation; tail windows forecast warm-cohort exhaustion; long ramp windows in seasonal campaigns forecast an urgency-collapse soft day before the anchor.
+- **`recommendedArchitecture: CampaignArchitecture`** — the audience structure for the window. Outside a promo push (always-on calendars in full, and non-promo windows in seasonal/launch) every window is `single-tier` with one cold-broad prospecting tier. Promo windows in launch and seasonal campaigns (peak / ramp / echo) jump to `promo-3-tier`: cold broad + engaged retargeting (last 60 days) + site retargeting (last 90 days), with a per-window `budgetSplitHint` (e.g. `50/30/20 cold/engaged/site` for a seasonal peak).
+- **`retrospectiveGate?: RetrospectiveGate`** — populated only on the first peak of a seasonal campaign. Eight prompts (one per topic: prior winning creative, prior offer performance, list quality, returning-customer angle, landing bottleneck, shipping-deadline constraint, margin guardrail, next-cycle learning), each with a one-sentence question and a one-sentence "why it matters". Render-collapsed by default in the UI so it stays out of the way until peak prep starts.
 
 ## Creator Briefs
 
@@ -179,6 +185,8 @@ BigAd/
 │   │   │   ├── breakeven.ts            computeBreakevenROAS() — pure unit-economics math
 │   │   │   ├── offers.ts               recommendOffers() — Offer Architect
 │   │   │   ├── calendar.ts             buildCalendar() — Campaign Calendar
+│   │   │   ├── calendar-dips.ts        forecastDips() — per-window DipForecast list
+│   │   │   ├── promo-tiers.ts          recommendArchitecture() + buildRetrospectiveGate()
 │   │   │   ├── briefs.ts               generateCreatorBriefs() — Creator Brief Generator
 │   │   │   ├── shotlist.ts             generateShotLists() — Shot List Generator
 │   │   │   ├── hook-critic.ts          critiqueHook() — on-demand hook critic
@@ -199,7 +207,7 @@ BigAd/
 │   └── types/
 │       └── strategy.ts         Shared TypeScript types
 ├── scripts/
-│   └── test-logic.ts           `npm run test:logic` — 480 checks
+│   └── test-logic.ts           `npm run test:logic` — 504 checks
 ├── public/
 ├── next.config.ts
 ├── tailwind.config.ts

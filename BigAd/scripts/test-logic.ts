@@ -359,11 +359,21 @@ const windowShapeOk = a.campaignCalendar.windows.every(
 );
 record("every campaign window has KPI and readiness gate populated", windowShapeOk);
 
+// Every window has dipForecasts as an array (never undefined).
+record(
+  "every window has dipForecasts as an array (astro)",
+  a.campaignCalendar.windows.every((w) => Array.isArray(w.dipForecasts))
+);
+record(
+  "every window has dipForecasts as an array (plotline)",
+  b.campaignCalendar.windows.every((w) => Array.isArray(w.dipForecasts))
+);
+
 // At least one window forecasts a dip — the pattern always includes one.
 record(
-  "calendar includes at least one window with expectedDip = true",
-  a.campaignCalendar.windows.some((w) => w.expectedDip) &&
-    b.campaignCalendar.windows.some((w) => w.expectedDip)
+  "calendar includes at least one window with a dip forecast",
+  a.campaignCalendar.windows.some((w) => w.dipForecasts.length > 0) &&
+    b.campaignCalendar.windows.some((w) => w.dipForecasts.length > 0)
 );
 
 // Switching campaignType must change the calendar shape.
@@ -390,6 +400,190 @@ record(
     seasonalCal.windows.length !== alwaysOnCal.windows.length
 );
 
+// Dip forecast shape — seasonal calendar must have >= 2 forecasts total.
+const seasonalDipCount = seasonalCal.windows.reduce(
+  (n, w) => n + w.dipForecasts.length,
+  0
+);
+record(
+  "seasonal calendar has >= 2 dip forecasts across its windows",
+  seasonalDipCount >= 2,
+  `Got ${seasonalDipCount}`
+);
+
+// Always-on calendar: no notable or hard dip forecasts (only soft at most).
+const alwaysOnSeverities = alwaysOnCal.windows.flatMap((w) =>
+  w.dipForecasts.map((d) => d.severity)
+);
+record(
+  "always-on calendar has only soft dip severities",
+  alwaysOnSeverities.every((s) => s === "soft"),
+  `Got severities: ${alwaysOnSeverities.join(", ")}`
+);
+
+// Every dip forecast has valid shape.
+const VALID_DIP_MECHANISMS = new Set([
+  "warm-cohort-saturation",
+  "warm-cohort-exhaustion",
+  "urgency-collapse",
+  "post-peak-reset",
+]);
+const VALID_DIP_SEVERITIES = new Set(["soft", "notable", "hard"]);
+const allWindows = [
+  ...launchCal.windows,
+  ...seasonalCal.windows,
+  ...alwaysOnCal.windows,
+];
+const allDips = allWindows.flatMap((w) => w.dipForecasts);
+record(
+  "every dip forecast has a valid mechanism",
+  allDips.every((d) => VALID_DIP_MECHANISMS.has(d.mechanism))
+);
+record(
+  "every dip forecast has a valid severity",
+  allDips.every((d) => VALID_DIP_SEVERITIES.has(d.severity))
+);
+record(
+  "every dip forecast has a non-empty rationale",
+  allDips.every((d) => typeof d.rationale === "string" && d.rationale.length > 0)
+);
+record(
+  "every dip forecast has an integer expectedAroundDayOffset",
+  allDips.every(
+    (d) =>
+      Number.isInteger(d.expectedAroundDayOffset) &&
+      d.expectedAroundDayOffset >= 0
+  )
+);
+
+// Campaign architecture — every window carries one, shape is valid.
+record(
+  "every window has recommendedArchitecture",
+  allWindows.every(
+    (w) =>
+      w.recommendedArchitecture &&
+      (w.recommendedArchitecture.kind === "single-tier" ||
+        w.recommendedArchitecture.kind === "promo-3-tier")
+  )
+);
+record(
+  "every window architecture has a non-empty rationale",
+  allWindows.every(
+    (w) =>
+      typeof w.recommendedArchitecture.rationale === "string" &&
+      w.recommendedArchitecture.rationale.length > 0
+  )
+);
+
+// Promo windows in seasonal → promo-3-tier with exactly 3 tiers.
+const seasonalPromoKinds = new Set(["peak", "ramp", "echo"]);
+const seasonalPromoWindows = seasonalCal.windows.filter((w) =>
+  seasonalPromoKinds.has(w.kind)
+);
+record(
+  "seasonal promo windows use promo-3-tier architecture",
+  seasonalPromoWindows.every(
+    (w) =>
+      w.recommendedArchitecture.kind === "promo-3-tier" &&
+      w.recommendedArchitecture.tiers.length === 3
+  )
+);
+// Non-promo windows in seasonal → single-tier with 1 cold-broad tier.
+const seasonalNonPromoWindows = seasonalCal.windows.filter(
+  (w) => !seasonalPromoKinds.has(w.kind)
+);
+record(
+  "seasonal non-promo windows use single-tier architecture",
+  seasonalNonPromoWindows.every(
+    (w) =>
+      w.recommendedArchitecture.kind === "single-tier" &&
+      w.recommendedArchitecture.tiers.length === 1 &&
+      w.recommendedArchitecture.tiers[0].intent === "prospecting"
+  )
+);
+// Always-on → all single-tier.
+record(
+  "always-on calendar: every window is single-tier",
+  alwaysOnCal.windows.every(
+    (w) =>
+      w.recommendedArchitecture.kind === "single-tier" &&
+      w.recommendedArchitecture.tiers.length === 1
+  )
+);
+
+// promo-3-tier architectures: 3 distinct tiers with the right intent values.
+const promoArchitectures = allWindows
+  .map((w) => w.recommendedArchitecture)
+  .filter((arch) => arch.kind === "promo-3-tier");
+record(
+  "every promo-3-tier architecture has 3 distinct tiers with correct intents",
+  promoArchitectures.every((arch) => {
+    if (arch.tiers.length !== 3) return false;
+    const intents = arch.tiers.map((t) => t.intent).sort();
+    const expected = [
+      "engagement-retargeting",
+      "prospecting",
+      "site-retargeting",
+    ].sort();
+    return (
+      intents[0] === expected[0] &&
+      intents[1] === expected[1] &&
+      intents[2] === expected[2]
+    );
+  })
+);
+record(
+  "every promo-3-tier architecture has a non-empty budgetSplitHint",
+  promoArchitectures.every(
+    (arch) =>
+      typeof arch.budgetSplitHint === "string" &&
+      (arch.budgetSplitHint?.length ?? 0) > 0
+  )
+);
+
+// Retrospective gate — populated only on the first peak of seasonal.
+const seasonalPeakIndex = seasonalCal.windows.findIndex((w) => w.kind === "peak");
+record(
+  "seasonal calendar has its first peak window populated",
+  seasonalPeakIndex >= 0
+);
+const seasonalFirstPeak = seasonalCal.windows[seasonalPeakIndex];
+record(
+  "seasonal first peak window has a retrospectiveGate",
+  !!seasonalFirstPeak?.retrospectiveGate
+);
+record(
+  "seasonal first peak retrospectiveGate has exactly 8 questions",
+  seasonalFirstPeak?.retrospectiveGate?.questions.length === 8
+);
+const RETRO_TOPICS = [
+  "prior-winning-creative",
+  "prior-offer-performance",
+  "list-quality",
+  "returning-customer-angle",
+  "landing-bottleneck",
+  "shipping-deadline-constraint",
+  "margin-guardrail",
+  "next-cycle-learning",
+];
+record(
+  "seasonal first peak retrospectiveGate covers all 8 topics",
+  RETRO_TOPICS.every((t) =>
+    seasonalFirstPeak?.retrospectiveGate?.questions.some((q) => q.topic === t)
+  )
+);
+record(
+  "seasonal first peak retrospectiveGate questions have non-empty whyItMatters",
+  seasonalFirstPeak?.retrospectiveGate?.questions.every(
+    (q) => typeof q.whyItMatters === "string" && q.whyItMatters.length > 0
+  ) ?? false
+);
+// Always-on calendar has NO retrospective gates.
+record(
+  "always-on calendar has no retrospective gates",
+  alwaysOnCal.windows.every((w) => !w.retrospectiveGate)
+);
+
 // Determinism: same input twice produces identical offers and calendar.
 const aTwice = buildStrategy(ASTRO_DATING_EXAMPLE);
 record(
@@ -404,6 +598,29 @@ record(
 // Export brief picks up both new sections.
 expectContains("export brief contains Offer Architecture", brief, "## Offer Architecture");
 expectContains("export brief contains Campaign Calendar", brief, "## Campaign Calendar");
+
+// Export brief contains the new calendar sub-content. Use a seasonal
+// strategy here so we exercise architecture + dip + retrospective lines.
+const seasonalStrategy = buildStrategy({
+  ...ASTRO_DATING_EXAMPLE,
+  campaignType: "seasonal",
+});
+const seasonalBrief = seasonalStrategy.exportBrief;
+expectContains(
+  "seasonal export brief contains Dip forecasts line",
+  seasonalBrief,
+  "Dip forecasts"
+);
+expectContains(
+  "seasonal export brief contains Architecture line",
+  seasonalBrief,
+  "Architecture"
+);
+expectContains(
+  "seasonal export brief contains retrospective gate",
+  seasonalBrief,
+  "Pre-peak retrospective gate"
+);
 
 // ---- V4: Creator Briefs ----
 
