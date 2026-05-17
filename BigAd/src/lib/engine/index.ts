@@ -31,6 +31,9 @@ import { buildCtaBank } from "./cta-bank";
 import { buildStaticAdBriefs } from "./static-brief";
 import { runCreativeQA } from "./creative-qa";
 import { buildEditorHandoffs } from "./editor-handoff";
+import { buildAudienceAvatars } from "./audience-avatar";
+import { buildHookLibrary } from "./hook-library";
+import { buildAdConceptCards } from "./ad-concept-cards";
 import { generateExportBrief } from "./export-brief";
 
 // buildStrategy — deterministic local strategy generator. No API calls.
@@ -121,6 +124,20 @@ export function buildStrategy(input: ProductInput): Strategy {
     offers,
   });
 
+  // Upstream creative-quality modules — avatars feed the hook library,
+  // which feeds the concept cards. Ordered after every other module so
+  // each can read from offers, briefs, and ranked angles.
+  const audienceAvatars = buildAudienceAvatars(input);
+  const hookLibrary = buildHookLibrary(input, audienceAvatars, angleNames);
+  const adConceptCards = buildAdConceptCards({
+    input,
+    avatars: audienceAvatars,
+    hookLibrary,
+    offers,
+    rankedAngles: angleNames,
+    creatorBriefs,
+  });
+
   const partial: Omit<Strategy, "genericFlags" | "exportBrief"> = {
     positioning,
     awarenessNotes,
@@ -155,6 +172,9 @@ export function buildStrategy(input: ProductInput): Strategy {
     staticBriefs,
     creativeQa,
     editorHandoffs,
+    audienceAvatars,
+    hookLibrary,
+    adConceptCards,
   };
 
   // Generic-copy guard runs against the strategy we just produced. If
@@ -244,3 +264,6 @@ export { buildCtaBank } from "./cta-bank";
 export { buildStaticAdBriefs } from "./static-brief";
 export { runCreativeQA } from "./creative-qa";
 export { buildEditorHandoffs } from "./editor-handoff";
+export { buildAudienceAvatars } from "./audience-avatar";
+export { buildHookLibrary } from "./hook-library";
+export { buildAdConceptCards } from "./ad-concept-cards";

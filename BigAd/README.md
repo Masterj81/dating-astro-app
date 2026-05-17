@@ -105,6 +105,18 @@ The Tracking Readiness check structure is exposed as `TrackingReadinessCheck` / 
 
 `buildEditorHandoffs(args)` builds a self-contained markdown handoff for each brief — concept thesis, target audience, hook + alt-hooks, video script table, shot list table, static briefs by size, top three CTA picks, offer context, QA findings table, applied-review snapshot, variant axis info, and a 4-8 item asset checklist tuned to the campaign type. The Briefs tab exposes a copy button and an expand toggle on each handoff; the markdown export bundles every handoff into a `## Editor Handoff` section.
 
+## Audience Avatar Builder
+
+`buildAudienceAvatars(input)` emits 2-3 deterministic personas tied to the input's business model, price tier, and awareness level. Each avatar carries a buying trigger, a paraphrased core pain, a desired outcome, 3-4 typed objections (kind / statement / reframe), 2-4 failed alternatives, 3-6 emotional-language phrases, 2-4 proof types, and a one-line best-channel angle. The Audience tab renders one card per avatar and the export brief bundles them under `## Audience Avatars`. Two different inputs always produce visibly different avatar sets.
+
+## Hook Pattern Library
+
+`buildHookLibrary(input, avatars, rankedAngles)` emits 16-24 hooks across eight patterns — pain-first, outcome-first, contrarian, proof-led, curiosity, comparison, mistake, before-after — at 2-3 hooks per pattern. Each item carries awareness-stage fit, avatar-id fit (subset of the avatars), and a one-sentence risk note. The library proposes hooks; the Hook Critic evaluates user-typed drafts. They are complementary and kept in separate files — `hook-library.ts` does not import from `hook-critic.ts`. The Ads tab renders the library as a collapsed disclosure (it's a reference bank, not the primary surface).
+
+## Ad Concept Cards
+
+`buildAdConceptCards(args)` produces 3-6 concept cards covering different (avatar × pattern × offer) combinations. Each card carries a target avatar id, a hook drawn from the library, a one-sentence promise, a proof angle keyed off the avatar's proof needs, an offer tie-in referencing one of the recommended offer kinds, a designer-facing visual idea, 2-4 format fits, a test hypothesis, and a next-variant suggestion that names one of the five Variant Spinner axes. The Ads tab surfaces these above the Hook Critic / Variant Spinner / CTA Bank sections so the operator picks a concept before drilling into variants.
+
 ## Running it
 
 ```bash
@@ -164,7 +176,7 @@ BigAd/
 │   │   └── page.tsx        Workspace UI (split panel: inputs / strategy)
 │   ├── components/
 │   │   ├── InputPanel.tsx       Left rail — Product / Audience / Market / Competitors / Goal
-│   │   ├── StrategyView.tsx     Right pane — Journey Status banner + tabbed strategy output (Score / Positioning / Awareness / Diagnosis / Offer / Ads (+CTA bank + Static briefs) / Landing / App Store / Experiments / Offers / Calendar / Launch / Briefs (+QA + Editor handoff) / Shots / Export)
+│   │   ├── StrategyView.tsx     Right pane — Journey Status banner + tabbed strategy output (Score / Positioning / Awareness / Diagnosis / Audience / Offer / Ads (+Concept cards + Hook library + CTA bank + Static briefs) / Landing / App Store / Experiments / Offers / Calendar / Launch / Briefs (+QA + Editor handoff) / Shots / Export)
 │   │   └── CopyableCard.tsx     Reusable card with a small copy button
 │   ├── lib/
 │   │   ├── engine/              Deterministic strategy engine (no API)
@@ -201,13 +213,16 @@ BigAd/
 │   │   │   ├── static-brief.ts         buildStaticAdBriefs() — first-frame designer briefs
 │   │   │   ├── creative-qa.ts          runCreativeQA() — 12-rule creative checklist
 │   │   │   ├── editor-handoff.ts       buildEditorHandoffs() — markdown handoff per brief
+│   │   │   ├── audience-avatar.ts      buildAudienceAvatars() — 2-3 typed audience personas
+│   │   │   ├── hook-library.ts         buildHookLibrary() — 8 patterns × 2-3 hooks
+│   │   │   ├── ad-concept-cards.ts     buildAdConceptCards() — 3-6 (avatar × pattern × offer) cards
 │   │   │   └── export-brief.ts         generateExportBrief() — markdown bundle
 │   │   ├── example.ts          The "Load example" payload (AstroDating)
 │   │   └── llm.ts              Adapter interface for plugging an LLM later
 │   └── types/
 │       └── strategy.ts         Shared TypeScript types
 ├── scripts/
-│   └── test-logic.ts           `npm run test:logic` — 504 checks
+│   └── test-logic.ts           `npm run test:logic` — 550 checks
 ├── public/
 ├── next.config.ts
 ├── tailwind.config.ts

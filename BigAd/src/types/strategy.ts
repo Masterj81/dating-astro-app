@@ -324,6 +324,11 @@ export interface Strategy {
   creativeQa: CreativeQA[];
   editorHandoffs: EditorHandoff[];
 
+  // Upstream creative-quality modules — additive.
+  audienceAvatars: AudienceAvatar[];
+  hookLibrary: HookLibrary;
+  adConceptCards: AdConceptCard[];
+
   exportBrief: string;
 }
 
@@ -751,4 +756,85 @@ export interface EditorHandoff {
   briefId: string;
   markdown: string;                 // self-contained handoff
   assetChecklist: string[];         // 4-8 bullets
+}
+
+// ---- Upstream creative-quality modules ----
+
+// Audience Avatar Builder
+
+export type AvatarObjectionKind =
+  | "risk"
+  | "price"
+  | "fit"
+  | "trust"
+  | "timing"
+  | "complexity"
+  | "social";
+
+export interface AvatarObjection {
+  kind: AvatarObjectionKind;
+  statement: string;          // the avatar's voice, paraphrased
+  reframe: string;            // how the ad should answer it
+}
+
+export interface AudienceAvatar {
+  id: string;                 // "avatar-1", "avatar-2", ...
+  label: string;              // short human label
+  buyingTrigger: string;      // 1 sentence: what tips them into buying now
+  corePain: string;           // 1-2 sentences, paraphrased from input.audiencePain
+  desiredOutcome: string;     // 1-2 sentences
+  objections: AvatarObjection[];     // 3-4 objections
+  failedAlternatives: string[];      // 2-4 short bullets
+  emotionalLanguage: string[];       // 3-6 short phrases
+  proofNeeded: string[];             // 2-4 proof types
+  bestChannelAngle: string;          // 1 sentence: channel + framing
+}
+
+// Hook Pattern Library
+
+export type HookPattern =
+  | "pain-first"
+  | "outcome-first"
+  | "contrarian"
+  | "proof-led"
+  | "curiosity"
+  | "comparison"
+  | "mistake"
+  | "before-after";
+
+export interface HookLibraryItem {
+  pattern: HookPattern;
+  text: string;                  // concise hook copy
+  awarenessFit: AwarenessStage[];
+  avatarFit: string[];           // avatar ids
+  riskNote: string;              // 1 sentence
+}
+
+export interface HookLibrary {
+  items: HookLibraryItem[];     // 2-3 per pattern × 8 patterns
+}
+
+// Ad Concept Cards
+
+export type ConceptFormatFit =
+  | "static-1-1"
+  | "static-4-5"
+  | "static-9-16"
+  | "video-9-16-short"
+  | "video-9-16-medium"
+  | "video-1-1"
+  | "carousel";
+
+export interface AdConceptCard {
+  id: string;                     // "concept-1", ...
+  name: string;                   // short concept name
+  targetAvatarId: string;
+  hook: HookLibraryItem;          // selected from library
+  promise: string;                // 1 sentence
+  proofAngle: string;             // 1 sentence
+  offerTieIn: string;             // references an OfferRecommendation kind + framing
+  visualIdea: string;             // 1-2 sentences, designer-facing
+  formatFit: ConceptFormatFit[];  // 2-4 formats
+  testHypothesis: string;         // 1 sentence
+  nextVariantSuggestion: string;  // 1 sentence; matches one of the 5 VariantSpinner axes
 }

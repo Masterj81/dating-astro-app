@@ -2,9 +2,12 @@
 
 import { useMemo, useState } from "react";
 import type {
+  AdConceptCard,
   AdReviewChecklist,
   AdVariant,
   Angle,
+  AudienceAvatar,
+  AvatarObjection,
   AwarenessVariant,
   CampaignArchitecture,
   CampaignCalendar,
@@ -22,6 +25,9 @@ import type {
   GenericFlag,
   HookCritique,
   HookFlag,
+  HookLibrary,
+  HookLibraryItem,
+  HookPattern,
   JourneyStage,
   JourneyStatus,
   KpiDiagnosis,
@@ -64,6 +70,7 @@ type Tab =
   | "positioning"
   | "awareness"
   | "diagnosis"
+  | "audience"
   | "offer"
   | "ads"
   | "landing"
@@ -81,6 +88,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "positioning", label: "Positioning" },
   { id: "awareness", label: "Awareness" },
   { id: "diagnosis", label: "Diagnosis" },
+  { id: "audience", label: "Audience" },
   { id: "offer", label: "Offer" },
   { id: "ads", label: "Ads" },
   { id: "landing", label: "Landing" },
@@ -148,6 +156,7 @@ export function StrategyView({ input, strategy, hasMeaningfulInput }: Props) {
           <AwarenessTab strategy={strategy} input={input} />
         )}
         {tab === "diagnosis" && <DiagnosisTab diagnosis={strategy.diagnosis} />}
+        {tab === "audience" && <AudienceTab avatars={strategy.audienceAvatars} />}
         {tab === "offer" && <OfferTab strategy={strategy} />}
         {tab === "ads" && <AdsTab strategy={strategy} input={input} />}
         {tab === "landing" && <LandingTab strategy={strategy} />}
@@ -495,6 +504,162 @@ function DiagnosisTab({ diagnosis }: { diagnosis: OfferDiagnosis }) {
   );
 }
 
+// ---------------- Audience tab ----------------
+
+function AudienceTab({ avatars }: { avatars: AudienceAvatar[] }) {
+  if (avatars.length === 0) {
+    return (
+      <div className="hairline rounded-lg bg-ink-900 p-4 text-xs text-ink-300">
+        No avatars generated for this input. Add an audience and a core
+        pain to materialise concrete personas.
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-5">
+      <SectionTitle>Audience avatars</SectionTitle>
+      <p className="text-xs text-ink-400">
+        Two or three concrete personas, parameterised on the inputs. Read
+        these before the offer — every downstream concept and hook ties
+        back to one of them.
+      </p>
+      <div className="flex flex-col gap-4">
+        {avatars.map((av) => (
+          <AvatarCard key={av.id} avatar={av} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AvatarCard({ avatar }: { avatar: AudienceAvatar }) {
+  const exportText = avatarToText(avatar);
+  return (
+    <div className="hairline relative rounded-lg bg-ink-900 p-4">
+      <div className="absolute right-3 top-3">
+        <CopyMini text={exportText} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 pr-16">
+        <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+          {avatar.id}
+        </span>
+        <p className="text-sm font-medium text-ink-50">{avatar.label}</p>
+      </div>
+      <div className="mt-3 rounded-md border border-ink-800 bg-ink-950/40 p-3">
+        <p className="text-xxs uppercase tracking-wide text-ink-400">
+          Buying trigger
+        </p>
+        <p className="mt-1 text-sm text-ink-50">{avatar.buyingTrigger}</p>
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="rounded-md border border-ink-800 bg-ink-950/40 p-3">
+          <p className="text-xxs uppercase tracking-wide text-ink-400">
+            Core pain
+          </p>
+          <p className="mt-1 text-xs text-ink-100">{avatar.corePain}</p>
+        </div>
+        <div className="rounded-md border border-ink-800 bg-ink-950/40 p-3">
+          <p className="text-xxs uppercase tracking-wide text-ink-400">
+            Desired outcome
+          </p>
+          <p className="mt-1 text-xs text-ink-100">{avatar.desiredOutcome}</p>
+        </div>
+      </div>
+      <div className="mt-3">
+        <p className="text-xxs uppercase tracking-wide text-ink-400">
+          Objections
+        </p>
+        <div className="mt-2 flex flex-col gap-2">
+          {avatar.objections.map((o, i) => (
+            <ObjectionChip key={i} obj={o} />
+          ))}
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div>
+          <p className="text-xxs uppercase tracking-wide text-ink-400">
+            Failed alternatives
+          </p>
+          <ul className="mt-1 list-inside list-disc space-y-1 text-xs text-ink-100">
+            {avatar.failedAlternatives.map((fa, i) => (
+              <li key={i}>{fa}</li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="text-xxs uppercase tracking-wide text-ink-400">
+            Proof needed
+          </p>
+          <ul className="mt-1 list-inside list-disc space-y-1 text-xs text-ink-100">
+            {avatar.proofNeeded.map((p, i) => (
+              <li key={i}>{p}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <div className="mt-3">
+        <p className="text-xxs uppercase tracking-wide text-ink-400">
+          Emotional language
+        </p>
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          {avatar.emotionalLanguage.map((phrase, i) => (
+            <span
+              key={i}
+              className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200"
+            >
+              "{phrase}"
+            </span>
+          ))}
+        </div>
+      </div>
+      <p className="mt-4 text-xxs text-ink-300">
+        <span className="text-ink-400">Best channel angle: </span>
+        {avatar.bestChannelAngle}
+      </p>
+    </div>
+  );
+}
+
+function ObjectionChip({ obj }: { obj: AvatarObjection }) {
+  return (
+    <div className="rounded-md border border-ink-800 bg-ink-950/40 p-2">
+      <div className="flex flex-wrap items-baseline gap-2">
+        <span className="rounded-sm border border-amber-500/30 bg-amber-950/30 px-1.5 py-0.5 text-xxs text-amber-200">
+          {obj.kind}
+        </span>
+        <p className="text-xs text-ink-100">{obj.statement}</p>
+      </div>
+      <p className="mt-1 text-xxs text-ink-300">
+        <span className="text-ink-400">Reframe: </span>
+        {obj.reframe}
+      </p>
+    </div>
+  );
+}
+
+function avatarToText(av: AudienceAvatar): string {
+  const lines: string[] = [];
+  lines.push(`${av.label} (${av.id})`);
+  lines.push(`Trigger: ${av.buyingTrigger}`);
+  lines.push(`Core pain: ${av.corePain}`);
+  lines.push(`Desired outcome: ${av.desiredOutcome}`);
+  lines.push("");
+  lines.push(`Objections:`);
+  for (const o of av.objections) {
+    lines.push(`  [${o.kind}] ${o.statement}`);
+    lines.push(`    Reframe: ${o.reframe}`);
+  }
+  lines.push("");
+  lines.push(`Failed alternatives:`);
+  for (const fa of av.failedAlternatives) lines.push(`  - ${fa}`);
+  lines.push("");
+  lines.push(`Emotional language: ${av.emotionalLanguage.map((p) => `"${p}"`).join(" · ")}`);
+  lines.push("");
+  lines.push(`Proof needed: ${av.proofNeeded.join(", ")}`);
+  lines.push(`Best channel angle: ${av.bestChannelAngle}`);
+  return lines.join("\n");
+}
+
 // ---------------- Offer tab ----------------
 
 function OfferTab({ strategy }: { strategy: Strategy }) {
@@ -603,6 +768,26 @@ function AdsTab({ strategy, input }: { strategy: Strategy; input: ProductInput }
         <AngleCard angle={strategy.rankedAngles[0]} rank={1} />
       ) : null}
 
+      <SectionTitle>Ad Concept Cards</SectionTitle>
+      <p className="text-xs text-ink-400">
+        Each card pairs an avatar with a hook pattern, a promise, a proof
+        angle, an offer tie-in, a visual idea, and a next-variant
+        suggestion. Use these as starter concepts before opening the
+        Variant Spinner.
+      </p>
+      <div className="flex flex-col gap-3">
+        {strategy.adConceptCards.map((c) => (
+          <ConceptCard
+            key={c.id}
+            card={c}
+            avatars={strategy.audienceAvatars}
+          />
+        ))}
+      </div>
+
+      <SectionTitle>Hook Library</SectionTitle>
+      <HookLibraryBlock library={strategy.hookLibrary} />
+
       <SectionTitle>Hook Critic</SectionTitle>
       <p className="text-xs text-ink-400">
         Paste a draft hook line. The critic scores it deterministically
@@ -694,6 +879,198 @@ function AdsTab({ strategy, input }: { strategy: Strategy; input: ProductInput }
         ))}
       </div>
     </div>
+  );
+}
+
+function ConceptCard({
+  card,
+  avatars,
+}: {
+  card: AdConceptCard;
+  avatars: AudienceAvatar[];
+}) {
+  const avatar = avatars.find((a) => a.id === card.targetAvatarId);
+  const exportText = conceptCardToText(card, avatar);
+  return (
+    <div className="hairline relative rounded-lg bg-ink-900 p-4">
+      <div className="absolute right-3 top-3">
+        <CopyMini text={exportText} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 pr-16">
+        <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+          {card.id}
+        </span>
+        <p className="text-sm font-medium text-ink-50">{card.name}</p>
+        {avatar ? (
+          <span className="rounded-sm border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-xxs text-ink-100">
+            {avatar.label}
+          </span>
+        ) : null}
+        <span className="rounded-sm border border-emerald-500/30 bg-emerald-950/30 px-1.5 py-0.5 text-xxs text-emerald-200">
+          {hookPatternUiLabel(card.hook.pattern)}
+        </span>
+      </div>
+      <div className="mt-3 rounded-md border border-ink-800 bg-ink-950/40 p-3">
+        <p className="text-xxs uppercase tracking-wide text-ink-400">Hook</p>
+        <p className="mt-1 text-sm text-ink-50">{card.hook.text}</p>
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-2 text-xs md:grid-cols-2">
+        <div>
+          <p className="text-ink-400">Promise</p>
+          <p className="mt-1 text-ink-100">{card.promise}</p>
+        </div>
+        <div>
+          <p className="text-ink-400">Proof angle</p>
+          <p className="mt-1 text-ink-100">{card.proofAngle}</p>
+        </div>
+        <div>
+          <p className="text-ink-400">Offer tie-in</p>
+          <p className="mt-1 text-ink-100">{card.offerTieIn}</p>
+        </div>
+        <div>
+          <p className="text-ink-400">Visual idea</p>
+          <p className="mt-1 text-ink-100">{card.visualIdea}</p>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {card.formatFit.map((f) => (
+          <span
+            key={f}
+            className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200"
+          >
+            {f}
+          </span>
+        ))}
+      </div>
+      <p className="mt-3 text-xxs text-ink-300">
+        <span className="text-ink-400">Test hypothesis: </span>
+        {card.testHypothesis}
+      </p>
+      <p className="mt-1 text-xxs text-ink-300">
+        <span className="text-ink-400">Next variant: </span>
+        {card.nextVariantSuggestion}
+      </p>
+    </div>
+  );
+}
+
+function conceptCardToText(
+  c: AdConceptCard,
+  avatar: AudienceAvatar | undefined
+): string {
+  const lines: string[] = [];
+  lines.push(`${c.name} (${c.id})`);
+  lines.push(`Target: ${avatar ? `${avatar.label} (${avatar.id})` : c.targetAvatarId}`);
+  lines.push(`Hook (${c.hook.pattern}): ${c.hook.text}`);
+  lines.push(`Promise: ${c.promise}`);
+  lines.push(`Proof angle: ${c.proofAngle}`);
+  lines.push(`Offer tie-in: ${c.offerTieIn}`);
+  lines.push(`Visual idea: ${c.visualIdea}`);
+  lines.push(`Format fit: ${c.formatFit.join(", ")}`);
+  lines.push(`Test hypothesis: ${c.testHypothesis}`);
+  lines.push(`Next variant: ${c.nextVariantSuggestion}`);
+  return lines.join("\n");
+}
+
+function HookLibraryBlock({ library }: { library: HookLibrary }) {
+  const [open, setOpen] = useState(false);
+
+  const grouped = useMemo(() => {
+    const order: HookPattern[] = [
+      "pain-first",
+      "outcome-first",
+      "contrarian",
+      "proof-led",
+      "curiosity",
+      "comparison",
+      "mistake",
+      "before-after",
+    ];
+    return order.map((pattern) => ({
+      pattern,
+      items: library.items.filter((it) => it.pattern === pattern),
+    }));
+  }, [library]);
+
+  return (
+    <div className="hairline rounded-lg bg-ink-900 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-ink-300">
+          {library.items.length} hooks across 8 patterns — reference bank,
+          not a primary surface.
+        </p>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="rounded-sm border border-ink-700 bg-ink-800 px-2 py-1 text-xxs text-ink-200 hover:border-accent hover:text-white"
+        >
+          {open ? "Collapse" : "Expand library"}
+        </button>
+      </div>
+      {open ? (
+        <div className="mt-3 flex flex-col gap-3">
+          {grouped.map(({ pattern, items }) =>
+            items.length === 0 ? null : (
+              <div key={pattern} className="rounded-md border border-ink-800 bg-ink-950/40 p-3">
+                <p className="text-xxs uppercase tracking-wide text-ink-300">
+                  {hookPatternUiLabel(pattern)}
+                </p>
+                <div className="mt-2 flex flex-col gap-2">
+                  {items.map((it, i) => (
+                    <HookLibraryItemRow key={`${pattern}-${i}`} item={it} />
+                  ))}
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function HookLibraryItemRow({ item }: { item: HookLibraryItem }) {
+  return (
+    <div className="rounded-sm border border-ink-800 bg-ink-900 p-2">
+      <p className="text-sm text-ink-50">{item.text}</p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {item.awarenessFit.map((a) => (
+          <span
+            key={`aw-${a}`}
+            className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200"
+          >
+            {a}
+          </span>
+        ))}
+        {item.avatarFit.map((id) => (
+          <span
+            key={`av-${id}`}
+            className="rounded-sm border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-xxs text-ink-100"
+          >
+            {id}
+          </span>
+        ))}
+      </div>
+      <p className="mt-1 text-xxs text-ink-400">
+        <span className="text-ink-500">Risk: </span>
+        {item.riskNote}
+      </p>
+    </div>
+  );
+}
+
+function hookPatternUiLabel(p: HookPattern): string {
+  return (
+    {
+      "pain-first": "Pain-first",
+      "outcome-first": "Outcome-first",
+      contrarian: "Contrarian",
+      "proof-led": "Proof-led",
+      curiosity: "Curiosity",
+      comparison: "Comparison",
+      mistake: "Mistake",
+      "before-after": "Before-after",
+    }[p] ?? p
   );
 }
 

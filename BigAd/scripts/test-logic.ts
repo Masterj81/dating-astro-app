@@ -1847,6 +1847,292 @@ record(
   JSON.stringify(aFifth) === JSON.stringify(a)
 );
 
+// ---- Upstream creative-quality: Audience Avatars ----
+
+const validObjectionKinds = new Set([
+  "risk",
+  "price",
+  "fit",
+  "trust",
+  "timing",
+  "complexity",
+  "social",
+]);
+
+record(
+  "audienceAvatars: 2-3 avatars (astro)",
+  a.audienceAvatars.length >= 2 && a.audienceAvatars.length <= 3,
+  `Got ${a.audienceAvatars.length}`
+);
+record(
+  "audienceAvatars: 2-3 avatars (plotline)",
+  b.audienceAvatars.length >= 2 && b.audienceAvatars.length <= 3,
+  `Got ${b.audienceAvatars.length}`
+);
+record(
+  "audienceAvatars: every avatar has a non-empty label",
+  a.audienceAvatars.every((av) => av.label.length > 0)
+);
+record(
+  "audienceAvatars: every avatar has a non-empty buyingTrigger",
+  a.audienceAvatars.every((av) => av.buyingTrigger.length > 0)
+);
+record(
+  "audienceAvatars: every avatar has a non-empty corePain",
+  a.audienceAvatars.every((av) => av.corePain.length > 0)
+);
+record(
+  "audienceAvatars: every avatar has a non-empty desiredOutcome",
+  a.audienceAvatars.every((av) => av.desiredOutcome.length > 0)
+);
+record(
+  "audienceAvatars: every avatar has a unique id",
+  new Set(a.audienceAvatars.map((av) => av.id)).size === a.audienceAvatars.length
+);
+record(
+  "audienceAvatars: every avatar has 3-4 objections",
+  a.audienceAvatars.every(
+    (av) => av.objections.length >= 3 && av.objections.length <= 4
+  )
+);
+record(
+  "audienceAvatars: every objection has a valid kind",
+  a.audienceAvatars.every((av) =>
+    av.objections.every((o) => validObjectionKinds.has(o.kind))
+  )
+);
+record(
+  "audienceAvatars: every objection has non-empty statement AND reframe",
+  a.audienceAvatars.every((av) =>
+    av.objections.every((o) => o.statement.length > 0 && o.reframe.length > 0)
+  )
+);
+record(
+  "audienceAvatars: every avatar has 2-4 failedAlternatives",
+  a.audienceAvatars.every(
+    (av) => av.failedAlternatives.length >= 2 && av.failedAlternatives.length <= 4
+  )
+);
+record(
+  "audienceAvatars: every avatar has 3-6 emotionalLanguage phrases",
+  a.audienceAvatars.every(
+    (av) =>
+      av.emotionalLanguage.length >= 3 && av.emotionalLanguage.length <= 6
+  )
+);
+record(
+  "audienceAvatars: every avatar has 2-4 proofNeeded items",
+  a.audienceAvatars.every(
+    (av) => av.proofNeeded.length >= 2 && av.proofNeeded.length <= 4
+  )
+);
+record(
+  "audienceAvatars: bestChannelAngle is non-empty for every avatar",
+  a.audienceAvatars.every((av) => av.bestChannelAngle.length > 0)
+);
+// Two different example inputs yield different avatar sets.
+expectDifferent(
+  "audienceAvatars: two different inputs produce different avatar sets",
+  a.audienceAvatars.map((av) => av.label),
+  b.audienceAvatars.map((av) => av.label)
+);
+
+// ---- Upstream creative-quality: Hook Library ----
+
+const ALL_HOOK_PATTERNS = [
+  "pain-first",
+  "outcome-first",
+  "contrarian",
+  "proof-led",
+  "curiosity",
+  "comparison",
+  "mistake",
+  "before-after",
+];
+const validAwarenessStages = new Set([
+  "unaware",
+  "problem-aware",
+  "solution-aware",
+  "product-aware",
+  "most-aware",
+]);
+
+record(
+  "hookLibrary: covers all 8 patterns",
+  ALL_HOOK_PATTERNS.every((p) =>
+    a.hookLibrary.items.some((it) => it.pattern === p)
+  )
+);
+record(
+  "hookLibrary: at least 16 items (2 per pattern minimum)",
+  a.hookLibrary.items.length >= 16
+);
+record(
+  "hookLibrary: at most 24 items (3 per pattern maximum)",
+  a.hookLibrary.items.length <= 24
+);
+record(
+  "hookLibrary: every item has non-empty text",
+  a.hookLibrary.items.every((it) => it.text.length > 0)
+);
+record(
+  "hookLibrary: every item has a non-empty riskNote",
+  a.hookLibrary.items.every((it) => it.riskNote.length > 0)
+);
+record(
+  "hookLibrary: every item has non-empty awarenessFit",
+  a.hookLibrary.items.every((it) => it.awarenessFit.length > 0)
+);
+record(
+  "hookLibrary: every awarenessFit value is a valid stage",
+  a.hookLibrary.items.every((it) =>
+    it.awarenessFit.every((s) => validAwarenessStages.has(s))
+  )
+);
+record(
+  "hookLibrary: every item has non-empty avatarFit",
+  a.hookLibrary.items.every((it) => it.avatarFit.length > 0)
+);
+// Avatar ids in avatarFit must exist on audienceAvatars.
+const avatarIdSet = new Set(a.audienceAvatars.map((av) => av.id));
+record(
+  "hookLibrary: every avatarFit id exists in audienceAvatars",
+  a.hookLibrary.items.every((it) =>
+    it.avatarFit.every((id) => avatarIdSet.has(id))
+  )
+);
+// Hook Library / Hook Critic separation — file-level check.
+import * as fs from "fs";
+import * as path from "path";
+const hookLibrarySrc = fs.readFileSync(
+  path.resolve(__dirname, "../src/lib/engine/hook-library.ts"),
+  "utf8"
+);
+// Only check import statements, not free-text mentions in comments.
+record(
+  "hookLibrary: source does not import from hook-critic",
+  !/import[^;]*from\s+["']\.\/hook-critic["']/.test(hookLibrarySrc) &&
+    !/import[^;]*from\s+["']@\/lib\/engine\/hook-critic["']/.test(hookLibrarySrc) &&
+    !/require\(["'][^"']*hook-critic[^"']*["']\)/.test(hookLibrarySrc)
+);
+
+// ---- Upstream creative-quality: Ad Concept Cards ----
+
+record(
+  "adConceptCards: 3-6 cards (astro)",
+  a.adConceptCards.length >= 3 && a.adConceptCards.length <= 6,
+  `Got ${a.adConceptCards.length}`
+);
+record(
+  "adConceptCards: 3-6 cards (plotline)",
+  b.adConceptCards.length >= 3 && b.adConceptCards.length <= 6,
+  `Got ${b.adConceptCards.length}`
+);
+record(
+  "adConceptCards: every card targets a real avatar (astro)",
+  a.adConceptCards.every((c) => avatarIdSet.has(c.targetAvatarId))
+);
+const plotAvatarIds = new Set(b.audienceAvatars.map((av) => av.id));
+record(
+  "adConceptCards: every card targets a real avatar (plotline)",
+  b.adConceptCards.every((c) => plotAvatarIds.has(c.targetAvatarId))
+);
+record(
+  "adConceptCards: every card.hook is a member of hookLibrary.items",
+  a.adConceptCards.every((c) =>
+    a.hookLibrary.items.some(
+      (it) =>
+        it.pattern === c.hook.pattern &&
+        it.text === c.hook.text &&
+        JSON.stringify(it.avatarFit) === JSON.stringify(c.hook.avatarFit)
+    )
+  )
+);
+record(
+  "adConceptCards: every card has non-empty promise",
+  a.adConceptCards.every((c) => c.promise.length > 0)
+);
+record(
+  "adConceptCards: every card has non-empty proofAngle",
+  a.adConceptCards.every((c) => c.proofAngle.length > 0)
+);
+record(
+  "adConceptCards: every card has non-empty offerTieIn",
+  a.adConceptCards.every((c) => c.offerTieIn.length > 0)
+);
+record(
+  "adConceptCards: every card has non-empty visualIdea",
+  a.adConceptCards.every((c) => c.visualIdea.length > 0)
+);
+record(
+  "adConceptCards: every card has non-empty testHypothesis",
+  a.adConceptCards.every((c) => c.testHypothesis.length > 0)
+);
+record(
+  "adConceptCards: every card has non-empty nextVariantSuggestion",
+  a.adConceptCards.every((c) => c.nextVariantSuggestion.length > 0)
+);
+record(
+  "adConceptCards: every card formatFit has 2-4 items",
+  a.adConceptCards.every(
+    (c) => c.formatFit.length >= 2 && c.formatFit.length <= 4
+  )
+);
+record(
+  "adConceptCards: every card has a unique id",
+  new Set(a.adConceptCards.map((c) => c.id)).size === a.adConceptCards.length
+);
+// nextVariantSuggestion mentions one of the 5 variant axes.
+const variantAxisWords = ["hook", "hold", "proof", "cta", "offer"];
+record(
+  "adConceptCards: every nextVariantSuggestion mentions a variant axis",
+  a.adConceptCards.every((c) =>
+    variantAxisWords.some((w) =>
+      c.nextVariantSuggestion.toLowerCase().includes(w)
+    )
+  )
+);
+// Two different inputs yield different concept-card sets.
+expectDifferent(
+  "adConceptCards: two different inputs produce different card sets",
+  a.adConceptCards.map((c) => c.name),
+  b.adConceptCards.map((c) => c.name)
+);
+
+// ---- Export brief contains the new sections ----
+
+expectContains(
+  "export brief contains Audience Avatars",
+  brief,
+  "## Audience Avatars"
+);
+expectContains(
+  "export brief contains Hook Library",
+  brief,
+  "## Hook Library"
+);
+expectContains(
+  "export brief contains Ad Concept Cards",
+  brief,
+  "## Ad Concept Cards"
+);
+
+// ---- Determinism on the new fields ----
+
+const aSixth = buildStrategy(ASTRO_DATING_EXAMPLE);
+record(
+  "buildStrategy: deterministic for audienceAvatars",
+  JSON.stringify(aSixth.audienceAvatars) === JSON.stringify(a.audienceAvatars)
+);
+record(
+  "buildStrategy: deterministic for hookLibrary",
+  JSON.stringify(aSixth.hookLibrary) === JSON.stringify(a.hookLibrary)
+);
+record(
+  "buildStrategy: deterministic for adConceptCards",
+  JSON.stringify(aSixth.adConceptCards) === JSON.stringify(a.adConceptCards)
+);
+
 // Report.
 let failed = 0;
 for (const c of checks) {

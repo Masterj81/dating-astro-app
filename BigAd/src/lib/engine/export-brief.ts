@@ -578,6 +578,99 @@ export function generateExportBrief(
     }
   }
 
+  // 11f. Audience Avatars
+  section(lines, "Audience Avatars");
+  if (strategy.audienceAvatars.length === 0) {
+    lines.push("_No avatars generated for this input._");
+    lines.push("");
+  } else {
+    for (const av of strategy.audienceAvatars) {
+      lines.push(`### ${av.label} (${av.id})`);
+      lines.push("");
+      lines.push(`- **Buying trigger:** ${av.buyingTrigger}`);
+      lines.push(`- **Core pain:** ${av.corePain}`);
+      lines.push(`- **Desired outcome:** ${av.desiredOutcome}`);
+      lines.push(`- **Best channel angle:** ${av.bestChannelAngle}`);
+      lines.push("");
+      lines.push(`**Objections:**`);
+      lines.push("");
+      lines.push(`| Kind | Statement | Reframe |`);
+      lines.push(`|------|-----------|---------|`);
+      for (const o of av.objections) {
+        lines.push(
+          `| ${o.kind} | ${o.statement.replace(/\|/g, "/")} | ${o.reframe.replace(/\|/g, "/")} |`
+        );
+      }
+      lines.push("");
+      lines.push(`**Failed alternatives:**`);
+      for (const fa of av.failedAlternatives) lines.push(`- ${fa}`);
+      lines.push("");
+      lines.push(
+        `**Emotional language:** ${av.emotionalLanguage.map((p) => `"${p}"`).join(" · ")}`
+      );
+      lines.push("");
+      lines.push(`**Proof needed:**`);
+      for (const p of av.proofNeeded) lines.push(`- ${p}`);
+      lines.push("");
+    }
+  }
+
+  // 11g. Hook Library
+  section(lines, "Hook Library");
+  if (strategy.hookLibrary.items.length === 0) {
+    lines.push("_No hook library generated for this input._");
+    lines.push("");
+  } else {
+    const patterns: ReadonlyArray<typeof strategy.hookLibrary.items[number]["pattern"]> = [
+      "pain-first",
+      "outcome-first",
+      "contrarian",
+      "proof-led",
+      "curiosity",
+      "comparison",
+      "mistake",
+      "before-after",
+    ];
+    for (const pattern of patterns) {
+      const items = strategy.hookLibrary.items.filter((it) => it.pattern === pattern);
+      if (items.length === 0) continue;
+      lines.push(`### ${hookPatternLabel(pattern)}`);
+      lines.push("");
+      for (const it of items) {
+        lines.push(`- **Hook:** ${it.text}`);
+        lines.push(
+          `  - Awareness fit: ${it.awarenessFit.join(", ")} · Avatar fit: ${it.avatarFit.join(", ")}`
+        );
+        lines.push(`  - Risk: ${it.riskNote}`);
+      }
+      lines.push("");
+    }
+  }
+
+  // 11h. Ad Concept Cards
+  section(lines, "Ad Concept Cards");
+  if (strategy.adConceptCards.length === 0) {
+    lines.push("_No concept cards generated for this input._");
+    lines.push("");
+  } else {
+    for (const c of strategy.adConceptCards) {
+      lines.push(`### ${c.name} (${c.id})`);
+      lines.push("");
+      lines.push(`- **Target avatar:** ${c.targetAvatarId}`);
+      lines.push(
+        `- **Hook (${hookPatternLabel(c.hook.pattern)}):** ${c.hook.text}`
+      );
+      lines.push(`- **Promise:** ${c.promise}`);
+      lines.push(`- **Proof angle:** ${c.proofAngle}`);
+      lines.push(`- **Offer tie-in:** ${c.offerTieIn}`);
+      lines.push(`- **Visual idea:** ${c.visualIdea}`);
+      lines.push(`- **Format fit:** ${c.formatFit.join(", ")}`);
+      lines.push(`- **Test hypothesis:** ${c.testHypothesis}`);
+      lines.push(`- **Next variant:** ${c.nextVariantSuggestion}`);
+      lines.push("");
+    }
+  }
+
   // 12. Generic-copy flags (if any)
   if (strategy.genericFlags.length > 0) {
     section(lines, "Generic-copy flags");
@@ -847,6 +940,21 @@ function audienceIntentLabel(intent: string): string {
       "engagement-retargeting": "Engagement retargeting",
       "site-retargeting": "Site retargeting",
     }[intent] ?? intent
+  );
+}
+
+function hookPatternLabel(p: string): string {
+  return (
+    {
+      "pain-first": "Pain-first",
+      "outcome-first": "Outcome-first",
+      contrarian: "Contrarian",
+      "proof-led": "Proof-led",
+      curiosity: "Curiosity",
+      comparison: "Comparison",
+      mistake: "Mistake",
+      "before-after": "Before-after",
+    }[p] ?? p
   );
 }
 
