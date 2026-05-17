@@ -1,10 +1,9 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect, router } from 'expo-router';
 import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ConstellationBg } from '../../components/astrology/ConstellationBg';
 import { AnimatedGradientBg } from '../../components/ui/AnimatedGradientBg';
-import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
+import { AppTheme } from '../../constants/theme';
 import WebTabWrapper from '../../components/WebTabWrapper';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { usePremium } from '../../contexts/PremiumContext';
@@ -171,6 +170,34 @@ export default function PremiumDashboard() {
           </div>
         </div>
 
+        {/* Astro Ad Timing Lite -- opt-in symbolic surface (web). */}
+        <div
+          onClick={() => router.push('/premium-screens/ad-timing' as any)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            backgroundColor: 'rgba(255,255,255,0.04)',
+            borderRadius: 16,
+            padding: 16,
+            border: '1px solid rgba(255,255,255,0.10)',
+            marginTop: 10,
+            marginBottom: 10,
+            cursor: 'pointer',
+            gap: 14,
+          }}
+        >
+          <span style={{ fontSize: 24, color: AppTheme.colors.textPrimary }}>{'☿'}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ color: AppTheme.colors.textPrimary, fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
+              {t('adTimingTitle') || 'Astro Ad Timing'}
+            </div>
+            <div style={{ color: AppTheme.colors.textSecondary, fontSize: 13 }}>
+              {t('adTimingHubSubtitle') || 'Symbolic timing for ad launches, not a performance prediction.'}
+            </div>
+          </div>
+          <span style={{ color: AppTheme.colors.textMuted, fontSize: 20, fontWeight: 'bold' }}>{'→'}</span>
+        </div>
+
         {!isPremiumPlus ? (
           <div
             onClick={() => router.push('/premium-screens/plus')}
@@ -255,6 +282,27 @@ export default function PremiumDashboard() {
             ))}
           </View>
         </View>
+
+        {/* Astro Ad Timing Lite -- opt-in symbolic surface. Not in the
+            catalog grid because it is intentionally a non-default,
+            non-gated panel; the entry banner is the only way to land
+            on it from inside the app. */}
+        <TouchableOpacity
+          style={styles.adTimingBanner}
+          onPress={() => router.push('/premium-screens/ad-timing' as any)}
+          activeOpacity={0.82}
+        >
+          <Text style={styles.adTimingBannerSymbol}>{'☿'}</Text>
+          <View style={styles.adTimingBannerText}>
+            <Text style={styles.adTimingBannerTitle}>
+              {t('adTimingTitle') || 'Astro Ad Timing'}
+            </Text>
+            <Text style={styles.adTimingBannerSubtitle}>
+              {t('adTimingHubSubtitle') || 'Symbolic timing for ad launches, not a performance prediction.'}
+            </Text>
+          </View>
+          <Text style={styles.upgradeArrow}>{'→'}</Text>
+        </TouchableOpacity>
 
         {!isPremiumPlus ? (
           <TouchableOpacity style={styles.upgradeBanner} onPress={() => router.push('/premium-screens/plus')}>
@@ -409,6 +457,34 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 4,
+  },
+  adTimingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: AppTheme.radius.xl,
+    padding: AppTheme.spacing.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    marginTop: AppTheme.spacing.md,
+    gap: 14,
+  },
+  adTimingBannerSymbol: {
+    fontSize: 28,
+    color: AppTheme.colors.textPrimary,
+  },
+  adTimingBannerText: {
+    flex: 1,
+  },
+  adTimingBannerTitle: {
+    color: AppTheme.colors.textPrimary,
+    ...AppTheme.type.body,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  adTimingBannerSubtitle: {
+    color: AppTheme.colors.textSecondary,
+    ...AppTheme.type.caption,
   },
   upgradeIcon: {
     fontSize: 36,

@@ -1911,5 +1911,27 @@
   "synastryV2WatchTitle": "Vale nomear cedo",
   "synastryV2WatchBody": "Isso não significa parar. Significa ir devagar o bastante para traduzir.",
   "synastryV2NoSelfBody": "Adicione seus dados de nascimento para podermos comparar posicionamentos.",
-  "unknownError": "Algo deu errado."
+  "unknownError": "Algo deu errado.",
+  "adTimingTitle": "Astro Ad Timing",
+  "adTimingSubtitle": "Symbolic timing for ad launches.",
+  "adTimingHubSubtitle": "Symbolic timing for ad launches, not a performance prediction.",
+  "adTimingLocationNyc": "New York City (reference)",
+  "adTimingDisclaimerEyebrow": "Note",
+  "adTimingDisclaimer": "Symbolic timing framework, not a performance prediction. Use as a soft input alongside offer, creative, audience, budget, tracking, landing.",
+  "adTimingCurrentEyebrow": "Current Planetary Hour",
+  "adTimingNextFavorableEyebrow": "Next Favorable Hour",
+  "adTimingUpcomingEyebrow": "Upcoming Hours",
+  "adTimingStarts": "Starts",
+  "adTimingLoading": "Computing planetary hours...",
+  "adTimingStatusStrong": "Strong",
+  "adTimingStatusUsable": "Usable",
+  "adTimingStatusAvoid": "Avoid",
+  "adTimingIntentMercury": "Copy, ads, email, targeting, landing-page tests.",
+  "adTimingIntentVenus": "Dating, beauty, lifestyle, visual creative, desire-led offers.",
+  "adTimingIntentJupiter": "Scaling, growth, promo push, broad launch.",
+  "adTimingIntentSun": "Visibility, brand campaign, official launch.",
+  "adTimingIntentMoon": "Social or ephemeral content.",
+  "adTimingIntentMars": "Urgency or sale (caveat: high-energy, can read aggressive).",
+  "adTimingIntentSaturn": "Discouraged for new ads -- consider waiting for the next favorable hour."
+
 }

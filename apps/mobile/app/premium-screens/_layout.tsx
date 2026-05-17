@@ -39,6 +39,7 @@ export default function PremiumLayout() {
       <Stack.Screen name="priority-messages" />
       <Stack.Screen name="date-planner" />
       <Stack.Screen name="tarot" />
+      <Stack.Screen name="ad-timing" />
       <Stack.Screen name="success" />
     </Stack>
   );

@@ -1911,5 +1911,27 @@
   "synastryV2WatchTitle": "值得早一点说出来的",
   "synastryV2WatchBody": "对话节奏可能不同。各自调步、说出彼此的需要，把摩擦当作信息而不是判决。",
   "synastryV2NoSelfBody": "添加你的出生信息，我们就能比较彼此的落点。",
-  "unknownError": "出错了。"
+  "unknownError": "出错了。",
+  "adTimingTitle": "Astro Ad Timing",
+  "adTimingSubtitle": "Symbolic timing for ad launches.",
+  "adTimingHubSubtitle": "Symbolic timing for ad launches, not a performance prediction.",
+  "adTimingLocationNyc": "New York City (reference)",
+  "adTimingDisclaimerEyebrow": "Note",
+  "adTimingDisclaimer": "Symbolic timing framework, not a performance prediction. Use as a soft input alongside offer, creative, audience, budget, tracking, landing.",
+  "adTimingCurrentEyebrow": "Current Planetary Hour",
+  "adTimingNextFavorableEyebrow": "Next Favorable Hour",
+  "adTimingUpcomingEyebrow": "Upcoming Hours",
+  "adTimingStarts": "Starts",
+  "adTimingLoading": "Computing planetary hours...",
+  "adTimingStatusStrong": "Strong",
+  "adTimingStatusUsable": "Usable",
+  "adTimingStatusAvoid": "Avoid",
+  "adTimingIntentMercury": "Copy, ads, email, targeting, landing-page tests.",
+  "adTimingIntentVenus": "Dating, beauty, lifestyle, visual creative, desire-led offers.",
+  "adTimingIntentJupiter": "Scaling, growth, promo push, broad launch.",
+  "adTimingIntentSun": "Visibility, brand campaign, official launch.",
+  "adTimingIntentMoon": "Social or ephemeral content.",
+  "adTimingIntentMars": "Urgency or sale (caveat: high-energy, can read aggressive).",
+  "adTimingIntentSaturn": "Discouraged for new ads -- consider waiting for the next favorable hour."
+
 }
