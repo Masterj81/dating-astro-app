@@ -96,4 +96,5 @@ marketingagent/schedule.json
 !/BigAd/docs/
 /BigAd/docs/*
 !/BigAd/docs/user-guide.md
+!/BigAd/docs/pricing-guide.md
 /Release-Checklist-48h.doc
