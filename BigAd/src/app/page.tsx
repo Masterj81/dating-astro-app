@@ -3,9 +3,16 @@
 import { useMemo, useState } from "react";
 import { InputPanel } from "@/components/InputPanel";
 import { StrategyView } from "@/components/StrategyView";
+import {
+  ProjectSwitcher,
+  WorkspaceTab,
+  useWorkspace,
+} from "@/components/WorkspacePanel";
 import { buildStrategy } from "@/lib/engine";
+import { buildNextIterationPlan } from "@/lib/engine/iteration-planner";
+import { generateExportBrief } from "@/lib/engine/export-brief";
 import { ASTRO_DATING_EXAMPLE } from "@/lib/example";
-import type { ProductInput } from "@/types/strategy";
+import type { ProductInput, Strategy } from "@/types/strategy";
 
 const EMPTY_INPUT: ProductInput = {
   name: "",
@@ -24,8 +31,56 @@ const EMPTY_INPUT: ProductInput = {
 
 export default function Page() {
   const [input, setInput] = useState<ProductInput>(EMPTY_INPUT);
+  const workspaceState = useWorkspace();
 
-  const strategy = useMemo(() => buildStrategy(input), [input]);
+  // Base strategy from the engine — pure, deterministic.
+  const baseStrategy = useMemo(() => buildStrategy(input), [input]);
+
+  // Workspace-aware strategy: re-run the iteration planner with the
+  // derived learning memory, re-emit the export brief with the
+  // Campaign Log section. The engine itself stays pure — this is a
+  // client-layer composition step.
+  const strategy: Strategy = useMemo(() => {
+    const memory = workspaceState.learningMemory;
+    const hasMemory = memory.learnings.length > 0;
+    const hasWorkspaceData =
+      workspaceState.runs.length > 0 ||
+      workspaceState.results.length > 0 ||
+      hasMemory;
+
+    if (!hasWorkspaceData) return baseStrategy;
+
+    const nextIterationPlan = hasMemory
+      ? buildNextIterationPlan({
+          input,
+          kpiLadder: baseStrategy.kpiLadder,
+          creativeTestingMatrix: baseStrategy.creativeTestingMatrix,
+          proofAssetPlan: baseStrategy.proofAssetPlan,
+          hookLibrary: baseStrategy.hookLibrary,
+          adConceptCards: baseStrategy.adConceptCards,
+          learningMemory: memory,
+        })
+      : baseStrategy.nextIterationPlan;
+
+    const partial: Strategy = {
+      ...baseStrategy,
+      nextIterationPlan,
+    };
+
+    const exportBrief = generateExportBrief(input, partial, {
+      runs: workspaceState.runs,
+      results: workspaceState.results,
+      learningMemory: hasMemory ? memory : undefined,
+    });
+
+    return { ...partial, exportBrief };
+  }, [
+    input,
+    baseStrategy,
+    workspaceState.learningMemory,
+    workspaceState.runs,
+    workspaceState.results,
+  ]);
 
   // Workspace stays usable even with thin inputs, but we want the empty
   // state for a completely empty form so the first impression is not
@@ -42,11 +97,24 @@ export default function Page() {
         onLoadExample={() => setInput(ASTRO_DATING_EXAMPLE)}
         onReset={() => setInput(EMPTY_INPUT)}
       />
-      <StrategyView
-        input={input}
-        strategy={strategy}
-        hasMeaningfulInput={hasMeaningfulInput}
-      />
+      <div className="flex h-full w-full flex-col">
+        <ProjectSwitcher
+          state={workspaceState}
+          currentInput={input}
+          currentStrategy={strategy}
+          onLoadInput={setInput}
+        />
+        <div className="min-h-0 flex-1">
+          <StrategyView
+            input={input}
+            strategy={strategy}
+            hasMeaningfulInput={hasMeaningfulInput}
+            workspaceSlot={
+              <WorkspaceTab state={workspaceState} currentStrategy={strategy} />
+            }
+          />
+        </div>
+      </div>
     </main>
   );
 }

@@ -1,7 +1,16 @@
 import type { ProductInput, Strategy } from "@/types/strategy";
+import type { LearningMemory, SavedRun, TestResult } from "@/types/workspace";
 import { awarenessLabel } from "./awareness";
 import { sophisticationLabel } from "./sophistication";
 import { windowKindLabel } from "./calendar";
+
+// Optional Campaign Log context — emitted when the caller passes
+// workspace state. Absent → existing brief is byte-identical.
+export interface ExportBriefWorkspaceContext {
+  runs?: SavedRun[];
+  results?: TestResult[];
+  learningMemory?: LearningMemory;
+}
 
 // generateExportBrief — assembles a clean, single-page markdown brief
 // covering every section of the strategy. Designed to be pasted into
@@ -28,7 +37,8 @@ import { windowKindLabel } from "./calendar";
 
 export function generateExportBrief(
   input: ProductInput,
-  strategy: Strategy
+  strategy: Strategy,
+  workspace?: ExportBriefWorkspaceContext
 ): string {
   const lines: string[] = [];
 
@@ -979,6 +989,82 @@ export function generateExportBrief(
       );
     }
     lines.push("");
+  }
+
+  // Campaign Log — only rendered when the caller supplies workspace
+  // context (runs / results / learning memory). Without it, the brief
+  // is byte-identical to the no-workspace build.
+  if (workspace) {
+    const runs = (workspace.runs ?? []).slice();
+    const results = (workspace.results ?? []).slice();
+    const mem = workspace.learningMemory;
+    const hasAny =
+      runs.length > 0 || results.length > 0 || (mem && mem.learnings.length > 0);
+    if (hasAny) {
+      section(lines, "Campaign Log");
+
+      if (runs.length > 0) {
+        lines.push("**Recent runs.**");
+        lines.push("");
+        // Sort by runAt desc (most recent first), then take the last 5.
+        const sortedRuns = runs.sort((a, b) =>
+          a.runAt < b.runAt ? 1 : a.runAt > b.runAt ? -1 : 0
+        );
+        for (const r of sortedRuns.slice(0, 5)) {
+          const offerLead = r.strategy.offers[0]?.kind ?? "—";
+          const windowsCount = r.strategy.campaignCalendar.windows.length;
+          const topAngle = r.strategy.rankedAngles[0]?.name ?? "—";
+          lines.push(
+            `- \`${r.id}\` at ${r.runAt} — product: ${r.input.name || "—"}; top offer: ${offerLead}; windows: ${windowsCount}; top angle: ${topAngle}.`
+          );
+        }
+        lines.push("");
+      }
+
+      if (results.length > 0) {
+        lines.push("**Recent test results.**");
+        lines.push("");
+        // Sort by updatedAt desc, take last 10.
+        const sortedResults = results.sort((a, b) =>
+          a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0
+        );
+        for (const result of sortedResults.slice(0, 10)) {
+          const metrics = result.metrics
+            .map((m) => `${m.kpi}=${m.value}`)
+            .join(", ");
+          const noteSuffix = result.notes ? ` — ${oneLine(result.notes)}` : "";
+          lines.push(
+            `- \`${result.testCellId}\` (run \`${result.runId}\`) — status: **${result.status}**, spend: ${result.spend}, days: ${result.daysRun}${
+              metrics ? `, ${metrics}` : ""
+            }${noteSuffix}.`
+          );
+        }
+        lines.push("");
+      }
+
+      if (mem && mem.learnings.length > 0) {
+        lines.push("**Current learnings.**");
+        lines.push("");
+        // Group by signal for readability.
+        const bySignal = new Map<string, typeof mem.learnings>();
+        for (const learning of mem.learnings) {
+          const arr = bySignal.get(learning.signal) ?? [];
+          arr.push(learning);
+          bySignal.set(learning.signal, arr);
+        }
+        for (const [signal, ls] of bySignal) {
+          lines.push(`- **${signal}**`);
+          for (const l of ls) {
+            lines.push(
+              `  - ${l.subject} — confidence ${l.confidence}; ${l.supportingResultIds.length} supporting result${
+                l.supportingResultIds.length === 1 ? "" : "s"
+              }.`
+            );
+          }
+        }
+        lines.push("");
+      }
+    }
   }
 
   return lines.join("\n").replace(/\n{3,}/g, "\n\n");

@@ -543,6 +543,45 @@ tab Execution passe en mode "plan only, do not spend" et `Journey Status`
 remonte un blocker dedie. Les must-haves manquants du `proofAssetPlan` se
 transforment en warnings creative individuels pour la tracabilite.
 
+## Project Workspace
+
+BigAd peut sauvegarder ton travail. Le bandeau en haut de la page expose le
+`ProjectSwitcher` : selectionne un projet existant, ou tape un nom et clique
+`Save as new project` pour persister les inputs courants. Une fois un projet
+actif, le bouton `Save run` snapshot l'input + la strategie generee dans
+l'historique du projet, et le bouton `Update inputs` ecrase les inputs
+sauvegardes sans toucher aux runs precedents.
+
+Le nouvel onglet `Workspace` (place a la fin du strip de tabs, apres `Export
+brief`) affiche trois sections :
+
+- `Run history` liste chaque snapshot avec son timestamp, l'offre de tete et
+  le nombre de windows. Le bouton `Compare with latest` ouvre un diff au
+  niveau du champ entre la run choisie et la plus recente.
+- `Test results log` rend chaque test cell de la run la plus recente comme
+  une ligne editable : status (winning / losing / inconclusive / killed-early
+  / paused / not-yet-launched), spend, jours, et metriques optionnelles.
+- `Learning memory` derive automatiquement des resultats logges. Pattern de
+  hook, kind d'offre, format, avatar, audience tier, kill-rule et proof asset
+  sont agreges en `Learning` avec une confidence (low / medium / high) selon
+  le nombre de resultats supportants.
+
+Tout est stocke dans `localStorage` sous des cles versionnees
+(`bigad:projects:v1`, `bigad:runs:v1`, `bigad:test-results:v1`,
+`bigad:active-project-id:v1`). Rien ne quitte le navigateur. Le moteur reste
+pur : `buildStrategy(input)` est inchange. Quand une learning memory de
+confidence `high` existe sur un signal `*-winning`, le `Next Iteration
+Planner` ajoute une recommandation `Double down on <subject>` apres les sept
+recommandations fixes. Les learnings `-losing` produisent une recommandation
+`Retire <subject> from next test batch`. Les sept signaux faibles initiaux
+restent au meme index, donc l'UI Execution n'est pas perturbee.
+
+L'`Export brief` ajoute une section `## Campaign Log` qui n'est emise que
+quand le projet actif a des runs, des results, ou une learning memory. Elle
+montre les 5 dernieres runs avec leur delta de strategie en une ligne, les 10
+derniers test results avec leur status et leurs metriques, et le bloc
+`Current learnings` groupe par signal.
+
 ## Maintenance du guide
 
 Quand BigAd ajoute un nouveau module, mets a jour ce guide si le module change

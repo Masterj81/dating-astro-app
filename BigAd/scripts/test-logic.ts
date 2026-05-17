@@ -3331,6 +3331,517 @@ for (const { name, strategy } of fixtures) {
   );
 }
 
+// ---- Project Workspace -----------------------------------------------------
+
+{
+  // Lazy imports so this block stays self-contained at the bottom of the file.
+  const {
+    createMemoryProjectStore,
+    STORAGE_KEY_PROJECTS,
+    STORAGE_KEY_RUNS,
+    STORAGE_KEY_RESULTS,
+    STORAGE_KEY_ACTIVE,
+  } = require("../src/lib/workspace/project-store");
+  const { deriveLearningMemory, buildRunComparison } = require("../src/lib/workspace/learning");
+  const { buildNextIterationPlan: buildPlan } = require("../src/lib/engine/iteration-planner");
+  const { generateExportBrief: genExport } = require("../src/lib/engine/export-brief");
+
+  // ---- Versioned storage keys ---------------------------------------------
+  record(
+    "workspace: storage keys are versioned",
+    STORAGE_KEY_PROJECTS === "bigad:projects:v1" &&
+      STORAGE_KEY_RUNS === "bigad:runs:v1" &&
+      STORAGE_KEY_RESULTS === "bigad:test-results:v1" &&
+      STORAGE_KEY_ACTIVE === "bigad:active-project-id:v1"
+  );
+
+  // ---- Memory store roundtrip ---------------------------------------------
+  {
+    const store = createMemoryProjectStore();
+    const now = new Date().toISOString();
+    const proj = {
+      metadata: {
+        id: "p-1",
+        name: "AstroDating",
+        createdAt: now,
+        updatedAt: now,
+        runCount: 0,
+      },
+      input: ASTRO_DATING_EXAMPLE,
+    };
+    const saved = store.saveProject(proj);
+    record(
+      "workspace: memory store saveProject preserves id",
+      saved.metadata.id === "p-1"
+    );
+    const fetched = store.getProject("p-1");
+    record(
+      "workspace: memory store getProject returns saved payload",
+      fetched !== null && fetched.metadata.name === "AstroDating"
+    );
+    record(
+      "workspace: getProject returns null for missing id",
+      store.getProject("missing") === null
+    );
+
+    // Update.
+    store.saveProject({
+      ...saved,
+      metadata: { ...saved.metadata, name: "AstroDating v2" },
+    });
+    const re = store.getProject("p-1");
+    record(
+      "workspace: saveProject updates in-place",
+      re !== null && re.metadata.name === "AstroDating v2"
+    );
+
+    // Active project setter.
+    store.setActiveProject("p-1");
+    record(
+      "workspace: setActiveProject + getActiveProjectId roundtrip",
+      store.getActiveProjectId() === "p-1"
+    );
+    store.setActiveProject(null);
+    record(
+      "workspace: setActiveProject(null) clears active id",
+      store.getActiveProjectId() === null
+    );
+
+    // Runs.
+    const run = {
+      id: "r-1",
+      projectId: "p-1",
+      runAt: now,
+      input: ASTRO_DATING_EXAMPLE,
+      strategy: buildStrategy(ASTRO_DATING_EXAMPLE),
+    };
+    store.appendRun(run);
+    record(
+      "workspace: appendRun → listRuns returns the run",
+      store.listRuns("p-1").length === 1
+    );
+    record(
+      "workspace: appendRun bumps project runCount to 1",
+      (store.getProject("p-1") as any).metadata.runCount === 1
+    );
+
+    // Results.
+    const result = {
+      id: "res-1",
+      projectId: "p-1",
+      runId: "r-1",
+      testCellId: "test-1",
+      status: "winning" as const,
+      metrics: [],
+      spend: 100,
+      daysRun: 3,
+      createdAt: now,
+      updatedAt: now,
+    };
+    store.upsertResult(result);
+    record(
+      "workspace: upsertResult → listResults returns the result",
+      store.listResults("p-1").length === 1
+    );
+
+    // Upsert again with new spend.
+    store.upsertResult({ ...result, spend: 250 });
+    const after = store.listResults("p-1");
+    record(
+      "workspace: upsertResult updates in-place (identity = id)",
+      after.length === 1 && after[0].spend === 250
+    );
+
+    // Delete project cascades.
+    store.deleteProject("p-1");
+    record(
+      "workspace: deleteProject cascades to runs",
+      store.listRuns("p-1").length === 0
+    );
+    record(
+      "workspace: deleteProject cascades to results",
+      store.listResults("p-1").length === 0
+    );
+  }
+
+  // ---- Serialization losslessness -----------------------------------------
+  {
+    const store = createMemoryProjectStore();
+    const now = "2026-05-17T00:00:00.000Z";
+    const proj = {
+      metadata: {
+        id: "p-ser",
+        name: "Serialize me",
+        createdAt: now,
+        updatedAt: now,
+        runCount: 0,
+      },
+      input: ASTRO_DATING_EXAMPLE,
+    };
+    store.saveProject(proj);
+    const run = {
+      id: "r-ser",
+      projectId: "p-ser",
+      runAt: now,
+      input: ASTRO_DATING_EXAMPLE,
+      strategy: buildStrategy(ASTRO_DATING_EXAMPLE),
+    };
+    store.appendRun(run);
+    const result = {
+      id: "res-ser",
+      projectId: "p-ser",
+      runId: "r-ser",
+      testCellId: "test-1",
+      status: "winning" as const,
+      metrics: [{ kpi: "ctr" as const, value: 1.5, unit: "percent" as const, measuredAt: now }],
+      spend: 120,
+      daysRun: 4,
+      createdAt: now,
+      updatedAt: now,
+    };
+    store.upsertResult(result);
+
+    const j1 = JSON.stringify({
+      projects: store.listProjects(),
+      runs: store.listRuns("p-ser"),
+      results: store.listResults("p-ser"),
+    });
+    const parsed = JSON.parse(j1);
+    record(
+      "workspace: project survives JSON roundtrip",
+      parsed.projects[0].metadata.name === "Serialize me"
+    );
+    record(
+      "workspace: run survives JSON roundtrip",
+      parsed.runs[0].id === "r-ser" && parsed.runs[0].input.name === ASTRO_DATING_EXAMPLE.name
+    );
+    record(
+      "workspace: result survives JSON roundtrip including metrics",
+      parsed.results[0].id === "res-ser" &&
+        parsed.results[0].metrics[0].kpi === "ctr"
+    );
+  }
+
+  // ---- Learning derivation ------------------------------------------------
+  const wsRun = {
+    id: "r-learn",
+    projectId: "p-learn",
+    runAt: "2026-05-17T00:00:00.000Z",
+    input: ASTRO_DATING_EXAMPLE,
+    strategy: buildStrategy(ASTRO_DATING_EXAMPLE),
+  };
+  const cells = wsRun.strategy.creativeTestingMatrix.testCells;
+  const cell0 = cells[0];
+  const cell1 = cells[1] ?? cells[0];
+
+  function mkResult(
+    id: string,
+    cellId: string,
+    status: "winning" | "losing" | "killed-early" | "inconclusive"
+  ) {
+    return {
+      id,
+      projectId: "p-learn",
+      runId: "r-learn",
+      testCellId: cellId,
+      status,
+      metrics: [],
+      spend: 100,
+      daysRun: 3,
+      createdAt: "2026-05-17T00:00:00.000Z",
+      updatedAt: "2026-05-17T00:00:00.000Z",
+    };
+  }
+
+  // 0 results → 0 learnings.
+  {
+    const mem = deriveLearningMemory([], [wsRun]);
+    record(
+      "workspace-learning: 0 results → 0 learnings",
+      mem.learnings.length === 0 && mem.fromResultCount === 0
+    );
+  }
+
+  // 1 winning hook → confidence "low".
+  {
+    const mem = deriveLearningMemory([mkResult("res-w-1", cell0.id, "winning")], [wsRun]);
+    const hookWin = mem.learnings.find((l: any) => l.signal === "hook-pattern-winning");
+    record(
+      "workspace-learning: 1 winning hook → confidence low",
+      hookWin !== undefined && hookWin.confidence === "low"
+    );
+  }
+
+  // 3 winning → medium.
+  {
+    const mem = deriveLearningMemory(
+      [
+        mkResult("res-w-1", cell0.id, "winning"),
+        mkResult("res-w-2", cell0.id, "winning"),
+        mkResult("res-w-3", cell0.id, "winning"),
+      ],
+      [wsRun]
+    );
+    const hookWin = mem.learnings.find((l: any) => l.signal === "hook-pattern-winning");
+    record(
+      "workspace-learning: 3 winning on same hook → confidence medium",
+      hookWin !== undefined && hookWin.confidence === "medium"
+    );
+  }
+
+  // 6 winning → high.
+  {
+    const mem = deriveLearningMemory(
+      [
+        mkResult("res-w-1", cell0.id, "winning"),
+        mkResult("res-w-2", cell0.id, "winning"),
+        mkResult("res-w-3", cell0.id, "winning"),
+        mkResult("res-w-4", cell0.id, "winning"),
+        mkResult("res-w-5", cell0.id, "winning"),
+        mkResult("res-w-6", cell0.id, "winning"),
+      ],
+      [wsRun]
+    );
+    const hookWin = mem.learnings.find((l: any) => l.signal === "hook-pattern-winning");
+    record(
+      "workspace-learning: 6 winning on same hook → confidence high",
+      hookWin !== undefined && hookWin.confidence === "high"
+    );
+  }
+
+  // 2 winning + 4 losing on same hook → both signals emitted.
+  {
+    const mem = deriveLearningMemory(
+      [
+        mkResult("res-w-1", cell0.id, "winning"),
+        mkResult("res-w-2", cell0.id, "winning"),
+        mkResult("res-l-1", cell0.id, "losing"),
+        mkResult("res-l-2", cell0.id, "losing"),
+        mkResult("res-l-3", cell0.id, "losing"),
+        mkResult("res-l-4", cell0.id, "killed-early"),
+      ],
+      [wsRun]
+    );
+    const win = mem.learnings.find((l: any) => l.signal === "hook-pattern-winning");
+    const loss = mem.learnings.find((l: any) => l.signal === "hook-pattern-losing");
+    record(
+      "workspace-learning: 2 winning + 4 losing → both signals emitted",
+      win !== undefined && loss !== undefined
+    );
+    record(
+      "workspace-learning: winning supportingResultIds count = 2",
+      win !== undefined && win.supportingResultIds.length === 2
+    );
+    record(
+      "workspace-learning: losing supportingResultIds count = 4",
+      loss !== undefined && loss.supportingResultIds.length === 4
+    );
+  }
+
+  // Inconclusive emits no learning.
+  {
+    const mem = deriveLearningMemory(
+      [
+        mkResult("res-i-1", cell0.id, "inconclusive"),
+        mkResult("res-i-2", cell0.id, "inconclusive"),
+      ],
+      [wsRun]
+    );
+    record(
+      "workspace-learning: inconclusive results emit no learnings",
+      mem.learnings.length === 0 && mem.fromResultCount === 2
+    );
+  }
+
+  // deriveLearningMemory is deterministic for same inputs.
+  {
+    const fixture = [
+      mkResult("res-w-1", cell0.id, "winning"),
+      mkResult("res-l-1", cell1.id, "losing"),
+    ];
+    const m1 = deriveLearningMemory(fixture, [wsRun]);
+    const m2 = deriveLearningMemory(fixture, [wsRun]);
+    record(
+      "workspace-learning: deterministic across two calls",
+      JSON.stringify(m1) === JSON.stringify(m2)
+    );
+  }
+
+  // ---- Run comparison -----------------------------------------------------
+  {
+    const runA = wsRun;
+    const cmp = buildRunComparison(runA, null);
+    record(
+      "workspace-comparison: null previous → noteworthy mentions first run",
+      cmp.previous === null &&
+        cmp.noteworthy.some((n: string) => /first run/i.test(n))
+    );
+
+    const altInput = { ...ASTRO_DATING_EXAMPLE, audience: "Different audience" };
+    const runB = {
+      id: "r-b",
+      projectId: "p-learn",
+      runAt: "2026-05-18T00:00:00.000Z",
+      input: altInput,
+      strategy: buildStrategy(altInput),
+    };
+    const cmp2 = buildRunComparison(runB, runA);
+    record(
+      "workspace-comparison: detects input.audience change",
+      cmp2.changedFields.includes("input.audience")
+    );
+    record(
+      "workspace-comparison: deterministic",
+      JSON.stringify(buildRunComparison(runB, runA)) ===
+        JSON.stringify(buildRunComparison(runB, runA))
+    );
+  }
+
+  // ---- Iteration planner with memory --------------------------------------
+  {
+    const base = wsRun.strategy;
+    const planNoMem = buildPlan({
+      input: ASTRO_DATING_EXAMPLE,
+      kpiLadder: base.kpiLadder,
+      creativeTestingMatrix: base.creativeTestingMatrix,
+      proofAssetPlan: base.proofAssetPlan,
+      hookLibrary: base.hookLibrary,
+      adConceptCards: base.adConceptCards,
+    });
+    record(
+      "workspace-planner: without memory still emits 7 recommendations",
+      planNoMem.recommendations.length === 7
+    );
+
+    // Build a high-confidence winning memory: 6 winning results on the
+    // same cell so hook-pattern-winning lands at "high" confidence.
+    const winningResults = Array.from({ length: 6 }, (_, i) =>
+      mkResult(`res-hi-${i}`, cell0.id, "winning")
+    );
+    const hiMemory = deriveLearningMemory(winningResults, [wsRun]);
+    const highWins = hiMemory.learnings.filter(
+      (l: any) => l.confidence === "high" && l.signal.endsWith("-winning")
+    );
+    record(
+      "workspace-planner: high-confidence winning learnings present",
+      highWins.length > 0
+    );
+
+    const planWithMem = buildPlan({
+      input: ASTRO_DATING_EXAMPLE,
+      kpiLadder: base.kpiLadder,
+      creativeTestingMatrix: base.creativeTestingMatrix,
+      proofAssetPlan: base.proofAssetPlan,
+      hookLibrary: base.hookLibrary,
+      adConceptCards: base.adConceptCards,
+      learningMemory: hiMemory,
+    });
+    record(
+      "workspace-planner: with memory appends recommendations (count > 7)",
+      planWithMem.recommendations.length > planNoMem.recommendations.length
+    );
+    record(
+      "workspace-planner: first 7 recommendations unchanged",
+      JSON.stringify(planWithMem.recommendations.slice(0, 7)) ===
+        JSON.stringify(planNoMem.recommendations)
+    );
+
+    // Deterministic: same memory → same plan.
+    const planWithMem2 = buildPlan({
+      input: ASTRO_DATING_EXAMPLE,
+      kpiLadder: base.kpiLadder,
+      creativeTestingMatrix: base.creativeTestingMatrix,
+      proofAssetPlan: base.proofAssetPlan,
+      hookLibrary: base.hookLibrary,
+      adConceptCards: base.adConceptCards,
+      learningMemory: hiMemory,
+    });
+    record(
+      "workspace-planner: same memory produces deep-equal plan",
+      JSON.stringify(planWithMem) === JSON.stringify(planWithMem2)
+    );
+
+    // Memory-derived "double down" cap: at most 2 high wins → at most 2 extra "double down".
+    const extras = planWithMem.recommendations.slice(7);
+    const doubleDowns = extras.filter((r: any) =>
+      /double down/i.test(r.nextSteps.join(" "))
+    );
+    record(
+      "workspace-planner: double-down recommendations capped at 2",
+      doubleDowns.length <= 2
+    );
+  }
+
+  // ---- Export brief Campaign Log -----------------------------------------
+  {
+    const base = wsRun.strategy;
+    const baseBrief = genExport(ASTRO_DATING_EXAMPLE, base);
+    record(
+      "workspace-export: omits Campaign Log when no workspace context",
+      !baseBrief.includes("## Campaign Log")
+    );
+
+    const memory = deriveLearningMemory(
+      [mkResult("res-w-1", cell0.id, "winning")],
+      [wsRun]
+    );
+    const briefWithMem = genExport(ASTRO_DATING_EXAMPLE, base, {
+      runs: [wsRun],
+      results: [mkResult("res-w-1", cell0.id, "winning")],
+      learningMemory: memory,
+    });
+    record(
+      "workspace-export: includes Campaign Log when workspace context present",
+      briefWithMem.includes("## Campaign Log")
+    );
+    record(
+      "workspace-export: Campaign Log shows recent runs sub-section",
+      briefWithMem.includes("**Recent runs.**")
+    );
+    record(
+      "workspace-export: Campaign Log shows recent test results sub-section",
+      briefWithMem.includes("**Recent test results.**")
+    );
+    record(
+      "workspace-export: Campaign Log shows current learnings sub-section",
+      briefWithMem.includes("**Current learnings.**")
+    );
+
+    // Empty workspace context (object present but empty) → still omitted.
+    const emptyBrief = genExport(ASTRO_DATING_EXAMPLE, base, {
+      runs: [],
+      results: [],
+    });
+    record(
+      "workspace-export: empty workspace context omits Campaign Log",
+      !emptyBrief.includes("## Campaign Log")
+    );
+  }
+
+  // ---- Engine still deterministic under workspace re-export ---------------
+  {
+    const base = wsRun.strategy;
+    const mem = deriveLearningMemory(
+      [mkResult("res-w-1", cell0.id, "winning")],
+      [wsRun]
+    );
+    const e1 = genExport(ASTRO_DATING_EXAMPLE, base, {
+      runs: [wsRun],
+      results: [mkResult("res-w-1", cell0.id, "winning")],
+      learningMemory: mem,
+    });
+    const e2 = genExport(ASTRO_DATING_EXAMPLE, base, {
+      runs: [wsRun],
+      results: [mkResult("res-w-1", cell0.id, "winning")],
+      learningMemory: mem,
+    });
+    record(
+      "workspace-export: deterministic across two calls",
+      e1 === e2
+    );
+  }
+}
+
 // Report.
 let failed = 0;
 for (const c of checks) {

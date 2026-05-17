@@ -139,6 +139,10 @@ The Tracking Readiness check structure is exposed as `TrackingReadinessCheck` / 
 
 `buildNextIterationPlan({ input, kpiLadder, creativeTestingMatrix, proofAssetPlan, hookLibrary, adConceptCards })` emits one `IterationRecommendation` per `WeakSignal` (`winning`, `weak-hook`, `weak-hold`, `weak-click`, `weak-conversion`, `weak-roas`, `proof-bottleneck`). Each recommendation carries a diagnosis sentence, 2-4 concrete next steps, the next proof assets to produce, and the next hook angles to try — pulled from the hook library entries not used in the first batch. The Execution tab renders the plan as the "what to ship next" companion to the testing matrix.
 
+## Project Workspace
+
+BigAd is stateful when you want it to be. The Project Workspace adds saved projects, run history, a test-results log, and a learning memory derived from real outcomes — all in `localStorage` under versioned keys (`bigad:projects:v1`, `bigad:runs:v1`, `bigad:test-results:v1`, `bigad:active-project-id:v1`). Nothing leaves your browser. The engine itself stays pure: `buildStrategy(input)` is unchanged. The new persistence shell sits on top, and the iteration planner optionally consumes the derived `LearningMemory` to append "double down on X" / "retire X from next batch" recommendations after the seven fixed weak-signal recommendations. The export brief gains an optional `## Campaign Log` section (recent runs, recent test results, current learnings) that only renders when workspace state is non-empty.
+
 ## Running it
 
 ```bash
@@ -252,7 +256,7 @@ BigAd/
 │   └── types/
 │       └── strategy.ts         Shared TypeScript types
 ├── scripts/
-│   └── test-logic.ts           `npm run test:logic` — 746 checks
+│   └── test-logic.ts           `npm run test:logic` — 787 checks
 ├── public/
 ├── next.config.ts
 ├── tailwind.config.ts

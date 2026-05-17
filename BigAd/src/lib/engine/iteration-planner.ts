@@ -20,6 +20,7 @@ import type {
   ProofAssetPlan,
   WeakSignal,
 } from "@/types/strategy";
+import type { Learning, LearningMemory } from "@/types/workspace";
 
 export interface NextIterationPlannerArgs {
   input: ProductInput;
@@ -28,6 +29,11 @@ export interface NextIterationPlannerArgs {
   proofAssetPlan: ProofAssetPlan;
   hookLibrary: HookLibrary;
   adConceptCards: AdConceptCard[];
+  // Optional client-layer hand-off from the Project Workspace. When
+  // present, the planner appends memory-derived recommendations AFTER
+  // the existing seven weak-signal recommendations. The engine stays
+  // deterministic: same memory → same plan.
+  learningMemory?: LearningMemory;
 }
 
 const SIGNAL_ORDER: WeakSignal[] = [
@@ -47,6 +53,13 @@ export function buildNextIterationPlan(
     buildRecommendation(s, args)
   );
 
+  // Memory-derived recommendations are APPENDED at the end so the
+  // existing seven weak-signal recommendations remain stable and at
+  // their fixed indices. Same memory → same appended block.
+  if (args.learningMemory) {
+    recommendations.push(...buildMemoryRecommendations(args.learningMemory));
+  }
+
   // Aggregate unique union of next assets / next angles.
   const nextAssetsToProduce = uniqueOrdered(
     recommendations.flatMap((r) => r.nextAssetsToProduce)
@@ -60,6 +73,66 @@ export function buildNextIterationPlan(
     nextAssetsToProduce,
     nextAnglesToTry,
   };
+}
+
+// buildMemoryRecommendations — appends high-confidence wins (as
+// "double down") and any losses (as "retire from next batch"). Capped
+// so the appended block never overwhelms the seven fixed signals: at
+// most 2 per signal-direction (4 total memory recommendations).
+function buildMemoryRecommendations(
+  memory: LearningMemory
+): IterationRecommendation[] {
+  const out: IterationRecommendation[] = [];
+
+  const highWins: Learning[] = memory.learnings
+    .filter(
+      (l) => l.confidence === "high" && l.signal.endsWith("-winning")
+    )
+    .slice(0, 2);
+  const losses: Learning[] = memory.learnings
+    .filter((l) => l.signal.endsWith("-losing"))
+    .slice(0, 2);
+
+  for (const learning of highWins) {
+    out.push({
+      signal: "winning",
+      diagnosis: `Memory: ${learning.subject} is a repeated winner across ${learning.supportingResultIds.length} test${
+        learning.supportingResultIds.length === 1 ? "" : "s"
+      }.`,
+      nextSteps: [
+        `Double down on ${learning.subject} in the next batch — keep it as the control.`,
+        `Allocate the largest budget share to cells that carry ${learning.subject}.`,
+      ],
+      nextAssetsToProduce: [],
+      nextAnglesToTry: [],
+    });
+  }
+
+  for (const learning of losses) {
+    out.push({
+      signal: "winning", // existing WeakSignal union; use "winning" placeholder
+      diagnosis: `Memory: ${learning.subject} has lost across ${learning.supportingResultIds.length} test${
+        learning.supportingResultIds.length === 1 ? "" : "s"
+      }.`,
+      nextSteps: [
+        `Retire ${learning.subject} from the next test batch.`,
+        `Replace it with a different ${signalKindLabel(learning.signal)} from the queue.`,
+      ],
+      nextAssetsToProduce: [],
+      nextAnglesToTry: [],
+    });
+  }
+
+  return out;
+}
+
+function signalKindLabel(signal: string): string {
+  if (signal.startsWith("hook-pattern")) return "hook pattern";
+  if (signal.startsWith("offer-kind")) return "offer kind";
+  if (signal.startsWith("format")) return "format";
+  if (signal.startsWith("avatar")) return "avatar";
+  if (signal.startsWith("audience-tier")) return "audience tier";
+  return "test variable";
 }
 
 function buildRecommendation(

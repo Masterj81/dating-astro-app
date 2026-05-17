@@ -96,7 +96,8 @@ type Tab =
   | "landing"
   | "store"
   | "experiments"
-  | "export";
+  | "export"
+  | "workspace";
 
 // Tab order follows the stakeholder reading flow:
 // Score → Positioning → Awareness → Audience → Diagnosis → Offer
@@ -121,15 +122,21 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "store", label: "App store" },
   { id: "experiments", label: "Experiments" },
   { id: "export", label: "Export brief" },
+  { id: "workspace", label: "Workspace" },
 ];
 
 interface Props {
   input: ProductInput;
   strategy: Strategy;
   hasMeaningfulInput: boolean;
+  // Optional slot for the Project Workspace tab body. Rendered inside
+  // the dedicated "Workspace" tab. Keeping it as a render-prop means
+  // StrategyView itself stays free of localStorage and project-store
+  // coupling.
+  workspaceSlot?: React.ReactNode;
 }
 
-export function StrategyView({ input, strategy, hasMeaningfulInput }: Props) {
+export function StrategyView({ input, strategy, hasMeaningfulInput, workspaceSlot }: Props) {
   const [tab, setTab] = useState<Tab>("score");
 
   if (!hasMeaningfulInput) {
@@ -198,8 +205,19 @@ export function StrategyView({ input, strategy, hasMeaningfulInput }: Props) {
         {tab === "store" && <StoreTab strategy={strategy} />}
         {tab === "experiments" && <ExperimentsTab strategy={strategy} />}
         {tab === "export" && <ExportTab brief={strategy.exportBrief} />}
+        {tab === "workspace" && (
+          <div>{workspaceSlot ?? <WorkspaceFallback />}</div>
+        )}
       </div>
     </section>
+  );
+}
+
+function WorkspaceFallback() {
+  return (
+    <p className="hairline rounded-lg bg-ink-900 p-4 text-xs text-ink-300">
+      Workspace shell is loading…
+    </p>
   );
 }
 
