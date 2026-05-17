@@ -1215,6 +1215,8 @@ const jsTwice = buildJourneyStatus({
   shotLists: a.shotLists,
   videoScripts: a.videoScripts,
   variantSets: a.variantSets,
+  proofAssetPlan: a.proofAssetPlan,
+  audienceAvatars: a.audienceAvatars,
 });
 record(
   "journeyStatus: deterministic across calls",
@@ -2235,6 +2237,8 @@ const FIELD_TO_EXPORT_HEADERS: Record<string, string[]> = {
   hookLibrary: ["## Hook Library"],
   adConceptCards: ["## Ad Concept Cards"],
   copyIssues: ["## Copy Quality Flags"],
+  inputQuality: ["## Input Assistant"],
+  proofAssetPlan: ["## Proof Asset Plan"],
 };
 
 for (const field of Object.keys(FIELD_TO_EXPORT_HEADERS)) {
@@ -2288,6 +2292,8 @@ const STRATEGY_FIELDS_IN_TYPE = [
   "hookLibrary",
   "adConceptCards",
   "copyIssues",
+  "inputQuality",
+  "proofAssetPlan",
   "exportBrief",
 ];
 record(
@@ -2734,6 +2740,250 @@ for (const { name, strategy } of fixtures) {
   record(
     `copy-normalize: ${name} export brief includes the Copy Quality Flags section`,
     strategy.exportBrief.includes("## Copy Quality Flags")
+  );
+}
+
+// ---- Input Assistant ------------------------------------------------------
+
+import { assessInputQuality, buildProofAssetPlan } from "../src/lib/engine";
+
+// AstroDating: the input.audience is 18 words (well over 12) so the
+// long-audience warning must surface, and rewrittenHints.audience must be
+// shorter than the raw input.
+{
+  const iq = a.inputQuality;
+  record(
+    "input-assistant: AstroDating produces a non-empty warnings list",
+    iq.warnings.length >= 1,
+    `Got ${iq.warnings.length} warnings`
+  );
+  record(
+    "input-assistant: AstroDating surfaces either audience-too-long or pain-too-long",
+    iq.warnings.some(
+      (w) => w.kind === "audience-too-long" || w.kind === "pain-too-long"
+    ),
+    `Got kinds: ${iq.warnings.map((w) => w.kind).join(", ")}`
+  );
+  record(
+    "input-assistant: AstroDating rewrittenHints.audience is shorter than input.audience",
+    iq.rewrittenHints.audience.length < ASTRO_DATING_EXAMPLE.audience.length,
+    `Hint: ${iq.rewrittenHints.audience}`
+  );
+  record(
+    "input-assistant: AstroDating rewrittenHints.proofNeeded has 2-4 entries",
+    iq.rewrittenHints.proofNeeded.length >= 2 &&
+      iq.rewrittenHints.proofNeeded.length <= 4
+  );
+  record(
+    "input-assistant: AstroDating score is an integer in [0,100]",
+    Number.isInteger(iq.score) && iq.score >= 0 && iq.score <= 100,
+    `Got ${iq.score}`
+  );
+  record(
+    "input-assistant: AstroDating status matches the score band",
+    (iq.score >= 75 && iq.status === "strong") ||
+      (iq.score >= 40 && iq.score < 75 && iq.status === "okay") ||
+      (iq.score < 40 && iq.status === "weak")
+  );
+}
+
+// Weak fixture: empty audience, empty pain, generic differentiator,
+// missing competitors → score < 40, status "weak", multiple warnings.
+{
+  const weakInput: ProductInput = {
+    name: "Generic",
+    category: "app",
+    description: "An app.",
+    price: "$9/month",
+    businessModel: "subscription",
+    audience: "everyone",
+    audiencePain: "",
+    competitors: "",
+    differentiator: "best app",
+    goal: "Increase signups across November and December",
+    awareness: "solution-aware",
+    sophistication: "skeptical-market",
+  };
+  const iq = assessInputQuality(weakInput);
+  record(
+    "input-assistant: weak fixture scores below 40",
+    iq.score < 40,
+    `Got ${iq.score}`
+  );
+  record(
+    "input-assistant: weak fixture status is 'weak'",
+    iq.status === "weak",
+    `Got ${iq.status}`
+  );
+  const kinds = iq.warnings.map((w) => w.kind);
+  record(
+    "input-assistant: weak fixture flags audience-too-generic",
+    kinds.includes("audience-too-generic"),
+    `Got: ${kinds.join(", ")}`
+  );
+  record(
+    "input-assistant: weak fixture flags pain-too-vague",
+    kinds.includes("pain-too-vague"),
+    `Got: ${kinds.join(", ")}`
+  );
+  record(
+    "input-assistant: weak fixture flags differentiator-too-generic",
+    kinds.includes("differentiator-too-generic"),
+    `Got: ${kinds.join(", ")}`
+  );
+  record(
+    "input-assistant: weak fixture flags competitor-missing",
+    kinds.includes("competitor-missing"),
+    `Got: ${kinds.join(", ")}`
+  );
+}
+
+// Determinism: same input → same inputQuality.
+{
+  const q1 = assessInputQuality(ASTRO_DATING_EXAMPLE);
+  const q2 = assessInputQuality(ASTRO_DATING_EXAMPLE);
+  record(
+    "input-assistant: deterministic across calls",
+    JSON.stringify(q1) === JSON.stringify(q2)
+  );
+}
+
+// ---- Proof Asset Planner --------------------------------------------------
+
+{
+  const plan = a.proofAssetPlan;
+  record(
+    "proof-asset-planner: AstroDating priorityAssets length >= 4",
+    plan.priorityAssets.length >= 4,
+    `Got ${plan.priorityAssets.length}`
+  );
+  record(
+    "proof-asset-planner: AstroDating minimumProofSet length >= 2",
+    plan.minimumProofSet.length >= 2,
+    `Got ${plan.minimumProofSet.length}`
+  );
+  // AstroDating-shaped assets must reference screenshots + demo-video
+  // (the canonical proof shape for a subscription dating product).
+  const types = plan.priorityAssets.map((p) => p.type);
+  record(
+    "proof-asset-planner: AstroDating plan includes a screenshot",
+    types.includes("screenshot"),
+    `Got: ${types.join(", ")}`
+  );
+  record(
+    "proof-asset-planner: AstroDating plan includes a demo-video",
+    types.includes("demo-video"),
+    `Got: ${types.join(", ")}`
+  );
+  // At least one asset's whereToUse mentions landing-hero or video-9-16.
+  const hasGoodSurface = plan.priorityAssets.some((p) =>
+    p.whereToUse.some((w) => /landing-hero|video-9-16|static-1-1/.test(w))
+  );
+  record(
+    "proof-asset-planner: AstroDating assets reference real surfaces",
+    hasGoodSurface
+  );
+  // Readiness score < 100 and >= 0.
+  record(
+    "proof-asset-planner: AstroDating proofReadinessScore in [0,100]",
+    plan.proofReadinessScore >= 0 && plan.proofReadinessScore <= 100
+  );
+  record(
+    "proof-asset-planner: AstroDating proofReadinessScore is an integer",
+    Number.isInteger(plan.proofReadinessScore)
+  );
+  // missingBeforeSpend is the same length as minimumProofSet (MVP: nothing captured).
+  record(
+    "proof-asset-planner: AstroDating missingBeforeSpend mirrors minimumProofSet for MVP",
+    plan.missingBeforeSpend.length === plan.minimumProofSet.length
+  );
+  // Every priorityAsset has a non-empty title + capture + whyItMatters.
+  const badAsset = plan.priorityAssets.find(
+    (p) => !p.title || !p.captureInstructions || !p.whyItMatters
+  );
+  record(
+    "proof-asset-planner: every AstroDating asset has title + why + capture",
+    !badAsset
+  );
+}
+
+// Determinism: same input → same proofAssetPlan.
+{
+  const p1 = buildProofAssetPlan({
+    input: ASTRO_DATING_EXAMPLE,
+    audienceAvatars: a.audienceAvatars,
+    adConceptCards: a.adConceptCards,
+    offers: a.offers,
+    diagnosis: a.diagnosis,
+  });
+  const p2 = buildProofAssetPlan({
+    input: ASTRO_DATING_EXAMPLE,
+    audienceAvatars: a.audienceAvatars,
+    adConceptCards: a.adConceptCards,
+    offers: a.offers,
+    diagnosis: a.diagnosis,
+  });
+  record(
+    "proof-asset-planner: deterministic across calls",
+    JSON.stringify(p1) === JSON.stringify(p2)
+  );
+}
+
+// ---- Skeptical-market + no proof → journey warning ----
+{
+  const skepticalInput: ProductInput = {
+    ...ASTRO_DATING_EXAMPLE,
+    sophistication: "skeptical-market",
+    awareness: "problem-aware",
+  };
+  const s = buildStrategy(skepticalInput);
+  record(
+    "proof-asset-planner: skeptical input produces must-have assets",
+    s.proofAssetPlan.minimumProofSet.length >= 2,
+    `Got ${s.proofAssetPlan.minimumProofSet.length}`
+  );
+  // journeyStatus.warnings includes a creative-kind warning for proof
+  // readiness when the readiness score is below 50.
+  if (s.proofAssetPlan.proofReadinessScore < 50) {
+    const hasCreativeWarning = s.journeyStatus.warnings.some(
+      (w) => w.kind === "creative" && /proof readiness/i.test(w.message)
+    );
+    record(
+      "proof-asset-planner: skeptical + low readiness → journeyStatus has proof warning",
+      hasCreativeWarning,
+      `Warnings: ${s.journeyStatus.warnings.map((w) => w.kind + ":" + w.message).join(" | ")}`
+    );
+  } else {
+    record(
+      "proof-asset-planner: skeptical readiness above threshold — no warning needed",
+      true
+    );
+  }
+}
+
+// ---- Export brief contains both new sections ----
+for (const { name, strategy } of fixtures) {
+  record(
+    `export brief: ${name} contains the Input Assistant section`,
+    strategy.exportBrief.includes("## Input Assistant")
+  );
+  record(
+    `export brief: ${name} contains the Proof Asset Plan section`,
+    strategy.exportBrief.includes("## Proof Asset Plan")
+  );
+}
+
+// ---- buildStrategy still deterministic over the new fields ----
+{
+  const s1 = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const s2 = buildStrategy(ASTRO_DATING_EXAMPLE);
+  record(
+    "input + proof: buildStrategy.inputQuality is deterministic",
+    JSON.stringify(s1.inputQuality) === JSON.stringify(s2.inputQuality)
+  );
+  record(
+    "input + proof: buildStrategy.proofAssetPlan is deterministic",
+    JSON.stringify(s1.proofAssetPlan) === JSON.stringify(s2.proofAssetPlan)
   );
 }
 

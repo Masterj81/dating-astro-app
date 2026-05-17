@@ -23,6 +23,11 @@ import type {
   CtaVariant,
   EditorHandoff,
   GenericFlag,
+  InputQuality,
+  InputSuggestion,
+  InputWarning,
+  PlannedProofAsset,
+  ProofAssetPlan,
   HookCritique,
   HookFlag,
   HookLibrary,
@@ -78,6 +83,7 @@ type Tab =
   | "briefs"
   | "shots"
   | "launch"
+  | "proof"
   | "landing"
   | "store"
   | "experiments"
@@ -100,6 +106,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "briefs", label: "Briefs" },
   { id: "shots", label: "Shots" },
   { id: "launch", label: "Launch readiness" },
+  { id: "proof", label: "Proof" },
   { id: "landing", label: "Landing" },
   { id: "store", label: "App store" },
   { id: "experiments", label: "Experiments" },
@@ -154,7 +161,14 @@ export function StrategyView({ input, strategy, hasMeaningfulInput }: Props) {
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-6 md:px-6">
-        {tab === "score" && <ScoreTab score={strategy.score} flags={strategy.genericFlags} />}
+        {tab === "score" && (
+          <ScoreTab
+            score={strategy.score}
+            flags={strategy.genericFlags}
+            inputQuality={strategy.inputQuality}
+            input={input}
+          />
+        )}
         {tab === "positioning" && <PositioningTab strategy={strategy} />}
         {tab === "awareness" && (
           <AwarenessTab strategy={strategy} input={input} />
@@ -168,6 +182,7 @@ export function StrategyView({ input, strategy, hasMeaningfulInput }: Props) {
         {tab === "briefs" && <BriefsTab strategy={strategy} />}
         {tab === "shots" && <ShotsTab strategy={strategy} />}
         {tab === "launch" && <LaunchTab strategy={strategy} input={input} />}
+        {tab === "proof" && <ProofTab plan={strategy.proofAssetPlan} />}
         {tab === "landing" && <LandingTab strategy={strategy} />}
         {tab === "store" && <StoreTab strategy={strategy} />}
         {tab === "experiments" && <ExperimentsTab strategy={strategy} />}
@@ -254,9 +269,21 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 // ---------------- Score tab ----------------
 
-function ScoreTab({ score, flags }: { score: StrategyScore; flags: GenericFlag[] }) {
+function ScoreTab({
+  score,
+  flags,
+  inputQuality,
+  input,
+}: {
+  score: StrategyScore;
+  flags: GenericFlag[];
+  inputQuality: InputQuality;
+  input: ProductInput;
+}) {
   return (
     <div className="flex flex-col gap-5">
+      <InputAssistantBlock quality={inputQuality} input={input} />
+
       <div className="hairline rounded-lg bg-ink-900 p-5">
         <p className="text-xxs uppercase tracking-wide text-ink-400">Overall</p>
         <p className="mt-1 text-3xl font-semibold text-ink-50">
@@ -327,6 +354,270 @@ function DimensionCard({ dim }: { dim: ScoreDimension }) {
         <span className="text-ink-300">Suggestion: </span>
         {dim.suggestion}
       </p>
+    </div>
+  );
+}
+
+function InputAssistantBlock({
+  quality,
+  input,
+}: {
+  quality: InputQuality;
+  input: ProductInput;
+}) {
+  const tone =
+    quality.status === "strong"
+      ? "border-emerald-500/40 text-emerald-300"
+      : quality.status === "okay"
+      ? "border-amber-500/40 text-amber-300"
+      : "border-rose-500/40 text-rose-300";
+  return (
+    <div className="flex flex-col gap-3">
+      <SectionTitle>Input Assistant</SectionTitle>
+      <p className="text-xs text-ink-400">
+        Quality assessment of the raw inputs. Tighten the flagged fields
+        and the strategy below sharpens immediately.
+      </p>
+      <div className="hairline rounded-lg bg-ink-900 p-4">
+        <div className="flex flex-wrap items-baseline gap-3">
+          <p className="text-3xl font-semibold text-ink-50">
+            {quality.score}
+            <span className="ml-1 text-base text-ink-400">/100</span>
+          </p>
+          <span
+            className={`rounded-sm border bg-ink-900 px-2 py-0.5 text-xs ${tone}`}
+          >
+            {quality.status}
+          </span>
+          <Tag>
+            {quality.warnings.length} warning
+            {quality.warnings.length === 1 ? "" : "s"}
+          </Tag>
+          <Tag>
+            {quality.suggestions.length} suggestion
+            {quality.suggestions.length === 1 ? "" : "s"}
+          </Tag>
+        </div>
+      </div>
+      {quality.warnings.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          {quality.warnings.map((w, i) => (
+            <InputWarningRow key={`iw-${i}`} warning={w} />
+          ))}
+        </div>
+      ) : (
+        <div className="hairline rounded-lg bg-ink-900 p-3 text-xs text-emerald-300">
+          No input warnings.
+        </div>
+      )}
+      {quality.suggestions.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <p className="text-xxs uppercase tracking-wide text-ink-400">
+            Per-field suggestions
+          </p>
+          {quality.suggestions.map((s, i) => (
+            <InputSuggestionRow key={`is-${i}`} suggestion={s} />
+          ))}
+        </div>
+      ) : null}
+      <RewrittenHintsTable hints={quality.rewrittenHints} input={input} />
+    </div>
+  );
+}
+
+function InputWarningRow({ warning }: { warning: InputWarning }) {
+  const sev =
+    warning.severity === "blocker"
+      ? "border-rose-500/40 text-rose-300"
+      : "border-amber-500/40 text-amber-300";
+  return (
+    <div className="hairline rounded-lg bg-ink-900 p-3">
+      <div className="flex flex-wrap items-baseline gap-2">
+        <span
+          className={`rounded-sm border bg-ink-900 px-2 py-0.5 text-xxs ${sev}`}
+        >
+          {warning.kind}
+        </span>
+        <Tag>{warning.field}</Tag>
+        <span className="text-xxs uppercase tracking-wide text-ink-400">
+          {warning.severity}
+        </span>
+      </div>
+      <p className="mt-2 text-sm text-ink-100">{warning.message}</p>
+      <p className="mt-1 text-xs text-ink-300">
+        <span className="text-ink-400">Fix: </span>
+        {warning.fix}
+      </p>
+    </div>
+  );
+}
+
+function InputSuggestionRow({ suggestion }: { suggestion: InputSuggestion }) {
+  return (
+    <div className="hairline rounded-lg bg-ink-900 p-3">
+      <div className="flex flex-wrap items-baseline gap-2">
+        <Tag>{suggestion.field}</Tag>
+      </div>
+      <p className="mt-2 text-sm text-ink-100">{suggestion.suggestion}</p>
+      <p className="mt-1 text-xs text-ink-400">{suggestion.rationale}</p>
+    </div>
+  );
+}
+
+function RewrittenHintsTable({
+  hints,
+  input,
+}: {
+  hints: InputQuality["rewrittenHints"];
+  input: ProductInput;
+}) {
+  const rows: { label: string; you: string; bigAd: string }[] = [
+    { label: "Audience", you: input.audience || "—", bigAd: hints.audience || "—" },
+    { label: "Core pain", you: input.audiencePain || "—", bigAd: hints.corePain || "—" },
+    { label: "Differentiator", you: input.differentiator || "—", bigAd: hints.differentiator || "—" },
+    { label: "Goal", you: input.goal || "—", bigAd: hints.goal || "—" },
+  ];
+  return (
+    <div className="hairline rounded-lg bg-ink-900 p-4">
+      <p className="text-xxs uppercase tracking-wide text-ink-400">
+        Rewritten hints
+      </p>
+      <p className="mt-2 text-xs text-ink-400">
+        Compact comparison: what you wrote vs what BigAd suggests.
+      </p>
+      <div className="mt-3 flex flex-col gap-2">
+        {rows.map((r) => (
+          <div key={r.label} className="flex flex-col gap-1 border-t border-ink-800 pt-2 first:border-t-0 first:pt-0">
+            <p className="text-xxs uppercase tracking-wide text-ink-400">
+              {r.label}
+            </p>
+            <p className="text-xs text-ink-300">
+              <span className="text-ink-500">You: </span>
+              {r.you}
+            </p>
+            <p className="text-xs text-ink-100">
+              <span className="text-ink-400">BigAd: </span>
+              {r.bigAd}
+            </p>
+          </div>
+        ))}
+        {hints.proofNeeded.length > 0 ? (
+          <div className="flex flex-col gap-1 border-t border-ink-800 pt-2">
+            <p className="text-xxs uppercase tracking-wide text-ink-400">
+              Proof types needed
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {hints.proofNeeded.map((p) => (
+                <Tag key={p}>{p}</Tag>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ProofTab({ plan }: { plan: ProofAssetPlan }) {
+  const tone =
+    plan.proofReadinessScore >= 70
+      ? "border-emerald-500/40 text-emerald-300"
+      : plan.proofReadinessScore >= 40
+      ? "border-amber-500/40 text-amber-300"
+      : "border-rose-500/40 text-rose-300";
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="hairline rounded-lg bg-ink-900 p-5">
+        <p className="text-xxs uppercase tracking-wide text-ink-400">
+          Proof readiness
+        </p>
+        <div className="mt-2 flex flex-wrap items-baseline gap-3">
+          <p className="text-3xl font-semibold text-ink-50">
+            {plan.proofReadinessScore}
+            <span className="ml-1 text-base text-ink-400">/100</span>
+          </p>
+          <span
+            className={`rounded-sm border bg-ink-900 px-2 py-0.5 text-xs ${tone}`}
+          >
+            {plan.proofReadinessScore >= 70
+              ? "ready"
+              : plan.proofReadinessScore >= 40
+              ? "almost"
+              : "not-ready"}
+          </span>
+          <Tag>
+            {plan.minimumProofSet.length} must-have
+            {plan.minimumProofSet.length === 1 ? "" : "s"}
+          </Tag>
+        </div>
+        <p className="mt-3 text-xs text-ink-400">
+          Starting score, assuming nothing has been captured yet. Capture
+          the must-haves below and the score will move.
+        </p>
+      </div>
+
+      {plan.missingBeforeSpend.length > 0 ? (
+        <div className="hairline rounded-lg border border-rose-500/20 bg-ink-900 p-4">
+          <p className="text-xs font-medium text-rose-300">
+            These {plan.missingBeforeSpend.length} must-have proof
+            {plan.missingBeforeSpend.length === 1 ? "" : "s"} are missing
+            before you spend.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1">
+            {plan.missingBeforeSpend.map((id) => (
+              <Tag key={id}>{id}</Tag>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <SectionTitle>Asset plan</SectionTitle>
+      <div className="flex flex-col gap-3">
+        {plan.priorityAssets.map((p) => (
+          <ProofAssetCard key={p.id} asset={p} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProofAssetCard({ asset }: { asset: PlannedProofAsset }) {
+  const tone =
+    asset.priority === "must-have"
+      ? "border-rose-500/40 text-rose-300"
+      : asset.priority === "should-have"
+      ? "border-amber-500/40 text-amber-300"
+      : "border-ink-600 text-ink-300";
+  return (
+    <div className="hairline rounded-lg bg-ink-900 p-4">
+      <div className="flex flex-wrap items-baseline gap-2">
+        <span
+          className={`rounded-sm border bg-ink-900 px-2 py-0.5 text-xxs ${tone}`}
+        >
+          {asset.priority}
+        </span>
+        <Tag>{asset.type}</Tag>
+        <Tag>impact {asset.readinessImpact}</Tag>
+        <p className="text-sm font-medium text-ink-50">{asset.title}</p>
+      </div>
+      <p className="mt-2 text-xs text-ink-300">
+        <span className="text-ink-400">Why it matters: </span>
+        {asset.whyItMatters}
+      </p>
+      <p className="mt-2 text-xs text-ink-300">
+        <span className="text-ink-400">How to capture: </span>
+        {asset.captureInstructions}
+      </p>
+      <div className="mt-2 flex flex-wrap gap-1">
+        {asset.whereToUse.map((w) => (
+          <Tag key={w}>{w}</Tag>
+        ))}
+      </div>
+      {asset.relatedObjection ? (
+        <p className="mt-2 text-xxs text-ink-400">
+          Addresses objection: {asset.relatedObjection}
+        </p>
+      ) : null}
     </div>
   );
 }

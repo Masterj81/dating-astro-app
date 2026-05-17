@@ -754,6 +754,80 @@ export function generateExportBrief(
     lines.push("");
   }
 
+  // Input Assistant — quality assessment of the raw inputs.
+  section(lines, "Input Assistant");
+  const iq = strategy.inputQuality;
+  lines.push(
+    `Score: **${iq.score}/100** — status: **${inputQualityStatusLabel(iq.status)}**. Warnings: ${iq.warnings.length}. Suggestions: ${iq.suggestions.length}.`
+  );
+  lines.push("");
+  if (iq.warnings.length > 0) {
+    lines.push(`| Kind | Field | Severity | Message | Fix |`);
+    lines.push(`|------|-------|----------|---------|-----|`);
+    for (const w of iq.warnings) {
+      lines.push(
+        `| ${w.kind} | ${w.field} | ${w.severity} | ${oneLine(w.message)} | ${oneLine(w.fix)} |`
+      );
+    }
+    lines.push("");
+  } else {
+    lines.push("_No input warnings._");
+    lines.push("");
+  }
+  if (iq.suggestions.length > 0) {
+    lines.push(`**Suggestions:**`);
+    lines.push("");
+    lines.push(`| Field | Suggestion | Rationale |`);
+    lines.push(`|-------|------------|-----------|`);
+    for (const s of iq.suggestions) {
+      lines.push(
+        `| ${s.field} | ${oneLine(s.suggestion)} | ${oneLine(s.rationale)} |`
+      );
+    }
+    lines.push("");
+  }
+  lines.push(`**Rewritten hints:**`);
+  lines.push("");
+  lines.push(`- **You wrote audience:** ${input.audience || "—"}`);
+  lines.push(`- **BigAd suggests:** ${iq.rewrittenHints.audience || "—"}`);
+  lines.push(`- **You wrote core pain:** ${input.audiencePain || "—"}`);
+  lines.push(`- **BigAd suggests:** ${iq.rewrittenHints.corePain || "—"}`);
+  lines.push(`- **You wrote differentiator:** ${input.differentiator || "—"}`);
+  lines.push(`- **BigAd suggests:** ${iq.rewrittenHints.differentiator || "—"}`);
+  lines.push(`- **You wrote goal:** ${input.goal || "—"}`);
+  lines.push(`- **BigAd suggests:** ${iq.rewrittenHints.goal || "—"}`);
+  lines.push(
+    `- **Proof types this product needs:** ${iq.rewrittenHints.proofNeeded.join(", ") || "—"}`
+  );
+  lines.push("");
+
+  // Proof Asset Plan.
+  section(lines, "Proof Asset Plan");
+  const pap = strategy.proofAssetPlan;
+  lines.push(
+    `Proof readiness: **${pap.proofReadinessScore}/100**. Minimum proof set: ${pap.minimumProofSet.length} must-have asset${pap.minimumProofSet.length === 1 ? "" : "s"}. Missing before spend: ${pap.missingBeforeSpend.length}.`
+  );
+  lines.push("");
+  if (pap.missingBeforeSpend.length > 0) {
+    lines.push(
+      `**Missing before spend:** ${pap.missingBeforeSpend.join(", ")}.`
+    );
+    lines.push("");
+  }
+  if (pap.priorityAssets.length > 0) {
+    lines.push(`| Priority | Type | Title | Why | Capture | Where | Objection | Impact |`);
+    lines.push(`|----------|------|-------|-----|---------|-------|-----------|--------|`);
+    for (const p of pap.priorityAssets) {
+      lines.push(
+        `| ${p.priority} | ${p.type} | ${oneLine(p.title)} | ${oneLine(p.whyItMatters)} | ${oneLine(p.captureInstructions)} | ${p.whereToUse.join("; ")} | ${oneLine(p.relatedObjection ?? "—")} | ${p.readinessImpact} |`
+      );
+    }
+    lines.push("");
+  } else {
+    lines.push("_No proof assets planned._");
+    lines.push("");
+  }
+
   // Copy quality flags — emitted by the copy-normalize validator.
   // Always render the section header so tests can confirm coverage; the
   // body says "clean" when there are no issues.
@@ -1047,6 +1121,16 @@ function hookPatternLabel(p: string): string {
       mistake: "Mistake",
       "before-after": "Before-after",
     }[p] ?? p
+  );
+}
+
+function inputQualityStatusLabel(status: string): string {
+  return (
+    {
+      weak: "Weak",
+      okay: "Okay",
+      strong: "Strong",
+    }[status] ?? status
   );
 }
 

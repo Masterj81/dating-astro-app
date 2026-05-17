@@ -119,6 +119,14 @@ The Tracking Readiness check structure is exposed as `TrackingReadinessCheck` / 
 
 `buildAdConceptCards(args)` produces 3-6 concept cards covering different (avatar × pattern × offer) combinations. Each card carries a target avatar id, a hook drawn from the library, a one-sentence promise, a proof angle keyed off the avatar's proof needs, an offer tie-in referencing one of the recommended offer kinds, a designer-facing visual idea, 2-4 format fits, a test hypothesis, and a next-variant suggestion that names one of the five Variant Spinner axes. The Ads tab surfaces these above the Hook Critic / Variant Spinner / CTA Bank sections so the operator picks a concept before drilling into variants.
 
+## Input Assistant
+
+`assessInputQuality(input)` reads the raw `ProductInput` and emits a deterministic quality assessment: a 0-100 score, a `weak` / `okay` / `strong` status, a typed list of warnings (audience too long, pain too vague, differentiator too generic, goal-as-promise, missing offer context, no proof for skeptical market, and more) each with a concrete fix, per-field suggestions, and a `rewrittenHints` block that proposes sharper values for `audience`, `corePain`, `differentiator`, `goal`, plus the 2-4 proof types this product needs. The Score tab surfaces the assessment inline so the operator can tighten the inputs before reading any generated copy.
+
+## Proof Asset Planner
+
+`buildProofAssetPlan({ input, audienceAvatars, adConceptCards, offers, diagnosis })` emits a concrete, ranked plan of 4-10 proof assets the operator should capture before spend. Each asset carries a priority (`must-have` / `should-have` / `nice-to-have`), a typed proof shape (screenshot, demo-video, customer-quote, before-after, case-study, app-store-review, founder-story), actionable capture instructions, the surfaces it belongs on (landing-hero, static-1-1, video-9-16, store-listing, …), the avatar objection it addresses, and a `readinessImpact` score. The Proof tab surfaces the plan, a `proofReadinessScore`, and a "missing before spend" list. Journey Status raises a creative-kind warning when the score is below 50 and the avatar mix reads as skeptical or mature.
+
 ## Running it
 
 ```bash
@@ -229,7 +237,7 @@ BigAd/
 │   └── types/
 │       └── strategy.ts         Shared TypeScript types
 ├── scripts/
-│   └── test-logic.ts           `npm run test:logic` — 661 checks
+│   └── test-logic.ts           `npm run test:logic` — 696 checks
 ├── public/
 ├── next.config.ts
 ├── tailwind.config.ts

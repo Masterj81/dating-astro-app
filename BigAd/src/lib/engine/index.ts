@@ -36,6 +36,8 @@ import { buildHookLibrary } from "./hook-library";
 import { buildAdConceptCards } from "./ad-concept-cards";
 import { generateExportBrief } from "./export-brief";
 import { deriveCopyLabels, checkCopyIssues } from "./copy-normalize";
+import { assessInputQuality } from "./input-assistant";
+import { buildProofAssetPlan } from "./proof-asset-planner";
 
 // buildStrategy — deterministic local strategy generator. No API calls.
 // Future: swap in an LLM adapter (see src/lib/llm.ts) per-section.
@@ -94,18 +96,6 @@ export function buildStrategy(input: ProductInput): Strategy {
     );
   });
 
-  // Journey status is computed last because it synthesises everything above.
-  const journeyStatus = buildJourneyStatus({
-    trackingReadiness,
-    kpiLadder,
-    kpiDiagnosis,
-    adReview,
-    creatorBriefs,
-    shotLists,
-    videoScripts,
-    variantSets,
-  });
-
   // V6 — H2 execution modules. Order matters: CTA bank first, static
   // briefs pull from the CTA bank, QA reads both, handoffs read all of
   // the above plus the applied reviews.
@@ -150,6 +140,35 @@ export function buildStrategy(input: ProductInput): Strategy {
     labels,
   });
 
+  // Input Assistant — assesses the raw ProductInput. Independent of
+  // every downstream module so it can run early or late.
+  const inputQuality = assessInputQuality(input);
+
+  // Proof Asset Planner — emits a concrete plan of proof assets the
+  // operator should capture. Reads avatars + concepts + offers and
+  // (optionally) the diagnosis missingProof signal.
+  const proofAssetPlan = buildProofAssetPlan({
+    input,
+    audienceAvatars,
+    adConceptCards,
+    offers,
+    diagnosis: diagnoseOffer(input),
+  });
+
+  // Journey status is computed last because it synthesises everything above.
+  const journeyStatus = buildJourneyStatus({
+    trackingReadiness,
+    kpiLadder,
+    kpiDiagnosis,
+    adReview,
+    creatorBriefs,
+    shotLists,
+    videoScripts,
+    variantSets,
+    proofAssetPlan,
+    audienceAvatars,
+  });
+
   const partial: Omit<Strategy, "genericFlags" | "copyIssues" | "exportBrief"> = {
     positioning,
     awarenessNotes,
@@ -187,6 +206,8 @@ export function buildStrategy(input: ProductInput): Strategy {
     audienceAvatars,
     hookLibrary,
     adConceptCards,
+    inputQuality,
+    proofAssetPlan,
   };
 
   // Generic-copy guard runs against the strategy we just produced. If
@@ -295,3 +316,5 @@ export {
   toShortNounPhrase,
 } from "./copy-normalize";
 export type { CopyLabels } from "./copy-normalize";
+export { assessInputQuality } from "./input-assistant";
+export { buildProofAssetPlan } from "./proof-asset-planner";

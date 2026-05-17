@@ -333,7 +333,91 @@ export interface Strategy {
   // Empty array when the strategy passes every anti-bad-copy rule.
   copyIssues: CopyIssue[];
 
+  // Input Assistant — quality assessment of the raw ProductInput.
+  inputQuality: InputQuality;
+
+  // Proof Asset Planner — concrete plan of proof assets to capture.
+  proofAssetPlan: ProofAssetPlan;
+
   exportBrief: string;
+}
+
+// ---- Input Assistant types ----------------------------------------------
+
+export type InputWarningKind =
+  | "audience-too-long"
+  | "audience-too-generic"
+  | "pain-too-long"
+  | "pain-too-vague"
+  | "differentiator-too-generic"
+  | "goal-as-promise"
+  | "category-duplicated"
+  | "competitor-missing"
+  | "businessmodel-price-incoherent"
+  | "missing-offercontext-cogs"
+  | "missing-offercontext-margin"
+  | "missing-offercontext-aov"
+  | "missing-offercontext-roas"
+  | "no-proof-for-skeptical-market";
+
+export interface InputWarning {
+  kind: InputWarningKind;
+  field: string;              // which ProductInput field it concerns
+  severity: "warning" | "blocker";
+  message: string;            // BigAd voice, one sentence
+  fix: string;                // concrete fix, one sentence
+}
+
+export interface InputSuggestion {
+  field: string;
+  suggestion: string;         // a concrete rewrite suggestion
+  rationale: string;          // 1 short sentence
+}
+
+export interface RewrittenInputHints {
+  audience: string;           // shortened, sharper
+  corePain: string;
+  differentiator: string;
+  goal: string;               // reframed customer-side
+  proofNeeded: string[];      // 2-4 concrete proof types this product needs
+}
+
+export interface InputQuality {
+  score: number;              // 0-100 integer
+  status: "weak" | "okay" | "strong";
+  warnings: InputWarning[];
+  suggestions: InputSuggestion[];
+  rewrittenHints: RewrittenInputHints;
+}
+
+// ---- Proof Asset Planner types ------------------------------------------
+
+export type ProofAssetType =
+  | "screenshot"
+  | "demo-video"
+  | "customer-quote"
+  | "before-after"
+  | "case-study"
+  | "app-store-review"
+  | "founder-story";
+
+export interface PlannedProofAsset {
+  id: string;                 // "proof-1", etc.
+  type: ProofAssetType;
+  priority: "must-have" | "should-have" | "nice-to-have";
+  title: string;              // short title, BigAd voice
+  whyItMatters: string;       // 1 sentence
+  captureInstructions: string; // 1-2 sentences, actionable
+  whereToUse: string[];       // e.g. ["landing-hero", "static-1-1", "video-9-16", "store-listing"]
+  relatedObjection?: string;  // which avatar objection it addresses (objection.statement)
+  readinessImpact: number;    // 1-20, score contribution if captured
+}
+
+export interface ProofAssetPlan {
+  priorityAssets: PlannedProofAsset[];  // 4-10 ranked
+  minimumProofSet: string[];            // ids of must-haves
+  missingBeforeSpend: string[];         // must-haves that the user hasn't indicated they have
+  proofReadinessScore: number;          // 0-100 (sum of readinessImpact of available, clamped)
 }
 
 // ---- Copy normalization issue type (validator output) ---------------------

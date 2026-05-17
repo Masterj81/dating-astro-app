@@ -6,12 +6,14 @@
 
 import type {
   AdReviewChecklist,
+  AudienceAvatar,
   CreatorBrief,
   JourneyBlocker,
   JourneyStage,
   JourneyStatus,
   KpiDiagnosis,
   KpiTargetLadder,
+  ProofAssetPlan,
   ShotList,
   TrackingReadinessScore,
   VariantSet,
@@ -27,6 +29,10 @@ export interface JourneyStatusArgs {
   shotLists: ShotList[];
   videoScripts: VideoScript[];
   variantSets: VariantSet[];
+  // Optional — when provided, journey-status raises a creative warning
+  // when proof readiness is low against a skeptical / mature mix.
+  proofAssetPlan?: ProofAssetPlan;
+  audienceAvatars?: AudienceAvatar[];
 }
 
 // Ad-review weight floor for "review-passed". The shipped checklist has
@@ -107,6 +113,20 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     });
   }
 
+  // Proof-readiness sanity — emitted only when the proof planner ran
+  // and the avatar mix reads as skeptical or mature.
+  if (
+    args.proofAssetPlan &&
+    args.proofAssetPlan.proofReadinessScore < 50 &&
+    isSkepticalOrMatureMix(args.audienceAvatars)
+  ) {
+    warnings.push({
+      kind: "creative",
+      severity: "warning",
+      message: `Proof readiness is below 50 — skeptical/mature audiences need proof before spend.`,
+    });
+  }
+
   // Stage selection — earliest match wins.
   const stage = pickStage({
     creatorBriefsCount: creatorBriefs.length,
@@ -127,6 +147,20 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     warnings,
     nextStep,
   };
+}
+
+function isSkepticalOrMatureMix(avatars: AudienceAvatar[] | undefined): boolean {
+  if (!avatars || avatars.length === 0) return false;
+  // Detect via the label ("Skeptical optimiser", "Pragmatic operator") or
+  // via a proofNeeded list dominated by case studies / customer quotes.
+  for (const av of avatars) {
+    if (/skeptic|mature|pragmatic/i.test(av.label)) return true;
+    const hardProof = av.proofNeeded.filter((p) =>
+      /(case\s+study|customer\s+quote|demo\s+video|founder)/i.test(p)
+    );
+    if (hardProof.length >= 2) return true;
+  }
+  return false;
 }
 
 function pickStage(args: {

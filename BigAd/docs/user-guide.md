@@ -480,6 +480,31 @@ ou :
 See your compatibility
 ```
 
+## Input Assistant et Proof Asset Plan
+
+Deux nouveaux modules aident a juger la qualite des inputs et la maturite de la
+preuve avant de depenser.
+
+L'`Input Assistant` est integre en haut du tab `Score`. Il lit les inputs bruts
+et emet un score 0-100, des warnings typees (audience trop longue, pain trop
+vague, differentiator trop generique, goal traite comme promesse client,
+champs offerContext manquants, marche sceptique sans preuve nommee) et des
+suggestions de reecriture pour `audience`, `core pain`, `differentiator`,
+`goal`. La section `Rewritten hints` affiche un comparatif "tu as ecrit X" vs
+"BigAd suggere Y" par champ, et liste les 2 a 4 types de preuves dont le
+produit a besoin.
+
+Le tab `Proof` (place apres `Launch readiness`) montre le `Proof readiness
+score` et le plan de capture des assets : screenshots, demo videos, customer
+quotes, before/after, case studies, app-store reviews et founder stories.
+Chaque asset porte une priorite (must-have / should-have / nice-to-have), une
+liste de surfaces ou il sert (landing-hero, static-1-1, video-9-16,
+store-listing...), une instruction de capture concrete, et l'objection avatar
+qu'il adresse. La liste `Missing before spend` regroupe les must-haves a
+capturer avant tout budget. Quand le score est sous 50 et que le mix avatar est
+sceptique ou mature, `Journey Status` ajoute un warning creative pour bloquer
+le go.
+
 ## Maintenance du guide
 
 Quand BigAd ajoute un nouveau module, mets a jour ce guide si le module change
