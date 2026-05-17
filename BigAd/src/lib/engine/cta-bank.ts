@@ -16,6 +16,8 @@ import type {
   OfferRecommendation,
   ProductInput,
 } from "@/types/strategy";
+import type { CopyLabels } from "./copy-normalize";
+import { deriveCopyLabels } from "./copy-normalize";
 
 const STYLES: CtaStyle[] = [
   "direct",
@@ -50,21 +52,25 @@ interface BuildCtx {
   productName: string;
   topOfferKind: string;       // e.g. "free-trial", "guarantee"
   campaign: CampaignType;
+  labels: CopyLabels;
 }
 
 export function buildCtaBank(
   input: ProductInput,
   offers: OfferRecommendation[],
-  campaignType: CampaignType | undefined
+  campaignType: CampaignType | undefined,
+  labels?: CopyLabels
 ): CtaBank {
+  const resolved = labels ?? deriveCopyLabels(input, offers);
   const ctx: BuildCtx = {
     productNoun: nounFromCategory(input.category) || "this",
-    category: input.category || "this category",
-    audience: input.audience || "you",
-    pain: input.audiencePain || "the usual friction",
+    category: resolved.categoryLabel,
+    audience: resolved.audienceLabel,
+    pain: resolved.painLabel,
     productName: input.name || "this product",
     topOfferKind: offers[0]?.kind ?? "",
     campaign: campaignType ?? "always-on",
+    labels: resolved,
   };
 
   const variants: CtaVariant[] = [];

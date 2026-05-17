@@ -15,6 +15,8 @@ import type {
   BusinessModel,
   ProductInput,
 } from "@/types/strategy";
+import { deriveCopyLabels } from "./copy-normalize";
+import type { CopyLabels } from "./copy-normalize";
 
 type PriceTier = "low" | "mid" | "high" | "unknown";
 
@@ -235,11 +237,15 @@ function pickSlots(input: ProductInput, tier: PriceTier): AvatarBlueprint["slot"
   return isCold ? ["aspirant", "skeptic"] : ["skeptic", "aspirant"];
 }
 
-export function buildAudienceAvatars(input: ProductInput): AudienceAvatar[] {
+export function buildAudienceAvatars(
+  input: ProductInput,
+  labels?: CopyLabels
+): AudienceAvatar[] {
+  const resolved = labels ?? deriveCopyLabels(input, []);
   const tier = parsePriceTier(input.price);
   const slots = pickSlots(input, tier);
   return slots.map((slot, i) =>
-    materialiseAvatar(BLUEPRINTS[slot], input, tier, i + 1)
+    materialiseAvatar(BLUEPRINTS[slot], input, tier, i + 1, resolved)
   );
 }
 
@@ -247,22 +253,23 @@ function materialiseAvatar(
   bp: AvatarBlueprint,
   input: ProductInput,
   tier: PriceTier,
-  index: number
+  index: number,
+  L: CopyLabels
 ): AudienceAvatar {
-  const audience = input.audience || "this audience";
-  const pain = input.audiencePain || "the recurring friction";
+  const audience = L.audienceLabel;
+  const pain = L.painLabel;
   const productName = input.name || "this product";
-  const category = input.category || "the category";
-  const differentiator = input.differentiator || "a different mechanism";
+  const category = L.categoryLabel;
+  const differentiator = L.mechanismLabel;
 
   const corePain = buildCorePain(bp, pain, category, audience);
   const desiredOutcome = buildDesiredOutcome(bp, differentiator, audience, productName);
   const trigger = buildTrigger(bp, productName, differentiator, tier);
-  const objections = buildObjections(bp, input, tier);
-  const failedAlternatives = buildFailedAlternatives(bp, input);
+  const objections = buildObjections(bp, input, tier, L);
+  const failedAlternatives = buildFailedAlternatives(bp, input, L);
   const emotionalLanguage = pickEmotionalLanguage(bp, audience);
   const proofNeeded = bp.proofTypes.slice();
-  const channelAngle = parameteriseChannelAngle(bp.channelAngle, input);
+  const channelAngle = parameteriseChannelAngle(bp.channelAngle, input, L);
 
   return {
     id: `avatar-${index}`,
@@ -303,11 +310,11 @@ function buildDesiredOutcome(
   productName: string
 ): string {
   const lensTemplates: Record<AvatarBlueprint["outcomeLens"], string> = {
-    "outcome-relief": `A clear, repeatable relief — they want to stop second-guessing and feel that ${truncate(differentiator, 60)} is doing the work they used to redo manually.`,
-    "outcome-aspiration": `A version of themselves where ${truncate(differentiator, 60)} is just part of how they show up. Not magic — just the new baseline.`,
+    "outcome-relief": `A clear, repeatable relief — they want to stop second-guessing and feel that ${differentiator} is doing the work they used to redo manually.`,
+    "outcome-aspiration": `A version of themselves where ${differentiator} is just part of how they show up. Not magic — just the new baseline.`,
     "outcome-restoration": `The outcome they were promised the first time, this time without the rough edge that made them quit ${productName} or its substitutes.`,
     "outcome-quick": `A fast, obvious win in the first session — close the tab feeling that something already moved.`,
-    "outcome-confidence": `Confidence that they picked the right option, with a defensible answer to "why not the other one?" for themselves and for ${audience}.`,
+    "outcome-confidence": `Confidence that they picked the right option, with a defensible answer to "why not the other one?" for themselves and for ${audience.toLowerCase()}.`,
     "outcome-shared": `A win that lands well with the person they're buying for — the gift converts into a story they get told back.`,
     "outcome-measurable": `A measurable delta they can put in a spreadsheet — hours saved per week, costs cut, or revenue picked up — within a defined window.`,
   };
@@ -321,11 +328,11 @@ function buildTrigger(
   tier: PriceTier
 ): string {
   const triggerByLens: Record<AvatarBlueprint["painLens"], string> = {
-    skeptic: `Seeing one concrete proof clip where ${truncate(differentiator, 50)} is shown working, not described.`,
+    skeptic: `Seeing one concrete proof clip where ${differentiator} is shown working, not described.`,
     aspirational: `A short scene of someone they relate to already living the outcome — ${productName} on screen, no pitch.`,
     regretful: `A change-log moment: a named feature that fixes the exact reason they left last time.`,
-    decisive: `A frame where ${truncate(differentiator, 40)} is visible in the first second — they don't read past the hook.`,
-    comparative: `A clean side-by-side row that shows ${truncate(differentiator, 40)} versus the option they're already comparing to.`,
+    decisive: `A frame where ${differentiator} is visible in the first second — they don't read past the hook.`,
+    comparative: `A clean side-by-side row that shows ${differentiator} versus the option they're already comparing to.`,
     altruistic: `Realising the gift signals attention — the buyer wants to be seen as thoughtful, not just generous.`,
     rational: tier === "high"
       ? `A break-even calculation in plain numbers — payback inside the quarter, not the year.`
@@ -337,31 +344,33 @@ function buildTrigger(
 function buildObjections(
   bp: AvatarBlueprint,
   input: ProductInput,
-  tier: PriceTier
+  tier: PriceTier,
+  L: CopyLabels
 ): AvatarObjection[] {
   // Always take 3-4. We trim slots beyond 4 deterministically by their
   // declared order.
   const wanted = bp.objectionKinds.slice(0, 4);
-  return wanted.map((kind) => makeObjection(kind, bp, input, tier));
+  return wanted.map((kind) => makeObjection(kind, bp, input, tier, L));
 }
 
 function makeObjection(
   kind: AvatarObjectionKind,
   bp: AvatarBlueprint,
   input: ProductInput,
-  tier: PriceTier
+  tier: PriceTier,
+  L: CopyLabels
 ): AvatarObjection {
   const productName = input.name || "this product";
-  const differentiator = input.differentiator || "a different mechanism";
-  const category = input.category || "the category";
-  const pain = input.audiencePain || "the recurring friction";
+  const differentiator = L.mechanismLabel;
+  const category = L.categoryLabel;
+  const pain = L.painLabel;
 
   switch (kind) {
     case "risk":
       return {
         kind,
         statement: `"What if I sign up and it does the same thing every other ${category} product does?"`,
-        reframe: `Open with a 6-second demo of ${truncate(differentiator, 50)} actually working — the demo is the risk-reversal.`,
+        reframe: `Open with a 6-second demo of ${differentiator} actually working — the demo is the risk-reversal.`,
       };
     case "price":
       return {
@@ -376,8 +385,8 @@ function makeObjection(
     case "fit":
       return {
         kind,
-        statement: `"My situation is different — ${truncate(pain, 40)} doesn't show up the way other people describe it."`,
-        reframe: `Use a customer line that mirrors the avatar's exact framing of ${truncate(pain, 40)} — not the generic version.`,
+        statement: `"My situation is different — ${pain} doesn't show up the way other people describe it."`,
+        reframe: `Use a customer line that mirrors the avatar's exact framing of ${pain} — not the generic version.`,
       };
     case "trust":
       return {
@@ -395,7 +404,7 @@ function makeObjection(
       return {
         kind,
         statement: `"It looks like another thing to learn — I already have too many of those."`,
-        reframe: `Show the first 90 seconds of use. If ${truncate(differentiator, 40)} doesn't visibly happen in that clip, the objection wins.`,
+        reframe: `Show the first 90 seconds of use. If ${differentiator} doesn't visibly happen in that clip, the objection wins.`,
       };
     case "social":
       return {
@@ -408,26 +417,23 @@ function makeObjection(
 
 function buildFailedAlternatives(
   bp: AvatarBlueprint,
-  input: ProductInput
+  input: ProductInput,
+  L: CopyLabels
 ): string[] {
-  const category = input.category || "the category";
-  const competitors = input.competitors || "";
+  const category = L.categoryLabel;
   const productName = input.name || "this product";
-  const pain = input.audiencePain || "the recurring friction";
-
-  const namedCompetitor = competitors.split(",").map((c) => c.trim()).filter(Boolean)[0];
+  const pain = L.painLabel;
+  const competitorGroup = L.competitorLabel;
 
   const seedBuilders: Record<typeof bp.failedAlternativesSeeds[number], () => string> = {
     substitute: () =>
-      namedCompetitor
-        ? `Tried ${namedCompetitor} and it solved the surface, not ${truncate(pain, 40)}.`
-        : `Tried another ${category} tool and it solved the surface, not ${truncate(pain, 40)}.`,
+      `Tried ${competitorGroup} and they solved the surface, not ${pain}.`,
     stack: () =>
-      `Stacked two or three free tools together — works for a week, falls apart when ${truncate(pain, 40)} comes back.`,
+      `Stacked two or three free tools together — works for a week, falls apart when ${pain} comes back.`,
     self: () =>
       `Built a manual system in a doc or spreadsheet — it works until the moment they stop maintaining it.`,
     wait: () =>
-      `Waited for a "better time" — months later, ${truncate(pain, 40)} is still on the to-do list.`,
+      `Waited for a "better time" — months later, ${pain} is still on the to-do list.`,
     freebie: () =>
       `Used the free tier of a ${category} product — hit a wall the moment it actually mattered.`,
   };
@@ -443,23 +449,17 @@ function pickEmotionalLanguage(bp: AvatarBlueprint, audience: string): string[] 
   // and ensure 3 minimum by appending an audience-keyed fallback.
   const items = bp.emotionalVocab.slice(0, 6);
   if (items.length >= 3) return items;
-  const filler = `not made for someone like ${truncate(audience, 30)}`;
+  const filler = `not made for ${audience.toLowerCase()}`;
   while (items.length < 3) items.push(filler);
   return items;
 }
 
-function parameteriseChannelAngle(template: string, input: ProductInput): string {
-  // The channel angle is already complete in the blueprint; we add a
-  // trailing reference to the audience so it doesn't read as generic
-  // across two different products.
-  const audience = input.audience || "this audience";
-  return `${template} Frame for ${truncate(audience, 40)}.`;
-}
-
-function truncate(s: string, n: number): string {
-  const t = (s ?? "").trim();
-  if (t.length <= n) return t;
-  return t.slice(0, n - 3).trimEnd() + "...";
+function parameteriseChannelAngle(
+  template: string,
+  input: ProductInput,
+  L: CopyLabels
+): string {
+  return `${template} Frame for ${L.audienceLabel.toLowerCase()}.`;
 }
 
 function capFirst(s: string): string {

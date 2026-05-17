@@ -1,48 +1,43 @@
 import type { ProductInput } from "@/types/strategy";
+import type { CopyLabels } from "./copy-normalize";
+import { deriveCopyLabels } from "./copy-normalize";
 
-// generateHeadlines — produces 10 headline variants spread across
+// generateHeadlines — produces up to 10 headline variants spread across
 // different copy patterns (question, contrast, mechanism, identity, etc).
-// All are built from the input so they reference the audience, pain,
-// differentiator, and category by name.
+// Headlines now use normalised copy labels so they stay short and never
+// dump the full audience sentence into a single line.
 
-export function generateHeadlines(input: ProductInput): string[] {
+export function generateHeadlines(
+  input: ProductInput,
+  labels?: CopyLabels
+): string[] {
   const name = input.name || "Your product";
-  const audience = input.audience || "people who care";
-  const pain = input.audiencePain || "the same old frustration";
-  const differentiator = input.differentiator || "a new approach";
-  const category = input.category || "this category";
+  const L = labels ?? deriveCopyLabels(input, []);
 
-  const painNoun = pain.replace(/\.$/, "");
-  const audienceShort = audience.replace(/\.$/, "");
-  // When the audience description already names the pain (e.g. "people tired
-  // of shallow swiping" + pain "shallow swiping..."), collapse to a shorter
-  // descriptor so headline #1 doesn't double-stack the same idea.
-  const audienceForContrast = audienceContainsPain(audienceShort, painNoun)
-    ? stripPainSuffix(audienceShort, painNoun)
-    : audienceShort;
-
-  return dedupe([
-    // 1. Specific contrast
-    `${capitalize(category)} for ${audienceForContrast} who are done with ${painNoun.toLowerCase()}.`,
+  const lines = [
+    // 1. Specific contrast — uses the short audience + pain labels.
+    `${capitalize(L.categoryLabel)} for ${L.audienceLabel.toLowerCase()} who are done with ${L.painLabel}.`,
     // 2. Question / pattern-interrupt
-    `Why does ${category} still feel like ${painNoun.toLowerCase()}? ${name} answers it differently.`,
+    `Why does ${L.categoryLabel} still feel like ${L.painLabel}? ${name} answers it differently.`,
     // 3. Mechanism reveal
-    `${capitalize(differentiator)} — not more ${category} noise.`,
+    `${capitalize(L.mechanismLabel)} — not more ${L.categoryLabel} noise.`,
     // 4. Identity headline
-    `${capitalize(audienceShort)} who pick ${name} stop competing on the same playing field.`,
+    `${capitalize(L.audienceLabel)} who pick ${name} stop competing on the same playing field.`,
     // 5. Direct promise
-    `Less ${painNoun.toLowerCase()}. More signal. That is ${name}.`,
+    `Less ${L.painLabel}. More ${L.outcomeLabel}. That is ${name}.`,
     // 6. Numbered intrigue
-    `The 1 thing missing from ${category}: ${shortDiff(differentiator)}.`,
+    `The 1 thing missing from ${L.categoryLabel}: ${L.mechanismLabel}.`,
     // 7. Negation + reframe
-    `Not another ${category} app. A way for ${audienceShort} to actually move forward.`,
+    `Not another ${L.categoryLabel}. A way for ${L.audienceLabel.toLowerCase()} to actually move forward.`,
     // 8. Inside-out
-    `${name} doesn't fix ${category}. It rebuilds the part of ${category} that ${audienceShort} actually use.`,
+    `${name} doesn't fix ${L.categoryLabel}. It rebuilds the part of ${L.categoryLabel} ${L.audienceLabel.toLowerCase()} actually use.`,
     // 9. Cost-of-inaction
-    `Every week without ${shortDiff(differentiator)} is another week of ${painNoun.toLowerCase()}.`,
+    `Every week without ${L.mechanismLabel} is another week of ${L.painLabel}.`,
     // 10. "How it works in one line"
-    `${name}: ${differentiator}, made for ${audienceShort}.`,
-  ]).slice(0, 10);
+    `${name}: ${L.mechanismLabel}, made for ${L.audienceLabel.toLowerCase()}.`,
+  ];
+
+  return dedupe(lines).slice(0, 10);
 }
 
 function capitalize(s: string): string {
@@ -50,38 +45,6 @@ function capitalize(s: string): string {
   return s[0].toUpperCase() + s.slice(1);
 }
 
-function shortDiff(diff: string): string {
-  const cleaned = diff.replace(/\.$/, "");
-  const words = cleaned.split(/\s+/);
-  if (words.length <= 6) return cleaned;
-  return words.slice(0, 6).join(" ");
-}
-
 function dedupe(arr: string[]): string[] {
   return Array.from(new Set(arr));
-}
-
-function audienceContainsPain(audience: string, pain: string): boolean {
-  const a = audience.toLowerCase();
-  const tokens = pain
-    .toLowerCase()
-    .split(/\s+/)
-    .filter((t) => t.length > 3);
-  // If 2+ meaningful pain tokens already live in the audience phrase,
-  // we consider the audience already loaded with the pain idea.
-  let hits = 0;
-  for (const t of tokens) {
-    if (a.includes(t)) hits++;
-    if (hits >= 2) return true;
-  }
-  return false;
-}
-
-function stripPainSuffix(audience: string, pain: string): string {
-  // For phrases like "people tired of shallow swiping" we want "people"
-  // back. We strip everything from the first "tired of"/"sick of"/"done with".
-  const m = audience.match(/^(.*?)\s+(tired of|sick of|done with|exhausted by|frustrated with)\b.*$/i);
-  if (m && m[1].trim()) return m[1].trim();
-  // Fallback: keep the audience as-is.
-  return audience;
 }

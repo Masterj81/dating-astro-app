@@ -20,6 +20,8 @@ import type {
   ScriptLineKind,
   VideoScript,
 } from "@/types/strategy";
+import type { CopyLabels } from "./copy-normalize";
+import { deriveCopyLabels } from "./copy-normalize";
 
 interface LineSpec {
   kind: ScriptLineKind;
@@ -32,6 +34,7 @@ interface TemplateCtx {
   brief: CreatorBrief;
   section: CreatorBriefSection;
   sectionIndex: number;
+  labels: CopyLabels;
 }
 
 // Per-section line specs. Two-to-three lines per section; the fractions
@@ -42,13 +45,13 @@ const SECTION_LINE_SPECS: LineSpec[][] = [
     {
       kind: "on-camera",
       fraction: 0.55,
-      template: ({ input }) =>
-        `${capitaliseFirst(stakeWord(input))} — that's the part of ${cat(input)} most people quietly accept.`,
+      template: ({ labels }) =>
+        `${capitaliseFirst(labels.painLabel)} — that's the part of ${labels.categoryLabel} most people quietly accept.`,
     },
     {
       kind: "on-screen-text",
       fraction: 0.3,
-      template: ({ input }) => `${painOverlay(input).toUpperCase()}`,
+      template: ({ labels }) => labels.painLabel.toUpperCase(),
     },
     {
       kind: "sfx",
@@ -61,14 +64,14 @@ const SECTION_LINE_SPECS: LineSpec[][] = [
     {
       kind: "vo",
       fraction: 0.55,
-      template: ({ input }) =>
-        `For ${audience(input)}, it shows up every time ${painPhrase(input)}.`,
+      template: ({ labels }) =>
+        `For ${labels.audienceLabel.toLowerCase()}, it shows up every time ${labels.painLabel} hits.`,
     },
     {
       kind: "on-camera",
       fraction: 0.45,
-      template: ({ input }) =>
-        `Most ${cat(input)} tools paper over it. The cause sits one layer below.`,
+      template: ({ labels }) =>
+        `Most ${labels.categoryLabel} tools paper over it. The cause sits one layer below.`,
     },
   ],
   // 2: solution-or-proof — three lines, vo + on-camera + overlay
@@ -76,20 +79,19 @@ const SECTION_LINE_SPECS: LineSpec[][] = [
     {
       kind: "on-camera",
       fraction: 0.4,
-      template: ({ input, brief }) =>
-        `Here is the shift: ${truncate(input.name || "this", 30)} replaces that with ${truncate(diff(input), 50)}. ${anglePhrase(brief)}`,
+      template: ({ input, brief, labels }) =>
+        `Here is the shift: ${input.name || "this"} replaces that with ${labels.mechanismLabel}. ${anglePhrase(brief)}`,
     },
     {
       kind: "vo",
       fraction: 0.35,
-      template: ({ input }) =>
+      template: () =>
         `One clean demonstration, not a feature list — the result first, the mechanism second.`,
     },
     {
       kind: "on-screen-text",
       fraction: 0.25,
-      template: ({ input }) =>
-        `${truncate(diff(input), 36).toUpperCase()}`,
+      template: ({ labels }) => labels.mechanismLabel.toUpperCase(),
     },
   ],
   // 3: cta — two lines, on-camera + overlay
@@ -97,8 +99,8 @@ const SECTION_LINE_SPECS: LineSpec[][] = [
     {
       kind: "on-camera",
       fraction: 0.6,
-      template: ({ input }) =>
-        `${ctaAsk(input)} — say "${truncate(input.name || "this product", 24)}" so the viewer can recover it from audio alone.`,
+      template: ({ input, labels }) =>
+        `${ctaAsk(input, labels)} — say "${input.name || "this product"}" so the viewer can recover it from audio alone.`,
     },
     {
       kind: "on-screen-text",
@@ -111,12 +113,18 @@ const SECTION_LINE_SPECS: LineSpec[][] = [
 
 export function generateVideoScripts(
   briefs: CreatorBrief[],
-  input: ProductInput
+  input: ProductInput,
+  labels?: CopyLabels
 ): VideoScript[] {
-  return briefs.map((brief) => buildScript(brief, input));
+  const resolved = labels ?? deriveCopyLabels(input, []);
+  return briefs.map((brief) => buildScript(brief, input, resolved));
 }
 
-function buildScript(brief: CreatorBrief, input: ProductInput): VideoScript {
+function buildScript(
+  brief: CreatorBrief,
+  input: ProductInput,
+  labels: CopyLabels
+): VideoScript {
   const lines: ScriptLine[] = [];
   let cursor = 0;
   let lineIndex = 1;
@@ -132,7 +140,7 @@ function buildScript(brief: CreatorBrief, input: ProductInput): VideoScript {
     for (let j = 0; j < specs.length; j++) {
       const spec = specs[j];
       const dur = durations[j];
-      const text = spec.template({ input, brief, section, sectionIndex: i });
+      const text = spec.template({ input, brief, section, sectionIndex: i, labels });
       lines.push({
         index: lineIndex++,
         briefSectionIndex: i,
@@ -181,51 +189,17 @@ function cleanLine(s: string): string {
 
 // ---- Template helpers ----
 
-function stakeWord(input: ProductInput): string {
-  const p = (input.audiencePain || "the friction we know").trim();
-  // Pull the first noun-ish word of length >= 4.
-  const words = p.split(/\s+/).filter((w) => w.length >= 4);
-  return words[0] ?? "friction";
-}
-
-function painOverlay(input: ProductInput): string {
-  const p = (input.audiencePain || "the recurring friction").trim();
-  return truncate(p, 28);
-}
-
-function painPhrase(input: ProductInput): string {
-  return truncate(input.audiencePain || "that moment shows up", 56);
-}
-
-function cat(input: ProductInput): string {
-  return input.category || "this category";
-}
-
-function audience(input: ProductInput): string {
-  return input.audience || "someone in this audience";
-}
-
-function diff(input: ProductInput): string {
-  return input.differentiator || "a different mechanism";
-}
-
 function anglePhrase(brief: CreatorBrief): string {
   const a = brief.forAngle || "";
   if (!a) return "";
-  return `Angle: ${truncate(a, 48)}.`;
+  return `Angle: ${a}.`;
 }
 
-function ctaAsk(input: ProductInput): string {
+function ctaAsk(input: ProductInput, labels: CopyLabels): string {
   const c = input.campaignType ?? "always-on";
-  if (c === "launch") return "Try it today while the launch window is open";
-  if (c === "seasonal") return "Try it this season — the window is finite";
-  return "Try it — one step, no setup";
-}
-
-function truncate(s: string, n: number): string {
-  const t = s.trim();
-  if (t.length <= n) return t;
-  return t.slice(0, n - 3).trimEnd() + "...";
+  if (c === "launch") return `Open the door on ${labels.outcomeLabel} today`;
+  if (c === "seasonal") return `Pick up ${labels.outcomeLabel} this season`;
+  return `Try it — one step toward ${labels.outcomeLabel}`;
 }
 
 function capitaliseFirst(s: string): string {

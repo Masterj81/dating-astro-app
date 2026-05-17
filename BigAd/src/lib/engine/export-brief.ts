@@ -754,7 +754,27 @@ export function generateExportBrief(
     lines.push("");
   }
 
+  // Copy quality flags — emitted by the copy-normalize validator.
+  // Always render the section header so tests can confirm coverage; the
+  // body says "clean" when there are no issues.
+  section(lines, "Copy Quality Flags");
+  if (strategy.copyIssues.length === 0) {
+    lines.push("_No copy-quality issues detected._");
+    lines.push("");
+  } else {
+    for (const i of strategy.copyIssues) {
+      lines.push(
+        `- **${i.kind}** at \`${i.source}\` — ${oneLine(i.text)}`
+      );
+    }
+    lines.push("");
+  }
+
   return lines.join("\n").replace(/\n{3,}/g, "\n\n");
+}
+
+function oneLine(s: string): string {
+  return (s ?? "").replace(/\s+/g, " ").trim();
 }
 
 function section(lines: string[], title: string) {

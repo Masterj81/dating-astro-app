@@ -35,6 +35,7 @@ import { buildAudienceAvatars } from "./audience-avatar";
 import { buildHookLibrary } from "./hook-library";
 import { buildAdConceptCards } from "./ad-concept-cards";
 import { generateExportBrief } from "./export-brief";
+import { deriveCopyLabels, checkCopyIssues } from "./copy-normalize";
 
 // buildStrategy — deterministic local strategy generator. No API calls.
 // Future: swap in an LLM adapter (see src/lib/llm.ts) per-section.
@@ -46,7 +47,10 @@ export function buildStrategy(input: ProductInput): Strategy {
   const centralPromise = generateCentralPromise(input);
   const uniqueMechanism = generateUniqueMechanism(input);
 
-  const objections = baseObjections(input);
+  // baseObjections is built once labels are available so the category
+  // noun in each objection comes from the deduped categoryLabel — never
+  // emits "writing tool tool" or "dating app app".
+  // (labels are computed below; defer.)
 
   const angles = generateAngles(input);
   const rankedAngles = rankAngles(angles);
@@ -56,15 +60,21 @@ export function buildStrategy(input: ProductInput): Strategy {
   const offers = recommendOffers(input);
   const campaignCalendar = buildCalendar(input);
 
+  // Copy normalization layer — derive short noun-phrase labels once and
+  // thread them into every downstream builder that emits customer copy.
+  const labels = deriveCopyLabels(input, offers);
+
+  const objections = baseObjections(input, labels);
+
   // Creator Briefs derive from the ranked angles + offer recommendations,
   // so they run after both. Shot Lists then mirror the briefs 1:1.
   const angleNames = rankedAngles.map((a) => a.name);
-  const creatorBriefs = generateCreatorBriefs(input, angleNames, offers);
+  const creatorBriefs = generateCreatorBriefs(input, angleNames, offers, labels);
   const shotLists = generateShotLists(creatorBriefs, input);
 
   // V5 — Execution H1: line-level scripts and per-brief variant sets.
-  const videoScripts = generateVideoScripts(creatorBriefs, input);
-  const variantSets = generateVariantSets(creatorBriefs, input, offers);
+  const videoScripts = generateVideoScripts(creatorBriefs, input, labels);
+  const variantSets = generateVariantSets(creatorBriefs, input, offers, labels);
 
   // V5 — Ops/Data H1: readiness, KPI ladder, synthetic diagnosis, review.
   const trackingReadiness = assessTrackingReadiness(input);
@@ -99,8 +109,8 @@ export function buildStrategy(input: ProductInput): Strategy {
   // V6 — H2 execution modules. Order matters: CTA bank first, static
   // briefs pull from the CTA bank, QA reads both, handoffs read all of
   // the above plus the applied reviews.
-  const ctaBank = buildCtaBank(input, offers, input.campaignType);
-  const staticBriefs = buildStaticAdBriefs(creatorBriefs, input, ctaBank);
+  const ctaBank = buildCtaBank(input, offers, input.campaignType, labels);
+  const staticBriefs = buildStaticAdBriefs(creatorBriefs, input, ctaBank, labels);
   const creativeQa = runCreativeQA({
     briefs: creatorBriefs,
     videoScripts,
@@ -122,13 +132,14 @@ export function buildStrategy(input: ProductInput): Strategy {
     appliedAdReviews,
     input,
     offers,
+    labels,
   });
 
   // Upstream creative-quality modules — avatars feed the hook library,
   // which feeds the concept cards. Ordered after every other module so
   // each can read from offers, briefs, and ranked angles.
-  const audienceAvatars = buildAudienceAvatars(input);
-  const hookLibrary = buildHookLibrary(input, audienceAvatars, angleNames);
+  const audienceAvatars = buildAudienceAvatars(input, labels);
+  const hookLibrary = buildHookLibrary(input, audienceAvatars, angleNames, labels);
   const adConceptCards = buildAdConceptCards({
     input,
     avatars: audienceAvatars,
@@ -136,26 +147,27 @@ export function buildStrategy(input: ProductInput): Strategy {
     offers,
     rankedAngles: angleNames,
     creatorBriefs,
+    labels,
   });
 
-  const partial: Omit<Strategy, "genericFlags" | "exportBrief"> = {
+  const partial: Omit<Strategy, "genericFlags" | "copyIssues" | "exportBrief"> = {
     positioning,
     awarenessNotes,
     sophisticationNotes,
     centralPromise,
     uniqueMechanism,
     objections,
-    headlines: generateHeadlines(input),
+    headlines: generateHeadlines(input, labels),
     angles,
     rankedAngles,
-    landing: generateLandingCopy(input),
-    store: generateStoreCopy(input),
-    tiktokScripts: generateTiktokScripts(input),
-    facebookAds: generateFacebookAds(input),
-    experiments: generateExperiments(input),
+    landing: generateLandingCopy(input, labels),
+    store: generateStoreCopy(input, labels),
+    tiktokScripts: generateTiktokScripts(input, labels),
+    facebookAds: generateFacebookAds(input, labels),
+    experiments: generateExperiments(input, labels),
     score: scoreStrategy(input),
     diagnosis: diagnoseOffer(input),
-    awarenessVariants: generateAwarenessVariants(input),
+    awarenessVariants: generateAwarenessVariants(input, labels),
     offers,
     campaignCalendar,
     creatorBriefs,
@@ -181,10 +193,15 @@ export function buildStrategy(input: ProductInput): Strategy {
   // any banned phrase is present in our own templates, the user sees
   // the flag immediately — which keeps us honest as we expand.
   const genericFlags = detectGenericCopy(partial as Strategy, input);
+  // Copy-quality validator scans for duplicate nouns, ellipses,
+  // audience-sentence leaks, goal-as-promise leaks, overlong overlays,
+  // overlong hooks, and offers that don't fit the business model.
+  const copyIssues = checkCopyIssues(partial as Strategy, input);
 
   const strategy: Strategy = {
     ...partial,
     genericFlags,
+    copyIssues,
     // Export brief is built last so it can reference every section,
     // including the generic-copy flags.
     exportBrief: "",
@@ -194,14 +211,17 @@ export function buildStrategy(input: ProductInput): Strategy {
   return strategy;
 }
 
-function baseObjections(input: ProductInput) {
+function baseObjections(
+  input: ProductInput,
+  labels: ReturnType<typeof deriveCopyLabels>
+) {
   const name = input.name || "this";
-  const category = input.category || "the category";
-  const differentiator = input.differentiator || "our mechanism";
+  const category = labels.categoryLabel;
+  const mechanism = labels.mechanismLabel;
   return [
     {
-      objection: `"How is this different from every other ${category} tool?"`,
-      reply: `Most ${category} tools optimize the surface. ${name} replaces that with ${differentiator}, which is where the real shift happens.`,
+      objection: `"How is this different from every other ${category}?"`,
+      reply: `Most ${category} tools optimize the surface. ${name} replaces that with ${mechanism}, which is where the real shift happens.`,
     },
     {
       objection: `"I don't have time to learn another product."`,
@@ -209,11 +229,11 @@ function baseObjections(input: ProductInput) {
     },
     {
       objection: `"What if it doesn't work for me?"`,
-      reply: `Try ${name} for free. If ${differentiator} doesn't change how ${category} feels in the first week, you keep nothing locked in.`,
+      reply: `Try ${name} for free. If ${mechanism} doesn't change how ${category} feels in the first week, you keep nothing locked in.`,
     },
     {
       objection: `"Is this a fad?"`,
-      reply: `The mechanism — ${differentiator} — is not a trend. It's the part of ${category} other products skipped because it was harder to build.`,
+      reply: `The mechanism — ${mechanism} — is not a trend. It's the part of ${category} other products skipped because it was harder to build.`,
     },
   ];
 }
@@ -267,3 +287,11 @@ export { buildEditorHandoffs } from "./editor-handoff";
 export { buildAudienceAvatars } from "./audience-avatar";
 export { buildHookLibrary } from "./hook-library";
 export { buildAdConceptCards } from "./ad-concept-cards";
+export {
+  deriveCopyLabels,
+  checkCopyIssues,
+  dedupeAdjacentRepeats,
+  stripFillers,
+  toShortNounPhrase,
+} from "./copy-normalize";
+export type { CopyLabels } from "./copy-normalize";

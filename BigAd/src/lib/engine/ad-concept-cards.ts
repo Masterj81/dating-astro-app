@@ -18,6 +18,8 @@ import type {
   ProductInput,
   VariantAxis,
 } from "@/types/strategy";
+import type { CopyLabels } from "./copy-normalize";
+import { deriveCopyLabels } from "./copy-normalize";
 
 interface BuildArgs {
   input: ProductInput;
@@ -26,6 +28,7 @@ interface BuildArgs {
   offers: OfferRecommendation[];
   rankedAngles: string[];
   creatorBriefs: CreatorBrief[];
+  labels?: CopyLabels;
 }
 
 // Pattern → formatFit. Stable mapping so two products with the same
@@ -45,6 +48,7 @@ const VARIANT_AXES: VariantAxis[] = ["hook", "hold", "proof", "cta", "offer"];
 
 export function buildAdConceptCards(args: BuildArgs): AdConceptCard[] {
   const { input, avatars, hookLibrary, offers, rankedAngles } = args;
+  const labels = args.labels ?? deriveCopyLabels(input, offers);
 
   if (avatars.length === 0 || hookLibrary.items.length === 0) {
     return [];
@@ -80,6 +84,7 @@ export function buildAdConceptCards(args: BuildArgs): AdConceptCard[] {
         offer: pickOfferForCard(offers, cardIndex),
         rankedAngles,
         axisRotation: cardIndex,
+        labels,
       });
       cards.push(card);
     }
@@ -120,18 +125,18 @@ interface ComposeArgs {
   offer: OfferRecommendation | undefined;
   rankedAngles: string[];
   axisRotation: number;
+  labels: CopyLabels;
 }
 
 function composeCard(args: ComposeArgs): AdConceptCard {
-  const { index, input, avatar, hook, offer, rankedAngles, axisRotation } = args;
+  const { index, input, avatar, hook, offer, rankedAngles, axisRotation, labels } = args;
   const productName = input.name || "this product";
-  const differentiator = input.differentiator || "a different mechanism";
 
   const name = buildConceptName(hook.pattern, avatar, productName);
-  const promise = buildPromise(input, avatar);
+  const promise = buildPromise(input, avatar, labels);
   const proofAngle = buildProofAngle(avatar, productName);
-  const offerTieIn = buildOfferTieIn(offer, avatar);
-  const visualIdea = buildVisualIdea(hook.pattern, avatar, input);
+  const offerTieIn = buildOfferTieIn(offer, avatar, labels);
+  const visualIdea = buildVisualIdea(hook.pattern, avatar, input, labels);
   const formatFit = formatsForPattern(hook.pattern);
   const testHypothesis = buildTestHypothesis(hook.pattern, avatar);
   const nextVariantSuggestion = buildNextVariantSuggestion(
@@ -164,10 +169,12 @@ function buildConceptName(
   return `${patternLabel} for ${avatar.label.toLowerCase()} — ${truncate(productName, 24)}`;
 }
 
-function buildPromise(input: ProductInput, avatar: AudienceAvatar): string {
-  const differentiator = input.differentiator || "a different mechanism";
-  const goal = input.goal || "the outcome they actually came for";
-  return `${capFirst(truncate(differentiator, 60))} turns ${truncate(avatar.label.toLowerCase(), 28)} momentum into ${truncate(goal, 50)} inside the first session.`;
+function buildPromise(
+  input: ProductInput,
+  avatar: AudienceAvatar,
+  labels: CopyLabels
+): string {
+  return `${capFirst(labels.mechanismLabel)} turns ${truncate(avatar.label.toLowerCase(), 28)} momentum into ${labels.outcomeLabel} inside the first session.`;
 }
 
 function buildProofAngle(avatar: AudienceAvatar, productName: string): string {
@@ -180,7 +187,8 @@ function buildProofAngle(avatar: AudienceAvatar, productName: string): string {
 
 function buildOfferTieIn(
   offer: OfferRecommendation | undefined,
-  avatar: AudienceAvatar
+  avatar: AudienceAvatar,
+  labels: CopyLabels
 ): string {
   if (!offer) {
     return `No offer attached — concept rides on differentiator and proof alone.`;
@@ -190,21 +198,21 @@ function buildOfferTieIn(
   const objectionHint = primaryObjection
     ? ` Counter-frames the "${primaryObjection.kind}" objection.`
     : "";
-  return `Tie the close to the ${offer.kind} lever ("${truncate(offer.label, 36)}").${objectionHint}`;
+  return `Tie the close to the ${offer.kind} lever ("${labels.offerLabel}").${objectionHint}`;
 }
 
 function buildVisualIdea(
   pattern: HookPattern,
   avatar: AudienceAvatar,
-  input: ProductInput
+  input: ProductInput,
+  labels: CopyLabels
 ): string {
   const productName = input.name || "the product";
-  const diff = input.differentiator || "the mechanism";
   switch (pattern) {
     case "pain-first":
-      return `Cold open on the pain moment in the avatar's environment — close-up, no music. Cut hard to a clean shot of ${truncate(diff, 40)} working.`;
+      return `Cold open on the pain moment in the avatar's environment — close-up, no music. Cut hard to a clean shot of ${labels.mechanismLabel} working.`;
     case "outcome-first":
-      return `Open on the after-state: the avatar in the moment of relief or pride. Then reveal ${truncate(productName, 24)} as the cause, not the topic.`;
+      return `Open on the after-state: the avatar in the moment of relief or pride. Then reveal ${productName} as the cause, not the topic.`;
     case "contrarian":
       return `Talking-head, eye-level, plain background. The contrarian line lands in the first three seconds with on-screen text mirroring it.`;
     case "proof-led":
@@ -212,7 +220,7 @@ function buildVisualIdea(
     case "curiosity":
       return `Tease the missing-piece visual — show a partial UI or a hidden screen for the first two seconds, then deliver the payoff.`;
     case "comparison":
-      return `Side-by-side static or a two-column carousel — left = the alternative, right = ${truncate(productName, 24)}. One row, one decisive contrast.`;
+      return `Side-by-side static or a two-column carousel — left = ${labels.competitorLabel}, right = ${productName}. One row, one decisive contrast.`;
     case "mistake":
       return `Selfie-angle confessional: speaker names the mistake they used to make. Cut to a clean demo of the fix at the midpoint.`;
     case "before-after":

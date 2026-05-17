@@ -18,6 +18,8 @@ import type {
   OfferRecommendation,
   ProductInput,
 } from "@/types/strategy";
+import type { CopyLabels } from "./copy-normalize";
+import { deriveCopyLabels } from "./copy-normalize";
 
 // Section duration envelopes (seconds). Sum is the total brief duration.
 const SECTION_DURATIONS: Record<BriefSectionKind, number> = {
@@ -39,13 +41,15 @@ const SECTION_ORDER: BriefSectionKind[] = [
 export function generateCreatorBriefs(
   input: ProductInput,
   angles: string[],
-  offers: OfferRecommendation[]
+  offers: OfferRecommendation[],
+  labels?: CopyLabels
 ): CreatorBrief[] {
+  const resolved = labels ?? deriveCopyLabels(input, offers);
   // Top three angles get briefs. If fewer angles are supplied, brief
   // exactly that many — never fewer than the floor of 2 when possible.
   const selected = angles.slice(0, 3);
   return selected.map((angle, i) =>
-    buildBrief(input, angle, offers, i + 1)
+    buildBrief(input, angle, offers, i + 1, resolved)
   );
 }
 
@@ -53,10 +57,11 @@ function buildBrief(
   input: ProductInput,
   angle: string,
   offers: OfferRecommendation[],
-  rank: number
+  rank: number,
+  labels: CopyLabels
 ): CreatorBrief {
   const sections = SECTION_ORDER.map((kind) =>
-    buildSection(kind, input, angle, offers, rank)
+    buildSection(kind, input, angle, offers, rank, labels)
   );
   const totalDuration = sections.reduce(
     (acc, s) => acc + s.durationSeconds,
@@ -68,7 +73,7 @@ function buildBrief(
     forAngle: angle,
     durationSeconds: totalDuration,
     framing: framingRule(input),
-    altHooks: altHookOpeners(input, angle, rank),
+    altHooks: altHookOpeners(input, angle, rank, labels),
     sections,
     deliverables: deliverablesFor(input.campaignType ?? "always-on"),
     notes: rank === 1 ? topPickNote() : undefined,
@@ -134,20 +139,18 @@ function deliveryPosture(
 function altHookOpeners(
   input: ProductInput,
   angle: string,
-  rank: number
+  rank: number,
+  labels: CopyLabels
 ): string[] {
   const name = input.name || "this";
-  const cat = input.category || "category";
-  const pain = input.audiencePain || "the usual friction";
-  const diff = input.differentiator || "the mechanism";
 
   // Four hook archetypes — question, contrarian, stat, before/after.
   // Pick three deterministically by the brief's rank index.
   const archetypes: string[] = [
-    `Question opener: "What if ${cat} stopped feeling like ${pain}?"`,
-    `Contrarian opener: "Most ${cat} advice has it backwards — here is what actually shifts."`,
-    `Pattern-break opener: "I tried every ${cat} option for the last month — only one moved the needle."`,
-    `Before/after opener: "Before ${name}, my ${cat} routine looked like this. After, it looks like this."`,
+    `Question opener: "What if ${labels.categoryLabel} stopped feeling like ${labels.painLabel}?"`,
+    `Contrarian opener: "Most ${labels.categoryLabel} advice has it backwards — here is what actually shifts."`,
+    `Pattern-break opener: "I tried every ${labels.categoryLabel} option for the last month — only one moved the needle."`,
+    `Before/after opener: "Before ${name}, ${labels.painLabel}. After, ${labels.outcomeLabel}."`,
   ];
 
   const offset = (rank - 1) % archetypes.length;
@@ -158,9 +161,9 @@ function altHookOpeners(
   ];
 
   // Add an angle-specific opener as a fourth option, derived from the
-  // angle name + differentiator — keeps each brief's alt-hooks distinct.
+  // angle name + mechanism label — keeps each brief's alt-hooks distinct.
   ordered.push(
-    `Angle opener: "${truncatePhrase(angle)} — and the part that makes it work is ${truncatePhrase(diff)}."`
+    `Angle opener: "${truncatePhrase(angle)} — and the part that makes it work is ${labels.mechanismLabel}."`
   );
   return ordered;
 }
@@ -168,7 +171,10 @@ function altHookOpeners(
 function truncatePhrase(s: string): string {
   const trimmed = s.trim();
   if (trimmed.length <= 80) return trimmed;
-  return trimmed.slice(0, 77).trimEnd() + "...";
+  // Cap to word boundary; never emit ellipsis.
+  const words = trimmed.slice(0, 80).split(/\s+/);
+  words.pop();
+  return words.join(" ").trim();
 }
 
 // ---- Section builders ----
@@ -178,15 +184,16 @@ function buildSection(
   input: ProductInput,
   angle: string,
   offers: OfferRecommendation[],
-  rank: number
+  rank: number,
+  labels: CopyLabels
 ): CreatorBriefSection {
   switch (kind) {
     case "hook":
-      return hookSection(input, angle, rank);
+      return hookSection(input, angle, rank, labels);
     case "problem":
-      return problemSection(input);
+      return problemSection(input, labels);
     case "solution-or-proof":
-      return solutionSection(input, angle, offers);
+      return solutionSection(input, angle, offers, labels);
     case "cta":
       return ctaSection(input);
   }
@@ -195,20 +202,16 @@ function buildSection(
 function hookSection(
   input: ProductInput,
   angle: string,
-  rank: number
+  rank: number,
+  labels: CopyLabels
 ): CreatorBriefSection {
-  const cat = input.category || "category";
-  const pain = input.audiencePain || "the friction we know";
-
-  // Two alt openers inside the section (separate from brief-level altHooks).
-  // These are the on-set quick-fire takes the creator films back-to-back.
   const sectionAlts: string[] = [
-    `Open on a face-to-camera question that names ${pain} without naming the product yet.`,
-    `Open on a fast cut of the moment ${pain} happens, framed in under three seconds.`,
+    `Open on a face-to-camera question that names ${labels.painLabel} without naming the product yet.`,
+    `Open on a fast cut of the moment ${labels.painLabel} happens, framed in under three seconds.`,
   ];
   if (rank > 1) {
     sectionAlts.push(
-      `Open on a single object that signals ${cat} (handheld, no voiceover yet), then cut to face.`
+      `Open on a single object that signals ${labels.categoryLabel} (handheld, no voiceover yet), then cut to face.`
     );
   }
 
@@ -216,11 +219,11 @@ function hookSection(
     kind: "hook",
     label: "Stop the scroll",
     beat:
-      `In under three seconds, frame ${pain} in the viewer's own words and signal that ${cat} is the topic.`,
+      `In under three seconds, frame ${labels.painLabel} in the viewer's own words and signal that ${labels.categoryLabel} is the topic.`,
     durationSeconds: SECTION_DURATIONS.hook,
     whatToSay: sectionAlts,
     whatToShow: [
-      `One visual that maps to ${pain} (no on-screen text yet).`,
+      `One visual that maps to ${labels.painLabel} (no on-screen text yet).`,
       `Eye contact within the first second — no slow zoom-ins.`,
       `Hold the angle line in the lower third only after the second cut.`,
     ],
@@ -231,21 +234,20 @@ function hookSection(
   };
 }
 
-function problemSection(input: ProductInput): CreatorBriefSection {
-  const pain = input.audiencePain || "the recurring friction we are addressing";
-  const cat = input.category || "the category";
-  const audience = input.audience || "the viewer";
-
+function problemSection(
+  input: ProductInput,
+  labels: CopyLabels
+): CreatorBriefSection {
   return {
     kind: "problem",
     label: "Name the pain",
     beat:
-      `Spend four seconds on the cost of ${pain} for ${audience} — concrete, in the viewer's own words. No comparative claims yet.`,
+      `Spend four seconds on the cost of ${labels.painLabel} for ${labels.audienceLabel.toLowerCase()} — concrete, in the viewer's own words. No comparative claims yet.`,
     durationSeconds: SECTION_DURATIONS.problem,
     whatToSay: [
-      `Describe one specific moment ${pain} shows up.`,
+      `Describe one specific moment ${labels.painLabel} shows up.`,
       `Name the time / energy / money it costs in plain terms.`,
-      `Hint that most fixes in ${cat} treat the symptom, not the cause.`,
+      `Hint that most fixes in ${labels.categoryLabel} treat the symptom, not the cause.`,
     ],
     whatToShow: [
       `B-roll of the pain in context — neutral, no caricature.`,
@@ -262,27 +264,23 @@ function problemSection(input: ProductInput): CreatorBriefSection {
 function solutionSection(
   input: ProductInput,
   angle: string,
-  offers: OfferRecommendation[]
+  offers: OfferRecommendation[],
+  labels: CopyLabels
 ): CreatorBriefSection {
   const name = input.name || "the product";
-  const diff = input.differentiator || "the mechanism that matters";
-  const cat = input.category || "the category";
-  const topOffer = offers[0]?.label;
   const proofTypes = ["testimonial soundbite", "live demo", "before/after pair", "data callout"];
 
   return {
     kind: "solution-or-proof",
     label: "Show the shift",
     beat:
-      `In six to eight seconds, show how ${name} delivers a different result through ${truncatePhrase(diff)}. Pair the claim with at least one proof type from the list.`,
+      `In six to eight seconds, show how ${name} delivers ${labels.outcomeLabel} through ${labels.mechanismLabel}. Pair the claim with at least one proof type from the list.`,
     durationSeconds: SECTION_DURATIONS["solution-or-proof"],
     whatToSay: [
       `State the result first, mechanism second — one sentence each.`,
       `Reference the angle context: ${truncatePhrase(angle)}.`,
       `If a claim is named, name the proof source in the same sentence.`,
-      topOffer
-        ? `If the offer fits the moment, surface it once: ${truncatePhrase(topOffer)}.`
-        : `Keep any offer reference for the CTA beat.`,
+      `Surface the offer once if it fits: ${labels.offerLabel}.`,
     ],
     whatToShow: [
       `One proof beat picked from: ${proofTypes.join(", ")}.`,
@@ -291,7 +289,7 @@ function solutionSection(
     ],
     doNot: [
       `Do not stack three claims without three proofs.`,
-      `Do not name competing ${cat} products on camera.`,
+      `Do not name competing ${labels.categoryLabel} products on camera.`,
       `Do not cut away from the proof beat before the viewer can read it.`,
     ],
   };

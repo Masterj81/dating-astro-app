@@ -200,9 +200,16 @@ function toItem(
 function composeSound(bp: ShotBlueprint, beat?: string): string {
   if (!beat) return bp.soundTemplate;
   // Append a short reference to the section beat so the audio team
-  // knows which line maps to which shot.
-  const trimmed = beat.length > 110 ? beat.slice(0, 107) + "..." : beat;
+  // knows which line maps to which shot. Cap at a clean word boundary.
+  const trimmed = truncateToWordBoundary(beat, 110);
   return `${bp.soundTemplate} — beat: ${trimmed}`;
+}
+
+function truncateToWordBoundary(s: string, max: number): string {
+  if (s.length <= max) return s;
+  const slice = s.slice(0, max);
+  const lastSpace = slice.lastIndexOf(" ");
+  return (lastSpace > 0 ? slice.slice(0, lastSpace) : slice).trimEnd();
 }
 
 // ---- Props derivation ----

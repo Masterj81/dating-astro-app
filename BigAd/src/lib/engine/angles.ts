@@ -61,7 +61,7 @@ export function generateAngles(input: ProductInput): Angle[] {
       rationale: `Concrete, low-friction angle. Use for retargeting and bottom-of-funnel placements.`,
       channelFit: "App Store",
       awarenessStage: "product-aware",
-      objectionAddressed: `"Setting up another ${category} tool sounds exhausting."`,
+      objectionAddressed: `"Setting up another ${category} sounds exhausting."`,
       whyItCouldWork: `Trades a vague promise for a concrete first action ${audience} can imagine doing in under a minute.`,
     },
   ];

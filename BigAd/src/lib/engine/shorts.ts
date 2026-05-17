@@ -1,98 +1,88 @@
 import type { FacebookAdConcept, ProductInput, ShortScript } from "@/types/strategy";
+import { deriveCopyLabels } from "./copy-normalize";
+import type { CopyLabels } from "./copy-normalize";
 
-// generateTiktokScripts — 3 short-form scripts in distinct formats:
-// "talking head", "screen + voice", "before/after". Each one names the
-// audience, pain, and differentiator.
+// generateTiktokScripts — 3 short-form scripts in distinct formats.
+// Now uses normalised copy labels so we never end up with "dating app app".
 
-export function generateTiktokScripts(input: ProductInput): ShortScript[] {
+export function generateTiktokScripts(
+  input: ProductInput,
+  labels?: CopyLabels
+): ShortScript[] {
+  const L = labels ?? deriveCopyLabels(input, []);
   const name = input.name || "the product";
-  const audience = input.audience || "people who care";
-  const pain = input.audiencePain || "the same old frustration";
-  const differentiator = input.differentiator || "a new approach";
-  const category = input.category || "this category";
 
   return [
     {
-      hook: `Three things ${audience} stop doing once they switch from regular ${category} to ${name}:`,
+      hook: `Three things ${L.audienceLabel.toLowerCase()} stop doing once they switch from ${L.competitorLabel} to ${name}:`,
       beats: [
-        `1. They stop trying to "win" at ${category}. ${name} replaces that game with ${differentiator}.`,
-        `2. They stop blaming themselves for ${pain.toLowerCase()} — it was the format, not them.`,
-        `3. They start using ${shortDiff(differentiator)} instead of fighting the algorithm.`,
+        `1. They stop trying to "win" at ${L.categoryLabel}. ${name} replaces that with ${L.mechanismLabel}.`,
+        `2. They stop blaming themselves for ${L.painLabel} — it was the format, not them.`,
+        `3. They start using ${L.mechanismLabel} instead of fighting the algorithm.`,
       ],
-      cta: `Save this so the next time you're stuck in ${category}, you remember the option exists.`,
+      cta: `Save this so the next time ${L.painLabel} hits, you remember the option exists.`,
     },
     {
-      hook: `POV: you've used every ${category} app and still feel ${painAdj(pain)}. Here's why.`,
+      hook: `POV: you've used every ${L.competitorLabel} and still feel ${painAdj(L.painLabel)}. Here's why.`,
       beats: [
-        `Every ${category} app optimizes the wrong layer — the surface, not the signal.`,
-        `${name} works on the signal. ${capitalize(differentiator)} is the part nobody else ships.`,
-        `Result: you stop performing in ${category}. You actually use it.`,
+        `Every ${L.categoryLabel} optimises the wrong layer — the surface, not the signal.`,
+        `${name} works on the signal. ${capitalize(L.mechanismLabel)} is the part nobody else ships.`,
+        `Result: less ${L.painLabel}, more ${L.outcomeLabel}.`,
       ],
       cta: `Comment "${shortCta(name)}" and I'll show you the exact first screen.`,
     },
     {
-      hook: `Before ${name}: ${shortDiff(pain)}. After ${name}: ${shortDiff(differentiator)}. Same person. Same week.`,
+      hook: `Before ${name}: ${L.painLabel}. After ${name}: ${L.outcomeLabel}. Same person. Same week.`,
       beats: [
         `Day 1 — open ${name}, set up in under 90 seconds.`,
-        `Day 3 — first noticeable shift in how ${audience} interact with ${category}.`,
-        `Day 7 — the old version of ${category} feels like a different product.`,
+        `Day 3 — first noticeable shift in how ${L.audienceLabel.toLowerCase()} interact with ${L.categoryLabel}.`,
+        `Day 7 — the old version of ${L.categoryLabel} feels like a different product.`,
       ],
-      cta: `Link in bio. Try ${name} free, then decide.`,
+      cta: `Link in bio. ${L.offerLabel}.`,
     },
   ];
 }
 
 // generateFacebookAds — 3 ad concepts spanning different stages.
-export function generateFacebookAds(input: ProductInput): FacebookAdConcept[] {
+export function generateFacebookAds(
+  input: ProductInput,
+  labels?: CopyLabels
+): FacebookAdConcept[] {
+  const L = labels ?? deriveCopyLabels(input, []);
   const name = input.name || "the product";
-  const audience = input.audience || "people who care";
-  const pain = input.audiencePain || "the same old frustration";
-  const differentiator = input.differentiator || "a new approach";
-  const category = input.category || "this category";
 
   return [
     {
       angle: "Problem-aware cold",
-      primaryText: `${capitalize(audience)} keep telling me the same thing: "${name ? "every " + category : category} app feels the same." We agreed. So we built ${name} around ${differentiator} instead.`,
-      headline: `${capitalize(category)} that finally fits ${audience}.`,
-      description: `${capitalize(differentiator)} — built into the core, not bolted on.`,
+      primaryText: `${capitalize(L.audienceLabel)} keep telling me the same thing: "every ${L.categoryLabel} feels the same." We agreed. So we built ${name} around ${L.mechanismLabel} instead.`,
+      headline: `${capitalize(L.categoryLabel)} that finally fits ${L.audienceLabel.toLowerCase()}.`,
+      description: `${capitalize(L.mechanismLabel)} — built into the core, not bolted on.`,
       cta: `Learn more`,
     },
     {
       angle: "Solution-aware mid-funnel",
-      primaryText: `Most ${category} apps optimize for engagement metrics. ${name} optimizes for the part ${audience} actually care about: ${shortDiff(differentiator)}.`,
-      headline: `${capitalize(differentiator)} — without the ${category} circus.`,
-      description: `Made for ${audience}. Free to try.`,
+      primaryText: `Most ${L.categoryLabel} tools optimise for engagement metrics. ${name} optimises for what ${L.audienceLabel.toLowerCase()} actually care about: ${L.mechanismLabel}.`,
+      headline: `${capitalize(L.mechanismLabel)} — without the ${L.categoryLabel} circus.`,
+      description: `Made for ${L.audienceLabel.toLowerCase()}. ${L.offerLabel}.`,
       cta: `Sign up`,
     },
     {
       angle: "Product-aware retargeting",
-      primaryText: `Still on the fence about ${name}? Here's the one-liner: it replaces ${painSummary(pain)} with ${shortDiff(differentiator)}. That's the whole pitch.`,
-      headline: `${name}: the version of ${category} you wanted.`,
+      primaryText: `Still on the fence about ${name}? Here's the one-liner: it replaces ${L.painLabel} with ${L.outcomeLabel}. That's the whole pitch.`,
+      headline: `${name}: the version of ${L.categoryLabel} you wanted.`,
       description: `One screen of setup. Cancel anytime.`,
       cta: `Get started`,
     },
   ];
 }
 
-function shortDiff(s: string): string {
-  const cleaned = (s || "").replace(/\.$/, "");
-  const words = cleaned.split(/\s+/);
-  if (words.length <= 6) return cleaned;
-  return words.slice(0, 6).join(" ");
-}
-
-function painAdj(pain: string): string {
-  const p = (pain || "").trim().toLowerCase();
+function painAdj(painLabel: string): string {
+  const p = (painLabel || "").trim().toLowerCase();
   if (!p) return "stuck";
-  if (/shallow|empty|hollow/.test(p)) return "hollow";
+  if (/shallow|empty|hollow|swiping/.test(p)) return "hollow";
   if (/tired|exhausted/.test(p)) return "exhausted";
   if (/stuck/.test(p)) return "stuck";
   return "stuck";
-}
-
-function painSummary(pain: string): string {
-  return (pain || "").replace(/\.$/, "").toLowerCase();
 }
 
 function shortCta(name: string): string {

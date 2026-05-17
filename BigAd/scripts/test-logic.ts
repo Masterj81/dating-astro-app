@@ -2234,6 +2234,7 @@ const FIELD_TO_EXPORT_HEADERS: Record<string, string[]> = {
   audienceAvatars: ["## Audience Avatars"],
   hookLibrary: ["## Hook Library"],
   adConceptCards: ["## Ad Concept Cards"],
+  copyIssues: ["## Copy Quality Flags"],
 };
 
 for (const field of Object.keys(FIELD_TO_EXPORT_HEADERS)) {
@@ -2286,6 +2287,7 @@ const STRATEGY_FIELDS_IN_TYPE = [
   "audienceAvatars",
   "hookLibrary",
   "adConceptCards",
+  "copyIssues",
   "exportBrief",
 ];
 record(
@@ -2445,6 +2447,295 @@ record(
     a.score.overall !== brew.score.overall,
   `astro=${a.score.overall} plot=${b.score.overall} brew=${brew.score.overall}`
 );
+
+// ---- Copy normalization: clean copy + validator assertions ----
+//
+// These assertions pin down the new copy-normalize layer. They must all
+// pass with the AstroDating / Plotline / HeirloomBrew fixtures unchanged.
+
+import {
+  deriveCopyLabels,
+  dedupeAdjacentRepeats,
+  toShortNounPhrase,
+  stripFillers,
+} from "../src/lib/engine";
+
+// Deep-walk over the Strategy object collecting every string leaf so the
+// "no ellipsis anywhere" assertion can scan every customer-facing string.
+function collectStrings(node: unknown, path: string, out: { path: string; text: string }[]): void {
+  if (node === null || node === undefined) return;
+  if (typeof node === "string") {
+    if (node.length > 0) out.push({ path, text: node });
+    return;
+  }
+  if (typeof node !== "object") return;
+  if (Array.isArray(node)) {
+    for (let i = 0; i < node.length; i++) collectStrings(node[i], `${path}[${i}]`, out);
+    return;
+  }
+  for (const key of Object.keys(node as Record<string, unknown>)) {
+    // Skip the exportBrief markdown since it concatenates everything.
+    if (path === "" && key === "exportBrief") continue;
+    collectStrings((node as Record<string, unknown>)[key], path ? `${path}.${key}` : key, out);
+  }
+}
+
+const fixtures: { name: string; ex: typeof ASTRO_DATING_EXAMPLE; strategy: typeof a }[] = [
+  { name: "astrodating", ex: ASTRO_DATING_EXAMPLE, strategy: a },
+  { name: "plotline", ex: NOTION_LIKE_EXAMPLE, strategy: b },
+  { name: "heirloombrew", ex: HEIRLOOM_BREW_EXAMPLE, strategy: brew },
+];
+
+for (const { name, ex, strategy } of fixtures) {
+  // Each fixture is clean — zero copy issues.
+  record(
+    `copy-normalize: ${name} produces zero copyIssues`,
+    strategy.copyIssues.length === 0,
+    `Got: ${strategy.copyIssues.map((i) => i.kind + "@" + i.source).join(", ")}`
+  );
+
+  // Deep-walk: no string leaf contains "...". (Ellipses sneak in via
+  // truncation helpers; the cleanup pass replaced every such site with a
+  // word-boundary trim.)
+  const leaves: { path: string; text: string }[] = [];
+  collectStrings(strategy, "", leaves);
+  const ellipsisLeaks = leaves.filter(
+    (l) => l.text.includes("...") || l.text.includes("…")
+  );
+  record(
+    `copy-normalize: ${name} has no ellipsis in any string field`,
+    ellipsisLeaks.length === 0,
+    ellipsisLeaks.length > 0
+      ? `Found ${ellipsisLeaks.length} ellipsis sites; first: ${ellipsisLeaks[0].path}`
+      : undefined
+  );
+
+  // No "dating app app" / "writing tool tool" / "specialty coffee coffee"
+  // anywhere. Also no bare "app app" / "tool tool" / "site site" repeats.
+  const dupNoun = leaves.find((l) =>
+    /\b(app|tool|site|product|coffee|club|kit)\s+\1\b/i.test(l.text)
+  );
+  record(
+    `copy-normalize: ${name} has no duplicated category noun`,
+    !dupNoun,
+    dupNoun ? `Found at ${dupNoun.path}: ${dupNoun.text.slice(0, 100)}` : undefined
+  );
+
+  // No hook in hookLibrary.items contains the full audience input string
+  // (when audience > 5 words).
+  const audienceWordCount = (ex.audience || "").split(/\s+/).filter(Boolean).length;
+  if (audienceWordCount > 5) {
+    const leak = strategy.hookLibrary.items.find((it) =>
+      it.text.toLowerCase().includes(ex.audience.toLowerCase())
+    );
+    record(
+      `copy-normalize: ${name} hooks do not leak full audience sentence`,
+      !leak,
+      leak ? `Leaked in: ${leak.text}` : undefined
+    );
+  }
+
+  // No headline / overlay / hook contains the verbatim goal string
+  // (when goal > 4 words).
+  const goalWordCount = (ex.goal || "").split(/\s+/).filter(Boolean).length;
+  if (goalWordCount > 4) {
+    const goalNeedle = ex.goal.toLowerCase();
+    const headlineLeak = strategy.headlines.find((h) =>
+      h.toLowerCase().includes(goalNeedle)
+    );
+    record(
+      `copy-normalize: ${name} headlines do not leak the goal verbatim`,
+      !headlineLeak,
+      headlineLeak ? `Leaked: ${headlineLeak}` : undefined
+    );
+
+    const hookLeak = strategy.hookLibrary.items.find((it) =>
+      it.text.toLowerCase().includes(goalNeedle)
+    );
+    record(
+      `copy-normalize: ${name} hooks do not leak the goal verbatim`,
+      !hookLeak,
+      hookLeak ? `Leaked: ${hookLeak.text}` : undefined
+    );
+
+    const overlayLeak = strategy.staticBriefs.find((s) =>
+      s.headlineOverlay.toLowerCase().includes(goalNeedle)
+    );
+    record(
+      `copy-normalize: ${name} static overlays do not leak the goal verbatim`,
+      !overlayLeak,
+      overlayLeak ? `Leaked: ${overlayLeak.headlineOverlay}` : undefined
+    );
+  }
+
+  // Every static brief overlay stays under 9 words (under the
+  // overlong-overlay threshold).
+  const longOverlay = strategy.staticBriefs.find(
+    (s) => s.headlineOverlay.trim().split(/\s+/).filter(Boolean).length > 8
+  );
+  record(
+    `copy-normalize: ${name} no static overlay exceeds 8 words`,
+    !longOverlay,
+    longOverlay ? `Overlay: ${longOverlay.headlineOverlay}` : undefined
+  );
+
+  // Every hook in the library has the right shape:
+  // word count <= 18, and if there are multiple sentences the total <= 14.
+  const badHook = strategy.hookLibrary.items.find((it) => {
+    const words = it.text.trim().split(/\s+/).filter(Boolean).length;
+    const multi = /[.!?]\s+[A-Za-z]/.test(it.text.replace(/\.\.\./g, ""));
+    return words > 18 || (multi && words > 14);
+  });
+  record(
+    `copy-normalize: ${name} every hook stays inside the length envelope`,
+    !badHook,
+    badHook ? `Bad: ${badHook.text}` : undefined
+  );
+}
+
+// AstroDating-specific offer rationality: top 3 offer kinds do NOT
+// include free-shipping or free-gift; they DO include free-trial or
+// guarantee in the top slots.
+const astroTopOffers = a.offers.slice(0, 3).map((o) => o.kind);
+record(
+  "copy-normalize: AstroDating top-3 offers exclude free-shipping",
+  !astroTopOffers.includes("free-shipping"),
+  `Got: ${astroTopOffers.join(", ")}`
+);
+record(
+  "copy-normalize: AstroDating top-3 offers exclude free-gift",
+  !astroTopOffers.includes("free-gift"),
+  `Got: ${astroTopOffers.join(", ")}`
+);
+record(
+  "copy-normalize: AstroDating offers include free-trial near the top",
+  a.offers.slice(0, 2).some((o) => o.kind === "free-trial"),
+  `Got: ${astroTopOffers.join(", ")}`
+);
+record(
+  "copy-normalize: AstroDating offers include guarantee in top 4",
+  a.offers.slice(0, 4).some((o) => o.kind === "guarantee"),
+  `Got top4: ${a.offers.slice(0, 4).map((o) => o.kind).join(", ")}`
+);
+
+// AstroDating voice — at least one hook references the subscription offer
+// shape ("Premium" + "free" + ("trial" / "days")) OR the offerLabel.
+const astroOfferLabel = (a.copyIssues, a.offers, deriveCopyLabels(ASTRO_DATING_EXAMPLE, a.offers).offerLabel);
+record(
+  "copy-normalize: AstroDating offerLabel reads as a subscription trial",
+  /\bfree\b/i.test(astroOfferLabel) && /\b(trial|days|premium)\b/i.test(astroOfferLabel),
+  `Got: ${astroOfferLabel}`
+);
+
+// AstroDating CTAs surface the trial-style offer (Premium + free + trial
+// or days appears in at least one CTA / hook / static brief / variant).
+{
+  const blob = JSON.stringify({
+    cta: a.ctaBank,
+    hooks: a.hookLibrary,
+    statics: a.staticBriefs,
+    variants: a.variantSets,
+    shorts: a.tiktokScripts,
+    fb: a.facebookAds,
+  }).toLowerCase();
+  const hasFree = blob.includes("free");
+  const hasTrial = blob.includes("trial") || blob.includes("days");
+  record(
+    "copy-normalize: AstroDating output mentions 'free' somewhere user-facing",
+    hasFree
+  );
+  record(
+    "copy-normalize: AstroDating output mentions 'trial' or 'days' near the offer",
+    hasTrial
+  );
+}
+
+// deriveCopyLabels determinism — same input twice yields the same labels.
+{
+  const l1 = deriveCopyLabels(ASTRO_DATING_EXAMPLE, a.offers);
+  const l2 = deriveCopyLabels(ASTRO_DATING_EXAMPLE, a.offers);
+  record(
+    "copy-normalize: deriveCopyLabels is deterministic",
+    JSON.stringify(l1) === JSON.stringify(l2)
+  );
+  // Astro labels meet the documented shape constraints.
+  record(
+    "copy-normalize: AstroDating audienceLabel <= 5 words",
+    l1.audienceLabel.split(/\s+/).filter(Boolean).length <= 5,
+    `Got: ${l1.audienceLabel}`
+  );
+  record(
+    "copy-normalize: AstroDating painLabel <= 5 words",
+    l1.painLabel.split(/\s+/).filter(Boolean).length <= 5,
+    `Got: ${l1.painLabel}`
+  );
+  record(
+    "copy-normalize: AstroDating categoryLabel <= 2 words",
+    l1.categoryLabel.split(/\s+/).filter(Boolean).length <= 2,
+    `Got: ${l1.categoryLabel}`
+  );
+  record(
+    "copy-normalize: AstroDating competitorLabel is generalised (no brand)",
+    !/tinder|hinge|bumble/i.test(l1.competitorLabel),
+    `Got: ${l1.competitorLabel}`
+  );
+}
+
+// Helper unit tests — pin down the small pure functions.
+record(
+  "copy-normalize: dedupeAdjacentRepeats('dating app app') === 'dating app'",
+  dedupeAdjacentRepeats("dating app app") === "dating app",
+  `Got: ${dedupeAdjacentRepeats("dating app app")}`
+);
+record(
+  "copy-normalize: dedupeAdjacentRepeats handles triple repeat",
+  dedupeAdjacentRepeats("app app app") === "app",
+  `Got: ${dedupeAdjacentRepeats("app app app")}`
+);
+record(
+  "copy-normalize: dedupeAdjacentRepeats preserves single occurrences",
+  dedupeAdjacentRepeats("a clean noun phrase") === "a clean noun phrase"
+);
+record(
+  "copy-normalize: toShortNounPhrase clamps to maxWords",
+  toShortNounPhrase("Single 25-34 year olds who care about deeper connection", 4)
+    .split(/\s+/).length <= 4
+);
+record(
+  "copy-normalize: toShortNounPhrase passes through short input",
+  toShortNounPhrase("fiction writers", 4) === "fiction writers"
+);
+record(
+  "copy-normalize: toShortNounPhrase strips trailing punctuation",
+  !/[.,;:!?]$/.test(toShortNounPhrase("draft momentum.", 5))
+);
+record(
+  "copy-normalize: stripFillers removes 'users feel' prefix",
+  stripFillers("users feel exhausted by shallow swiping").startsWith("exhausted") === false &&
+    !/^users?\s+feel/i.test(stripFillers("users feel exhausted by shallow swiping"))
+);
+record(
+  "copy-normalize: stripFillers removes 'the problem is' prefix",
+  !/^the\s+problem\s+is/i.test(stripFillers("the problem is decision fatigue"))
+);
+record(
+  "copy-normalize: stripFillers leaves clean input alone",
+  stripFillers("shallow swiping") === "shallow swiping"
+);
+
+// Strategy.copyIssues is always an array (never undefined / null).
+record(
+  "copy-normalize: strategy.copyIssues is always an array",
+  Array.isArray(a.copyIssues) && Array.isArray(b.copyIssues) && Array.isArray(brew.copyIssues)
+);
+
+// The export brief always carries the Copy Quality Flags section header.
+for (const { name, strategy } of fixtures) {
+  record(
+    `copy-normalize: ${name} export brief includes the Copy Quality Flags section`,
+    strategy.exportBrief.includes("## Copy Quality Flags")
+  );
+}
 
 // Report.
 let failed = 0;

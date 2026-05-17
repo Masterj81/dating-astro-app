@@ -1,40 +1,42 @@
 import type { Experiment, ProductInput } from "@/types/strategy";
+import { deriveCopyLabels } from "./copy-normalize";
+import type { CopyLabels } from "./copy-normalize";
 
-// generateExperiments — 5 concrete A/B tests prioritized for early-stage
+// generateExperiments — 5 concrete A/B tests prioritised for early-stage
 // products. Each experiment names a hypothesis, two variants, and a
-// metric. Variants reference the product's actual differentiator/pain
-// so the experiments are usable, not abstract.
+// metric. Variants now reference normalised labels so the output never
+// dumps the full audience sentence or trails into an ellipsis.
 
-export function generateExperiments(input: ProductInput): Experiment[] {
+export function generateExperiments(
+  input: ProductInput,
+  labels?: CopyLabels
+): Experiment[] {
+  const L = labels ?? deriveCopyLabels(input, []);
   const name = input.name || "the product";
-  const audience = input.audience || "users";
-  const pain = input.audiencePain || "the core pain";
-  const differentiator = input.differentiator || "the unique mechanism";
-  const category = input.category || "the category";
 
   return [
     {
-      hypothesis: `Naming the mechanism in the hero converts ${audience} better than naming the outcome.`,
-      variantA: `Hero: outcome-led — "Less ${painSummary(pain)}. More signal. That is ${name}."`,
-      variantB: `Hero: mechanism-led — "${capitalize(differentiator)} — not more ${category} noise."`,
+      hypothesis: `Naming the mechanism in the hero converts ${L.audienceLabel.toLowerCase()} better than naming the outcome.`,
+      variantA: `Hero: outcome-led — "Less ${L.painLabel}. More ${L.outcomeLabel}. That is ${name}."`,
+      variantB: `Hero: mechanism-led — "${capitalize(L.mechanismLabel)} — not more ${L.categoryLabel} noise."`,
       metric: `Hero → sign-up click rate over a 7-day window.`,
     },
     {
-      hypothesis: `Concrete proof beats brand assertion for solution-aware ${audience}.`,
-      variantA: `Subhead: brand assertion ("Built for ${audience}").`,
-      variantB: `Subhead: concrete proof ("Used by ${audience} who tried 3 ${category} apps before ${name}").`,
+      hypothesis: `Concrete proof beats brand assertion for solution-aware ${L.audienceLabel.toLowerCase()}.`,
+      variantA: `Subhead: brand assertion ("Built for ${L.audienceLabel.toLowerCase()}").`,
+      variantB: `Subhead: concrete proof ("Used by ${L.audienceLabel.toLowerCase()} who tried 3 ${L.categoryLabel} apps before ${name}").`,
       metric: `Scroll depth past the fold and CTA click rate.`,
     },
     {
-      hypothesis: `Onboarding that surfaces ${differentiator} on screen one increases day-7 retention.`,
+      hypothesis: `Onboarding that surfaces ${L.mechanismLabel} on screen one increases day-7 retention.`,
       variantA: `Onboarding starts with profile/account creation.`,
-      variantB: `Onboarding starts with a ${shortDiff(differentiator)} step before any account work.`,
+      variantB: `Onboarding starts with a ${L.mechanismLabel} step before any account work.`,
       metric: `Day-7 retention of new signups.`,
     },
     {
       hypothesis: `Calling out competitors by category, not by name, lifts trust without legal noise.`,
-      variantA: `Copy: "Unlike most ${category} apps…"`,
-      variantB: `Copy: "Unlike the ${category} hamster wheel…"`,
+      variantA: `Copy: "Unlike ${L.competitorLabel}"`,
+      variantB: `Copy: "Unlike the ${L.categoryLabel} hamster wheel"`,
       metric: `Time-on-page and qualitative survey ("did this feel honest?").`,
     },
     {
@@ -44,17 +46,6 @@ export function generateExperiments(input: ProductInput): Experiment[] {
       metric: `Click-through on the primary CTA, segmented by traffic source.`,
     },
   ];
-}
-
-function painSummary(pain: string): string {
-  return (pain || "").replace(/\.$/, "").toLowerCase();
-}
-
-function shortDiff(s: string): string {
-  const cleaned = (s || "").replace(/\.$/, "");
-  const words = cleaned.split(/\s+/);
-  if (words.length <= 6) return cleaned;
-  return words.slice(0, 6).join(" ");
 }
 
 function capitalize(s: string): string {

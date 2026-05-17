@@ -21,6 +21,8 @@ import type {
   VariantSet,
   VideoScript,
 } from "@/types/strategy";
+import type { CopyLabels } from "./copy-normalize";
+import { deriveCopyLabels } from "./copy-normalize";
 
 interface HandoffInputs {
   briefs: CreatorBrief[];
@@ -33,10 +35,13 @@ interface HandoffInputs {
   appliedAdReviews: AppliedAdReview[];
   input: ProductInput;
   offers: OfferRecommendation[];
+  labels?: CopyLabels;
 }
 
 export function buildEditorHandoffs(args: HandoffInputs): EditorHandoff[] {
-  return args.briefs.map((brief) => buildOne(brief, args));
+  const labels = args.labels ?? deriveCopyLabels(args.input, args.offers);
+  const resolved: HandoffInputs = { ...args, labels };
+  return args.briefs.map((brief) => buildOne(brief, resolved));
 }
 
 function buildOne(brief: CreatorBrief, args: HandoffInputs): EditorHandoff {
@@ -57,12 +62,12 @@ function buildOne(brief: CreatorBrief, args: HandoffInputs): EditorHandoff {
 
   // Concept thesis
   lines.push("## Concept thesis");
-  lines.push(thesisLine(brief, args.input));
+  lines.push(thesisLine(brief, args.input, args.labels));
   lines.push("");
 
   // Target audience
   lines.push("## Target audience");
-  lines.push(audienceLine(args.input));
+  lines.push(audienceLine(args.input, args.labels));
   lines.push("");
 
   // Hook
@@ -222,20 +227,27 @@ function buildOne(brief: CreatorBrief, args: HandoffInputs): EditorHandoff {
 
 // ---- Field synthesisers ---------------------------------------------------
 
-function thesisLine(brief: CreatorBrief, input: ProductInput): string {
+function thesisLine(
+  brief: CreatorBrief,
+  input: ProductInput,
+  labels?: CopyLabels
+): string {
   const name = input.name || "the product";
-  const audience = input.audience || "the viewer";
-  const pain = input.audiencePain || "the friction we name";
-  const diff = input.differentiator || "the mechanism that matters";
+  const L = labels;
+  const audience = L?.audienceLabel.toLowerCase() ?? "the viewer";
+  const pain = L?.painLabel ?? "the friction we name";
+  const mech = L?.mechanismLabel ?? "the mechanism that matters";
   return (
-    `For ${audience}, ${name} reframes ${pain} through ${diff}. ` +
+    `For ${audience}, ${name} reframes ${pain} through ${mech}. ` +
     `This brief executes that thesis on the "${brief.forAngle}" angle in ~${brief.durationSeconds} seconds.`
   );
 }
 
-function audienceLine(input: ProductInput): string {
+function audienceLine(input: ProductInput, labels?: CopyLabels): string {
+  // Keep the raw audience description in the editor handoff (it's an
+  // internal doc the editor uses; the full sentence is useful here).
   const audience = input.audience || "(audience unspecified)";
-  const pain = input.audiencePain || "(audience pain unspecified)";
+  const pain = labels?.painLabel ?? input.audiencePain ?? "(audience pain unspecified)";
   return `**Audience.** ${audience}\n\n**Core pain.** ${pain}`;
 }
 

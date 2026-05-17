@@ -329,7 +329,28 @@ export interface Strategy {
   hookLibrary: HookLibrary;
   adConceptCards: AdConceptCard[];
 
+  // Copy-quality flags — emitted by the copy-normalize validator.
+  // Empty array when the strategy passes every anti-bad-copy rule.
+  copyIssues: CopyIssue[];
+
   exportBrief: string;
+}
+
+// ---- Copy normalization issue type (validator output) ---------------------
+
+export type CopyIssueKind =
+  | "duplicate-noun"
+  | "ellipsis"
+  | "audience-sentence-leak"
+  | "goal-as-promise"
+  | "overlong-overlay"
+  | "overlong-hook"
+  | "irrelevant-offer";
+
+export interface CopyIssue {
+  kind: CopyIssueKind;
+  source: string;     // e.g. "hookLibrary.items[3].text"
+  text: string;       // the problematic snippet
 }
 
 // ---- V4 production-plan types ----

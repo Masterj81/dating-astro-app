@@ -1,40 +1,42 @@
 import type { ProductInput, StoreCopy } from "@/types/strategy";
+import { deriveCopyLabels } from "./copy-normalize";
+import type { CopyLabels } from "./copy-normalize";
 
 // generateStoreCopy — App Store / Play Store style listing draft.
-// Stays inside the 30/170/4000 character zones loosely (no enforcement,
-// but the templates aim for the right shapes).
+// Uses normalised copy labels so subtitle / promo / description stay tight
+// and never end with an ellipsis.
 
-export function generateStoreCopy(input: ProductInput): StoreCopy {
+export function generateStoreCopy(
+  input: ProductInput,
+  labels?: CopyLabels
+): StoreCopy {
+  const L = labels ?? deriveCopyLabels(input, []);
   const name = input.name || "Your product";
-  const audience = input.audience || "people who care";
-  const pain = input.audiencePain || "everyday friction";
-  const differentiator = input.differentiator || "a new approach";
-  const category = input.category || "this category";
 
   const subtitle = clip(
-    `${capitalize(category)} for ${audience} — ${shortDiff(differentiator)}`,
+    `${capitalize(L.categoryLabel)} for ${L.audienceLabel.toLowerCase()} — ${L.mechanismLabel}`,
     60
   );
 
   const promoText = clip(
-    `${name} replaces tired ${category} habits with ${shortDiff(differentiator)}. Built for ${audience}.`,
+    `${name} replaces ${L.painLabel} with ${L.outcomeLabel}. Built for ${L.audienceLabel.toLowerCase()}.`,
     170
   );
 
   const description = [
-    `${name} is ${category} rebuilt around ${differentiator}.`,
+    `${name} is ${L.categoryLabel} rebuilt around ${L.mechanismLabel}.`,
     ``,
-    `Made for ${audience} who are tired of ${pain.toLowerCase()}.`,
+    `Made for ${L.audienceLabel.toLowerCase()} done with ${L.painLabel}.`,
     ``,
     `What's inside:`,
-    `• ${capitalize(differentiator)} — the part most ${category} apps skip`,
-    `• A workflow that respects how ${audience} actually decide`,
+    `• ${capitalize(L.mechanismLabel)} — the part most ${L.categoryLabel} apps skip`,
+    `• A workflow that respects how ${L.audienceLabel.toLowerCase()} actually decide`,
     `• Nothing that wastes your evening: no dark patterns, no manipulative streaks`,
     ``,
-    `If you've used ${category} apps before and felt nothing changed, that's the problem ${name} was built to fix.`,
+    `If you've used ${L.categoryLabel} apps before and felt nothing changed, that's what ${name} was built to fix.`,
   ].join("\n");
 
-  const keywords = keywordsFrom(input);
+  const keywords = keywordsFrom(input, L);
 
   return {
     appName: name,
@@ -45,13 +47,13 @@ export function generateStoreCopy(input: ProductInput): StoreCopy {
   };
 }
 
-function keywordsFrom(input: ProductInput): string[] {
+function keywordsFrom(input: ProductInput, L: CopyLabels): string[] {
   const seed = [
     input.name,
-    input.category,
-    input.audience,
-    input.differentiator,
-    input.audiencePain,
+    L.categoryLabel,
+    L.audienceLabel,
+    L.mechanismLabel,
+    L.painLabel,
   ]
     .filter(Boolean)
     .join(" ")
@@ -73,14 +75,10 @@ const STOPWORDS = new Set([
 
 function clip(s: string, max: number): string {
   if (s.length <= max) return s;
-  return s.slice(0, max - 1).trimEnd() + "…";
-}
-
-function shortDiff(diff: string): string {
-  const cleaned = diff.replace(/\.$/, "");
-  const words = cleaned.split(/\s+/);
-  if (words.length <= 8) return cleaned;
-  return words.slice(0, 8).join(" ");
+  // Word-boundary trim; never emit an ellipsis.
+  const slice = s.slice(0, max);
+  const lastSpace = slice.lastIndexOf(" ");
+  return (lastSpace > 0 ? slice.slice(0, lastSpace) : slice).trimEnd();
 }
 
 function capitalize(s: string): string {

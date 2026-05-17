@@ -1,8 +1,8 @@
 // hook-library.ts — Hook Pattern Library.
 //
 // Emits a deterministic library of 2-3 hooks per pattern (16-24 total).
-// Each item is parameterised on the input, the audience avatars, and the
-// ranked-angle list. Voice is BigAd's own — paraphrased direct-response.
+// Each item is parameterised on the input, the audience avatars, the
+// ranked-angle list, and the normalised copy labels. Voice is BigAd's own.
 //
 // IMPORTANT: this library proposes hooks; the Hook Critic evaluates
 // user-typed drafts. They are complementary. This file MUST NOT import
@@ -16,6 +16,8 @@ import type {
   HookPattern,
   ProductInput,
 } from "@/types/strategy";
+import type { CopyLabels } from "./copy-normalize";
+import { deriveCopyLabels } from "./copy-normalize";
 
 // Stable order so the output is deterministic. All 8 patterns must
 // appear.
@@ -66,11 +68,19 @@ const PATTERN_RISK: Record<HookPattern, string> = {
 export function buildHookLibrary(
   input: ProductInput,
   avatars: AudienceAvatar[],
-  rankedAngles: string[]
+  rankedAngles: string[],
+  labels?: CopyLabels
 ): HookLibrary {
+  const resolvedLabels = labels ?? deriveCopyLabels(input, []);
   const items: HookLibraryItem[] = [];
   for (const pattern of PATTERN_ORDER) {
-    const perPattern = buildPatternItems(pattern, input, avatars, rankedAngles);
+    const perPattern = buildPatternItems(
+      pattern,
+      input,
+      avatars,
+      rankedAngles,
+      resolvedLabels
+    );
     items.push(...perPattern);
   }
   return { items };
@@ -80,7 +90,8 @@ function buildPatternItems(
   pattern: HookPattern,
   input: ProductInput,
   avatars: AudienceAvatar[],
-  rankedAngles: string[]
+  rankedAngles: string[],
+  labels: CopyLabels
 ): HookLibraryItem[] {
   // We aim for 3 items per pattern when we have at least 2 avatars and 2
   // ranked angles; otherwise 2.
@@ -99,7 +110,12 @@ function buildPatternItems(
       // Each pattern gets 1-2 avatars; we cap at 2.
       .slice(0, 2);
 
-    const text = seed(input, primaryAvatar, rankedAngles[i % Math.max(rankedAngles.length, 1)]);
+    const text = seed(
+      input,
+      labels,
+      primaryAvatar,
+      rankedAngles[i % Math.max(rankedAngles.length, 1)]
+    );
     items.push({
       pattern,
       text,
@@ -111,103 +127,91 @@ function buildPatternItems(
   return items;
 }
 
-// Templates: 3 seeds per pattern. Each takes (input, avatar?, angle?) so
-// the hook is parameterised on the product, the avatar's pain, and the
-// angle name when available. Voice is BigAd's own.
+// Templates: 3 seeds per pattern. Each takes (input, labels, avatar?, angle?)
+// so the hook stays bounded by the short noun-phrase labels. Voice is
+// BigAd's own.
 type Seed = (
   input: ProductInput,
+  labels: CopyLabels,
   avatar: AudienceAvatar | undefined,
   angle: string | undefined
 ) => string;
 
 const HOOK_TEMPLATES: Record<HookPattern, Seed[]> = {
   "pain-first": [
-    (i, a) =>
-      `If ${truncate(i.audiencePain || "the recurring friction", 50)} sounds familiar, this is the first beat where it stops costing you time.`,
-    (i, a) =>
-      `${truncate(a?.emotionalLanguage[0] || phraseFromAudience(i), 40)} — that's the loop ${truncate(i.differentiator || "this mechanism", 36)} cuts.`,
-    (i) =>
-      `Three weeks of ${truncate(i.category || "this category", 30)} and the real cost is ${truncate(i.audiencePain || "the recurring friction", 50)}.`,
+    (_, labels) =>
+      `Tired of ${labels.painLabel}? There's a cleaner way.`,
+    (_, labels) =>
+      `${capFirst(labels.painLabel)} isn't you — it's how ${labels.categoryLabel} is built.`,
+    (i, labels) =>
+      `Three weeks of ${labels.categoryLabel} and the real cost is ${labels.painLabel}.`,
   ],
   "outcome-first": [
-    (i) =>
-      `${truncate(asOutcomeSentence(i), 90)}`,
-    (i, a) =>
-      `Picture ${truncate(a?.label.toLowerCase() || "you", 30)} closing the tab feeling done — that's the after-state of ${truncate(i.differentiator || "the mechanism", 40)}.`,
-    (i) =>
-      `The point of ${truncate(i.name || "this product", 30)} is one specific outcome: ${truncate(i.goal || "the result you're trying to reach", 60)}.`,
+    (_, labels) =>
+      `Less ${labels.painLabel}. More ${labels.outcomeLabel}.`,
+    (i, labels) =>
+      `${capFirst(labels.outcomeLabel)} — finally a ${labels.categoryLabel} that delivers it.`,
+    (i, labels) =>
+      `${capFirst(i.name || "This product")} exists for one outcome: ${labels.outcomeLabel}.`,
   ],
   contrarian: [
-    (i) =>
-      `Most ${truncate(i.category || "category", 30)} advice has it backwards — start with ${truncate(i.differentiator || "the mechanism", 50)}, not the surface.`,
-    (i, a, angle) =>
-      `Unpopular take: ${truncate(angle || "the safest angle", 36)} only works because ${truncate(i.differentiator || "the mechanism", 50)} is what's actually doing the work.`,
-    (i) =>
-      `Stop fixing ${truncate(i.audiencePain || "the recurring friction", 40)} the way every other ${truncate(i.category || "category", 24)} product tells you to.`,
+    (_, labels) =>
+      `Most ${labels.categoryLabel} advice starts with the surface. Start with ${labels.mechanismLabel}.`,
+    (_, labels) =>
+      `Hot take: ${labels.mechanismLabel} is the only ${labels.categoryLabel} feature that matters.`,
+    (_, labels) =>
+      `Stop fixing ${labels.painLabel} the ${labels.categoryLabel} way.`,
   ],
   "proof-led": [
-    (i) =>
-      `A real customer of ${truncate(i.name || "this product", 30)} put it like this: it changed how ${truncate(i.category || "the category", 30)} feels day one.`,
-    (i, a) =>
-      `${truncate(a?.proofNeeded[0] || "Demo", 24)} first, claim second — that's the order this product earns belief in.`,
-    (i) =>
-      `One named user, one screen, one moment where ${truncate(i.differentiator || "the mechanism", 50)} clicked.`,
+    (i, labels) =>
+      `Real ${labels.audienceLabel.toLowerCase()} say ${labels.mechanismLabel} changed day one.`,
+    (i, labels, a) =>
+      `${a?.proofNeeded[0] || "Demo"} first, claim second — that is how ${i.name || "this"} earns belief.`,
+    (i, labels) =>
+      `One screen, one ${labels.audienceLabel.toLowerCase()}, one moment ${labels.mechanismLabel} clicks.`,
   ],
   curiosity: [
-    (i) =>
-      `There's one thing every ${truncate(i.category || "category", 24)} product skips because it was harder to build — ${truncate(i.differentiator || "this mechanism", 40)}.`,
-    (i, a) =>
-      `Why ${truncate(a?.label.toLowerCase() || "this audience", 30)} keeps hitting the same wall after switching tools — and what's actually behind it.`,
-    (i) =>
-      `${truncate(i.name || "This product", 30)} is built around one question most ${truncate(i.category || "category", 22)} pitches refuse to answer.`,
+    (_, labels) =>
+      `The one part of ${labels.categoryLabel} everyone skips: ${labels.mechanismLabel}.`,
+    (i, labels, a) =>
+      `Why ${labels.audienceLabel.toLowerCase()} keep hitting the same wall.`,
+    (i, labels) =>
+      `${i.name || "This"} is built around the question ${labels.categoryLabel} pitches refuse to answer.`,
   ],
   comparison: [
-    (i) => {
-      const named = (i.competitors || "").split(",").map((c) => c.trim()).filter(Boolean)[0];
-      return named
-        ? `${truncate(i.name || "This product", 30)} vs ${truncate(named, 24)} — same job, two very different defaults.`
-        : `${truncate(i.name || "This product", 30)} vs the option you're already comparing to — same job, two very different defaults.`;
+    (i, labels) => {
+      const productName = i.name || "This";
+      return `${productName} vs ${labels.competitorLabel} — same job, different defaults.`;
     },
-    (i) =>
-      `If you're picking between two ${truncate(i.category || "category", 24)} tools, here's the one row that actually moves the decision.`,
-    (i) =>
-      `What ${truncate(i.name || "this product", 30)} does that the alternative is structurally not built to do: ${truncate(i.differentiator || "the mechanism", 40)}.`,
+    (_, labels) =>
+      `Picking a ${labels.categoryLabel}? Here is the row that moves the call.`,
+    (i, labels) =>
+      `What ${i.name || "this"} ships that ${labels.competitorLabel} can not: ${labels.mechanismLabel}.`,
   ],
   mistake: [
-    (i) =>
-      `The mistake I kept making with ${truncate(i.category || "this category", 28)}: treating ${truncate(i.audiencePain || "the recurring friction", 40)} as a personal failure instead of a tool problem.`,
-    (i, a) =>
-      `If you've ever thought "${truncate(a?.emotionalLanguage[1] || a?.emotionalLanguage[0] || phraseFromAudience(i), 50)}" — that was the symptom, not the cause.`,
-    (i) =>
-      `One assumption that quietly costs ${truncate(i.audience || "this audience", 30)} weeks of progress on ${truncate(i.category || "the category", 24)}.`,
+    (_, labels) =>
+      `My mistake: treating ${labels.painLabel} as a personal failure.`,
+    (_, labels, a) =>
+      `Ever thought "${a?.emotionalLanguage[1] || a?.emotionalLanguage[0] || "this isn't working"}"? That was the symptom.`,
+    (_, labels) =>
+      `One assumption that quietly costs ${labels.audienceLabel.toLowerCase()} weeks.`,
   ],
   "before-after": [
-    (i) =>
-      `Before: ${truncate(i.audiencePain || "the same loop", 36)}. After: ${truncate(i.differentiator || "the mechanism", 36)}.`,
-    (i, a) =>
-      `${truncate(a?.label || "Before", 24)} → who you are once ${truncate(i.differentiator || "the mechanism", 40)} is just part of the routine.`,
-    (i) =>
-      `Two weeks ago this was ${truncate(i.audiencePain || "the recurring friction", 32)}. Now it's a thing they do without thinking about.`,
+    (_, labels) =>
+      `Before: ${labels.painLabel}. After: ${labels.outcomeLabel}.`,
+    (_, labels) =>
+      `Who you become once ${labels.mechanismLabel} is routine.`,
+    (_, labels) =>
+      `Two weeks ago: ${labels.painLabel}. Now: ${labels.outcomeLabel}.`,
   ],
 };
 
-function truncate(s: string, n: number): string {
-  const t = (s ?? "").trim();
-  if (t.length <= n) return t;
-  return t.slice(0, n - 3).trimEnd() + "...";
-}
-
-function asOutcomeSentence(input: ProductInput): string {
-  const goal = (input.goal || "").trim();
-  if (goal.length > 0) {
-    return capFirst(goal.endsWith(".") ? goal : `${goal}.`);
-  }
-  const diff = input.differentiator || "a different mechanism";
-  return `What changes is the part of ${input.category || "the category"} most products skip: ${diff}.`;
-}
-
-function phraseFromAudience(input: ProductInput): string {
-  return `not built for ${truncate(input.audience || "this audience", 30)}`;
+function shortAngle(angle: string | undefined): string {
+  if (!angle) return "the safest angle";
+  const trimmed = angle.trim().replace(/[.,;:]+$/, "");
+  const words = trimmed.split(/\s+/);
+  if (words.length <= 6) return trimmed;
+  return words.slice(0, 6).join(" ");
 }
 
 function capFirst(s: string): string {

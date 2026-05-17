@@ -16,18 +16,22 @@ import type {
   StaticLayoutPiece,
   StaticLayoutZone,
 } from "@/types/strategy";
+import type { CopyLabels } from "./copy-normalize";
+import { deriveCopyLabels } from "./copy-normalize";
 
 const ALL_SIZES: StaticAdSize[] = ["1:1", "4:5", "9:16"];
 
 export function buildStaticAdBriefs(
   briefs: CreatorBrief[],
   input: ProductInput,
-  ctaBank: CtaBank
+  ctaBank: CtaBank,
+  labels?: CopyLabels
 ): StaticAdBrief[] {
+  const resolved = labels ?? deriveCopyLabels(input, []);
   const out: StaticAdBrief[] = [];
   for (const brief of briefs.slice(0, 3)) {
     for (const size of ALL_SIZES) {
-      const built = buildOne(brief, input, ctaBank, size);
+      const built = buildOne(brief, input, ctaBank, size, resolved);
       if (built) out.push(built);
     }
   }
@@ -38,12 +42,13 @@ function buildOne(
   brief: CreatorBrief,
   input: ProductInput,
   ctaBank: CtaBank,
-  size: StaticAdSize
+  size: StaticAdSize,
+  labels: CopyLabels
 ): StaticAdBrief | null {
-  const headlineOverlay = headlineFromBrief(brief, input);
-  const subOverlay = subFromInput(input);
-  const heroElement = heroElement_(input);
-  const proofElement = proofElement_(input);
+  const headlineOverlay = headlineFromBrief(brief, input, labels);
+  const subOverlay = subFromInput(input, labels);
+  const heroElement = heroElement_(input, labels);
+  const proofElement = proofElement_(input, labels);
   const ctaBadge = pickCtaBadge(ctaBank, size);
 
   if (!headlineOverlay || !heroElement) return null;
@@ -74,38 +79,38 @@ function buildOne(
 
 // ---- Copy seeding ---------------------------------------------------------
 
-function headlineFromBrief(brief: CreatorBrief, input: ProductInput): string {
-  // Prefer the brief's first alt-hook stripped of meta-language, fall back
-  // to the audience pain framed as a question.
-  const candidate = brief.altHooks[0] ?? "";
-  const cleaned = stripOpenerLabel(candidate);
-  if (cleaned && cleaned.length <= 80) return cleaned;
-  if (input.audiencePain) {
-    return truncate(capitaliseFirst(input.audiencePain) + ".", 80);
-  }
-  return truncate(brief.forAngle, 80);
+function headlineFromBrief(
+  brief: CreatorBrief,
+  input: ProductInput,
+  labels: CopyLabels
+): string {
+  // Use the normalised pain + outcome labels for a tight overlay headline.
+  // Headlines must stay under 8 words. Two short clauses keep the rhythm.
+  const candidate = `Less ${labels.painLabel}. More ${labels.outcomeLabel}.`;
+  if (wordCount(candidate) <= 8) return capitaliseFirst(candidate);
+
+  // Fallback to the shorter outcome line.
+  const fallback = `${capitaliseFirst(labels.outcomeLabel)}, for real.`;
+  return fallback;
 }
 
-function subFromInput(input: ProductInput): string {
-  const diff = input.differentiator || "";
-  const audience = input.audience || "";
-  if (diff && diff.length <= 100) return truncate(capitaliseFirst(diff) + ".", 100);
-  if (audience) return truncate(`Built for ${audience}.`, 100);
-  return "";
+function subFromInput(input: ProductInput, labels: CopyLabels): string {
+  // Sub overlay names the mechanism + audience in <= 12 words.
+  return `${capitaliseFirst(labels.mechanismLabel)}, made for ${labels.audienceLabel.toLowerCase()}.`;
 }
 
-function heroElement_(input: ProductInput): string {
-  const cat = input.category || "the product";
+function heroElement_(input: ProductInput, labels: CopyLabels): string {
   const productName = input.name || "the product";
-  return `Centered ${productName} screen / pack-shot framed against a soft neutral background, ${cat} context cue in the corner.`;
+  return `Centered ${productName} screen / pack-shot framed against a soft neutral background, ${labels.categoryLabel} context cue in the corner.`;
 }
 
-function proofElement_(input: ProductInput): string {
-  // A neutral, generic proof artifact description — never invents a metric.
-  if (input.audience) {
-    return `Small proof strip: short caption from a real ${input.audience} viewer, kept inside one line.`;
-  }
-  return `Small proof strip: short caption from a real viewer, kept inside one line.`;
+function proofElement_(input: ProductInput, labels: CopyLabels): string {
+  return `Small proof strip: short caption from a real ${labels.audienceLabel.toLowerCase()} viewer, kept inside one line.`;
+}
+
+function wordCount(s: string): number {
+  if (!s) return 0;
+  return s.trim().split(/\s+/).filter(Boolean).length;
 }
 
 function pickCtaBadge(bank: CtaBank, size: StaticAdSize): string {

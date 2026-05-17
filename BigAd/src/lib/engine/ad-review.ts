@@ -456,7 +456,7 @@ function deriveVerdictForBrief(
         evidence: hasSay
           ? `CTA section has copy but no imperative verb.`
           : `CTA section has no copy lines.`,
-        fix: `Add one imperative ask to the CTA section (try / start / get / join / download …).`,
+        fix: `Add one imperative ask to the CTA section (try / start / get / join / download).`,
       };
     }
     case "platform-fit": {

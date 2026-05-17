@@ -154,6 +154,10 @@ The score is computed from the *inputs you wrote*, not from the auto-generated c
 
 The pill in the header turns green at 75+, amber at 55-74, and red below 55, so a quick glance tells you whether the inputs are doing their job before you copy any output.
 
+## Copy normalization layer
+
+`deriveCopyLabels(input, offers)` runs once at the top of `buildStrategy()` and produces a small set of short noun-phrase labels — `audienceLabel`, `painLabel`, `mechanismLabel`, `outcomeLabel`, `categoryLabel`, `competitorLabel`, `offerLabel` — that every customer-facing builder downstream (headlines, hooks, briefs, scripts, static briefs, CTAs, store copy, landing copy, ad concepts, variants) uses instead of raw `input.audience` / `input.audiencePain` / `input.differentiator` / `input.goal` interpolations. The labels keep generated copy short and on-voice: no "dating app app", no full audience sentences leaking into a single hook, no ellipsis-truncated phrases, and no offers that don't fit the business model. A companion `checkCopyIssues(strategy, input)` validator surfaces residual problems on `Strategy.copyIssues`, and the export brief renders a `## Copy Quality Flags` section.
+
 ## Anti-generic guard
 
 `detectGenericCopy(strategy, input)` scans every customer-facing string in the generated strategy (headlines, angle hooks, landing copy, store copy, ad copy, TikTok scripts) for a fixed list of banned phrases. Each hit produces a flag with:
@@ -216,13 +220,14 @@ BigAd/
 │   │   │   ├── audience-avatar.ts      buildAudienceAvatars() — 2-3 typed audience personas
 │   │   │   ├── hook-library.ts         buildHookLibrary() — 8 patterns × 2-3 hooks
 │   │   │   ├── ad-concept-cards.ts     buildAdConceptCards() — 3-6 (avatar × pattern × offer) cards
+│   │   │   ├── copy-normalize.ts       deriveCopyLabels() + checkCopyIssues() — short noun-phrase labels and anti-bad-copy validator
 │   │   │   └── export-brief.ts         generateExportBrief() — markdown bundle
 │   │   ├── example.ts          Three demo payloads — AstroDating (freemium launch), Plotline (subscription always-on), HeirloomBrew (one-time seasonal) — used by the "Load example" button and by `test:logic` to prove materially different inputs produce materially different outputs.
 │   │   └── llm.ts              Adapter interface for plugging an LLM later
 │   └── types/
 │       └── strategy.ts         Shared TypeScript types
 ├── scripts/
-│   └── test-logic.ts           `npm run test:logic` — 608 checks
+│   └── test-logic.ts           `npm run test:logic` — 661 checks
 ├── public/
 ├── next.config.ts
 ├── tailwind.config.ts
