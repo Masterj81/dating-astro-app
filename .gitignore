@@ -93,4 +93,7 @@ marketingagent/schedule.json
 
 # Local research / release notes kept outside the repo
 /BigAd/docs/
+!/BigAd/docs/
+/BigAd/docs/*
+!/BigAd/docs/user-guide.md
 /Release-Checklist-48h.doc

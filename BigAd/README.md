@@ -4,6 +4,8 @@ BigAd is a marketing-strategy workspace for founders, solopreneurs, and marketer
 
 The first screen is the workspace itself, not a marketing landing page.
 
+For day-to-day use, see the operator guide: [`docs/user-guide.md`](docs/user-guide.md).
+
 ## What BigAd does
 
 For any product you describe, BigAd produces:
