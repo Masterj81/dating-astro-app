@@ -127,6 +127,18 @@ The Tracking Readiness check structure is exposed as `TrackingReadinessCheck` / 
 
 `buildProofAssetPlan({ input, audienceAvatars, adConceptCards, offers, diagnosis })` emits a concrete, ranked plan of 4-10 proof assets the operator should capture before spend. Each asset carries a priority (`must-have` / `should-have` / `nice-to-have`), a typed proof shape (screenshot, demo-video, customer-quote, before-after, case-study, app-store-review, founder-story), actionable capture instructions, the surfaces it belongs on (landing-hero, static-1-1, video-9-16, store-listing, …), the avatar objection it addresses, and a `readinessImpact` score. The Proof tab surfaces the plan, a `proofReadinessScore`, and a "missing before spend" list. Journey Status raises a creative-kind warning when the score is below 50 and the avatar mix reads as skeptical or mature.
 
+## Creative Testing Matrix
+
+`buildCreativeTestingMatrix({ input, adConceptCards, hookLibrary, variantSets, ctaBank, proofAssetPlan, campaignCalendar, kpiLadder, audienceAvatars, offers })` emits 3-12 test cells that walk the (avatar x concept x hook x format x offer) space. The first batch (3-6 cells) varies on exactly ONE axis from a baseline, so every cell reads a single learning. Each cell carries a primary KPI, secondary KPI, a kill rule keyed off the KPI ladder's starter-tier breakeven, a scale rule keyed off the scaling-tier threshold, an estimated run length (3-14 days), and a learning goal. Skeptical / mature markets force a `proofAssetRequired` reference on every first-batch cell; missing must-have proof assets surface a `missing-proof` testing warning.
+
+## Campaign Setup Builder
+
+`buildCampaignSetup({ input, campaignCalendar, trackingReadiness, creativeTestingMatrix, audienceAvatars, offers })` turns the testing matrix into a launch-ready spec: a `PRODUCT-FUNNEL-COUNTRY-CONCEPT-VARIANT` naming convention, one to three campaigns (cold acquisition + engaged-60d retargeting + site-90d retargeting for launch/seasonal promo windows), ad sets with standard exclusions (`Existing customers`, `Active trialists` on cold), a generic UTM template, the standard reporting columns (Spend, Impressions, CTR, CPC, CPM, CVR, CPA, ROAS, hookRate, holdRate), and a pre-launch checklist that mirrors the tracking-readiness checks. Subscription / freemium products always include both `trial_start` (cold) and `subscribe` (retargeting) conversion events.
+
+## Next Iteration Planner
+
+`buildNextIterationPlan({ input, kpiLadder, creativeTestingMatrix, proofAssetPlan, hookLibrary, adConceptCards })` emits one `IterationRecommendation` per `WeakSignal` (`winning`, `weak-hook`, `weak-hold`, `weak-click`, `weak-conversion`, `weak-roas`, `proof-bottleneck`). Each recommendation carries a diagnosis sentence, 2-4 concrete next steps, the next proof assets to produce, and the next hook angles to try — pulled from the hook library entries not used in the first batch. The Execution tab renders the plan as the "what to ship next" companion to the testing matrix.
+
 ## Running it
 
 ```bash
@@ -231,13 +243,16 @@ BigAd/
 │   │   │   ├── hook-library.ts         buildHookLibrary() — 8 patterns × 2-3 hooks
 │   │   │   ├── ad-concept-cards.ts     buildAdConceptCards() — 3-6 (avatar × pattern × offer) cards
 │   │   │   ├── copy-normalize.ts       deriveCopyLabels() + checkCopyIssues() — short noun-phrase labels and anti-bad-copy validator
+│   │   │   ├── testing-matrix.ts       buildCreativeTestingMatrix() — Execution OS: 3-12 test cells with kill / scale rules
+│   │   │   ├── campaign-setup.ts       buildCampaignSetup() — Execution OS: campaign / ad-set / exclusions / UTM / pre-launch checklist
+│   │   │   ├── iteration-planner.ts    buildNextIterationPlan() — Execution OS: one recommendation per weak-signal
 │   │   │   └── export-brief.ts         generateExportBrief() — markdown bundle
 │   │   ├── example.ts          Three demo payloads — AstroDating (freemium launch), Plotline (subscription always-on), HeirloomBrew (one-time seasonal) — used by the "Load example" button and by `test:logic` to prove materially different inputs produce materially different outputs.
 │   │   └── llm.ts              Adapter interface for plugging an LLM later
 │   └── types/
 │       └── strategy.ts         Shared TypeScript types
 ├── scripts/
-│   └── test-logic.ts           `npm run test:logic` — 696 checks
+│   └── test-logic.ts           `npm run test:logic` — 746 checks
 ├── public/
 ├── next.config.ts
 ├── tailwind.config.ts

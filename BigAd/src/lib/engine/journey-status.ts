@@ -6,7 +6,9 @@
 
 import type {
   AdReviewChecklist,
+  AppliedAdReview,
   AudienceAvatar,
+  CreativeTestingMatrix,
   CreatorBrief,
   JourneyBlocker,
   JourneyStage,
@@ -33,6 +35,10 @@ export interface JourneyStatusArgs {
   // when proof readiness is low against a skeptical / mature mix.
   proofAssetPlan?: ProofAssetPlan;
   audienceAvatars?: AudienceAvatar[];
+  // Execution OS — when provided, journey-status reads the testing
+  // matrix and the per-brief applied reviews to upgrade the stage.
+  creativeTestingMatrix?: CreativeTestingMatrix;
+  appliedAdReviews?: AppliedAdReview[];
 }
 
 // Ad-review weight floor for "review-passed". The shipped checklist has
@@ -127,6 +133,48 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     });
   }
 
+  // Execution OS — tracking score < 50 flips Execution into "plan only".
+  if (trackingReadiness.score < 50) {
+    blockers.push({
+      kind: "tracking",
+      severity: "blocker",
+      message:
+        "Tracking not ready — Execution shows plan only, do not spend.",
+    });
+  }
+
+  // Proof-asset planner missing-before-spend list → per-asset creative
+  // warnings, so each missing must-have surfaces traceably.
+  if (args.proofAssetPlan) {
+    for (const missingId of args.proofAssetPlan.missingBeforeSpend) {
+      warnings.push({
+        kind: "creative",
+        severity: "warning",
+        message: `Missing must-have proof asset (${missingId}) — capture before first spend.`,
+      });
+    }
+  }
+
+  // Execution OS — first batch presence is a prerequisite for
+  // ready-to-spend. When the matrix isn't supplied (legacy callers /
+  // backward-compat with tests that pre-date the Execution OS phase),
+  // we don't block on it.
+  const firstBatchPresent =
+    !args.creativeTestingMatrix ||
+    args.creativeTestingMatrix.recommendedFirstBatch.length >= 3;
+
+  // Applied ad reviews — at least one "ready" or "almost" verdict.
+  const reviewsReady =
+    !args.appliedAdReviews ||
+    args.appliedAdReviews.length === 0 ||
+    args.appliedAdReviews.some(
+      (r) => r.verdict === "ready" || r.verdict === "almost"
+    );
+
+  const proofReady =
+    !args.proofAssetPlan ||
+    args.proofAssetPlan.proofReadinessScore >= 50;
+
   // Stage selection — earliest match wins.
   const stage = pickStage({
     creatorBriefsCount: creatorBriefs.length,
@@ -135,6 +183,9 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     diagnosisPrimary: kpiDiagnosis?.primaryCategory ?? "tracking",
     reviewWeight: adReview?.totalWeight ?? 0,
     blockersCount: blockers.length,
+    firstBatchPresent,
+    reviewsReady,
+    proofReady,
   });
 
   const readyToSpend = stage === "ready-to-spend";
@@ -170,12 +221,19 @@ function pickStage(args: {
   diagnosisPrimary: string;
   reviewWeight: number;
   blockersCount: number;
+  firstBatchPresent: boolean;
+  reviewsReady: boolean;
+  proofReady: boolean;
 }): JourneyStage {
   if (args.creatorBriefsCount === 0) return "strategy-drafted";
   if (args.trackingScore < 70 || args.blockersCount > 0) return "creative-planned";
   if (!args.hasLadder) return "tracking-ready";
   if (args.diagnosisPrimary !== "healthy") return "kpi-aligned";
   if (args.reviewWeight < REVIEW_WEIGHT_FLOOR) return "kpi-aligned";
+  // Execution OS gates — first batch + applied reviews + proof readiness.
+  if (!args.firstBatchPresent) return "review-passed";
+  if (!args.reviewsReady) return "review-passed";
+  if (!args.proofReady) return "review-passed";
   return "ready-to-spend";
 }
 

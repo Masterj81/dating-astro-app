@@ -21,6 +21,14 @@ import type {
   CtaStyle,
   CtaSurface,
   CtaVariant,
+  CampaignSetup,
+  CampaignSpec,
+  AdSetSpec,
+  CreativeTestingMatrix,
+  TestCell,
+  PreLaunchChecklistItem,
+  NextIterationPlan,
+  IterationRecommendation,
   EditorHandoff,
   GenericFlag,
   InputQuality,
@@ -83,6 +91,7 @@ type Tab =
   | "briefs"
   | "shots"
   | "launch"
+  | "execution"
   | "proof"
   | "landing"
   | "store"
@@ -106,6 +115,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "briefs", label: "Briefs" },
   { id: "shots", label: "Shots" },
   { id: "launch", label: "Launch readiness" },
+  { id: "execution", label: "Execution" },
   { id: "proof", label: "Proof" },
   { id: "landing", label: "Landing" },
   { id: "store", label: "App store" },
@@ -182,6 +192,7 @@ export function StrategyView({ input, strategy, hasMeaningfulInput }: Props) {
         {tab === "briefs" && <BriefsTab strategy={strategy} />}
         {tab === "shots" && <ShotsTab strategy={strategy} />}
         {tab === "launch" && <LaunchTab strategy={strategy} input={input} />}
+        {tab === "execution" && <ExecutionTab strategy={strategy} />}
         {tab === "proof" && <ProofTab plan={strategy.proofAssetPlan} />}
         {tab === "landing" && <LandingTab strategy={strategy} />}
         {tab === "store" && <StoreTab strategy={strategy} />}
@@ -3469,5 +3480,345 @@ function CopyButton({ text, small }: { text: string; small?: boolean }) {
     >
       {copied ? "Copied" : "Copy"}
     </button>
+  );
+}
+
+// ---------------- Execution tab ----------------
+
+function ExecutionTab({ strategy }: { strategy: Strategy }) {
+  return (
+    <div className="flex flex-col gap-6">
+      <FirstBatchBlock matrix={strategy.creativeTestingMatrix} />
+      <CampaignSetupBlock setup={strategy.campaignSetup} />
+      <KillScaleReferenceBlock matrix={strategy.creativeTestingMatrix} />
+      <NextIterationBlock plan={strategy.nextIterationPlan} />
+    </div>
+  );
+}
+
+function FirstBatchBlock({ matrix }: { matrix: CreativeTestingMatrix }) {
+  const firstSet = new Set(matrix.recommendedFirstBatch);
+  const firstBatch = matrix.testCells.filter((c) => firstSet.has(c.id));
+  const queued = matrix.testCells.filter((c) => !firstSet.has(c.id));
+  return (
+    <div className="flex flex-col gap-3">
+      <SectionTitle>First test batch</SectionTitle>
+      <p className="text-xs text-ink-400">
+        Three to six cells that each vary on exactly one axis from a
+        baseline — that is the discipline. Max concurrent tests:{" "}
+        <span className="text-ink-200">{matrix.maxConcurrentTests}</span>.
+        Cells in the queue ship after the first batch reads.
+      </p>
+      {matrix.testingWarnings.length > 0 ? (
+        <div className="hairline rounded-lg border border-amber-500/20 bg-ink-900 p-3">
+          <p className="text-xs font-medium text-amber-300">Testing warnings</p>
+          <ul className="mt-1 list-inside list-disc space-y-1 text-xxs text-ink-200">
+            {matrix.testingWarnings.map((w, i) => (
+              <li key={i}>
+                <span className="text-amber-300">[{w.kind}]</span> {w.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      <div className="flex flex-col gap-3">
+        {firstBatch.map((c) => (
+          <TestCellCard key={c.id} cell={c} variant="first-batch" />
+        ))}
+      </div>
+      {queued.length > 0 ? (
+        <>
+          <SectionTitle>Queued (after first batch reads)</SectionTitle>
+          <div className="flex flex-col gap-3">
+            {queued.map((c) => (
+              <TestCellCard key={c.id} cell={c} variant="queued" />
+            ))}
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function TestCellCard({
+  cell,
+  variant,
+}: {
+  cell: TestCell;
+  variant: "first-batch" | "queued";
+}) {
+  const tone =
+    variant === "first-batch"
+      ? "border-emerald-500/30"
+      : "border-ink-700";
+  return (
+    <div className={`hairline rounded-lg bg-ink-900 p-4 ${tone}`}>
+      <div className="flex flex-wrap items-baseline gap-2">
+        <Tag>{cell.id}</Tag>
+        <Tag>{cell.conceptId}</Tag>
+        <Tag>{cell.avatarId}</Tag>
+        <Tag>{cell.format}</Tag>
+        <Tag>{cell.funnelStage}</Tag>
+        <Tag>{cell.audienceTier}</Tag>
+        <Tag>offer: {cell.offer}</Tag>
+        <Tag>primary: {cell.primaryKpi}</Tag>
+        <Tag>secondary: {cell.secondaryKpi}</Tag>
+        {cell.proofAssetRequired ? (
+          <span className="rounded-sm border border-emerald-500/40 bg-ink-900 px-2 py-0.5 text-xxs text-emerald-300">
+            proof: {cell.proofAssetRequired}
+          </span>
+        ) : (
+          <span className="rounded-sm border border-amber-500/30 bg-ink-900 px-2 py-0.5 text-xxs text-amber-300">
+            no proof attached
+          </span>
+        )}
+      </div>
+      <p className="mt-2 text-sm text-ink-100">{cell.hook}</p>
+      <p className="mt-2 text-xs text-ink-300">
+        <span className="text-ink-400">Learning goal: </span>
+        {cell.learningGoal}
+      </p>
+      <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+        <div className="rounded-md border border-rose-500/20 bg-ink-950/40 p-2 text-xxs text-ink-200">
+          <span className="text-rose-300">Kill:</span> {cell.killRule.metric}{" "}
+          {cell.killRule.comparator} {cell.killRule.threshold} after $
+          {cell.killRule.afterSpend}. <span className="text-ink-400">{cell.killRule.rationale}</span>
+        </div>
+        <div className="rounded-md border border-emerald-500/20 bg-ink-950/40 p-2 text-xxs text-ink-200">
+          <span className="text-emerald-300">Scale:</span> {cell.scaleRule.metric}{" "}
+          {cell.scaleRule.comparator} {cell.scaleRule.threshold} after $
+          {cell.scaleRule.afterSpend} → {cell.scaleRule.action}.{" "}
+          <span className="text-ink-400">{cell.scaleRule.rationale}</span>
+        </div>
+      </div>
+      <p className="mt-2 text-xxs text-ink-400">
+        Estimated run: {cell.estimatedRunDays} day
+        {cell.estimatedRunDays === 1 ? "" : "s"}.
+      </p>
+    </div>
+  );
+}
+
+function CampaignSetupBlock({ setup }: { setup: CampaignSetup }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <SectionTitle>Campaign setup</SectionTitle>
+      <p className="text-xs text-ink-400">
+        Naming convention:{" "}
+        <code className="rounded-sm bg-ink-800 px-1 py-0.5 text-ink-100">
+          {setup.namingConvention}
+        </code>
+      </p>
+      <div className="flex flex-col gap-3">
+        {setup.campaigns.map((c) => (
+          <CampaignCard key={c.name} campaign={c} />
+        ))}
+      </div>
+      <SectionTitle>Pre-launch checklist</SectionTitle>
+      <div className="hairline rounded-lg bg-ink-900 p-3">
+        <ul className="flex flex-col gap-1.5 text-xxs">
+          {setup.preLaunchChecklist.map((it, i) => (
+            <ChecklistRow key={`${it.label}-${i}`} item={it} />
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function CampaignCard({ campaign }: { campaign: CampaignSpec }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="hairline rounded-lg bg-ink-900 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-baseline gap-2">
+          <p className="font-mono text-sm text-ink-50">{campaign.name}</p>
+          <Tag>{campaign.objective}</Tag>
+          <Tag>{campaign.conversionEvent}</Tag>
+          <Tag>{campaign.budgetMode}</Tag>
+          <Tag>{campaign.audienceArchitecture}</Tag>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="rounded-sm border border-ink-700 bg-ink-800 px-2 py-0.5 text-xxs text-ink-200 hover:border-accent hover:text-white"
+        >
+          {open ? "Hide" : "Show ad sets"}
+        </button>
+      </div>
+      {open ? (
+        <div className="mt-3 flex flex-col gap-2">
+          {campaign.adSets.map((a) => (
+            <AdSetCard key={a.name} adSet={a} />
+          ))}
+          <p className="text-xxs text-ink-400">
+            UTM:{" "}
+            <code className="rounded-sm bg-ink-800 px-1 py-0.5 text-ink-100">
+              {campaign.utmTemplate}
+            </code>
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {campaign.reportingColumns.map((c) => (
+              <Tag key={c}>{c}</Tag>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function AdSetCard({ adSet }: { adSet: AdSetSpec }) {
+  return (
+    <div className="rounded-md border border-ink-800 bg-ink-950/40 p-3">
+      <div className="flex flex-wrap items-baseline gap-2">
+        <p className="text-sm font-medium text-ink-100">{adSet.name}</p>
+        <Tag>{adSet.budgetSplit}</Tag>
+        <Tag>optimize: {adSet.optimizationEvent}</Tag>
+      </div>
+      <p className="mt-1 text-xxs text-ink-300">
+        <span className="text-ink-500">Inclusions: </span>
+        {adSet.inclusions.join("; ") || "—"}
+      </p>
+      <p className="mt-1 text-xxs text-ink-300">
+        <span className="text-ink-500">Exclusions: </span>
+        {adSet.exclusions.join("; ") || "—"}
+      </p>
+      <div className="mt-1 flex flex-wrap gap-1">
+        {adSet.placements.map((p) => (
+          <Tag key={p}>{p}</Tag>
+        ))}
+      </div>
+      <p className="mt-2 text-xxs text-ink-400">
+        Ads: {adSet.ads.join(", ") || "—"}
+      </p>
+    </div>
+  );
+}
+
+function ChecklistRow({ item }: { item: PreLaunchChecklistItem }) {
+  const tone =
+    item.status === "passed"
+      ? "border-emerald-500/40 text-emerald-300"
+      : item.status === "warning"
+      ? "border-amber-500/40 text-amber-300"
+      : item.status === "blocker"
+      ? "border-rose-500/40 text-rose-300"
+      : "border-ink-700 text-ink-300";
+  return (
+    <li className="flex flex-wrap items-center gap-2">
+      <span
+        className={`rounded-sm border bg-ink-900 px-1.5 py-0.5 text-xxs ${tone}`}
+      >
+        {item.status}
+      </span>
+      <span className="text-ink-100">{item.label}</span>
+      {item.source ? (
+        <span className="text-ink-500">({item.source})</span>
+      ) : null}
+    </li>
+  );
+}
+
+function KillScaleReferenceBlock({ matrix }: { matrix: CreativeTestingMatrix }) {
+  if (matrix.testCells.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-3">
+      <SectionTitle>Kill / scale rules</SectionTitle>
+      <p className="text-xs text-ink-400">
+        Reference table across every cell in the matrix. Same shape, two
+        decisions per cell.
+      </p>
+      <div className="hairline overflow-x-auto rounded-lg bg-ink-900 p-3">
+        <table className="w-full table-auto border-collapse text-xs">
+          <thead>
+            <tr className="border-b border-ink-800 text-ink-400">
+              <th className="py-2 pr-3 text-left font-medium">Cell</th>
+              <th className="py-2 pr-3 text-left font-medium">Primary KPI</th>
+              <th className="py-2 pr-3 text-left font-medium">Kill</th>
+              <th className="py-2 pr-3 text-left font-medium">Scale</th>
+            </tr>
+          </thead>
+          <tbody>
+            {matrix.testCells.map((c) => (
+              <tr key={c.id} className="border-b border-ink-900/60 align-top">
+                <td className="py-2 pr-3 font-medium text-ink-100">{c.id}</td>
+                <td className="py-2 pr-3 text-ink-200">{c.primaryKpi}</td>
+                <td className="py-2 pr-3 text-xxs text-ink-200">
+                  {c.killRule.comparator} {c.killRule.threshold} after $
+                  {c.killRule.afterSpend}
+                </td>
+                <td className="py-2 pr-3 text-xxs text-ink-200">
+                  {c.scaleRule.comparator} {c.scaleRule.threshold} after $
+                  {c.scaleRule.afterSpend} → {c.scaleRule.action}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function NextIterationBlock({ plan }: { plan: NextIterationPlan }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <SectionTitle>Next iteration plan</SectionTitle>
+      <p className="text-xs text-ink-400">
+        One recommendation per weak signal. Use these as the "what to ship
+        next" map once the first batch reads.
+      </p>
+      <div className="flex flex-col gap-3">
+        {plan.recommendations.map((r) => (
+          <IterationCard key={r.signal} rec={r} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function IterationCard({ rec }: { rec: IterationRecommendation }) {
+  return (
+    <div className="hairline rounded-lg bg-ink-900 p-4">
+      <div className="flex flex-wrap items-baseline gap-2">
+        <span className="rounded-sm border border-ink-700 bg-ink-800 px-2 py-0.5 text-xxs uppercase tracking-wide text-ink-100">
+          {rec.signal}
+        </span>
+      </div>
+      <p className="mt-2 text-xs text-ink-200">{rec.diagnosis}</p>
+      {rec.nextSteps.length > 0 ? (
+        <div className="mt-2">
+          <p className="text-xxs uppercase tracking-wide text-ink-400">
+            Next steps
+          </p>
+          <ul className="mt-1 list-inside list-disc space-y-1 text-xs text-ink-100">
+            {rec.nextSteps.map((s, i) => (
+              <li key={i}>{s}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {rec.nextAssetsToProduce.length > 0 ? (
+        <div className="mt-2 flex flex-wrap items-baseline gap-2">
+          <p className="text-xxs uppercase tracking-wide text-ink-400">
+            Assets to produce
+          </p>
+          {rec.nextAssetsToProduce.map((a) => (
+            <Tag key={a}>{a}</Tag>
+          ))}
+        </div>
+      ) : null}
+      {rec.nextAnglesToTry.length > 0 ? (
+        <div className="mt-2 flex flex-wrap items-baseline gap-2">
+          <p className="text-xxs uppercase tracking-wide text-ink-400">
+            Angles to try
+          </p>
+          {rec.nextAnglesToTry.map((a, i) => (
+            <Tag key={i}>{a}</Tag>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }

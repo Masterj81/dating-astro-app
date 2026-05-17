@@ -2987,6 +2987,350 @@ for (const { name, strategy } of fixtures) {
   );
 }
 
+// ---- Execution OS: Creative Testing Matrix --------------------------------
+
+{
+  const m = a.creativeTestingMatrix;
+  record(
+    "testing-matrix: AstroDating first batch length in [3,6]",
+    m.recommendedFirstBatch.length >= 3 && m.recommendedFirstBatch.length <= 6,
+    `Got ${m.recommendedFirstBatch.length}`
+  );
+  record(
+    "testing-matrix: AstroDating testCells length >= recommendedFirstBatch length",
+    m.testCells.length >= m.recommendedFirstBatch.length
+  );
+  // Every test cell has the required shape.
+  const badCell = m.testCells.find(
+    (c) =>
+      !c.id ||
+      !c.conceptId ||
+      !c.avatarId ||
+      !c.hook ||
+      !c.format ||
+      !c.funnelStage ||
+      !c.audienceTier ||
+      !c.offer ||
+      !c.primaryKpi ||
+      !c.secondaryKpi ||
+      !c.killRule ||
+      !c.scaleRule ||
+      !c.learningGoal ||
+      typeof c.estimatedRunDays !== "number"
+  );
+  record("testing-matrix: every test cell has all required fields", !badCell);
+  // killRule and scaleRule shape.
+  const badRule = m.testCells.find(
+    (c) =>
+      typeof c.killRule.threshold !== "number" ||
+      typeof c.killRule.afterSpend !== "number" ||
+      !c.killRule.rationale ||
+      typeof c.scaleRule.threshold !== "number" ||
+      typeof c.scaleRule.afterSpend !== "number" ||
+      !c.scaleRule.action
+  );
+  record(
+    "testing-matrix: every kill / scale rule has thresholds + rationale",
+    !badRule
+  );
+  // ConceptId must reference one of the AdConceptCards.
+  const conceptIds = new Set(a.adConceptCards.map((c) => c.id));
+  const badConcept = m.testCells.find((c) => !conceptIds.has(c.conceptId));
+  record("testing-matrix: every cell references a real concept", !badConcept);
+  // Avatar id must reference a real avatar.
+  const avatarIds = new Set(a.audienceAvatars.map((av) => av.id));
+  const badAvatar = m.testCells.find((c) => !avatarIds.has(c.avatarId));
+  record("testing-matrix: every cell references a real avatar", !badAvatar);
+  // maxConcurrentTests in [4,8].
+  record(
+    "testing-matrix: maxConcurrentTests is in [4,8]",
+    m.maxConcurrentTests >= 4 && m.maxConcurrentTests <= 8
+  );
+}
+
+// AstroDating is solution-aware in a mature-market — proof assets may
+// or may not be required, but for the inline skeptical-market fixture
+// every first-batch cell MUST have proofAssetRequired non-null.
+{
+  const skepticalInput2: ProductInput = {
+    ...ASTRO_DATING_EXAMPLE,
+    sophistication: "skeptical-market",
+    awareness: "problem-aware",
+  };
+  const s = buildStrategy(skepticalInput2);
+  const firstSet = new Set(s.creativeTestingMatrix.recommendedFirstBatch);
+  const firstCells = s.creativeTestingMatrix.testCells.filter((c) =>
+    firstSet.has(c.id)
+  );
+  const noProof = firstCells.find((c) => !c.proofAssetRequired);
+  record(
+    "testing-matrix: skeptical-market first-batch cells all have proofAssetRequired",
+    !noProof,
+    `Cell without proof: ${noProof?.id}`
+  );
+  // Warning surfaces when missingBeforeSpend non-empty.
+  if (s.proofAssetPlan.missingBeforeSpend.length > 0) {
+    record(
+      "testing-matrix: skeptical-market missing proof → testingWarnings.missing-proof",
+      s.creativeTestingMatrix.testingWarnings.some(
+        (w) => w.kind === "missing-proof"
+      )
+    );
+  } else {
+    record(
+      "testing-matrix: skeptical-market with no missing must-have → no missing-proof warning (vacuous)",
+      true
+    );
+  }
+}
+
+// AstroDating: proofAssetPlan.missingBeforeSpend is non-empty (MVP) so
+// the matrix MUST also surface a missing-proof warning.
+{
+  if (a.proofAssetPlan.missingBeforeSpend.length > 0) {
+    record(
+      "testing-matrix: missingBeforeSpend non-empty → testingWarnings includes missing-proof",
+      a.creativeTestingMatrix.testingWarnings.some(
+        (w) => w.kind === "missing-proof"
+      )
+    );
+  } else {
+    record(
+      "testing-matrix: missingBeforeSpend empty — no missing-proof warning needed (vacuous)",
+      true
+    );
+  }
+}
+
+// Determinism of the testing matrix across two buildStrategy calls.
+{
+  const s1 = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const s2 = buildStrategy(ASTRO_DATING_EXAMPLE);
+  record(
+    "testing-matrix: deterministic across buildStrategy calls",
+    JSON.stringify(s1.creativeTestingMatrix) ===
+      JSON.stringify(s2.creativeTestingMatrix)
+  );
+}
+
+// ---- Execution OS: Campaign Setup -----------------------------------------
+
+{
+  const setup = a.campaignSetup;
+  record(
+    "campaign-setup: AstroDating has >= 1 campaign",
+    setup.campaigns.length >= 1
+  );
+  // Naming convention shape: PRODUCT-FUNNEL-COUNTRY-CONCEPT-VARIANT.
+  const namingRegex = /^[A-Z0-9]+-\{FUNNEL\}-[A-Z]{2}-\{CONCEPT\}-\{VARIANT\}$/;
+  record(
+    "campaign-setup: namingConvention follows PRODUCT-FUNNEL-COUNTRY-CONCEPT-VARIANT shape",
+    namingRegex.test(setup.namingConvention),
+    `Got: ${setup.namingConvention}`
+  );
+  // Every concrete campaign name follows the same shape literally.
+  const concreteRegex = /^[A-Z0-9]+-[A-Z]+-[A-Z]{2}-[A-Z0-9-]+-[A-Z0-9-]+$/;
+  const badName = setup.campaigns.find((c) => !concreteRegex.test(c.name));
+  record(
+    "campaign-setup: every campaign name matches the convention shape",
+    !badName,
+    `Bad: ${badName?.name}`
+  );
+  // AstroDating is freemium → conversionEvent includes trial_start AND subscribe.
+  const conversionEvents = new Set(
+    setup.campaigns.map((c) => c.conversionEvent)
+  );
+  record(
+    "campaign-setup: AstroDating includes trial_start conversion event",
+    conversionEvents.has("trial_start"),
+    `Got: ${Array.from(conversionEvents).join(", ")}`
+  );
+  record(
+    "campaign-setup: AstroDating includes subscribe or purchase conversion event",
+    conversionEvents.has("subscribe") || conversionEvents.has("purchase"),
+    `Got: ${Array.from(conversionEvents).join(", ")}`
+  );
+  // Cold ad set must have the standard exclusions.
+  const coldCampaign = setup.campaigns[0];
+  const coldAdSet = coldCampaign.adSets[0];
+  record(
+    "campaign-setup: cold ad set excludes Existing customers",
+    coldAdSet.exclusions.includes("Existing customers")
+  );
+  record(
+    "campaign-setup: cold ad set excludes Active trialists",
+    coldAdSet.exclusions.includes("Active trialists")
+  );
+  // utmTemplate is set on every campaign.
+  const noUtm = setup.campaigns.find((c) => !c.utmTemplate);
+  record("campaign-setup: every campaign has a utmTemplate", !noUtm);
+  // reportingColumns contains the standard set.
+  const reporting = setup.campaigns[0].reportingColumns;
+  record(
+    "campaign-setup: reportingColumns includes ROAS and CTR",
+    reporting.includes("ROAS") && reporting.includes("CTR")
+  );
+  // Pre-launch checklist exists and references trackingReadiness sources.
+  record(
+    "campaign-setup: preLaunchChecklist length >= 5",
+    setup.preLaunchChecklist.length >= 5
+  );
+  record(
+    "campaign-setup: preLaunchChecklist references tracking-readiness source",
+    setup.preLaunchChecklist.some((it) =>
+      (it.source ?? "").startsWith("tracking-readiness:")
+    )
+  );
+}
+
+// Plotline is subscription → trial_start + subscribe must appear too.
+{
+  const setupB = b.campaignSetup;
+  const conversionEvents = new Set(
+    setupB.campaigns.map((c) => c.conversionEvent)
+  );
+  record(
+    "campaign-setup: Plotline (subscription) includes trial_start",
+    conversionEvents.has("trial_start")
+  );
+  record(
+    "campaign-setup: Plotline (subscription) includes subscribe",
+    conversionEvents.has("subscribe")
+  );
+}
+
+// AstroDating is a launch with a promo-3-tier window → 3 campaigns
+// (ACQ + ENGAGE + SITE).
+{
+  const funnelTokens = a.campaignSetup.campaigns.map((c) => {
+    const parts = c.name.split("-");
+    return parts[1];
+  });
+  record(
+    "campaign-setup: AstroDating launch emits ACQ campaign",
+    funnelTokens.includes("ACQ")
+  );
+  record(
+    "campaign-setup: AstroDating launch emits ENGAGE retargeting campaign",
+    funnelTokens.includes("ENGAGE")
+  );
+  record(
+    "campaign-setup: AstroDating launch emits SITE retargeting campaign",
+    funnelTokens.includes("SITE")
+  );
+}
+
+// ---- Execution OS: Next Iteration Plan ------------------------------------
+
+{
+  const plan = a.nextIterationPlan;
+  record(
+    "iteration-planner: emits exactly 7 recommendations",
+    plan.recommendations.length === 7,
+    `Got ${plan.recommendations.length}`
+  );
+  const expectedSignals = [
+    "winning",
+    "weak-hook",
+    "weak-hold",
+    "weak-click",
+    "weak-conversion",
+    "weak-roas",
+    "proof-bottleneck",
+  ];
+  for (const sig of expectedSignals) {
+    record(
+      `iteration-planner: contains a "${sig}" recommendation`,
+      plan.recommendations.some((r) => r.signal === sig)
+    );
+  }
+  // Every rec has non-empty diagnosis + at least one next step.
+  const badRec = plan.recommendations.find(
+    (r) => !r.diagnosis || r.nextSteps.length === 0
+  );
+  record(
+    "iteration-planner: every rec has diagnosis + non-empty nextSteps",
+    !badRec
+  );
+  // Aggregated unique union.
+  const aggregateAssetsAreUnique =
+    new Set(plan.nextAssetsToProduce).size === plan.nextAssetsToProduce.length;
+  const aggregateAnglesAreUnique =
+    new Set(plan.nextAnglesToTry).size === plan.nextAnglesToTry.length;
+  record(
+    "iteration-planner: nextAssetsToProduce is a unique aggregated union",
+    aggregateAssetsAreUnique
+  );
+  record(
+    "iteration-planner: nextAnglesToTry is a unique aggregated union",
+    aggregateAnglesAreUnique
+  );
+  // Weak-hook rec proposes new angles from the library.
+  const weakHook = plan.recommendations.find((r) => r.signal === "weak-hook");
+  record(
+    "iteration-planner: weak-hook recommendation proposes new hook angles",
+    !!weakHook && weakHook.nextAnglesToTry.length > 0
+  );
+}
+
+// ---- Journey Status: tracking < 50 → Execution Plan-only blocker ----------
+
+{
+  const badTrackingInput: ProductInput = {
+    ...ASTRO_DATING_EXAMPLE,
+    name: "",            // zaps the naming-convention check
+    goal: "",            // zaps the conversion-events check
+    price: "",           // zaps the test-purchase check
+    campaignType: undefined,
+  };
+  const s = buildStrategy(badTrackingInput);
+  // Tracking score should land well below 50.
+  if (s.trackingReadiness.score < 50) {
+    record(
+      "journey-status: tracking < 50 → Execution Plan-only blocker",
+      s.journeyStatus.blockers.some(
+        (b) =>
+          b.kind === "tracking" &&
+          /Execution shows plan only/i.test(b.message)
+      ),
+      `Blockers: ${s.journeyStatus.blockers.map((b) => b.message).join(" | ")}`
+    );
+  } else {
+    record(
+      "journey-status: tracking < 50 → Execution Plan-only blocker (vacuous)",
+      true
+    );
+  }
+}
+
+// ---- Export brief contains the 3 Execution OS sections -------------------
+
+for (const { name, strategy } of fixtures) {
+  record(
+    `export brief: ${name} contains the Creative Testing Matrix section`,
+    strategy.exportBrief.includes("## Creative Testing Matrix")
+  );
+  record(
+    `export brief: ${name} contains the Campaign Setup section`,
+    strategy.exportBrief.includes("## Campaign Setup")
+  );
+  record(
+    `export brief: ${name} contains the Next Iteration Plan section`,
+    strategy.exportBrief.includes("## Next Iteration Plan")
+  );
+}
+
+// ---- buildStrategy still deterministic across new fields -----------------
+
+{
+  const x1 = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const x2 = buildStrategy(ASTRO_DATING_EXAMPLE);
+  record(
+    "execution-os: full strategy is deep-equal across two calls",
+    JSON.stringify(x1) === JSON.stringify(x2)
+  );
+}
+
 // Report.
 let failed = 0;
 for (const c of checks) {

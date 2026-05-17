@@ -496,6 +496,143 @@ export function generateExportBrief(
     }
   }
 
+  // 12. Execution OS — Creative Testing Matrix
+  section(lines, "Creative Testing Matrix");
+  const ctm = strategy.creativeTestingMatrix;
+  lines.push(
+    `Max concurrent tests: **${ctm.maxConcurrentTests}**. First batch: **${ctm.recommendedFirstBatch.length}** cell${ctm.recommendedFirstBatch.length === 1 ? "" : "s"} of ${ctm.testCells.length} planned.`
+  );
+  lines.push("");
+  if (ctm.testingWarnings.length > 0) {
+    lines.push(`**Testing warnings:**`);
+    for (const w of ctm.testingWarnings) {
+      lines.push(`- [${w.kind}] ${oneLine(w.message)}`);
+    }
+    lines.push("");
+  }
+  const firstBatchSet = new Set(ctm.recommendedFirstBatch);
+  const firstBatchCells = ctm.testCells.filter((c) => firstBatchSet.has(c.id));
+  if (firstBatchCells.length > 0) {
+    lines.push(`**Recommended first batch:**`);
+    lines.push("");
+    lines.push(
+      `| ID | Concept | Avatar | Hook | Format | Funnel | Tier | Offer | Primary KPI | Kill | Scale | Learning | Days |`
+    );
+    lines.push(
+      `|----|---------|--------|------|--------|--------|------|-------|-------------|------|-------|----------|------|`
+    );
+    for (const c of firstBatchCells) {
+      lines.push(
+        `| ${c.id} | ${c.conceptId} | ${c.avatarId} | ${oneLine(c.hook).replace(/\|/g, "/")} | ${c.format} | ${c.funnelStage} | ${c.audienceTier.replace(/\|/g, "/")} | ${c.offer} | ${c.primaryKpi} | ${c.killRule.comparator} ${c.killRule.threshold} after $${c.killRule.afterSpend} | ${c.scaleRule.comparator} ${c.scaleRule.threshold} after $${c.scaleRule.afterSpend} | ${oneLine(c.learningGoal).replace(/\|/g, "/")} | ${c.estimatedRunDays} |`
+      );
+    }
+    lines.push("");
+  } else {
+    lines.push("_No first-batch cells planned._");
+    lines.push("");
+  }
+  const queuedCells = ctm.testCells.filter((c) => !firstBatchSet.has(c.id));
+  if (queuedCells.length > 0) {
+    lines.push(`**Queued cells (after first batch):**`);
+    lines.push("");
+    lines.push(
+      `| ID | Concept | Avatar | Hook | Format | Funnel | Tier | Offer | Primary KPI | Days |`
+    );
+    lines.push(
+      `|----|---------|--------|------|--------|--------|------|-------|-------------|------|`
+    );
+    for (const c of queuedCells) {
+      lines.push(
+        `| ${c.id} | ${c.conceptId} | ${c.avatarId} | ${oneLine(c.hook).replace(/\|/g, "/")} | ${c.format} | ${c.funnelStage} | ${c.audienceTier.replace(/\|/g, "/")} | ${c.offer} | ${c.primaryKpi} | ${c.estimatedRunDays} |`
+      );
+    }
+    lines.push("");
+  }
+
+  // 13. Execution OS — Campaign Setup
+  section(lines, "Campaign Setup");
+  const cs = strategy.campaignSetup;
+  lines.push(`Naming convention: \`${cs.namingConvention}\`.`);
+  lines.push("");
+  for (const camp of cs.campaigns) {
+    lines.push(`### ${camp.name}`);
+    lines.push("");
+    lines.push(`- **Objective:** ${camp.objective}`);
+    lines.push(`- **Conversion event:** ${camp.conversionEvent}`);
+    lines.push(`- **Budget mode:** ${camp.budgetMode}`);
+    lines.push(`- **Audience architecture:** ${camp.audienceArchitecture}`);
+    lines.push(`- **UTM template:** \`${camp.utmTemplate}\``);
+    lines.push(
+      `- **Reporting columns:** ${camp.reportingColumns.join(", ")}`
+    );
+    lines.push("");
+    for (const adSet of camp.adSets) {
+      lines.push(`#### Ad set — ${adSet.name}`);
+      lines.push("");
+      lines.push(`- **Tier:** ${adSet.audienceTier}`);
+      lines.push(`- **Budget split:** ${adSet.budgetSplit}`);
+      lines.push(
+        `- **Inclusions:** ${adSet.inclusions.join("; ") || "—"}`
+      );
+      lines.push(
+        `- **Exclusions:** ${adSet.exclusions.join("; ") || "—"}`
+      );
+      lines.push(`- **Placements:** ${adSet.placements.join(", ")}`);
+      lines.push(`- **Optimization event:** ${adSet.optimizationEvent}`);
+      lines.push(`- **Ads:** ${adSet.ads.join(", ")}`);
+      lines.push("");
+    }
+  }
+  if (cs.preLaunchChecklist.length > 0) {
+    lines.push(`**Pre-launch checklist:**`);
+    lines.push("");
+    for (const it of cs.preLaunchChecklist) {
+      lines.push(
+        `- [${it.status}] ${it.label}${it.source ? ` _(${it.source})_` : ""}`
+      );
+    }
+    lines.push("");
+  }
+
+  // 14. Execution OS — Next Iteration Plan
+  section(lines, "Next Iteration Plan");
+  const nip = strategy.nextIterationPlan;
+  for (const rec of nip.recommendations) {
+    lines.push(`### ${rec.signal}`);
+    lines.push("");
+    lines.push(`${rec.diagnosis}`);
+    lines.push("");
+    if (rec.nextSteps.length > 0) {
+      lines.push(`**Next steps:**`);
+      for (const s of rec.nextSteps) lines.push(`- ${s}`);
+      lines.push("");
+    }
+    if (rec.nextAssetsToProduce.length > 0) {
+      lines.push(
+        `**Next assets to produce:** ${rec.nextAssetsToProduce.join(", ")}.`
+      );
+      lines.push("");
+    }
+    if (rec.nextAnglesToTry.length > 0) {
+      lines.push(
+        `**Next angles to try:** ${rec.nextAnglesToTry.map((a) => oneLine(a)).join("; ")}.`
+      );
+      lines.push("");
+    }
+  }
+  if (nip.nextAssetsToProduce.length > 0) {
+    lines.push(
+      `**Aggregated assets to produce:** ${nip.nextAssetsToProduce.join(", ")}.`
+    );
+    lines.push("");
+  }
+  if (nip.nextAnglesToTry.length > 0) {
+    lines.push(
+      `**Aggregated angles to try:** ${nip.nextAnglesToTry.map((a) => oneLine(a)).join("; ")}.`
+    );
+    lines.push("");
+  }
+
   // ---- Secondary reference sections ----
   // Anything below this point is supporting material an operator can
   // skim after the primary flow above.

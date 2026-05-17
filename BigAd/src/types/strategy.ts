@@ -339,6 +339,11 @@ export interface Strategy {
   // Proof Asset Planner — concrete plan of proof assets to capture.
   proofAssetPlan: ProofAssetPlan;
 
+  // Execution OS — testing matrix → campaign setup → next iteration plan.
+  creativeTestingMatrix: CreativeTestingMatrix;
+  campaignSetup: CampaignSetup;
+  nextIterationPlan: NextIterationPlan;
+
   exportBrief: string;
 }
 
@@ -942,4 +947,140 @@ export interface AdConceptCard {
   formatFit: ConceptFormatFit[];  // 2-4 formats
   testHypothesis: string;         // 1 sentence
   nextVariantSuggestion: string;  // 1 sentence; matches one of the 5 VariantSpinner axes
+}
+
+// ---- Execution OS: Creative Testing Matrix --------------------------------
+
+export type TestFunnelStage =
+  | "prospecting"
+  | "engagement-retargeting"
+  | "site-retargeting";
+
+export type TestFormat =
+  | "video-9-16"
+  | "video-1-1"
+  | "static-1-1"
+  | "static-4-5"
+  | "static-9-16"
+  | "carousel";
+
+export interface KillRule {
+  metric: KpiName;
+  threshold: number;
+  comparator: "below" | "above";
+  afterSpend: number;
+  rationale: string;
+}
+
+export interface ScaleRule {
+  metric: KpiName;
+  threshold: number;
+  comparator: "above" | "below";
+  afterSpend: number;
+  action: "duplicate" | "raise-budget" | "broaden-audience" | "graduate-to-engaged";
+  rationale: string;
+}
+
+export interface TestCell {
+  id: string;                       // "test-1" ...
+  conceptId: string;                // references AdConceptCard.id
+  angle: string;                    // copy of the angle string for traceability
+  avatarId: string;                 // references AudienceAvatar.id
+  hook: string;                     // chosen hook text from hookLibrary
+  proofAssetRequired: string | null;
+  format: TestFormat;
+  funnelStage: TestFunnelStage;
+  audienceTier: string;             // e.g. "Cold broad" / "Engaged 60d"
+  offer: OfferKind;
+  primaryKpi: KpiName;
+  secondaryKpi: KpiName;
+  killRule: KillRule;
+  scaleRule: ScaleRule;
+  learningGoal: string;             // 1 sentence
+  estimatedRunDays: number;         // integer
+}
+
+export interface TestingWarning {
+  kind: "missing-proof" | "too-many-variables" | "no-retargeting-pool" | "tracking-blocker";
+  message: string;
+  source?: string;
+}
+
+export interface CreativeTestingMatrix {
+  testCells: TestCell[];            // 3-12 cells; recommendedFirstBatch picks 3-6
+  recommendedFirstBatch: string[];  // 3-6 test cell ids
+  maxConcurrentTests: number;       // computed from inputs (default 6)
+  testingWarnings: TestingWarning[];
+}
+
+// ---- Execution OS: Campaign Setup Builder ---------------------------------
+
+export type CampaignObjective =
+  | "awareness"
+  | "traffic"
+  | "engagement"
+  | "leads"
+  | "conversions"
+  | "app-installs"
+  | "sales";
+
+export type BudgetMode = "campaign-budget" | "ad-set-budget";
+
+export interface AdSetSpec {
+  name: string;
+  audienceTier: string;
+  budgetSplit: string;
+  inclusions: string[];
+  exclusions: string[];
+  placements: string[];
+  optimizationEvent: string;
+  ads: string[];
+}
+
+export interface CampaignSpec {
+  name: string;                      // PRODUCT-FUNNEL-COUNTRY-CONCEPT-VARIANT
+  objective: CampaignObjective;
+  conversionEvent: string;
+  budgetMode: BudgetMode;
+  audienceArchitecture: CampaignArchitectureKind;
+  adSets: AdSetSpec[];
+  utmTemplate: string;
+  reportingColumns: string[];
+}
+
+export interface PreLaunchChecklistItem {
+  label: string;
+  status: "passed" | "warning" | "blocker" | "unknown";
+  source?: string;
+}
+
+export interface CampaignSetup {
+  namingConvention: string;
+  campaigns: CampaignSpec[];
+  preLaunchChecklist: PreLaunchChecklistItem[];
+}
+
+// ---- Execution OS: Next Iteration Planner ---------------------------------
+
+export type WeakSignal =
+  | "winning"
+  | "weak-hook"
+  | "weak-hold"
+  | "weak-click"
+  | "weak-conversion"
+  | "weak-roas"
+  | "proof-bottleneck";
+
+export interface IterationRecommendation {
+  signal: WeakSignal;
+  diagnosis: string;
+  nextSteps: string[];
+  nextAssetsToProduce: string[];
+  nextAnglesToTry: string[];
+}
+
+export interface NextIterationPlan {
+  recommendations: IterationRecommendation[];
+  nextAssetsToProduce: string[];
+  nextAnglesToTry: string[];
 }

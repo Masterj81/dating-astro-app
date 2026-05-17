@@ -38,6 +38,9 @@ import { generateExportBrief } from "./export-brief";
 import { deriveCopyLabels, checkCopyIssues } from "./copy-normalize";
 import { assessInputQuality } from "./input-assistant";
 import { buildProofAssetPlan } from "./proof-asset-planner";
+import { buildCreativeTestingMatrix } from "./testing-matrix";
+import { buildCampaignSetup } from "./campaign-setup";
+import { buildNextIterationPlan } from "./iteration-planner";
 
 // buildStrategy — deterministic local strategy generator. No API calls.
 // Future: swap in an LLM adapter (see src/lib/llm.ts) per-section.
@@ -155,6 +158,40 @@ export function buildStrategy(input: ProductInput): Strategy {
     diagnosis: diagnoseOffer(input),
   });
 
+  // Execution OS — Creative Testing Matrix, Campaign Setup, Next
+  // Iteration Plan. These run after every other module so they can read
+  // from concepts, hooks, proof, calendar, KPI ladder, and tracking.
+  const creativeTestingMatrix = buildCreativeTestingMatrix({
+    input,
+    adConceptCards,
+    hookLibrary,
+    variantSets,
+    ctaBank,
+    proofAssetPlan,
+    campaignCalendar,
+    kpiLadder,
+    audienceAvatars,
+    offers,
+  });
+
+  const campaignSetup = buildCampaignSetup({
+    input,
+    campaignCalendar,
+    trackingReadiness,
+    creativeTestingMatrix,
+    audienceAvatars,
+    offers,
+  });
+
+  const nextIterationPlan = buildNextIterationPlan({
+    input,
+    kpiLadder,
+    creativeTestingMatrix,
+    proofAssetPlan,
+    hookLibrary,
+    adConceptCards,
+  });
+
   // Journey status is computed last because it synthesises everything above.
   const journeyStatus = buildJourneyStatus({
     trackingReadiness,
@@ -167,6 +204,8 @@ export function buildStrategy(input: ProductInput): Strategy {
     variantSets,
     proofAssetPlan,
     audienceAvatars,
+    creativeTestingMatrix,
+    appliedAdReviews,
   });
 
   const partial: Omit<Strategy, "genericFlags" | "copyIssues" | "exportBrief"> = {
@@ -208,6 +247,9 @@ export function buildStrategy(input: ProductInput): Strategy {
     adConceptCards,
     inputQuality,
     proofAssetPlan,
+    creativeTestingMatrix,
+    campaignSetup,
+    nextIterationPlan,
   };
 
   // Generic-copy guard runs against the strategy we just produced. If
@@ -318,3 +360,6 @@ export {
 export type { CopyLabels } from "./copy-normalize";
 export { assessInputQuality } from "./input-assistant";
 export { buildProofAssetPlan } from "./proof-asset-planner";
+export { buildCreativeTestingMatrix } from "./testing-matrix";
+export { buildCampaignSetup } from "./campaign-setup";
+export { buildNextIterationPlan } from "./iteration-planner";

@@ -505,6 +505,44 @@ capturer avant tout budget. Quand le score est sous 50 et que le mix avatar est
 sceptique ou mature, `Journey Status` ajoute un warning creative pour bloquer
 le go.
 
+## Execution OS
+
+Trois nouveaux modules transforment BigAd d'un generateur de strategie en
+cockpit de media buying : `Creative Testing Matrix`, `Campaign Setup Builder`,
+et `Next Iteration Planner`. Ils sont reunis dans un nouveau tab `Execution`
+place entre `Launch readiness` et `Proof`.
+
+Le `Creative Testing Matrix` calcule 3 a 12 test cells couvrant l'espace
+(avatar x concept x hook x format x offer). Le premier batch (3 a 6 cells)
+varie sur exactement UN axe par rapport a un baseline, donc chaque cell lit un
+seul apprentissage. Chaque cell porte un primary KPI, un secondary KPI, une
+kill rule basee sur la tier `starter` du KPI ladder, une scale rule basee sur
+la tier `scaling`, et un objectif d'apprentissage. En marche sceptique ou
+mature, chaque cell du premier batch doit referencer un asset de preuve
+must-have ; un warning `missing-proof` est leve quand le plan en manque.
+
+Le `Campaign Setup Builder` traduit la matrice en specification prete au
+launch : convention de nommage `PRODUCT-FUNNEL-COUNTRY-CONCEPT-VARIANT`, une
+a trois campagnes (cold acquisition + engaged-60d retargeting + site-90d
+retargeting pour les windows promo de launch / seasonal), ad sets avec
+exclusions standards (`Existing customers`, `Active trialists` sur le cold),
+un UTM template generique, et une pre-launch checklist qui refete les checks
+de tracking readiness. Les produits subscription / freemium incluent toujours
+les deux conversion events `trial_start` (cold) et `subscribe` (retargeting).
+
+Le `Next Iteration Planner` emet une recommandation par weak-signal :
+`winning`, `weak-hook`, `weak-hold`, `weak-click`, `weak-conversion`,
+`weak-roas`, `proof-bottleneck`. Chaque recommandation porte un diagnostic
+court, 2 a 4 next steps concrets, les prochains assets a produire, et les
+prochains angles a tester tires de la hook library non utilisee dans le
+premier batch. C'est la carte du "quoi shipper apres" une fois que le premier
+batch a parle.
+
+Garde-fou Execution : quand le `trackingReadiness.score` tombe sous 50, le
+tab Execution passe en mode "plan only, do not spend" et `Journey Status`
+remonte un blocker dedie. Les must-haves manquants du `proofAssetPlan` se
+transforment en warnings creative individuels pour la tracabilite.
+
 ## Maintenance du guide
 
 Quand BigAd ajoute un nouveau module, mets a jour ce guide si le module change
