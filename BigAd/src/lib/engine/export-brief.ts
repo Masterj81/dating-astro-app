@@ -7,6 +7,24 @@ import { windowKindLabel } from "./calendar";
 // covering every section of the strategy. Designed to be pasted into
 // Notion, Google Docs, or a team message and still read cleanly. No
 // emojis, no decorative characters.
+//
+// Section order follows the stakeholder reading flow:
+//   1. Product snapshot
+//   2. Journey status
+//   3. Audience avatars
+//   4. Positioning (+ central promise / mechanism)
+//   5. Offer architecture
+//   6. Campaign calendar
+//   7. Ad concept cards
+//   8. Hook library
+//   9. Creator briefs / Video scripts / Shot lists
+//  10. Quality strip: Creative QA / Tracking readiness / KPI ladder /
+//      KPI diagnosis / Ad review checklist / Applied ad reviews
+//  11. Editor handoff
+// Secondary reference sections (score, awareness diagnosis, awareness
+// variants, offer diagnosis, headlines, landing, store, experiments,
+// CTA bank, static briefs, ad variants, generic-copy flags) follow
+// after the primary flow so the strategy doc reads top-down.
 
 export function generateExportBrief(
   input: ProductInput,
@@ -56,17 +74,70 @@ export function generateExportBrief(
   }
   lines.push("");
 
-  // 2. Quality score
-  section(lines, "Strategy quality score");
-  lines.push(`**Overall:** ${strategy.score.overall}/100`);
+  // 2. Journey Status
+  section(lines, "Journey Status");
+  const js = strategy.journeyStatus;
+  lines.push(
+    `Current stage: **${journeyStageLabel(js.currentStage)}** — ready to spend: ${js.readyToSpend ? "yes" : "no"}.`
+  );
   lines.push("");
-  for (const d of strategy.score.dimensions) {
-    lines.push(`- **${d.label} — ${d.score}/100.** ${d.explanation}`);
-    lines.push(`  - Suggestion: ${d.suggestion}`);
+  lines.push(`**Next step.** ${js.nextStep}`);
+  lines.push("");
+  if (js.blockers.length > 0) {
+    lines.push(`**Blockers:**`);
+    for (const b of js.blockers) {
+      const src = b.sourceCheck ? ` (source: ${b.sourceCheck})` : "";
+      lines.push(`- [${b.kind}] ${b.message}${src}`);
+    }
+    lines.push("");
   }
-  lines.push("");
+  if (js.warnings.length > 0) {
+    lines.push(`**Warnings:**`);
+    for (const w of js.warnings) {
+      const src = w.sourceCheck ? ` (source: ${w.sourceCheck})` : "";
+      lines.push(`- [${w.kind}] ${w.message}${src}`);
+    }
+    lines.push("");
+  }
 
-  // 3. Positioning
+  // 3. Audience Avatars
+  section(lines, "Audience Avatars");
+  if (strategy.audienceAvatars.length === 0) {
+    lines.push("_No avatars generated for this input._");
+    lines.push("");
+  } else {
+    for (const av of strategy.audienceAvatars) {
+      lines.push(`### ${av.label} (${av.id})`);
+      lines.push("");
+      lines.push(`- **Buying trigger:** ${av.buyingTrigger}`);
+      lines.push(`- **Core pain:** ${av.corePain}`);
+      lines.push(`- **Desired outcome:** ${av.desiredOutcome}`);
+      lines.push(`- **Best channel angle:** ${av.bestChannelAngle}`);
+      lines.push("");
+      lines.push(`**Objections:**`);
+      lines.push("");
+      lines.push(`| Kind | Statement | Reframe |`);
+      lines.push(`|------|-----------|---------|`);
+      for (const o of av.objections) {
+        lines.push(
+          `| ${o.kind} | ${o.statement.replace(/\|/g, "/")} | ${o.reframe.replace(/\|/g, "/")} |`
+        );
+      }
+      lines.push("");
+      lines.push(`**Failed alternatives:**`);
+      for (const fa of av.failedAlternatives) lines.push(`- ${fa}`);
+      lines.push("");
+      lines.push(
+        `**Emotional language:** ${av.emotionalLanguage.map((p) => `"${p}"`).join(" · ")}`
+      );
+      lines.push("");
+      lines.push(`**Proof needed:**`);
+      for (const p of av.proofNeeded) lines.push(`- ${p}`);
+      lines.push("");
+    }
+  }
+
+  // 4. Positioning
   section(lines, "Positioning");
   lines.push(strategy.positioning.statement);
   lines.push("");
@@ -80,29 +151,7 @@ export function generateExportBrief(
   lines.push(`**Unique mechanism.** ${strategy.uniqueMechanism}`);
   lines.push("");
 
-  // 4. Awareness diagnosis
-  section(lines, "Awareness diagnosis");
-  lines.push(`Current stage: **${awarenessLabel(input.awareness)}**.`);
-  lines.push("");
-  for (const n of strategy.awarenessNotes) lines.push(`- ${n}`);
-  lines.push("");
-  lines.push(`Sophistication: **${sophisticationLabel(input.sophistication)}**.`);
-  lines.push("");
-  for (const n of strategy.sophisticationNotes) lines.push(`- ${n}`);
-  lines.push("");
-
-  // 5. Offer diagnosis
-  section(lines, "Offer diagnosis");
-  lines.push(`- **Strongest promise:** ${strategy.diagnosis.strongestPromise}`);
-  lines.push(`- **Weakest claim:** ${strategy.diagnosis.weakestClaim}`);
-  lines.push(`- **Missing proof:** ${strategy.diagnosis.missingProof}`);
-  lines.push(`- **Biggest objection:** ${strategy.diagnosis.biggestObjection}`);
-  lines.push(
-    `- **Recommended proof asset:** ${strategy.diagnosis.recommendedAsset} — ${strategy.diagnosis.recommendedAssetReason}`
-  );
-  lines.push("");
-
-  // 5b. Offer architecture
+  // 5. Offer architecture
   section(lines, "Offer Architecture");
   strategy.offers.forEach((o, i) => {
     const roas =
@@ -122,7 +171,7 @@ export function generateExportBrief(
   });
   lines.push("");
 
-  // 5c. Campaign calendar
+  // 6. Campaign calendar
   section(lines, "Campaign Calendar");
   lines.push(
     `Campaign type: **${campaignTypeLabel(strategy.campaignCalendar.campaignType)}** — anchor: ${strategy.campaignCalendar.anchorLabel}.`
@@ -172,7 +221,63 @@ export function generateExportBrief(
   });
   lines.push("");
 
-  // 5d. Creator briefs
+  // 7. Ad Concept Cards
+  section(lines, "Ad Concept Cards");
+  if (strategy.adConceptCards.length === 0) {
+    lines.push("_No concept cards generated for this input._");
+    lines.push("");
+  } else {
+    for (const c of strategy.adConceptCards) {
+      lines.push(`### ${c.name} (${c.id})`);
+      lines.push("");
+      lines.push(`- **Target avatar:** ${c.targetAvatarId}`);
+      lines.push(
+        `- **Hook (${hookPatternLabel(c.hook.pattern)}):** ${c.hook.text}`
+      );
+      lines.push(`- **Promise:** ${c.promise}`);
+      lines.push(`- **Proof angle:** ${c.proofAngle}`);
+      lines.push(`- **Offer tie-in:** ${c.offerTieIn}`);
+      lines.push(`- **Visual idea:** ${c.visualIdea}`);
+      lines.push(`- **Format fit:** ${c.formatFit.join(", ")}`);
+      lines.push(`- **Test hypothesis:** ${c.testHypothesis}`);
+      lines.push(`- **Next variant:** ${c.nextVariantSuggestion}`);
+      lines.push("");
+    }
+  }
+
+  // 8. Hook Library
+  section(lines, "Hook Library");
+  if (strategy.hookLibrary.items.length === 0) {
+    lines.push("_No hook library generated for this input._");
+    lines.push("");
+  } else {
+    const patterns: ReadonlyArray<typeof strategy.hookLibrary.items[number]["pattern"]> = [
+      "pain-first",
+      "outcome-first",
+      "contrarian",
+      "proof-led",
+      "curiosity",
+      "comparison",
+      "mistake",
+      "before-after",
+    ];
+    for (const pattern of patterns) {
+      const items = strategy.hookLibrary.items.filter((it) => it.pattern === pattern);
+      if (items.length === 0) continue;
+      lines.push(`### ${hookPatternLabel(pattern)}`);
+      lines.push("");
+      for (const it of items) {
+        lines.push(`- **Hook:** ${it.text}`);
+        lines.push(
+          `  - Awareness fit: ${it.awarenessFit.join(", ")} · Avatar fit: ${it.avatarFit.join(", ")}`
+        );
+        lines.push(`  - Risk: ${it.riskNote}`);
+      }
+      lines.push("");
+    }
+  }
+
+  // 9a. Creator briefs
   section(lines, "Creator Briefs");
   if (strategy.creatorBriefs.length === 0) {
     lines.push("_No briefs generated for this input._");
@@ -213,7 +318,32 @@ export function generateExportBrief(
     });
   }
 
-  // 5e. Shot lists
+  // 9b. Video scripts
+  section(lines, "Video Scripts");
+  if (strategy.videoScripts.length === 0) {
+    lines.push("_No video scripts generated for this input._");
+    lines.push("");
+  } else {
+    strategy.videoScripts.forEach((script) => {
+      const matched = strategy.creatorBriefs.find((b) => b.id === script.briefId);
+      const ref = matched ? matched.forAngle : script.briefId;
+      lines.push(`### ${script.briefId} — ${ref}`);
+      lines.push("");
+      lines.push(`Total duration: ~${script.totalDurationSeconds}s.`);
+      lines.push("");
+      lines.push(`| # | Section | Kind | Start | Duration | Text |`);
+      lines.push(`|---|---------|------|-------|----------|------|`);
+      for (const ln of script.lines) {
+        const text = ln.text.replace(/\|/g, "/");
+        lines.push(
+          `| ${ln.index} | ${briefSectionIndexLabel(ln.briefSectionIndex)} | ${scriptLineKindLabel(ln.kind)} | ${ln.startSeconds}s | ${ln.durationSeconds}s | ${text} |`
+        );
+      }
+      lines.push("");
+    });
+  }
+
+  // 9c. Shot lists
   section(lines, "Shot Lists");
   if (strategy.shotLists.length === 0) {
     lines.push("_No shot lists generated for this input._");
@@ -240,55 +370,41 @@ export function generateExportBrief(
     });
   }
 
-  // 5f. Video scripts
-  section(lines, "Video Scripts");
-  if (strategy.videoScripts.length === 0) {
-    lines.push("_No video scripts generated for this input._");
+  // 10a. Creative QA
+  section(lines, "Creative QA");
+  if (strategy.creativeQa.length === 0) {
+    lines.push("_No QA report generated._");
     lines.push("");
   } else {
-    strategy.videoScripts.forEach((script) => {
-      const matched = strategy.creatorBriefs.find((b) => b.id === script.briefId);
-      const ref = matched ? matched.forAngle : script.briefId;
-      lines.push(`### ${script.briefId} — ${ref}`);
+    for (const cq of strategy.creativeQa) {
+      const matched =
+        cq.scope === "all"
+          ? null
+          : strategy.creatorBriefs.find((b) => b.id === cq.scope);
+      const heading =
+        cq.scope === "all"
+          ? "Aggregate"
+          : matched
+          ? `${cq.scope} — ${matched.forAngle}`
+          : cq.scope;
+      lines.push(`### ${heading}`);
       lines.push("");
-      lines.push(`Total duration: ~${script.totalDurationSeconds}s.`);
+      lines.push(
+        `Blockers: ${cq.blockerCount}. Warnings: ${cq.warningCount}.`
+      );
       lines.push("");
-      lines.push(`| # | Section | Kind | Start | Duration | Text |`);
-      lines.push(`|---|---------|------|-------|----------|------|`);
-      for (const ln of script.lines) {
-        const text = ln.text.replace(/\|/g, "/");
+      lines.push(`| Rule | Severity | Message | Suggestion |`);
+      lines.push(`|------|----------|---------|------------|`);
+      for (const f of cq.findings) {
         lines.push(
-          `| ${ln.index} | ${briefSectionIndexLabel(ln.briefSectionIndex)} | ${scriptLineKindLabel(ln.kind)} | ${ln.startSeconds}s | ${ln.durationSeconds}s | ${text} |`
+          `| ${f.rule} | ${f.severity} | ${f.message.replace(/\|/g, "/")} | ${(f.suggestion || "—").replace(/\|/g, "/")} |`
         );
       }
       lines.push("");
-    });
+    }
   }
 
-  // 5g. Ad variants
-  section(lines, "Ad Variants");
-  if (strategy.variantSets.length === 0) {
-    lines.push("_No variant sets generated for this input._");
-    lines.push("");
-  } else {
-    strategy.variantSets.forEach((vset) => {
-      lines.push(`### Base concept ${vset.baseConceptId}`);
-      lines.push("");
-      vset.variants.forEach((v, i) => {
-        lines.push(
-          `${i + 1}. **Axis changed: ${variantAxisLabel(v.changedAxis)}** — ${v.rationale}`
-        );
-        lines.push(`   - Hook: ${v.hook}`);
-        lines.push(`   - Hold: ${v.hold}`);
-        lines.push(`   - Proof: ${v.proof}`);
-        lines.push(`   - CTA: ${v.cta}`);
-        lines.push(`   - Offer: ${v.offer}`);
-      });
-      lines.push("");
-    });
-  }
-
-  // 5h. Tracking Readiness
+  // 10b. Tracking Readiness
   section(lines, "Tracking Readiness");
   const tr = strategy.trackingReadiness;
   lines.push(
@@ -301,7 +417,7 @@ export function generateExportBrief(
   }
   lines.push("");
 
-  // 5i. KPI Target Ladder
+  // 10c. KPI Target Ladder
   section(lines, "KPI Target Ladder");
   lines.push(`| KPI | Tier | Breakeven | Scaling | Direction |`);
   lines.push(`|-----|------|-----------|---------|-----------|`);
@@ -312,7 +428,7 @@ export function generateExportBrief(
   }
   lines.push("");
 
-  // 5j. KPI Diagnosis
+  // 10d. KPI Diagnosis
   section(lines, "KPI Diagnosis");
   lines.push(
     `Primary category: **${diagnosisCategoryLabel(strategy.kpiDiagnosis.primaryCategory)}**. Synthetic sample anchored near healthy-tier breakeven.`
@@ -329,7 +445,7 @@ export function generateExportBrief(
   }
   lines.push("");
 
-  // 5k. Ad Review Checklist
+  // 10e. Ad Review Checklist
   section(lines, "Ad Review Checklist");
   lines.push(`Total weight: ${strategy.adReview.totalWeight}.`);
   lines.push("");
@@ -338,7 +454,7 @@ export function generateExportBrief(
   }
   lines.push("");
 
-  // 5k-bis. Applied Ad Reviews — per-brief evaluation against the checklist.
+  // 10f. Applied Ad Reviews — per-brief evaluation against the checklist.
   section(lines, "Applied Ad Reviews");
   if (strategy.appliedAdReviews.length === 0) {
     lines.push("_No briefs were evaluated against the checklist._");
@@ -368,33 +484,58 @@ export function generateExportBrief(
     }
   }
 
-  // 5l. Journey Status
-  section(lines, "Journey Status");
-  const js = strategy.journeyStatus;
-  lines.push(
-    `Current stage: **${journeyStageLabel(js.currentStage)}** — ready to spend: ${js.readyToSpend ? "yes" : "no"}.`
-  );
-  lines.push("");
-  lines.push(`**Next step.** ${js.nextStep}`);
-  lines.push("");
-  if (js.blockers.length > 0) {
-    lines.push(`**Blockers:**`);
-    for (const b of js.blockers) {
-      const src = b.sourceCheck ? ` (source: ${b.sourceCheck})` : "";
-      lines.push(`- [${b.kind}] ${b.message}${src}`);
-    }
+  // 11. Editor Handoff
+  section(lines, "Editor Handoff");
+  if (strategy.editorHandoffs.length === 0) {
+    lines.push("_No editor handoffs generated._");
     lines.push("");
-  }
-  if (js.warnings.length > 0) {
-    lines.push(`**Warnings:**`);
-    for (const w of js.warnings) {
-      const src = w.sourceCheck ? ` (source: ${w.sourceCheck})` : "";
-      lines.push(`- [${w.kind}] ${w.message}${src}`);
+  } else {
+    for (const h of strategy.editorHandoffs) {
+      lines.push(h.markdown);
+      lines.push("");
     }
-    lines.push("");
   }
 
-  // 6. Top angles (ranked)
+  // ---- Secondary reference sections ----
+  // Anything below this point is supporting material an operator can
+  // skim after the primary flow above.
+
+  // Strategy quality score
+  section(lines, "Strategy quality score");
+  lines.push(`**Overall:** ${strategy.score.overall}/100`);
+  lines.push("");
+  for (const d of strategy.score.dimensions) {
+    lines.push(`- **${d.label} — ${d.score}/100.** ${d.explanation}`);
+    lines.push(`  - Suggestion: ${d.suggestion}`);
+  }
+  lines.push("");
+
+  // Awareness diagnosis
+  section(lines, "Awareness diagnosis");
+  lines.push(`Current stage: **${awarenessLabel(input.awareness)}**.`);
+  lines.push("");
+  for (const n of strategy.awarenessNotes) lines.push(`- ${n}`);
+  lines.push("");
+  lines.push(`Sophistication: **${sophisticationLabel(input.sophistication)}**.`);
+  lines.push("");
+  for (const n of strategy.sophisticationNotes) lines.push(`- ${n}`);
+  lines.push("");
+
+  // Offer diagnosis
+  section(lines, "Offer diagnosis");
+  lines.push(`- **Strongest promise:** ${strategy.diagnosis.strongestPromise}`);
+  lines.push(`- **Weakest claim:** ${strategy.diagnosis.weakestClaim}`);
+  lines.push(`- **Missing proof:** ${strategy.diagnosis.missingProof}`);
+  lines.push(`- **Biggest objection:** ${strategy.diagnosis.biggestObjection}`);
+  lines.push(
+    `- **Recommended proof asset:** ${strategy.diagnosis.recommendedAsset} — ${strategy.diagnosis.recommendedAssetReason}`
+  );
+  lines.push(
+    `- See §5 (Offer Architecture) for the full ranked recommendation set.`
+  );
+  lines.push("");
+
+  // Top angles (ranked) — cross-reference for the Concepts section.
   section(lines, "Top angles (ranked by fit)");
   strategy.rankedAngles.forEach((a, i) => {
     lines.push(
@@ -408,12 +549,12 @@ export function generateExportBrief(
   });
   lines.push("");
 
-  // 7. Headlines
+  // Headlines
   section(lines, "Headlines");
   strategy.headlines.forEach((h, i) => lines.push(`${i + 1}. ${h}`));
   lines.push("");
 
-  // 8. Copy variants by awareness stage
+  // Copy variants by awareness stage
   section(lines, "Copy variants by awareness stage");
   for (const v of strategy.awarenessVariants) {
     lines.push(`### ${stageLabel(v.stage)}`);
@@ -423,7 +564,7 @@ export function generateExportBrief(
     lines.push("");
   }
 
-  // 9. Landing copy
+  // Landing copy
   section(lines, "Landing copy");
   lines.push(`**Hero.** ${strategy.landing.hero}`);
   lines.push("");
@@ -442,7 +583,7 @@ export function generateExportBrief(
   }
   lines.push("");
 
-  // 10. App Store / Play Store
+  // Store copy
   section(lines, "Store copy");
   lines.push(`- **App name:** ${strategy.store.appName}`);
   lines.push(`- **Subtitle:** ${strategy.store.subtitle}`);
@@ -454,7 +595,54 @@ export function generateExportBrief(
   lines.push(strategy.store.description);
   lines.push("");
 
-  // 11. Experiments
+  // TikTok / Reels scripts
+  section(lines, "TikTok / Reels Scripts");
+  if (strategy.tiktokScripts.length === 0) {
+    lines.push("_No short-form scripts generated for this input._");
+    lines.push("");
+  } else {
+    strategy.tiktokScripts.forEach((s, i) => {
+      lines.push(`### Script ${i + 1}`);
+      lines.push("");
+      lines.push(`- **Hook:** ${s.hook}`);
+      lines.push(`- **Beats:**`);
+      for (const beat of s.beats) lines.push(`  - ${beat}`);
+      lines.push(`- **CTA:** ${s.cta}`);
+      lines.push("");
+    });
+  }
+
+  // Facebook / Meta ad concepts
+  section(lines, "Meta Ad Concepts");
+  if (strategy.facebookAds.length === 0) {
+    lines.push("_No meta ad concepts generated for this input._");
+    lines.push("");
+  } else {
+    strategy.facebookAds.forEach((c, i) => {
+      lines.push(`### ${i + 1}. ${c.angle}`);
+      lines.push("");
+      lines.push(`- **Primary text:** ${c.primaryText}`);
+      lines.push(`- **Headline:** ${c.headline}`);
+      lines.push(`- **Description:** ${c.description}`);
+      lines.push(`- **CTA:** ${c.cta}`);
+      lines.push("");
+    });
+  }
+
+  // Objections
+  section(lines, "Objections");
+  if (strategy.objections.length === 0) {
+    lines.push("_No objections drafted._");
+    lines.push("");
+  } else {
+    for (const o of strategy.objections) {
+      lines.push(`- **${o.objection}**`);
+      lines.push(`  ${o.reply}`);
+    }
+    lines.push("");
+  }
+
+  // Experiments
   section(lines, "Experiments");
   strategy.experiments.forEach((e, i) => {
     lines.push(`${i + 1}. **${e.hypothesis}**`);
@@ -464,7 +652,7 @@ export function generateExportBrief(
   });
   lines.push("");
 
-  // 11b. CTA Bank
+  // CTA Bank
   section(lines, "CTA Bank");
   if (strategy.ctaBank.variants.length === 0) {
     lines.push("_No CTA variants generated._");
@@ -496,7 +684,7 @@ export function generateExportBrief(
     }
   }
 
-  // 11c. Static Briefs
+  // Static Briefs
   section(lines, "Static Briefs");
   if (strategy.staticBriefs.length === 0) {
     lines.push("_No static briefs generated._");
@@ -532,146 +720,30 @@ export function generateExportBrief(
     }
   }
 
-  // 11d. Creative QA
-  section(lines, "Creative QA");
-  if (strategy.creativeQa.length === 0) {
-    lines.push("_No QA report generated._");
+  // Ad Variants
+  section(lines, "Ad Variants");
+  if (strategy.variantSets.length === 0) {
+    lines.push("_No variant sets generated for this input._");
     lines.push("");
   } else {
-    for (const cq of strategy.creativeQa) {
-      const matched =
-        cq.scope === "all"
-          ? null
-          : strategy.creatorBriefs.find((b) => b.id === cq.scope);
-      const heading =
-        cq.scope === "all"
-          ? "Aggregate"
-          : matched
-          ? `${cq.scope} — ${matched.forAngle}`
-          : cq.scope;
-      lines.push(`### ${heading}`);
+    strategy.variantSets.forEach((vset) => {
+      lines.push(`### Base concept ${vset.baseConceptId}`);
       lines.push("");
-      lines.push(
-        `Blockers: ${cq.blockerCount}. Warnings: ${cq.warningCount}.`
-      );
-      lines.push("");
-      lines.push(`| Rule | Severity | Message | Suggestion |`);
-      lines.push(`|------|----------|---------|------------|`);
-      for (const f of cq.findings) {
+      vset.variants.forEach((v, i) => {
         lines.push(
-          `| ${f.rule} | ${f.severity} | ${f.message.replace(/\|/g, "/")} | ${(f.suggestion || "—").replace(/\|/g, "/")} |`
+          `${i + 1}. **Axis changed: ${variantAxisLabel(v.changedAxis)}** — ${v.rationale}`
         );
-      }
+        lines.push(`   - Hook: ${v.hook}`);
+        lines.push(`   - Hold: ${v.hold}`);
+        lines.push(`   - Proof: ${v.proof}`);
+        lines.push(`   - CTA: ${v.cta}`);
+        lines.push(`   - Offer: ${v.offer}`);
+      });
       lines.push("");
-    }
+    });
   }
 
-  // 11e. Editor Handoff
-  section(lines, "Editor Handoff");
-  if (strategy.editorHandoffs.length === 0) {
-    lines.push("_No editor handoffs generated._");
-    lines.push("");
-  } else {
-    for (const h of strategy.editorHandoffs) {
-      lines.push(h.markdown);
-      lines.push("");
-    }
-  }
-
-  // 11f. Audience Avatars
-  section(lines, "Audience Avatars");
-  if (strategy.audienceAvatars.length === 0) {
-    lines.push("_No avatars generated for this input._");
-    lines.push("");
-  } else {
-    for (const av of strategy.audienceAvatars) {
-      lines.push(`### ${av.label} (${av.id})`);
-      lines.push("");
-      lines.push(`- **Buying trigger:** ${av.buyingTrigger}`);
-      lines.push(`- **Core pain:** ${av.corePain}`);
-      lines.push(`- **Desired outcome:** ${av.desiredOutcome}`);
-      lines.push(`- **Best channel angle:** ${av.bestChannelAngle}`);
-      lines.push("");
-      lines.push(`**Objections:**`);
-      lines.push("");
-      lines.push(`| Kind | Statement | Reframe |`);
-      lines.push(`|------|-----------|---------|`);
-      for (const o of av.objections) {
-        lines.push(
-          `| ${o.kind} | ${o.statement.replace(/\|/g, "/")} | ${o.reframe.replace(/\|/g, "/")} |`
-        );
-      }
-      lines.push("");
-      lines.push(`**Failed alternatives:**`);
-      for (const fa of av.failedAlternatives) lines.push(`- ${fa}`);
-      lines.push("");
-      lines.push(
-        `**Emotional language:** ${av.emotionalLanguage.map((p) => `"${p}"`).join(" · ")}`
-      );
-      lines.push("");
-      lines.push(`**Proof needed:**`);
-      for (const p of av.proofNeeded) lines.push(`- ${p}`);
-      lines.push("");
-    }
-  }
-
-  // 11g. Hook Library
-  section(lines, "Hook Library");
-  if (strategy.hookLibrary.items.length === 0) {
-    lines.push("_No hook library generated for this input._");
-    lines.push("");
-  } else {
-    const patterns: ReadonlyArray<typeof strategy.hookLibrary.items[number]["pattern"]> = [
-      "pain-first",
-      "outcome-first",
-      "contrarian",
-      "proof-led",
-      "curiosity",
-      "comparison",
-      "mistake",
-      "before-after",
-    ];
-    for (const pattern of patterns) {
-      const items = strategy.hookLibrary.items.filter((it) => it.pattern === pattern);
-      if (items.length === 0) continue;
-      lines.push(`### ${hookPatternLabel(pattern)}`);
-      lines.push("");
-      for (const it of items) {
-        lines.push(`- **Hook:** ${it.text}`);
-        lines.push(
-          `  - Awareness fit: ${it.awarenessFit.join(", ")} · Avatar fit: ${it.avatarFit.join(", ")}`
-        );
-        lines.push(`  - Risk: ${it.riskNote}`);
-      }
-      lines.push("");
-    }
-  }
-
-  // 11h. Ad Concept Cards
-  section(lines, "Ad Concept Cards");
-  if (strategy.adConceptCards.length === 0) {
-    lines.push("_No concept cards generated for this input._");
-    lines.push("");
-  } else {
-    for (const c of strategy.adConceptCards) {
-      lines.push(`### ${c.name} (${c.id})`);
-      lines.push("");
-      lines.push(`- **Target avatar:** ${c.targetAvatarId}`);
-      lines.push(
-        `- **Hook (${hookPatternLabel(c.hook.pattern)}):** ${c.hook.text}`
-      );
-      lines.push(`- **Promise:** ${c.promise}`);
-      lines.push(`- **Proof angle:** ${c.proofAngle}`);
-      lines.push(`- **Offer tie-in:** ${c.offerTieIn}`);
-      lines.push(`- **Visual idea:** ${c.visualIdea}`);
-      lines.push(`- **Format fit:** ${c.formatFit.join(", ")}`);
-      lines.push(`- **Test hypothesis:** ${c.testHypothesis}`);
-      lines.push(`- **Next variant:** ${c.nextVariantSuggestion}`);
-      lines.push("");
-    }
-  }
-
-  // 12. Generic-copy flags (if any)
+  // Generic-copy flags (if any)
   if (strategy.genericFlags.length > 0) {
     section(lines, "Generic-copy flags");
     for (const f of strategy.genericFlags) {

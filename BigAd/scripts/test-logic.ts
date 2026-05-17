@@ -36,7 +36,7 @@ import {
   runCreativeQA,
   buildEditorHandoffs,
 } from "../src/lib/engine";
-import { ASTRO_DATING_EXAMPLE, NOTION_LIKE_EXAMPLE } from "../src/lib/example";
+import { ASTRO_DATING_EXAMPLE, NOTION_LIKE_EXAMPLE, HEIRLOOM_BREW_EXAMPLE } from "../src/lib/example";
 import type {
   BriefSectionKind,
   CameraAngle,
@@ -2131,6 +2131,319 @@ record(
 record(
   "buildStrategy: deterministic for adConceptCards",
   JSON.stringify(aSixth.adConceptCards) === JSON.stringify(a.adConceptCards)
+);
+
+// ---- Polish pass: prescribed export brief section order ----
+//
+// Stakeholder reading flow: Product snapshot → Journey Status →
+// Audience Avatars → Positioning → Offer Architecture → Campaign
+// Calendar → Ad Concept Cards → Hook Library → Creator Briefs →
+// Video Scripts → Shot Lists → Creative QA → Tracking Readiness →
+// KPI Target Ladder → KPI Diagnosis → Ad Review Checklist →
+// Applied Ad Reviews → Editor Handoff. Secondary reference
+// sections follow but the primary order above must be preserved.
+const PRESCRIBED_EXPORT_ORDER = [
+  "## Product snapshot",
+  "## Journey Status",
+  "## Audience Avatars",
+  "## Positioning",
+  "## Offer Architecture",
+  "## Campaign Calendar",
+  "## Ad Concept Cards",
+  "## Hook Library",
+  "## Creator Briefs",
+  "## Video Scripts",
+  "## Shot Lists",
+  "## Creative QA",
+  "## Tracking Readiness",
+  "## KPI Target Ladder",
+  "## KPI Diagnosis",
+  "## Ad Review Checklist",
+  "## Applied Ad Reviews",
+  "## Editor Handoff",
+];
+
+(function () {
+  const exportBrief = a.exportBrief;
+  let lastIndex = -1;
+  let orderHolds = true;
+  let failedAt: string | undefined;
+  for (const header of PRESCRIBED_EXPORT_ORDER) {
+    const at = exportBrief.indexOf(header);
+    if (at < 0) {
+      orderHolds = false;
+      failedAt = `${header} missing`;
+      break;
+    }
+    if (at <= lastIndex) {
+      orderHolds = false;
+      failedAt = `${header} appears before a previous section (at index ${at}, last was ${lastIndex})`;
+      break;
+    }
+    lastIndex = at;
+  }
+  record(
+    "export brief: prescribed section order preserved",
+    orderHolds,
+    failedAt
+  );
+})();
+
+// ---- Polish pass: every Strategy field has an export-brief header ----
+//
+// For every key on the realized Strategy object, the export brief
+// must contain at least one section header that covers it. The map
+// below names the header (or one of several acceptable headers) we
+// expect for each field. genericFlags is conditional — its header
+// only appears when flags are present, so we skip its presence check
+// on a clean run.
+const FIELD_TO_EXPORT_HEADERS: Record<string, string[]> = {
+  positioning: ["## Positioning"],
+  awarenessNotes: ["## Awareness diagnosis"],
+  sophisticationNotes: ["## Awareness diagnosis"],
+  centralPromise: ["## Positioning"],
+  uniqueMechanism: ["## Positioning"],
+  objections: ["## Objections"],
+  headlines: ["## Headlines"],
+  angles: ["## Top angles (ranked by fit)"],
+  rankedAngles: ["## Top angles (ranked by fit)"],
+  landing: ["## Landing copy"],
+  store: ["## Store copy"],
+  tiktokScripts: ["## TikTok / Reels Scripts"],
+  facebookAds: ["## Meta Ad Concepts"],
+  experiments: ["## Experiments"],
+  score: ["## Strategy quality score"],
+  diagnosis: ["## Offer diagnosis"],
+  awarenessVariants: ["## Copy variants by awareness stage"],
+  offers: ["## Offer Architecture"],
+  campaignCalendar: ["## Campaign Calendar"],
+  creatorBriefs: ["## Creator Briefs"],
+  shotLists: ["## Shot Lists"],
+  videoScripts: ["## Video Scripts"],
+  variantSets: ["## Ad Variants"],
+  trackingReadiness: ["## Tracking Readiness"],
+  kpiLadder: ["## KPI Target Ladder"],
+  kpiDiagnosis: ["## KPI Diagnosis"],
+  adReview: ["## Ad Review Checklist"],
+  appliedAdReviews: ["## Applied Ad Reviews"],
+  journeyStatus: ["## Journey Status"],
+  ctaBank: ["## CTA Bank"],
+  staticBriefs: ["## Static Briefs"],
+  creativeQa: ["## Creative QA"],
+  editorHandoffs: ["## Editor Handoff"],
+  audienceAvatars: ["## Audience Avatars"],
+  hookLibrary: ["## Hook Library"],
+  adConceptCards: ["## Ad Concept Cards"],
+};
+
+for (const field of Object.keys(FIELD_TO_EXPORT_HEADERS)) {
+  const headers = FIELD_TO_EXPORT_HEADERS[field];
+  const present = headers.some((h) => a.exportBrief.includes(h));
+  record(
+    `export brief: covers Strategy.${field}`,
+    present,
+    present ? undefined : `Expected one of [${headers.join(", ")}] in export brief`
+  );
+}
+
+// Every Strategy field listed in the type appears in the map above (so
+// we don't quietly drop new fields).
+const STRATEGY_FIELDS_IN_TYPE = [
+  "positioning",
+  "awarenessNotes",
+  "sophisticationNotes",
+  "centralPromise",
+  "uniqueMechanism",
+  "objections",
+  "headlines",
+  "angles",
+  "rankedAngles",
+  "landing",
+  "store",
+  "tiktokScripts",
+  "facebookAds",
+  "experiments",
+  "score",
+  "diagnosis",
+  "awarenessVariants",
+  "genericFlags",
+  "offers",
+  "campaignCalendar",
+  "creatorBriefs",
+  "shotLists",
+  "videoScripts",
+  "variantSets",
+  "trackingReadiness",
+  "kpiLadder",
+  "kpiDiagnosis",
+  "adReview",
+  "appliedAdReviews",
+  "journeyStatus",
+  "ctaBank",
+  "staticBriefs",
+  "creativeQa",
+  "editorHandoffs",
+  "audienceAvatars",
+  "hookLibrary",
+  "adConceptCards",
+  "exportBrief",
+];
+record(
+  "export-brief field coverage: every Strategy data field listed (excluding genericFlags + exportBrief)",
+  STRATEGY_FIELDS_IN_TYPE.every(
+    (f) =>
+      f === "genericFlags" ||
+      f === "exportBrief" ||
+      FIELD_TO_EXPORT_HEADERS[f] !== undefined
+  )
+);
+
+// ---- Polish pass: StrategyView tab labels are unique and ordered ----
+//
+// Parse the TAB list directly from the component source so future
+// additions can't accidentally collide on a label.
+const strategyViewSrc = fs.readFileSync(
+  path.resolve(__dirname, "../src/components/StrategyView.tsx"),
+  "utf8"
+);
+// Match the TABS const initializer specifically, not other arrays.
+const tabsBlockMatch = strategyViewSrc.match(
+  /const TABS:[^=]*=\s*\[([\s\S]*?)\];/
+);
+const tabsBlock = tabsBlockMatch ? tabsBlockMatch[1] : "";
+const tabLabels: string[] = [];
+const tabIds: string[] = [];
+const tabLineRegex = /\{\s*id:\s*"([^"]+)",\s*label:\s*"([^"]+)"/g;
+let tabMatch: RegExpExecArray | null;
+while ((tabMatch = tabLineRegex.exec(tabsBlock)) !== null) {
+  tabIds.push(tabMatch[1]);
+  tabLabels.push(tabMatch[2]);
+}
+record(
+  "StrategyView: TABS parsed at least 12 entries",
+  tabLabels.length >= 12,
+  `Got ${tabLabels.length}`
+);
+record(
+  "StrategyView: every tab label is unique",
+  new Set(tabLabels).size === tabLabels.length,
+  `Got labels: ${tabLabels.join(", ")}`
+);
+record(
+  "StrategyView: every tab id is unique",
+  new Set(tabIds).size === tabIds.length,
+  `Got ids: ${tabIds.join(", ")}`
+);
+// No legacy "Offer" / "Offers" / "Ads" collision after the polish pass.
+record(
+  "StrategyView: no duplicate-feeling 'Offer' / 'Offers' labels",
+  !(tabLabels.includes("Offer") && tabLabels.includes("Offers")),
+  `Labels: ${tabLabels.join(", ")}`
+);
+// "Ads" by itself is too generic post-rename — should now be "Concepts".
+record(
+  "StrategyView: 'Ads' tab renamed (no bare 'Ads' label)",
+  !tabLabels.includes("Ads"),
+  `Labels: ${tabLabels.join(", ")}`
+);
+// Verify prescribed reading flow lands the headline tabs early.
+const expectedEarly = [
+  "Score",
+  "Positioning",
+  "Awareness",
+  "Audience avatars",
+  "Diagnosis",
+  "Offer architecture",
+  "Calendar",
+];
+record(
+  "StrategyView: first 7 tabs follow stakeholder reading flow",
+  expectedEarly.every((label, i) => tabLabels[i] === label),
+  `Got first 7: ${tabLabels.slice(0, 7).join(", ")}`
+);
+
+// ---- Polish pass: HeirloomBrew example exercises the seasonal path ----
+
+const brew = buildStrategy(HEIRLOOM_BREW_EXAMPLE);
+record(
+  "heirloom example: builds without throwing",
+  !!brew && Array.isArray(brew.creatorBriefs)
+);
+record(
+  "heirloom example: campaignCalendar is seasonal",
+  brew.campaignCalendar.campaignType === "seasonal"
+);
+record(
+  "heirloom example: has a peak window with a retrospective gate",
+  brew.campaignCalendar.windows.some(
+    (w) => w.kind === "peak" && !!w.retrospectiveGate
+  )
+);
+record(
+  "heirloom example: at least one promo-3-tier architecture",
+  brew.campaignCalendar.windows.some(
+    (w) => w.recommendedArchitecture.kind === "promo-3-tier"
+  )
+);
+record(
+  "heirloom example: exportBrief is non-trivial",
+  brew.exportBrief.length > 800
+);
+// HeirloomBrew should look materially different from AstroDating and
+// Plotline in its top-line outputs.
+expectDifferent(
+  "heirloom example: positioning differs from astro",
+  brew.positioning.statement,
+  a.positioning.statement
+);
+expectDifferent(
+  "heirloom example: positioning differs from plotline",
+  brew.positioning.statement,
+  b.positioning.statement
+);
+expectDifferent(
+  "heirloom example: avatars differ from astro",
+  brew.audienceAvatars.map((av) => av.label),
+  a.audienceAvatars.map((av) => av.label)
+);
+
+// ---- Polish pass: enriched example fixtures still pass content asserts ----
+
+// AstroDating output still names the test-critical strings the demo
+// audit relies on.
+const astroBlobV2 = JSON.stringify(a).toLowerCase();
+record(
+  "polish: astrodating output still mentions 'astrology'",
+  astroBlobV2.includes("astrology")
+);
+record(
+  "polish: astrodating output still mentions 'voice intros'",
+  astroBlobV2.includes("voice intros")
+);
+record(
+  "polish: astrodating output still mentions 'shallow swiping'",
+  astroBlobV2.includes("shallow swiping")
+);
+
+// Plotline still surfaces its scene-graph differentiator.
+const plotBlobV2 = JSON.stringify(b).toLowerCase();
+record(
+  "polish: plotline output still mentions 'scene-graph'",
+  plotBlobV2.includes("scene-graph")
+);
+record(
+  "polish: plotline output still mentions 'fiction writers'",
+  plotBlobV2.includes("fiction writers")
+);
+
+// Three examples produce three distinct overall scores (good signal
+// that fixture differentiation is healthy).
+record(
+  "polish: three example overall scores are distinct",
+  a.score.overall !== b.score.overall &&
+    b.score.overall !== brew.score.overall &&
+    a.score.overall !== brew.score.overall,
+  `astro=${a.score.overall} plot=${b.score.overall} brew=${brew.score.overall}`
 );
 
 // Report.

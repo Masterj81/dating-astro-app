@@ -69,36 +69,40 @@ type Tab =
   | "score"
   | "positioning"
   | "awareness"
-  | "diagnosis"
   | "audience"
-  | "offer"
-  | "ads"
+  | "diagnosis"
+  | "offers"
+  | "calendar"
+  | "angles"
+  | "concepts"
+  | "briefs"
+  | "shots"
+  | "launch"
   | "landing"
   | "store"
   | "experiments"
-  | "offers"
-  | "calendar"
-  | "launch"
-  | "briefs"
-  | "shots"
   | "export";
 
+// Tab order follows the stakeholder reading flow:
+// Score → Positioning → Awareness → Audience → Diagnosis → Offer
+// architecture → Calendar → Angles → Concepts → Briefs → Shots →
+// Launch readiness → Landing → App store → Experiments → Export.
 const TABS: { id: Tab; label: string }[] = [
   { id: "score", label: "Score" },
   { id: "positioning", label: "Positioning" },
   { id: "awareness", label: "Awareness" },
+  { id: "audience", label: "Audience avatars" },
   { id: "diagnosis", label: "Diagnosis" },
-  { id: "audience", label: "Audience" },
-  { id: "offer", label: "Offer" },
-  { id: "ads", label: "Ads" },
-  { id: "landing", label: "Landing" },
-  { id: "store", label: "App Store" },
-  { id: "experiments", label: "Experiments" },
-  { id: "offers", label: "Offers" },
+  { id: "offers", label: "Offer architecture" },
   { id: "calendar", label: "Calendar" },
-  { id: "launch", label: "Launch" },
+  { id: "angles", label: "Angles" },
+  { id: "concepts", label: "Concepts" },
   { id: "briefs", label: "Briefs" },
   { id: "shots", label: "Shots" },
+  { id: "launch", label: "Launch readiness" },
+  { id: "landing", label: "Landing" },
+  { id: "store", label: "App store" },
+  { id: "experiments", label: "Experiments" },
   { id: "export", label: "Export brief" },
 ];
 
@@ -155,18 +159,18 @@ export function StrategyView({ input, strategy, hasMeaningfulInput }: Props) {
         {tab === "awareness" && (
           <AwarenessTab strategy={strategy} input={input} />
         )}
-        {tab === "diagnosis" && <DiagnosisTab diagnosis={strategy.diagnosis} />}
         {tab === "audience" && <AudienceTab avatars={strategy.audienceAvatars} />}
-        {tab === "offer" && <OfferTab strategy={strategy} />}
-        {tab === "ads" && <AdsTab strategy={strategy} input={input} />}
+        {tab === "diagnosis" && <DiagnosisTab diagnosis={strategy.diagnosis} />}
+        {tab === "offers" && <OffersTab strategy={strategy} />}
+        {tab === "calendar" && <CalendarTab calendar={strategy.campaignCalendar} />}
+        {tab === "angles" && <AnglesTab strategy={strategy} />}
+        {tab === "concepts" && <ConceptsTab strategy={strategy} input={input} />}
+        {tab === "briefs" && <BriefsTab strategy={strategy} />}
+        {tab === "shots" && <ShotsTab strategy={strategy} />}
+        {tab === "launch" && <LaunchTab strategy={strategy} input={input} />}
         {tab === "landing" && <LandingTab strategy={strategy} />}
         {tab === "store" && <StoreTab strategy={strategy} />}
         {tab === "experiments" && <ExperimentsTab strategy={strategy} />}
-        {tab === "offers" && <OffersTab strategy={strategy} />}
-        {tab === "calendar" && <CalendarTab calendar={strategy.campaignCalendar} />}
-        {tab === "launch" && <LaunchTab strategy={strategy} input={input} />}
-        {tab === "briefs" && <BriefsTab strategy={strategy} />}
-        {tab === "shots" && <ShotsTab strategy={strategy} />}
         {tab === "export" && <ExportTab brief={strategy.exportBrief} />}
       </div>
     </section>
@@ -660,20 +664,11 @@ function avatarToText(av: AudienceAvatar): string {
   return lines.join("\n");
 }
 
-// ---------------- Offer tab ----------------
+// ---------------- Angles tab (ranked angles + headlines + objections) ----------------
 
-function OfferTab({ strategy }: { strategy: Strategy }) {
+function AnglesTab({ strategy }: { strategy: Strategy }) {
   return (
     <div className="flex flex-col gap-5">
-      <SectionTitle>Headlines</SectionTitle>
-      <div className="flex flex-col gap-2">
-        {strategy.headlines.map((h, i) => (
-          <CopyableCard key={`h-${i}`} text={h} dense>
-            <p>{h}</p>
-          </CopyableCard>
-        ))}
-      </div>
-
       <SectionTitle>Angles (ranked)</SectionTitle>
       <p className="text-xs text-ink-400">
         Each angle is scored against your awareness + sophistication, then
@@ -682,6 +677,15 @@ function OfferTab({ strategy }: { strategy: Strategy }) {
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {strategy.rankedAngles.map((a, i) => (
           <AngleCard key={`g-${i}`} angle={a} rank={i + 1} />
+        ))}
+      </div>
+
+      <SectionTitle>Headlines</SectionTitle>
+      <div className="flex flex-col gap-2">
+        {strategy.headlines.map((h, i) => (
+          <CopyableCard key={`h-${i}`} text={h} dense>
+            <p>{h}</p>
+          </CopyableCard>
         ))}
       </div>
 
@@ -758,9 +762,9 @@ function Tag({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ---------------- Ads tab ----------------
+// ---------------- Concepts tab (concept cards + hook bench + variants + CTA + statics + shorts) ----------------
 
-function AdsTab({ strategy, input }: { strategy: Strategy; input: ProductInput }) {
+function ConceptsTab({ strategy, input }: { strategy: Strategy; input: ProductInput }) {
   return (
     <div className="flex flex-col gap-5">
       <SectionTitle>Top angle to test first</SectionTitle>
@@ -2697,6 +2701,7 @@ function SnapshotField({
 }
 
 function AdReviewBlock({ checklist }: { checklist: AdReviewChecklist }) {
+  const [open, setOpen] = useState(false);
   return (
     <div className="flex flex-col gap-3">
       <SectionTitle>Ad Review Checklist</SectionTitle>
@@ -2706,26 +2711,42 @@ function AdReviewBlock({ checklist }: { checklist: AdReviewChecklist }) {
         Walk through this before any spend.
       </p>
       <div className="hairline rounded-lg bg-ink-900 p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Tag>{checklist.axes.length} axes</Tag>
-          <Tag>Total weight: {checklist.totalWeight}</Tag>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Tag>{checklist.axes.length} axes</Tag>
+            <Tag>Total weight: {checklist.totalWeight}</Tag>
+            <span className="text-xxs text-ink-400">
+              {open
+                ? "Reference checklist — collapse to hide"
+                : "Reference checklist — click to expand"}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="rounded-sm border border-ink-700 bg-ink-800 px-2 py-1 text-xxs text-ink-200 hover:border-accent hover:text-white"
+          >
+            {open ? "Collapse" : "Expand checklist"}
+          </button>
         </div>
-        <ul className="mt-3 flex flex-col gap-2">
-          {checklist.axes.map((ax) => (
-            <li
-              key={ax.kind}
-              className="rounded-md border border-ink-800 bg-ink-950/40 p-3"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
-                  w{ax.weight}
-                </span>
-                <p className="text-sm font-medium text-ink-100">{ax.label}</p>
-              </div>
-              <p className="mt-1 text-xs text-ink-300">{ax.question}</p>
-            </li>
-          ))}
-        </ul>
+        {open ? (
+          <ul className="mt-3 flex flex-col gap-2">
+            {checklist.axes.map((ax) => (
+              <li
+                key={ax.kind}
+                className="rounded-md border border-ink-800 bg-ink-950/40 p-3"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-sm border border-ink-700 bg-ink-800 px-1.5 py-0.5 text-xxs text-ink-200">
+                    w{ax.weight}
+                  </span>
+                  <p className="text-sm font-medium text-ink-100">{ax.label}</p>
+                </div>
+                <p className="mt-1 text-xs text-ink-300">{ax.question}</p>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </div>
     </div>
   );

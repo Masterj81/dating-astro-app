@@ -27,7 +27,7 @@ For any product you describe, BigAd produces:
 - A phased **campaign calendar** with named windows (lead-in / warm-up / ramp / peak / echo / tail, or evergreen test/scale cycles for always-on), each carrying a KPI to watch, a readiness gate that must pass before it opens, a recommended offer kind, a typed list of **dip forecasts** for the soft windows inside it (mechanism + severity + day offset), a recommended **audience architecture** (single-tier prospecting outside a promo push, three-tier prospecting + engagement + site retargeting inside one, with a budget split hint), and on the first peak of a seasonal campaign an eight-question **retrospective gate**
 - A set of **creator briefs** — one per top-ranked angle, each with a framing rule, alternate hook openers, a four-section spine (hook / problem / solution-or-proof / CTA), and a campaign-type-aware deliverable list
 - A **shot list** per brief — 4 to 8 numbered shots covering every beat, with shot kind, framing, camera angle, duration envelope, props, and sound direction, with the midpoint duration tracking the brief's envelope
-- A one-press **export brief** — a clean markdown document that bundles every section above, ready to paste into Notion, Linear, or any doc
+- A one-press **export brief** — a clean markdown document that bundles every section above, ready to paste into Notion, Linear, or any doc. Section order follows the stakeholder reading flow: Product snapshot → Journey Status → Audience Avatars → Positioning → Offer Architecture → Campaign Calendar → Ad Concept Cards → Hook Library → Creator Briefs / Video Scripts / Shot Lists → Creative QA / Tracking Readiness / KPI ladder / KPI diagnosis / Ad Review Checklist / Applied Ad Reviews → Editor Handoff. Secondary reference sections (score, awareness diagnosis, headlines, landing, store, experiments, CTA bank, static briefs, ad variants, TikTok / Meta scripts) follow after.
 
 Every output is built from the inputs you provide — name, category, audience, pain, differentiator, goal, awareness, sophistication, optional commercial inputs (COGS %, target margin %, current AOV, target ROAS), and a campaign type (launch / seasonal / always-on) — so the same prompt never produces identical copy across two different products.
 
@@ -136,7 +136,7 @@ npm run test:logic  # zero-framework engine correctness check
 
 The strategy engine is **fully deterministic** — no API calls, no LLM, no external data fetching. Identical inputs always produce an identical strategy, including offer rankings and the campaign calendar. The `test:logic` script verifies that property explicitly alongside its other assertions.
 
-The `test:logic` script feeds two materially different inputs (AstroDating + a writing tool) through the engine and asserts that the two strategies are not identical at the level of headlines, angles, positioning, and landing hero — and that each strategy actually mentions the specific things that make it that product. It also covers the V2 quality engine: scoring, offer diagnosis, angle ranking, awareness-stage variants, generic-copy detection, and the markdown export brief.
+The `test:logic` script feeds three materially different inputs (AstroDating, a writing tool, and a single-origin coffee club) through the engine and asserts that the three strategies are not identical at the level of headlines, angles, positioning, and landing hero — and that each strategy actually mentions the specific things that make it that product. It also covers the V2 quality engine: scoring, offer diagnosis, angle ranking, awareness-stage variants, generic-copy detection, and the markdown export brief — plus the stakeholder-flow ordering of the export, the StrategyView tab labels (unique, no legacy duplicates), and one-to-one coverage between every `Strategy` field and an export-brief section header.
 
 ## How the score works
 
@@ -176,7 +176,7 @@ BigAd/
 │   │   └── page.tsx        Workspace UI (split panel: inputs / strategy)
 │   ├── components/
 │   │   ├── InputPanel.tsx       Left rail — Product / Audience / Market / Competitors / Goal
-│   │   ├── StrategyView.tsx     Right pane — Journey Status banner + tabbed strategy output (Score / Positioning / Awareness / Diagnosis / Audience / Offer / Ads (+Concept cards + Hook library + CTA bank + Static briefs) / Landing / App Store / Experiments / Offers / Calendar / Launch / Briefs (+QA + Editor handoff) / Shots / Export)
+│   │   ├── StrategyView.tsx     Right pane — Journey Status banner + tabbed strategy output. Tabs follow the stakeholder reading flow: Score → Positioning → Awareness → Audience avatars → Diagnosis → Offer architecture → Calendar → Angles → Concepts (concept cards + hook library + hook critic + variant spinner + CTA bank + static briefs + TikTok / Meta scripts) → Briefs (+ QA + applied review + editor handoff) → Shots → Launch readiness → Landing → App store → Experiments → Export brief.
 │   │   └── CopyableCard.tsx     Reusable card with a small copy button
 │   ├── lib/
 │   │   ├── engine/              Deterministic strategy engine (no API)
@@ -217,12 +217,12 @@ BigAd/
 │   │   │   ├── hook-library.ts         buildHookLibrary() — 8 patterns × 2-3 hooks
 │   │   │   ├── ad-concept-cards.ts     buildAdConceptCards() — 3-6 (avatar × pattern × offer) cards
 │   │   │   └── export-brief.ts         generateExportBrief() — markdown bundle
-│   │   ├── example.ts          The "Load example" payload (AstroDating)
+│   │   ├── example.ts          Three demo payloads — AstroDating (freemium launch), Plotline (subscription always-on), HeirloomBrew (one-time seasonal) — used by the "Load example" button and by `test:logic` to prove materially different inputs produce materially different outputs.
 │   │   └── llm.ts              Adapter interface for plugging an LLM later
 │   └── types/
 │       └── strategy.ts         Shared TypeScript types
 ├── scripts/
-│   └── test-logic.ts           `npm run test:logic` — 550 checks
+│   └── test-logic.ts           `npm run test:logic` — 608 checks
 ├── public/
 ├── next.config.ts
 ├── tailwind.config.ts
