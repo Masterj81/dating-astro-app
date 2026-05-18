@@ -23,6 +23,7 @@ import type {
 } from "@/types/strategy";
 import type { ReviewBoardSummary, ReviewItemKind } from "@/types/review";
 import { reviewItemKindLabel } from "@/lib/review/review-board";
+import type { AssetProductionSummary } from "@/types/assets";
 
 export interface JourneyStatusArgs {
   trackingReadiness: TrackingReadinessScore;
@@ -47,6 +48,11 @@ export interface JourneyStatusArgs {
   // absent, journey-status keeps its pre-review behaviour for
   // backward compatibility with the legacy 7-arg form.
   reviewSummary?: ReviewBoardSummary;
+  // Asset Production Manager — when provided, journey-status emits an
+  // asset-kind warning (escalating to blocker when readinessScore < 30)
+  // for pending must-have assets and gates `ready-to-spend` behind
+  // readinessScore >= 70 with no pending must-haves. Absent → no gate.
+  assetSummary?: AssetProductionSummary;
 }
 
 // Ad-review weight floor for "review-passed". The shipped checklist has
@@ -196,6 +202,30 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     }
   }
 
+  // Asset Production Manager — when an assetSummary is supplied and
+  // any must-have asset is pending, emit a warning. Severity escalates
+  // to `blocker` when readinessScore < 30 — that's the threshold below
+  // which the production sprint hasn't meaningfully started.
+  if (args.assetSummary && args.assetSummary.pendingMustHaveIds.length > 0) {
+    const pendingIds = args.assetSummary.pendingMustHaveIds.slice(0, 2);
+    const head = `Asset production: ${args.assetSummary.pendingMustHaveIds.length} must-have asset(s) not ready`;
+    const message = pendingIds.length > 0
+      ? `${head} — pending: ${pendingIds.join(", ")}`
+      : head;
+    const severity: "warning" | "blocker" =
+      args.assetSummary.readinessScore < 30 ? "blocker" : "warning";
+    const entry: JourneyBlocker = {
+      kind: "asset",
+      severity,
+      message,
+    };
+    if (severity === "blocker") {
+      blockers.push(entry);
+    } else {
+      warnings.push(entry);
+    }
+  }
+
   // Execution OS — first batch presence is a prerequisite for
   // ready-to-spend. When the matrix isn't supplied (legacy callers /
   // backward-compat with tests that pre-date the Execution OS phase),
@@ -222,11 +252,19 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
   const approvalReady =
     !args.reviewSummary || args.reviewSummary.approvalReadiness === "ready";
 
-  // Operational blockers count — review-kind blockers are tracked
-  // through the approvalReady gate at the review-passed stage,
+  // Asset production — only gates ready-to-spend when a summary is
+  // supplied. Absent → no gate (backward-compat with every caller
+  // that pre-dates the Asset Production Manager).
+  const assetReady =
+    !args.assetSummary ||
+    (args.assetSummary.readinessScore >= 70 &&
+      args.assetSummary.pendingMustHaveIds.length === 0);
+
+  // Operational blockers count — review-kind and asset-kind blockers
+  // are tracked through their own gates at the review-passed stage,
   // not as creative-planned regressions.
   const operationalBlockersCount = blockers.filter(
-    (b) => b.kind !== "review"
+    (b) => b.kind !== "review" && b.kind !== "asset"
   ).length;
 
   // Stage selection — earliest match wins.
@@ -241,6 +279,7 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     reviewsReady,
     proofReady,
     approvalReady,
+    assetReady,
   });
 
   const readyToSpend = stage === "ready-to-spend";
@@ -280,6 +319,7 @@ function pickStage(args: {
   reviewsReady: boolean;
   proofReady: boolean;
   approvalReady: boolean;
+  assetReady: boolean;
 }): JourneyStage {
   if (args.creatorBriefsCount === 0) return "strategy-drafted";
   if (args.trackingScore < 70 || args.blockersCount > 0) return "creative-planned";
@@ -295,6 +335,9 @@ function pickStage(args: {
   // when the caller did not pass a reviewSummary, so legacy callers
   // remain unaffected.
   if (!args.approvalReady) return "review-passed";
+  // Asset Production gate — same backward-compat: receives
+  // `assetReady = true` when no assetSummary was supplied.
+  if (!args.assetReady) return "review-passed";
   return "ready-to-spend";
 }
 

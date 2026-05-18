@@ -14,6 +14,8 @@ import {
 } from "@/components/ReviewPanel";
 import { AgencyTab, useAgencySelection } from "@/components/AgencyPanel";
 import { PlaybookTab, usePlaybookSelection } from "@/components/PlaybookPanel";
+import { AssetTab, useAssetProduction } from "@/components/AssetPanel";
+import { PLAYBOOKS } from "@/lib/playbook/catalog";
 import {
   OnboardingGoalPill,
   OnboardingWelcomePanel,
@@ -75,6 +77,10 @@ export default function Page() {
   const playbookState = usePlaybookSelection({
     projectId: workspaceState.activeProjectId,
   });
+
+  const selectedPlaybook = playbookState.applied
+    ? PLAYBOOKS[playbookState.applied]
+    : undefined;
 
   const onboarding = useOnboarding();
 
@@ -151,6 +157,15 @@ export default function Page() {
           comments: reviewState.comments,
         })
       : undefined;
+
+  const assetRunId = latestRun?.id ?? workspaceState.activeProjectId ?? null;
+
+  const assetProductionState = useAssetProduction({
+    runId: assetRunId,
+    strategy,
+    selectedPlaybook,
+    reviewSummary,
+  });
   const onboardingCtx = {
     project: workspaceState.activeProject ?? undefined,
     latestRun: latestRunForCtx,
@@ -229,6 +244,13 @@ export default function Page() {
                 input={input}
                 strategy={strategy}
                 agencySelection={agencyState.selection}
+              />
+            }
+            assetSlot={
+              <AssetTab
+                state={assetProductionState}
+                input={input}
+                strategy={strategy}
               />
             }
           />

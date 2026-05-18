@@ -21,6 +21,10 @@ import type {
   PlaybookRecommendation,
 } from "@/types/playbook";
 import type { OnboardingState } from "@/types/onboarding";
+import type {
+  AssetProductionPlan,
+  AssetProductionSummary,
+} from "@/types/assets";
 import {
   getOnboardingGoal,
 } from "@/lib/onboarding/onboarding";
@@ -65,6 +69,14 @@ export interface ExportBriefWorkspaceContext {
   // goal" sentence to the Campaign Log section. Absent or empty →
   // existing brief is byte-identical.
   onboardingState?: OnboardingState;
+  // Optional Asset Production Manager context — when supplied AND
+  // `plan.assets.length > 0`, the exporter appends an
+  // `## Asset Production Plan` section. Absent or empty → existing
+  // brief is byte-identical.
+  assetProduction?: {
+    plan: AssetProductionPlan;
+    summary: AssetProductionSummary;
+  };
 }
 
 // generateExportBrief — assembles a clean, single-page markdown brief
@@ -1170,6 +1182,14 @@ export function generateExportBrief(
     appendPlaybookRecommendation(lines, playbookActive, playbook.recommendation, strategy);
   }
 
+  // Asset Production Plan — emitted only when the caller passes the
+  // Asset Production Manager context AND the plan has assets. Absent
+  // or empty → existing brief is byte-identical.
+  const assetProduction = workspace?.assetProduction;
+  if (assetProduction && assetProduction.plan.assets.length > 0) {
+    appendAssetProductionPlan(lines, assetProduction.plan, assetProduction.summary);
+  }
+
   return lines.join("\n").replace(/\n{3,}/g, "\n\n");
 }
 
@@ -1553,6 +1573,96 @@ function oneLine(s: string): string {
 function section(lines: string[], title: string) {
   lines.push(`## ${title}`);
   lines.push("");
+}
+
+function appendAssetProductionPlan(
+  lines: string[],
+  plan: AssetProductionPlan,
+  summary: AssetProductionSummary
+): void {
+  section(lines, "Asset Production Plan");
+
+  lines.push(`**Readiness score:** ${summary.readinessScore} / 100`);
+  lines.push(
+    `**Must-have assets:** ${summary.mustHaveTotal} (${summary.mustHaveReady} ready, ${summary.mustHaveTotal - summary.mustHaveReady} pending)`
+  );
+  lines.push(`**Total assets:** ${plan.assets.length}`);
+  lines.push("");
+
+  const mustHaves = plan.assets.filter((a) => a.priority === "must-have");
+  if (mustHaves.length > 0) {
+    lines.push(`### Must-have assets`);
+    for (const a of mustHaves) {
+      lines.push(
+        `- ${a.title} (${a.format}) — ${a.ownerRole} — ${a.status} — due day ${a.dueWindow.startOffsetDays}-${a.dueWindow.endOffsetDays}`
+      );
+    }
+    lines.push("");
+  }
+
+  const others = plan.assets.filter((a) => a.priority !== "must-have");
+  if (others.length > 0) {
+    lines.push(`### Should-have / Nice-to-have`);
+    for (const a of others) {
+      lines.push(
+        `- ${a.title} (${a.format}) — ${a.priority} — ${a.ownerRole} — ${a.status}`
+      );
+    }
+    lines.push("");
+  }
+
+  // Owner workload
+  const ownerEntries = Object.entries(plan.byOwner) as Array<
+    [string, number]
+  >;
+  if (ownerEntries.length > 0) {
+    lines.push(`### Owner workload`);
+    for (const [owner, count] of ownerEntries.sort((a, b) =>
+      a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0
+    )) {
+      const owned = plan.assets.filter((a) => a.ownerRole === owner);
+      const ready = owned.filter(
+        (a) =>
+          a.status === "approved" ||
+          (a.status === "shipped" &&
+            a.qualityChecks
+              .filter((c) => c.required)
+              .every((c) => c.done))
+      ).length;
+      lines.push(`- ${owner}: ${count} assets (${ready} ready)`);
+    }
+    lines.push("");
+  }
+
+  // Quality check progress — by kind across all assets where the kind appears
+  const kindTotals = new Map<string, { done: number; total: number }>();
+  for (const a of plan.assets) {
+    for (const c of a.qualityChecks) {
+      const entry = kindTotals.get(c.kind) ?? { done: 0, total: 0 };
+      entry.total += 1;
+      if (c.done) entry.done += 1;
+      kindTotals.set(c.kind, entry);
+    }
+  }
+  if (kindTotals.size > 0) {
+    lines.push(`### Quality check progress`);
+    const sortedKinds = Array.from(kindTotals.entries()).sort((a, b) =>
+      a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0
+    );
+    for (const [kind, { done, total }] of sortedKinds) {
+      const mark = done === total && total > 0 ? "[done]" : "[pending]";
+      lines.push(`- ${mark} ${kind}: ${done} / ${total}`);
+    }
+    lines.push("");
+  }
+
+  if (plan.missingBlockers.length > 0) {
+    lines.push(`### Missing blockers`);
+    for (const b of plan.missingBlockers) {
+      lines.push(`- ${b.reason}`);
+    }
+    lines.push("");
+  }
 }
 
 function stageLabel(stage: string): string {

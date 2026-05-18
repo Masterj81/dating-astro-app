@@ -918,3 +918,71 @@ qu'au moins un projet existe. Aucun nouvel onglet — l'onboarding vit
 dans l'espace de travail existant. Tout est stocke en local
 (`bigad:onboarding:v1` + `bigad:demo-loaded:v1`); le moteur reste
 deterministe et `buildStrategy(input)` ne change pas.
+
+## Asset Production Manager
+
+The Asset Production Manager turns the strategy into a tracked
+production sprint. Every proof asset, creator brief, static brief,
+video script (script + paired production cut), first-batch and queued
+test cell, campaign-ad slot, and the client report shows up as a
+single `ProductionAsset` row with a stable id (`<sourceKind>:<refId>:<format>`),
+a priority chip (must-have / should-have / nice-to-have), an owner
+role (creator / designer / copywriter / client / owner / producer /
+editor / media-buyer), a status (requested → scripted → in-production
+→ in-review → approved → shipped, with a rejected escape), a due
+window in days from today (driven by the applied playbook's
+`estimatedTimelineDays.min` — must-haves land in days 0-40% of the
+sprint, should-haves in 30-70%, nice-to-haves in 50-100%), and a
+quality-check matrix (file-link / brand-present / no-unsupported-claim
+/ format-matches-placement everywhere; captions / aspect-ratio /
+export-size for video; aspect-ratio / export-size for static;
+proof-visible / cta-visible for cold-acquisition cells; proof-visible
+for quotes and case studies). Test cells with `proofAssetRequired`
+get a dependency entry pointing at the matching proof-asset row, so
+the missing-blockers banner can call out "Test cell X blocked by
+proof asset dependency" the moment the proof row isn't approved.
+
+Two derived signals matter for launch:
+
+- **Readiness score (0-100)** — sum of per-asset status points (0–10)
+  plus 0.5 per done required check, divided by `(must-have +
+  should-have) × 10 + Σ required checks × 0.5`. 100 means every
+  must-have and should-have is shipped with every required quality
+  check done. The Journey Status block reads this — if you pass an
+  `assetSummary`, `ready-to-spend` is gated behind score ≥ 70 with no
+  pending must-haves, and any pending must-have with score < 30
+  escalates the warning into a blocker chip.
+- **Missing blockers** — surfaces three reason kinds: every must-have
+  that is not approved/shipped, every shipped asset still missing a
+  required quality check, and every test-cell asset whose proof
+  dependency is not approved/shipped.
+
+State persists per run in `bigad:assets:v1`; re-deriving the plan
+merges by id so the existing status, file link, notes, and quality-check
+done flags survive. Loading a different run swaps the queue; nothing
+leaves your browser.
+
+The dedicated `Assets` tab in the workspace (between Execution and
+Proof) surfaces six sections: a production queue with inline status
+switcher / owner picker / file-link input / quality-check toggles, a
+missing-blockers banner, a by-owner workload grid (count + ready
+chip per role), a by-status kanban with seven columns (requested →
+shipped), a per-asset quality checklist with required vs optional
+chips, and a where-used grouped view (test cell / campaign ad /
+landing page / report / proof block).
+
+The export brief gains an optional `## Asset Production Plan` section
+(readiness score, must-have list with status + due window, should-have
+/ nice-to-have list, owner workload, quality-check progress per kind,
+missing blockers) when the caller passes the asset-production
+context and the plan has assets. Absent or empty → byte-identical.
+
+En francais : le `Asset Production Manager` ajoute un onglet `Assets`
+(entre Execution et Proof) qui suit chaque livrable creatif issu de la
+strategie comme une seule ligne — id stable, priorite, role
+proprietaire, statut (requested → shipped), fenetre due en jours,
+checklist qualite et dependances. Le score de readiness (0-100) et la
+liste `missingBlockers` viennent gater `ready-to-spend` quand on les
+passe au Journey Status. L'export `## Asset Production Plan` est
+optionnel, byte-identique en son absence. Persistance locale sous
+`bigad:assets:v1`; le moteur reste deterministe.

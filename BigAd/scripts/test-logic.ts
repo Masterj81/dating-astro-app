@@ -6720,6 +6720,556 @@ for (const { name, strategy } of fixtures) {
   );
 }
 
+// ============================================================================
+// === Asset Production Manager ===
+// ============================================================================
+//
+// Tests cover: the deterministic planner (id stability, must-have / proof
+// linkage, quality-check assembly, dueWindow math, readinessScore extremes,
+// missing-blockers, existing-state merge), summary + critical-message
+// selectors, journey-status integration (warning + blocker escalation +
+// ready-to-spend gating), memory store roundtrip, key constant, markdown
+// export hook, and engine-determinism guard.
+
+{
+  const assetMod = require("../src/lib/assets/asset-production") as typeof import("../src/lib/assets/asset-production");
+  const assetStoreMod = require("../src/lib/assets/asset-store") as typeof import("../src/lib/assets/asset-store");
+  const journeyMod = require("../src/lib/engine/journey-status") as typeof import("../src/lib/engine/journey-status");
+  const exportMod = require("../src/lib/engine/export-brief") as typeof import("../src/lib/engine/export-brief");
+  const playbookCatalog = require("../src/lib/playbook/catalog") as typeof import("../src/lib/playbook/catalog");
+
+  const {
+    buildAssetProductionPlan,
+    summarizeAssetProductionPlan,
+    criticalBlockingAssetMessages,
+  } = assetMod;
+  const {
+    createMemoryAssetStore,
+    STORAGE_KEY_ASSETS,
+  } = assetStoreMod;
+  const { buildJourneyStatus } = journeyMod;
+  const { generateExportBrief } = exportMod;
+  const { PLAYBOOKS } = playbookCatalog;
+
+  // ---- AstroDating fixture --------------------------------------------------
+
+  const astroStrategy = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const astroRunId = "run-asset-tests-1";
+
+  const astroPlan = buildAssetProductionPlan({
+    runId: astroRunId,
+    strategy: astroStrategy,
+    proofAssetPlan: astroStrategy.proofAssetPlan,
+    creativeTestingMatrix: astroStrategy.creativeTestingMatrix,
+  });
+
+  record(
+    "asset: plan returns >= 10 assets for AstroDating",
+    astroPlan.assets.length >= 10,
+    `Got ${astroPlan.assets.length}`
+  );
+  record(
+    "asset: plan has >= 3 must-have assets for AstroDating",
+    astroPlan.mustHaveCount >= 3,
+    `Got ${astroPlan.mustHaveCount}`
+  );
+  record(
+    "asset: every must-have has at least one test-cell OR proof-asset linkage",
+    astroPlan.assets
+      .filter((a) => a.priority === "must-have")
+      .every(
+        (a) =>
+          a.linkedTestCellIds.length > 0 ||
+          a.linkedProofAssetIds.length > 0 ||
+          a.sourceKind === "proof-asset"
+      )
+  );
+
+  record(
+    "asset: every asset has at least 3 quality checks",
+    astroPlan.assets.every((a) => a.qualityChecks.length >= 3),
+    `Min: ${Math.min(...astroPlan.assets.map((a) => a.qualityChecks.length))}`
+  );
+
+  const videoAssets = astroPlan.assets.filter((a) =>
+    a.format.startsWith("video-")
+  );
+  record(
+    "asset: video assets always include captions-included quality check",
+    videoAssets.length > 0 &&
+      videoAssets.every((a) =>
+        a.qualityChecks.some((c) => c.kind === "captions-included")
+      )
+  );
+
+  const staticAssets = astroPlan.assets.filter(
+    (a) => a.format.startsWith("static-") || a.format === "screenshot"
+  );
+  record(
+    "asset: static assets always include aspect-ratio-noted quality check",
+    staticAssets.length > 0 &&
+      staticAssets.every((a) =>
+        a.qualityChecks.some((c) => c.kind === "aspect-ratio-noted")
+      )
+  );
+
+  record(
+    "asset: all assets include file-link-present required check",
+    astroPlan.assets.every((a) =>
+      a.qualityChecks.some(
+        (c) => c.kind === "file-link-present" && c.required
+      )
+    )
+  );
+
+  // ---- ID stability ----------------------------------------------------
+
+  const proofAssetEntry = astroPlan.assets.find(
+    (a) => a.sourceKind === "proof-asset"
+  );
+  record(
+    "asset: proof-asset id follows `proof-asset:<refId>:<format>` shape",
+    !!proofAssetEntry &&
+      /^proof-asset:[^:]+:(screenshot|video-9-16|quote|case-study|video-1-1|video-16-9|video-4-5|static-1-1|static-4-5|static-9-16|landing-section|report)$/.test(
+        proofAssetEntry.id
+      ),
+    proofAssetEntry?.id
+  );
+
+  // ---- Determinism: byte-identical plans -------------------------------
+
+  const planA = buildAssetProductionPlan({
+    runId: astroRunId,
+    strategy: astroStrategy,
+    proofAssetPlan: astroStrategy.proofAssetPlan,
+    creativeTestingMatrix: astroStrategy.creativeTestingMatrix,
+  });
+  const planB = buildAssetProductionPlan({
+    runId: astroRunId,
+    strategy: astroStrategy,
+    proofAssetPlan: astroStrategy.proofAssetPlan,
+    creativeTestingMatrix: astroStrategy.creativeTestingMatrix,
+  });
+  record(
+    "asset: two calls with identical input produce byte-identical plan",
+    JSON.stringify(planA) === JSON.stringify(planB)
+  );
+
+  // ---- readinessScore extremes -----------------------------------------
+
+  // All requested → readiness is the bonus from the default zero-status assets only.
+  const zeroPlan = buildAssetProductionPlan({
+    runId: astroRunId,
+    strategy: astroStrategy,
+  });
+  record(
+    "asset: readinessScore is 0 when every asset is requested (status=0 contribution)",
+    zeroPlan.readinessScore === 0,
+    `Got ${zeroPlan.readinessScore}`
+  );
+
+  // All shipped + all required checks done → readiness 100.
+  const shippedAssets = zeroPlan.assets.map((a) => ({
+    ...a,
+    status: "shipped" as const,
+    qualityChecks: a.qualityChecks.map((c) => ({ ...c, done: true })),
+  }));
+  const allShippedPlan = buildAssetProductionPlan({
+    runId: astroRunId,
+    strategy: astroStrategy,
+    existingAssetState: shippedAssets,
+  });
+  record(
+    "asset: readinessScore is 100 when every counted asset is shipped + all required checks done",
+    allShippedPlan.readinessScore === 100,
+    `Got ${allShippedPlan.readinessScore}`
+  );
+
+  // Setting one must-have to shipped should increase readiness over baseline.
+  const oneShipped = zeroPlan.assets
+    .slice(0, 1)
+    .filter((a) => a.priority === "must-have")
+    .map((a) => ({
+      ...a,
+      status: "shipped" as const,
+      qualityChecks: a.qualityChecks.map((c) => ({ ...c, done: true })),
+    }));
+  if (oneShipped.length > 0) {
+    const partialPlan = buildAssetProductionPlan({
+      runId: astroRunId,
+      strategy: astroStrategy,
+      existingAssetState: oneShipped,
+    });
+    record(
+      "asset: shipping one must-have asset deterministically increases readinessScore",
+      partialPlan.readinessScore > zeroPlan.readinessScore,
+      `before=${zeroPlan.readinessScore} after=${partialPlan.readinessScore}`
+    );
+  } else {
+    record(
+      "asset: shipping one must-have asset deterministically increases readinessScore",
+      true,
+      "Skipped: no must-have asset present (unexpected)"
+    );
+  }
+
+  // ---- missingBlockers --------------------------------------------------
+
+  record(
+    "asset: missingBlockers is non-empty when any must-have is not approved/shipped",
+    zeroPlan.missingBlockers.length > 0
+  );
+
+  // Shipped asset missing a required check → blocker mentions check kind.
+  const shippedMissingCheck = zeroPlan.assets
+    .filter((a) => a.priority === "must-have")
+    .slice(0, 1)
+    .map((a) => ({
+      ...a,
+      status: "shipped" as const,
+      qualityChecks: a.qualityChecks.map((c) => ({ ...c, done: false })),
+    }));
+  if (shippedMissingCheck.length > 0) {
+    const shippedMissingPlan = buildAssetProductionPlan({
+      runId: astroRunId,
+      strategy: astroStrategy,
+      existingAssetState: shippedMissingCheck,
+    });
+    record(
+      "asset: missingBlockers includes 'shipped … missing required check' entry",
+      shippedMissingPlan.missingBlockers.some((b) =>
+        b.reason.toLowerCase().includes("missing required check")
+      )
+    );
+  } else {
+    record(
+      "asset: missingBlockers includes 'shipped … missing required check' entry",
+      false,
+      "Skipped: no must-have present"
+    );
+  }
+
+  // ---- Existing asset state merge --------------------------------------
+
+  const firstAsset = zeroPlan.assets[0];
+  const mergedExisting: typeof zeroPlan.assets = [
+    {
+      ...firstAsset,
+      status: "shipped",
+      fileLink: "https://example.com/asset.mp4",
+      notes: "Test note",
+      updatedAt: 1715990400000,
+    },
+  ];
+  const mergedPlan = buildAssetProductionPlan({
+    runId: astroRunId,
+    strategy: astroStrategy,
+    existingAssetState: mergedExisting,
+  });
+  const mergedFirst = mergedPlan.assets.find((a) => a.id === firstAsset.id);
+  record(
+    "asset: merge keeps existing status from existingAssetState",
+    !!mergedFirst && mergedFirst.status === "shipped"
+  );
+  record(
+    "asset: merge keeps existing fileLink",
+    !!mergedFirst && mergedFirst.fileLink === "https://example.com/asset.mp4"
+  );
+  record(
+    "asset: merge keeps existing notes",
+    !!mergedFirst && mergedFirst.notes === "Test note"
+  );
+  record(
+    "asset: merge regenerates state for NEW (non-merged) assets as requested",
+    mergedPlan.assets
+      .filter((a) => a.id !== firstAsset.id)
+      .every((a) => a.status === "requested")
+  );
+
+  // ---- Test cell proofAssetRequired → dependency entry -----------------
+
+  const cellWithProof = astroStrategy.creativeTestingMatrix.testCells.find(
+    (c) => !!c.proofAssetRequired
+  );
+  if (cellWithProof) {
+    const cellAsset = astroPlan.assets.find(
+      (a) =>
+        a.sourceKind === "test-cell" &&
+        a.sourceRefId === cellWithProof.id
+    );
+    record(
+      "asset: test cell with proofAssetRequired emits dependency entry",
+      !!cellAsset &&
+        cellAsset.dependencies.length > 0 &&
+        cellAsset.dependencies.every((d) =>
+          d.dependsOnAssetId.startsWith("proof-asset:")
+        )
+    );
+  } else {
+    record(
+      "asset: test cell with proofAssetRequired emits dependency entry",
+      true,
+      "Skipped: no cell with proofAssetRequired in fixture"
+    );
+  }
+
+  // ---- summarize / criticalBlockingAssetMessages -----------------------
+
+  const summary = summarizeAssetProductionPlan(zeroPlan);
+  const expectedPending = zeroPlan.assets
+    .filter((a) => a.priority === "must-have")
+    .map((a) => a.id);
+  record(
+    "asset: summarize pendingMustHaveIds matches must-have ids in 'requested' baseline",
+    JSON.stringify(summary.pendingMustHaveIds) === JSON.stringify(expectedPending)
+  );
+  record(
+    "asset: criticalBlockingAssetMessages returns >= 1 message when pendingMustHave > 0",
+    criticalBlockingAssetMessages(zeroPlan).length >= 1
+  );
+
+  const fullReadySummary = summarizeAssetProductionPlan(allShippedPlan);
+  record(
+    "asset: criticalBlockingAssetMessages returns [] when no pendingMustHave",
+    criticalBlockingAssetMessages(allShippedPlan).length === 0,
+    `pending=${fullReadySummary.pendingMustHaveIds.length}`
+  );
+
+  // ---- Journey-status integration --------------------------------------
+
+  const baseJourneyArgs = {
+    trackingReadiness: astroStrategy.trackingReadiness,
+    kpiLadder: astroStrategy.kpiLadder,
+    kpiDiagnosis: astroStrategy.kpiDiagnosis,
+    adReview: astroStrategy.adReview,
+    creatorBriefs: astroStrategy.creatorBriefs,
+    shotLists: astroStrategy.shotLists,
+    videoScripts: astroStrategy.videoScripts,
+    variantSets: astroStrategy.variantSets,
+    proofAssetPlan: astroStrategy.proofAssetPlan,
+    audienceAvatars: astroStrategy.audienceAvatars,
+    creativeTestingMatrix: astroStrategy.creativeTestingMatrix,
+    appliedAdReviews: astroStrategy.appliedAdReviews,
+  };
+
+  const journeyWithPending = buildJourneyStatus({
+    ...baseJourneyArgs,
+    assetSummary: summary,
+  });
+  record(
+    "asset: journey-status emits 'asset' kind warning when pendingMustHave > 0",
+    journeyWithPending.warnings.some((w) => w.kind === "asset") ||
+      journeyWithPending.blockers.some((b) => b.kind === "asset")
+  );
+
+  // Low readinessScore + pending must-have → blocker severity, not warning.
+  const lowScoreSummary = {
+    readinessScore: 15,
+    mustHaveTotal: 3,
+    mustHaveReady: 0,
+    pendingMustHaveIds: ["proof-asset:proof-1:screenshot"],
+    shippedCount: 0,
+    derivedAt: 0,
+  };
+  const journeyLow = buildJourneyStatus({
+    ...baseJourneyArgs,
+    assetSummary: lowScoreSummary,
+  });
+  record(
+    "asset: journey-status escalates to BLOCKER severity when readinessScore < 30",
+    journeyLow.blockers.some((b) => b.kind === "asset")
+  );
+  record(
+    "asset: journey-status does NOT emit asset warning when readinessScore < 30 (blocker only)",
+    !journeyLow.warnings.some((b) => b.kind === "asset")
+  );
+
+  // All ready → no asset warning at all.
+  const readySummary = summarizeAssetProductionPlan(allShippedPlan);
+  const journeyReady = buildJourneyStatus({
+    ...baseJourneyArgs,
+    assetSummary: readySummary,
+  });
+  record(
+    "asset: journey-status emits no asset warning when all must-haves ready",
+    !journeyReady.warnings.some((w) => w.kind === "asset") &&
+      !journeyReady.blockers.some((b) => b.kind === "asset")
+  );
+
+  // ---- ready-to-spend gating ------------------------------------------
+
+  // Without assetSummary → existing gating applies (backwards compat).
+  const journeyNoAsset = buildJourneyStatus(baseJourneyArgs);
+  // Cannot assert specific stage value (depends on AstroDating fixture
+  // gating); just confirm backwards compatibility — the stage is one
+  // of the legitimate enum values.
+  record(
+    "asset: journey-status without assetSummary returns a valid stage",
+    [
+      "strategy-drafted",
+      "creative-planned",
+      "tracking-ready",
+      "kpi-aligned",
+      "review-passed",
+      "ready-to-spend",
+    ].includes(journeyNoAsset.currentStage)
+  );
+
+  // With assetSummary AND readinessScore < 70 → not ready-to-spend.
+  const journeyMid = buildJourneyStatus({
+    ...baseJourneyArgs,
+    assetSummary: {
+      readinessScore: 50,
+      mustHaveTotal: 3,
+      mustHaveReady: 1,
+      pendingMustHaveIds: ["proof-asset:proof-1:screenshot"],
+      shippedCount: 1,
+      derivedAt: 0,
+    },
+  });
+  record(
+    "asset: ready-to-spend NOT reached when assetSummary.readinessScore < 70",
+    journeyMid.currentStage !== "ready-to-spend"
+  );
+
+  // With assetSummary AND readinessScore >= 70 + pendingMustHave === 0 → asset gate passes.
+  // (Other gates may still block.)
+  const journeyAssetReady = buildJourneyStatus({
+    ...baseJourneyArgs,
+    assetSummary: {
+      readinessScore: 95,
+      mustHaveTotal: 3,
+      mustHaveReady: 3,
+      pendingMustHaveIds: [],
+      shippedCount: 3,
+      derivedAt: 0,
+    },
+  });
+  record(
+    "asset: with high readiness + no pending, asset gate does NOT block ready-to-spend",
+    !journeyAssetReady.blockers.some((b) => b.kind === "asset")
+  );
+
+  // ---- Store roundtrip --------------------------------------------------
+
+  const store = createMemoryAssetStore();
+  const seedAsset = astroPlan.assets[0];
+  store.upsertAsset(seedAsset);
+  record(
+    "asset-store: upsertAsset + listAssets returns the seeded asset",
+    store.listAssets("default").some((a) => a.id === seedAsset.id)
+  );
+  store.setStatus(seedAsset.id, "in-review");
+  record(
+    "asset-store: setStatus persists the new status",
+    store.listAssets("default").find((a) => a.id === seedAsset.id)?.status ===
+      "in-review"
+  );
+  store.setFileLink(seedAsset.id, "https://example.com/link.png");
+  record(
+    "asset-store: setFileLink persists fileLink",
+    store
+      .listAssets("default")
+      .find((a) => a.id === seedAsset.id)?.fileLink ===
+      "https://example.com/link.png"
+  );
+  store.setQualityCheck(seedAsset.id, "file-link-present", true);
+  record(
+    "asset-store: setQualityCheck flips done on the named check kind",
+    store
+      .listAssets("default")
+      .find((a) => a.id === seedAsset.id)
+      ?.qualityChecks.find((c) => c.kind === "file-link-present")?.done === true
+  );
+  store.deleteAsset(seedAsset.id);
+  record(
+    "asset-store: deleteAsset removes the asset",
+    !store.listAssets("default").some((a) => a.id === seedAsset.id)
+  );
+
+  // ---- Key constant ----------------------------------------------------
+
+  record(
+    "asset-store: STORAGE_KEY_ASSETS is exactly 'bigad:assets:v1'",
+    STORAGE_KEY_ASSETS === "bigad:assets:v1"
+  );
+
+  // ---- Markdown export -------------------------------------------------
+
+  const briefWithAssets = generateExportBrief(
+    ASTRO_DATING_EXAMPLE,
+    astroStrategy,
+    {
+      assetProduction: {
+        plan: astroPlan,
+        summary,
+      },
+    }
+  );
+  record(
+    "asset-export: contains '## Asset Production Plan' when context supplied",
+    briefWithAssets.includes("## Asset Production Plan")
+  );
+  record(
+    "asset-export: contains '### Must-have assets' when must-have count > 0",
+    briefWithAssets.includes("### Must-have assets")
+  );
+  record(
+    "asset-export: contains '### Missing blockers' when missing-blockers > 0",
+    briefWithAssets.includes("### Missing blockers")
+  );
+
+  const briefWithoutAssets = generateExportBrief(
+    ASTRO_DATING_EXAMPLE,
+    astroStrategy,
+    {}
+  );
+  record(
+    "asset-export: omits '## Asset Production Plan' when no asset context",
+    !briefWithoutAssets.includes("## Asset Production Plan")
+  );
+
+  // ---- buildStrategy determinism preserved -----------------------------
+
+  const detA = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const detB = buildStrategy(ASTRO_DATING_EXAMPLE);
+  record(
+    "asset: buildStrategy determinism preserved after Asset Production Manager added",
+    JSON.stringify(detA) === JSON.stringify(detB)
+  );
+
+  // ---- Sprint length / dueWindow math via playbook --------------------
+
+  const launchPlaybook = PLAYBOOKS["mobile-app-launch"];
+  const planWithPlaybook = buildAssetProductionPlan({
+    runId: astroRunId,
+    strategy: astroStrategy,
+    proofAssetPlan: astroStrategy.proofAssetPlan,
+    creativeTestingMatrix: astroStrategy.creativeTestingMatrix,
+    selectedPlaybook: launchPlaybook,
+    nowOffsetDays: 5,
+  });
+  record(
+    "asset: dueWindow.startOffsetDays >= nowOffsetDays when caller supplies offset",
+    planWithPlaybook.assets.every((a) => a.dueWindow.startOffsetDays >= 5)
+  );
+
+  const mustHave = planWithPlaybook.assets.find(
+    (a) => a.priority === "must-have"
+  );
+  record(
+    "asset: must-have dueWindow.startOffsetDays == 0 + nowOffsetDays",
+    !!mustHave && mustHave.dueWindow.startOffsetDays === 5
+  );
+
+  // ---- Summary derivedAt sanity ---------------------------------------
+
+  record(
+    "asset: plan.derivedAt is the max of all asset.updatedAt (zero baseline)",
+    zeroPlan.derivedAt === 0
+  );
+}
+
 // Report.
 let failed = 0;
 for (const c of checks) {

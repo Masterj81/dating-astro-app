@@ -751,7 +751,8 @@ export type JourneyBlockerKind =
   | "kpi"
   | "review"
   | "creative"
-  | "scope";
+  | "scope"
+  | "asset";
 
 export interface JourneyBlocker {
   kind: JourneyBlockerKind;

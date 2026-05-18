@@ -92,6 +92,7 @@ type Tab =
   | "shots"
   | "launch"
   | "execution"
+  | "assets"
   | "proof"
   | "landing"
   | "store"
@@ -121,6 +122,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "shots", label: "Shots" },
   { id: "launch", label: "Launch readiness" },
   { id: "execution", label: "Execution" },
+  { id: "assets", label: "Assets" },
   { id: "proof", label: "Proof" },
   { id: "landing", label: "Landing" },
   { id: "store", label: "App store" },
@@ -153,9 +155,12 @@ interface Props {
   // Optional slot for the Playbook Library tab body. Rendered inside
   // the dedicated "Playbooks" tab. Same render-prop pattern.
   playbookSlot?: React.ReactNode;
+  // Optional slot for the Asset Production Manager tab body. Rendered
+  // inside the dedicated "Assets" tab. Same render-prop pattern.
+  assetSlot?: React.ReactNode;
 }
 
-export function StrategyView({ input, strategy, hasMeaningfulInput, workspaceSlot, reviewSlot, agencySlot, playbookSlot }: Props) {
+export function StrategyView({ input, strategy, hasMeaningfulInput, workspaceSlot, reviewSlot, agencySlot, playbookSlot, assetSlot }: Props) {
   const [tab, setTab] = useState<Tab>("score");
 
   if (!hasMeaningfulInput) {
@@ -219,6 +224,9 @@ export function StrategyView({ input, strategy, hasMeaningfulInput, workspaceSlo
         {tab === "shots" && <ShotsTab strategy={strategy} />}
         {tab === "launch" && <LaunchTab strategy={strategy} input={input} />}
         {tab === "execution" && <ExecutionTab strategy={strategy} />}
+        {tab === "assets" && (
+          <div>{assetSlot ?? <AssetFallback />}</div>
+        )}
         {tab === "proof" && <ProofTab plan={strategy.proofAssetPlan} />}
         {tab === "landing" && <LandingTab strategy={strategy} />}
         {tab === "store" && <StoreTab strategy={strategy} />}
@@ -301,6 +309,14 @@ function PlaybookFallback() {
   return (
     <p className="hairline rounded-lg bg-ink-900 p-4 text-xs text-ink-300">
       Generate a strategy first to get playbook recommendations.
+    </p>
+  );
+}
+
+function AssetFallback() {
+  return (
+    <p className="hairline rounded-lg bg-ink-900 p-4 text-xs text-ink-300">
+      Generate a strategy first to build the production plan.
     </p>
   );
 }
