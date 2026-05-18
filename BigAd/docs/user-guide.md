@@ -582,6 +582,40 @@ montre les 5 dernieres runs avec leur delta de strategie en une ligne, les 10
 derniers test results avec leur status et leurs metriques, et le bloc
 `Current learnings` groupe par signal.
 
+## Rapport client (Client-Ready Report)
+
+Quand tu veux remettre un livrable a un fondateur ou un stakeholder, ouvre la
+route `/report` (lien `Open client report` dans l'onglet `Report` de la vue
+Strategy, ou directement `http://127.0.0.1:3100/report`). Le rapport synthetise
+le projet actif, sa run la plus recente (et jusqu'a deux runs precedents pour
+la comparaison), les test results loggees et la learning memory derivee, en un
+document imprimable a une seule colonne.
+
+Le rapport contient dix sections toggleables :
+
+- `Executive Summary` (≤12 puces, ≤24 mots chacune)
+- `Strategy Snapshot` (positionnement, top angle, top offer, fenetre courante, audience, 6-10 KV)
+- `Input Quality` (score, warnings, suggestions, rewritten hints)
+- `Proof Plan` (assets prioritaires + manquants avant spend)
+- `Execution Plan` (recommended first batch + iteration recommendations)
+- `Campaign Setup` (naming convention, campagnes, ad sets, UTM, reporting columns)
+- `Test Results` (statut, spend, jours, metrique cle)
+- `Learning Memory` (learnings groupees par signal avec confidence)
+- `Decision Log` (decisions triees blocker → warning → info)
+- `Next Actions` (max 10, classees blockers puis produce → test → decide → measure → operate)
+
+Les cases a cocher en haut de la page activent ou desactivent chaque section.
+Le bouton `Print / Save as PDF` utilise le dialogue natif du navigateur — aucune
+dependance PDF tierce. Le bouton `Download Markdown` exporte le meme contenu
+en `.md` pour Notion, Linear ou un doc partage. Les regles `@media print`
+cachent la barre de toggles et les boutons, et empechent les tableaux de se
+couper entre deux pages.
+
+Le builder est pur et deterministique : meme inputs → rapport byte-identique.
+Le timestamp `generatedAt` est derive de `max(updatedAt)` sur les runs et
+results inclus, jamais `Date.now()`, donc deux builds successifs sur le meme
+historique produisent exactement le meme document.
+
 ## Maintenance du guide
 
 Quand BigAd ajoute un nouveau module, mets a jour ce guide si le module change

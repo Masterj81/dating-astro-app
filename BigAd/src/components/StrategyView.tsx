@@ -97,7 +97,8 @@ type Tab =
   | "store"
   | "experiments"
   | "export"
-  | "workspace";
+  | "workspace"
+  | "report";
 
 // Tab order follows the stakeholder reading flow:
 // Score → Positioning → Awareness → Audience → Diagnosis → Offer
@@ -123,6 +124,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "experiments", label: "Experiments" },
   { id: "export", label: "Export brief" },
   { id: "workspace", label: "Workspace" },
+  { id: "report", label: "Report" },
 ];
 
 interface Props {
@@ -208,8 +210,40 @@ export function StrategyView({ input, strategy, hasMeaningfulInput, workspaceSlo
         {tab === "workspace" && (
           <div>{workspaceSlot ?? <WorkspaceFallback />}</div>
         )}
+        {tab === "report" && <ReportTab />}
       </div>
     </section>
+  );
+}
+
+function ReportTab() {
+  return (
+    <div className="hairline rounded-lg bg-ink-900 p-5 text-xs text-ink-200">
+      <p className="text-sm font-medium text-ink-100">Client-Ready Report</p>
+      <p className="mt-2 text-ink-300">
+        A printable, single-document deliverable for a founder or stakeholder.
+        Pulls the active project, its most recent run (plus up to two prior
+        for comparison), the logged test results, and the derived learning
+        memory into one report: executive summary, strategy snapshot, input
+        quality, proof plan, execution plan, campaign setup, test results,
+        learning memory, decision log, and next actions.
+      </p>
+      <p className="mt-2 text-ink-300">
+        Open <code>/report</code> in a new tab to print or save as PDF using
+        the browser&rsquo;s native dialog. Section toggles let you hide
+        anything that doesn&rsquo;t belong in the hand-off.
+      </p>
+      <p className="mt-4">
+        <a
+          href="/report"
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-sm border border-ink-700 bg-ink-800 px-3 py-1.5 text-ink-100 hover:border-accent hover:text-white"
+        >
+          Open client report
+        </a>
+      </p>
+    </div>
   );
 }
 

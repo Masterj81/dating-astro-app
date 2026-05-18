@@ -143,6 +143,10 @@ The Tracking Readiness check structure is exposed as `TrackingReadinessCheck` / 
 
 BigAd is stateful when you want it to be. The Project Workspace adds saved projects, run history, a test-results log, and a learning memory derived from real outcomes — all in `localStorage` under versioned keys (`bigad:projects:v1`, `bigad:runs:v1`, `bigad:test-results:v1`, `bigad:active-project-id:v1`). Nothing leaves your browser. The engine itself stays pure: `buildStrategy(input)` is unchanged. The new persistence shell sits on top, and the iteration planner optionally consumes the derived `LearningMemory` to append "double down on X" / "retire X from next batch" recommendations after the seven fixed weak-signal recommendations. The export brief gains an optional `## Campaign Log` section (recent runs, recent test results, current learnings) that only renders when workspace state is non-empty.
 
+## Client-Ready Report
+
+`buildClientReport({ project, runs, testResults, learningMemory, toggles?, generatedAt? })` produces a single deterministic document a marketer hands to a founder or stakeholder. The report bundles ten toggleable sections — executive summary (≤12 bullets, ≤24 words each), strategy snapshot, input quality, proof plan, execution plan, campaign setup, test results, learning memory, decision log, and next actions. `renderClientReportMarkdown(report)` emits the same content as a printable markdown file. The deliverable lives at the dedicated `/report` route: a single-column, print-friendly page that reads from `localStorage`, exposes per-section checkboxes (hidden in print), and a "Print / Save as PDF" button wired to the browser's native `window.print()` — no PDF dependency. Same inputs always produce a byte-identical report; `generatedAt` is derived from `max(updatedAt)` across the included runs and results so two builds with identical history match exactly.
+
 ## Running it
 
 ```bash
@@ -256,7 +260,7 @@ BigAd/
 │   └── types/
 │       └── strategy.ts         Shared TypeScript types
 ├── scripts/
-│   └── test-logic.ts           `npm run test:logic` — 787 checks
+│   └── test-logic.ts           `npm run test:logic` — 823 checks
 ├── public/
 ├── next.config.ts
 ├── tailwind.config.ts

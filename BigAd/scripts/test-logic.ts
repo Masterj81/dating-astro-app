@@ -3842,6 +3842,582 @@ for (const { name, strategy } of fixtures) {
   }
 }
 
+// ---- Client-Ready Report Builder ------------------------------------------
+
+{
+  // Lazy imports so this block stays self-contained at the bottom of the file.
+  const { buildClientReport, REPORT_SECTION_ORDER } = require("../src/lib/report/report-builder");
+  const { renderClientReportMarkdown } = require("../src/lib/report/report-markdown");
+  const { deriveLearningMemory } = require("../src/lib/workspace/learning");
+
+  const FIXED_TIME = "2026-05-17T12:00:00.000Z";
+  const FIXED_TIME_OLDER = "2026-05-10T12:00:00.000Z";
+
+  const baseStrategy = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const baseRun = {
+    id: "report-run-1",
+    projectId: "report-proj-1",
+    runAt: FIXED_TIME,
+    input: ASTRO_DATING_EXAMPLE,
+    strategy: baseStrategy,
+  };
+  const baseProject = {
+    metadata: {
+      id: "report-proj-1",
+      name: "AstroDating Report Demo",
+      createdAt: FIXED_TIME,
+      updatedAt: FIXED_TIME,
+      runCount: 1,
+    },
+    input: ASTRO_DATING_EXAMPLE,
+  };
+
+  function mkRptResult(
+    id: string,
+    cellId: string,
+    runId: string,
+    status: "winning" | "losing" | "killed-early" | "inconclusive",
+    at: string = FIXED_TIME
+  ) {
+    return {
+      id,
+      projectId: "report-proj-1",
+      runId,
+      testCellId: cellId,
+      status,
+      metrics: [],
+      spend: 100,
+      daysRun: 3,
+      createdAt: at,
+      updatedAt: at,
+    };
+  }
+
+  // ---- Section kind ordering ----------------------------------------------
+
+  record(
+    "report: section kind ordering has 10 entries",
+    Array.isArray(REPORT_SECTION_ORDER) && REPORT_SECTION_ORDER.length === 10
+  );
+
+  // ---- Determinism --------------------------------------------------------
+
+  {
+    const emptyMem = deriveLearningMemory([], [baseRun]);
+    const r1 = buildClientReport({
+      project: baseProject,
+      runs: [baseRun],
+      testResults: [],
+      learningMemory: emptyMem,
+      generatedAt: FIXED_TIME,
+    });
+    const r2 = buildClientReport({
+      project: baseProject,
+      runs: [baseRun],
+      testResults: [],
+      learningMemory: emptyMem,
+      generatedAt: FIXED_TIME,
+    });
+    record(
+      "report: same inputs → byte-identical ClientReport (deep-equal)",
+      JSON.stringify(r1) === JSON.stringify(r2)
+    );
+    record(
+      "report: generatedAt honours override arg",
+      r1.generatedAt === FIXED_TIME
+    );
+  }
+
+  // ---- generatedAt is derived from max(updatedAt) -------------------------
+
+  {
+    const mem = deriveLearningMemory([], [baseRun]);
+    const r = buildClientReport({
+      project: baseProject,
+      runs: [baseRun],
+      testResults: [],
+      learningMemory: mem,
+    });
+    record(
+      "report: generatedAt is derived from run.runAt when no override",
+      r.generatedAt === FIXED_TIME
+    );
+
+    // Two runs + a later test result → result timestamp wins.
+    const cell0 = baseStrategy.creativeTestingMatrix.testCells[0];
+    const laterResult = mkRptResult(
+      "rpt-r-1",
+      cell0.id,
+      baseRun.id,
+      "winning",
+      "2026-06-01T00:00:00.000Z"
+    );
+    const r2 = buildClientReport({
+      project: baseProject,
+      runs: [baseRun],
+      testResults: [laterResult],
+      learningMemory: deriveLearningMemory([laterResult], [baseRun]),
+    });
+    record(
+      "report: generatedAt advances to the freshest result updatedAt",
+      r2.generatedAt === "2026-06-01T00:00:00.000Z"
+    );
+  }
+
+  // ---- Executive summary length + width -----------------------------------
+
+  {
+    const mem = deriveLearningMemory([], [baseRun]);
+    const r = buildClientReport({
+      project: baseProject,
+      runs: [baseRun],
+      testResults: [],
+      learningMemory: mem,
+      generatedAt: FIXED_TIME,
+    });
+    record(
+      "report: executive summary has 12 or fewer bullets",
+      r.executiveSummary.bullets.length <= 12
+    );
+    record(
+      "report: every executive summary bullet is 24 words or fewer",
+      r.executiveSummary.bullets.every(
+        (b: string) => b.trim().split(/\s+/).length <= 24
+      )
+    );
+    record(
+      "report: executive summary has at least one bullet for a healthy run",
+      r.executiveSummary.bullets.length > 0
+    );
+  }
+
+  // ---- Strategy snapshot has the required slots ---------------------------
+
+  {
+    const mem = deriveLearningMemory([], [baseRun]);
+    const r = buildClientReport({
+      project: baseProject,
+      runs: [baseRun],
+      testResults: [],
+      learningMemory: mem,
+      generatedAt: FIXED_TIME,
+    });
+    const s = r.strategySnapshot;
+    record(
+      "report: strategy snapshot fields are non-empty",
+      s.positioning.length > 0 &&
+        s.topAngle.length > 0 &&
+        s.topOffer.length > 0 &&
+        s.campaignWindow.length > 0 &&
+        s.audience.length > 0
+    );
+    record(
+      "report: strategy snapshot KV items is 6-10",
+      s.items.length >= 6 && s.items.length <= 10
+    );
+  }
+
+  // ---- Decision log: tracking blocker -------------------------------------
+
+  {
+    // Force a low tracking score by cloning the strategy.
+    const lowTrackingRun = {
+      ...baseRun,
+      strategy: {
+        ...baseRun.strategy,
+        trackingReadiness: {
+          ...baseRun.strategy.trackingReadiness,
+          score: 30,
+          status: "not-ready" as const,
+          blockers: 2,
+          warnings: 1,
+        },
+      },
+    };
+    const mem = deriveLearningMemory([], [lowTrackingRun]);
+    const r = buildClientReport({
+      project: baseProject,
+      runs: [lowTrackingRun],
+      testResults: [],
+      learningMemory: mem,
+      generatedAt: FIXED_TIME,
+    });
+    const blockers = r.decisionLog.filter((d: any) => d.severity === "blocker");
+    record(
+      "report-decisions: low tracking score yields at least one blocker",
+      blockers.length >= 1
+    );
+    record(
+      "report-decisions: tracking blocker carries relatedIds",
+      blockers.length >= 1 && Array.isArray(blockers[0].relatedIds)
+    );
+    // Severity sort.
+    let ok = true;
+    const rank = { blocker: 0, warning: 1, info: 2 };
+    for (let i = 1; i < r.decisionLog.length; i++) {
+      if ((rank as any)[r.decisionLog[i - 1].severity] > (rank as any)[r.decisionLog[i].severity]) {
+        ok = false;
+        break;
+      }
+    }
+    record(
+      "report-decisions: sorted blocker → warning → info",
+      ok
+    );
+  }
+
+  // ---- Decision log: proof shortfall --------------------------------------
+
+  {
+    // Force a low proof readiness with at least one missing must-have.
+    const haveAssets = baseRun.strategy.proofAssetPlan.priorityAssets;
+    const lowProofRun = {
+      ...baseRun,
+      strategy: {
+        ...baseRun.strategy,
+        proofAssetPlan: {
+          ...baseRun.strategy.proofAssetPlan,
+          proofReadinessScore: 20,
+          missingBeforeSpend: [haveAssets[0]?.id || "proof-1"],
+        },
+      },
+    };
+    const mem = deriveLearningMemory([], [lowProofRun]);
+    const r = buildClientReport({
+      project: baseProject,
+      runs: [lowProofRun],
+      testResults: [],
+      learningMemory: mem,
+      generatedAt: FIXED_TIME,
+    });
+    const proofWarn = r.decisionLog.find(
+      (d: any) => d.source === "proof" && d.severity === "warning"
+    );
+    record(
+      "report-decisions: low proof readiness yields a proof warning",
+      proofWarn !== undefined
+    );
+    record(
+      "report-decisions: proof warning has non-empty relatedIds",
+      proofWarn !== undefined &&
+        Array.isArray(proofWarn.relatedIds) &&
+        proofWarn.relatedIds.length > 0
+    );
+    record(
+      "report-decisions: proof decision wording mentions 'missing proof'",
+      proofWarn !== undefined &&
+        /missing proof assets/i.test(proofWarn.decision)
+    );
+  }
+
+  // ---- Next actions cap and ordering --------------------------------------
+
+  {
+    const cell0 = baseRun.strategy.creativeTestingMatrix.testCells[0];
+    // Trigger blockers + missing proof + iteration + memory winning.
+    const stressedRun = {
+      ...baseRun,
+      strategy: {
+        ...baseRun.strategy,
+        trackingReadiness: {
+          ...baseRun.strategy.trackingReadiness,
+          score: 20,
+          status: "not-ready" as const,
+          blockers: 3,
+          warnings: 0,
+        },
+      },
+    };
+    const winningResults = Array.from({ length: 6 }, (_, i) =>
+      mkRptResult(`rpt-w-${i}`, cell0.id, stressedRun.id, "winning")
+    );
+    const mem = deriveLearningMemory(winningResults, [stressedRun]);
+    const r = buildClientReport({
+      project: baseProject,
+      runs: [stressedRun],
+      testResults: winningResults,
+      learningMemory: mem,
+      generatedAt: FIXED_TIME,
+    });
+    record(
+      "report-actions: capped at 10 items",
+      r.nextActions.length <= 10
+    );
+    record(
+      "report-actions: returns at least one item when decisions exist",
+      r.decisionLog.length > 0 ? r.nextActions.length > 0 : true
+    );
+    // First action(s) for blockers must be operate-category.
+    const blockerCount = r.decisionLog.filter((d: any) => d.severity === "blocker").length;
+    if (blockerCount > 0) {
+      record(
+        "report-actions: blocker actions sit at the top of the list",
+        r.nextActions.slice(0, blockerCount).every((a: any) => a.category === "operate")
+      );
+    } else {
+      record("report-actions: no blockers in stressed run (skipped header check)", true);
+    }
+    // Owner heuristic spot-check.
+    const produceItem = r.nextActions.find((a: any) => a.category === "produce");
+    if (produceItem) {
+      record(
+        "report-actions: produce-category owner is creator",
+        produceItem.owner === "creator"
+      );
+    } else {
+      record("report-actions: no produce-category action (heuristic check trivially passes)", true);
+    }
+  }
+
+  // ---- Comparison: 1 run vs 2 runs ----------------------------------------
+
+  {
+    const memEmpty = deriveLearningMemory([], [baseRun]);
+    const oneRunReport = buildClientReport({
+      project: baseProject,
+      runs: [baseRun],
+      testResults: [],
+      learningMemory: memEmpty,
+      generatedAt: FIXED_TIME,
+    });
+    record(
+      "report-comparison: single run → comparison is null",
+      oneRunReport.comparison === null
+    );
+
+    const altInput = { ...ASTRO_DATING_EXAMPLE, audience: "Different audience" };
+    const olderRun = {
+      id: "report-run-0",
+      projectId: "report-proj-1",
+      runAt: FIXED_TIME_OLDER,
+      input: altInput,
+      strategy: buildStrategy(altInput),
+    };
+    const twoRunReport = buildClientReport({
+      project: baseProject,
+      runs: [baseRun, olderRun],
+      testResults: [],
+      learningMemory: memEmpty,
+      generatedAt: FIXED_TIME,
+    });
+    record(
+      "report-comparison: two runs → comparison is non-null",
+      twoRunReport.comparison !== null
+    );
+    record(
+      "report-comparison: comparison has changedFields",
+      twoRunReport.comparison !== null &&
+        Array.isArray(twoRunReport.comparison.changedFields) &&
+        twoRunReport.comparison.changedFields.length > 0
+    );
+  }
+
+  // ---- Runs cap at 3 ------------------------------------------------------
+
+  {
+    const r2 = { ...baseRun, id: "report-run-2", runAt: "2026-05-15T00:00:00.000Z" };
+    const r3 = { ...baseRun, id: "report-run-3", runAt: "2026-05-14T00:00:00.000Z" };
+    const r4 = { ...baseRun, id: "report-run-4", runAt: "2026-05-13T00:00:00.000Z" };
+    const memEmpty = deriveLearningMemory([], [baseRun, r2, r3, r4]);
+    const r = buildClientReport({
+      project: baseProject,
+      runs: [baseRun, r2, r3, r4],
+      testResults: [],
+      learningMemory: memEmpty,
+      generatedAt: FIXED_TIME,
+    });
+    record(
+      "report: included runs capped at 3",
+      r.runs.length === 3
+    );
+    record(
+      "report: primaryRunId is the first included run",
+      r.primaryRunId === baseRun.id
+    );
+  }
+
+  // ---- Markdown export: section gating ------------------------------------
+
+  {
+    const mem = deriveLearningMemory([], [baseRun]);
+    const all = buildClientReport({
+      project: baseProject,
+      runs: [baseRun],
+      testResults: [],
+      learningMemory: mem,
+      generatedAt: FIXED_TIME,
+    });
+    const md = renderClientReportMarkdown(all);
+    record(
+      "report-md: header is rendered",
+      md.includes("# Client Report — AstroDating Report Demo")
+    );
+    const expectedHeaders = [
+      "## Executive Summary",
+      "## Strategy Snapshot",
+      "## Input Quality",
+      "## Proof Plan",
+      "## Execution Plan",
+      "## Campaign Setup",
+      "## Test Results",
+      "## Learning Memory",
+      "## Decision Log",
+      "## Next Actions",
+    ];
+    record(
+      "report-md: all 10 section headers present when all toggles enabled",
+      expectedHeaders.every((h) => md.includes(h))
+    );
+    record(
+      "report-md: generatedAt is rendered in header",
+      md.includes(`Generated: ${FIXED_TIME}`)
+    );
+  }
+
+  // ---- Markdown export: toggles disabled remove headers -------------------
+
+  {
+    const mem = deriveLearningMemory([], [baseRun]);
+    const noTests = buildClientReport({
+      project: baseProject,
+      runs: [baseRun],
+      testResults: [],
+      learningMemory: mem,
+      toggles: { "test-results": false },
+      generatedAt: FIXED_TIME,
+    });
+    const mdNoTests = renderClientReportMarkdown(noTests);
+    record(
+      "report-md: disabled test-results toggle removes the Test Results header",
+      !mdNoTests.includes("## Test Results")
+    );
+    record(
+      "report-md: disabled test-results clears report.testResults array",
+      Array.isArray(noTests.testResults) && noTests.testResults.length === 0
+    );
+
+    // Multiple toggles off.
+    const minimal = buildClientReport({
+      project: baseProject,
+      runs: [baseRun],
+      testResults: [],
+      learningMemory: mem,
+      toggles: {
+        "test-results": false,
+        "learning-memory": false,
+        "decision-log": false,
+        "next-actions": false,
+        "campaign-setup": false,
+      },
+      generatedAt: FIXED_TIME,
+    });
+    const mdMin = renderClientReportMarkdown(minimal);
+    record(
+      "report-md: multiple toggles disabled remove all corresponding headers",
+      !mdMin.includes("## Test Results") &&
+        !mdMin.includes("## Learning Memory") &&
+        !mdMin.includes("## Decision Log") &&
+        !mdMin.includes("## Next Actions") &&
+        !mdMin.includes("## Campaign Setup")
+    );
+    record(
+      "report-md: still renders enabled sections after multi-toggle disable",
+      mdMin.includes("## Executive Summary") &&
+        mdMin.includes("## Strategy Snapshot") &&
+        mdMin.includes("## Input Quality")
+    );
+  }
+
+  // ---- Markdown export: deterministic -------------------------------------
+
+  {
+    const mem = deriveLearningMemory([], [baseRun]);
+    const a1 = buildClientReport({
+      project: baseProject,
+      runs: [baseRun],
+      testResults: [],
+      learningMemory: mem,
+      generatedAt: FIXED_TIME,
+    });
+    const a2 = buildClientReport({
+      project: baseProject,
+      runs: [baseRun],
+      testResults: [],
+      learningMemory: mem,
+      generatedAt: FIXED_TIME,
+    });
+    record(
+      "report-md: deterministic across two calls",
+      renderClientReportMarkdown(a1) === renderClientReportMarkdown(a2)
+    );
+  }
+
+  // ---- Comparison line in markdown ----------------------------------------
+
+  {
+    const altInput = { ...ASTRO_DATING_EXAMPLE, audience: "Different audience entirely" };
+    const olderRun = {
+      id: "report-run-prev",
+      projectId: "report-proj-1",
+      runAt: FIXED_TIME_OLDER,
+      input: altInput,
+      strategy: buildStrategy(altInput),
+    };
+    const memEmpty = deriveLearningMemory([], [baseRun, olderRun]);
+    const r = buildClientReport({
+      project: baseProject,
+      runs: [baseRun, olderRun],
+      testResults: [],
+      learningMemory: memEmpty,
+      generatedAt: FIXED_TIME,
+    });
+    const md = renderClientReportMarkdown(r);
+    record(
+      "report-md: comparison line is rendered when previous run exists",
+      md.includes("Compared with:")
+    );
+  }
+
+  // ---- Test result winning produces a 'Promote winning cell' info entry --
+
+  {
+    const matrix = baseRun.strategy.creativeTestingMatrix;
+    const firstBatchId = matrix.recommendedFirstBatch[0];
+    const winningRes = mkRptResult("rpt-promote-1", firstBatchId, baseRun.id, "winning");
+    const mem = deriveLearningMemory([winningRes], [baseRun]);
+    const r = buildClientReport({
+      project: baseProject,
+      runs: [baseRun],
+      testResults: [winningRes],
+      learningMemory: mem,
+      generatedAt: FIXED_TIME,
+    });
+    const promote = r.decisionLog.find(
+      (d: any) => /promote winning cell/i.test(d.decision)
+    );
+    record(
+      "report-decisions: winning first-batch cell yields a promote info entry",
+      promote !== undefined
+    );
+    const losingRes = mkRptResult("rpt-retire-1", firstBatchId, baseRun.id, "losing");
+    const mem2 = deriveLearningMemory([losingRes], [baseRun]);
+    const r2 = buildClientReport({
+      project: baseProject,
+      runs: [baseRun],
+      testResults: [losingRes],
+      learningMemory: mem2,
+      generatedAt: FIXED_TIME,
+    });
+    const retire = r2.decisionLog.find(
+      (d: any) => /retire cell/i.test(d.decision)
+    );
+    record(
+      "report-decisions: losing cell yields a retire info entry",
+      retire !== undefined
+    );
+  }
+}
+
 // Report.
 let failed = 0;
 for (const c of checks) {
