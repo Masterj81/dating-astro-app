@@ -20,6 +20,11 @@ import type {
   Playbook,
   PlaybookRecommendation,
 } from "@/types/playbook";
+import type { OnboardingState } from "@/types/onboarding";
+import {
+  getOnboardingGoal,
+} from "@/lib/onboarding/onboarding";
+import { PLAYBOOKS } from "@/lib/playbook/catalog";
 import { awarenessLabel } from "./awareness";
 import { sophisticationLabel } from "./sophistication";
 import { windowKindLabel } from "./calendar";
@@ -55,6 +60,11 @@ export interface ExportBriefWorkspaceContext {
     recommendation?: PlaybookRecommendation;
     applied?: Playbook;
   };
+  // Optional Onboarding & Demo Projects context — when supplied AND
+  // `goalId` is set, the exporter prepends a one-line "Onboarding
+  // goal" sentence to the Campaign Log section. Absent or empty →
+  // existing brief is byte-identical.
+  onboardingState?: OnboardingState;
 }
 
 // generateExportBrief — assembles a clean, single-page markdown brief
@@ -1047,6 +1057,22 @@ export function generateExportBrief(
       runs.length > 0 || results.length > 0 || (mem && mem.learnings.length > 0);
     if (hasAny) {
       section(lines, "Campaign Log");
+
+      // Optional onboarding goal line — emitted only when an
+      // onboardingState with a goalId is supplied. Single line, no
+      // sub-section, so the Campaign Log section stays compact.
+      const onb = workspace.onboardingState;
+      if (onb && onb.goalId) {
+        const goal = getOnboardingGoal(onb.goalId);
+        const playbook = goal ? PLAYBOOKS[goal.recommendedPlaybook] : undefined;
+        if (goal) {
+          const playbookSuffix = playbook ? ` (${playbook.name} playbook)` : "";
+          lines.push(
+            `**Onboarding goal:** ${goal.label}${playbookSuffix}.`
+          );
+          lines.push("");
+        }
+      }
 
       if (runs.length > 0) {
         lines.push("**Recent runs.**");

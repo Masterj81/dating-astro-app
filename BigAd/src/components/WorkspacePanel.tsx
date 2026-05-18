@@ -270,22 +270,36 @@ export function ProjectSwitcher({
 interface WorkspaceTabProps {
   state: WorkspaceState & { refresh: () => void };
   currentStrategy: Strategy;
+  // Optional onboarding slot — renders the Next Best Action +
+  // Progress Checklist strip at the top of the Workspace tab. Kept as
+  // a render-prop so WorkspacePanel stays free of onboarding-store
+  // coupling (same pattern as StrategyView's workspaceSlot /
+  // reviewSlot / agencySlot).
+  onboardingSlot?: React.ReactNode;
 }
 
-export function WorkspaceTab({ state, currentStrategy }: WorkspaceTabProps) {
+export function WorkspaceTab({
+  state,
+  currentStrategy,
+  onboardingSlot,
+}: WorkspaceTabProps) {
   if (!state.activeProject) {
     return (
-      <div className="hairline rounded-lg bg-ink-900 p-5 text-xs text-ink-300">
-        No active project. Use the bar at the top of the page to save the
-        current inputs as a project, or pick a saved project from the
-        dropdown. State lives in your browser's localStorage — nothing
-        leaves this device.
+      <div className="flex flex-col gap-6">
+        {onboardingSlot ?? null}
+        <div className="hairline rounded-lg bg-ink-900 p-5 text-xs text-ink-300">
+          No active project. Use the bar at the top of the page to save the
+          current inputs as a project, or pick a saved project from the
+          dropdown. State lives in your browser's localStorage — nothing
+          leaves this device.
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-6">
+      {onboardingSlot ?? null}
       <RunHistoryPanel state={state} />
       <TestResultsLogEditor state={state} currentStrategy={currentStrategy} />
       <LearningMemoryReadout memory={state.learningMemory} />

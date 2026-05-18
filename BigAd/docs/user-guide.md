@@ -861,3 +861,60 @@ ca pose juste la selection dans `localStorage`
 (`bigad:applied-playbook:v1`) et l'export gagne une section
 `## Playbook Recommendation` avec la checklist d'execution, les gates,
 le test-plan, le reporting et les risques.
+
+## First-Run Onboarding & Demo Projects
+
+When you open CampaignOS for the first time (zero saved projects), a
+**Welcome panel** appears above the input panel. It walks you through
+two quick steps:
+
+1. **Pick a goal** — one of seven options (Launch an app, Launch a
+   SaaS trial, Run an e-com promo, Stand up always-on lead-gen, Fix
+   tracking or proof gaps, Package an agency deliverable, Just
+   exploring). Each goal nominates the playbook CampaignOS recommends
+   and the 3-5 strategy modules to focus on first. The pick persists.
+2. **Load a demo project** — three fully-shaped projects ship with
+   CampaignOS:
+   - `AstroDating` — values-first dating app launch with founder-story
+     hooks and an open proof-gap comment from the client.
+   - `Loopwork` — B2B SaaS 14-day trial launch with case-study-led
+     hooks and a tracking handoff still in progress.
+   - `Clearmark` — mature-market skincare fall promo with a 3-tier
+     audience architecture and a near-clean review board.
+   Loading a demo seeds a project, a saved run, 4-8 test results, the
+   review board (with sample comments), and the recommended playbook
+   — so you can see every CampaignOS surface populated end-to-end
+   before swapping in your own inputs.
+
+If you would rather start clean, the "Create empty project" button
+keeps the input panel empty and dismisses the welcome panel. The "Skip
+onboarding" link dismisses it without choosing.
+
+Once at least one project exists, the welcome panel is gone and a
+compact **Next Best Action + Progress Checklist** strip lives at the
+top of the Workspace tab. The Next Best Action card surfaces the
+single highest-priority thing to do — pick a goal, load a demo, fill
+inputs, fix tracking, capture proof, approve criticals, plan the
+first batch, or export the report — with a one-sentence rationale
+grounded in the current numbers (tracking score, proof readiness,
+critical approvals). The Progress Checklist mirrors the seven canonical
+onboarding steps with green / grey dots and a short status sentence
+per row.
+
+The Welcome panel and the Workspace strip are **not** a new top-level
+tab. Onboarding sits inside the existing workspace. State persists
+per-browser under two new versioned keys — `bigad:onboarding:v1` (goal
++ completed steps + dismissed flag) and `bigad:demo-loaded:v1` (which
+demos have been loaded). The export brief gains an optional one-line
+`**Onboarding goal:**` sentence at the top of the `## Campaign Log`
+section when a goal is set; absent → byte-identical. `buildStrategy(
+input)` is unchanged.
+
+En francais : la couche `Onboarding & Demo Projects` ajoute un panneau
+de bienvenue au premier lancement (sept buts a choisir, trois projets
+de demo entierement remplis a charger), et une bande compacte
+`Prochaine action + Checklist` en haut de l'onglet Workspace une fois
+qu'au moins un projet existe. Aucun nouvel onglet — l'onboarding vit
+dans l'espace de travail existant. Tout est stocke en local
+(`bigad:onboarding:v1` + `bigad:demo-loaded:v1`); le moteur reste
+deterministe et `buildStrategy(input)` ne change pas.

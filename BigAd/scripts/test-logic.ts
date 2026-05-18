@@ -6132,6 +6132,594 @@ for (const { name, strategy } of fixtures) {
   );
 }
 
+// ============================================================================
+// === Onboarding & Demo Projects ===
+// ============================================================================
+//
+// Tests cover: the goal + step catalog, the deterministic
+// `recommendGoalPlaybook` overrides, the demo project registry, the
+// pure `buildDemoLoadPlan` loader (orphan-cell-free + deterministic),
+// the pure `buildProgressChecklist` + `getNextBestAction` derivations,
+// the memory onboarding store roundtrip, the storage key constants,
+// and the engine-purity guard.
+
+{
+  const onboardingMod = require("../src/lib/onboarding/onboarding") as typeof import("../src/lib/onboarding/onboarding");
+  const demoMod = require("../src/lib/onboarding/demo-projects") as typeof import("../src/lib/onboarding/demo-projects");
+  const storeMod = require("../src/lib/onboarding/onboarding-store") as typeof import("../src/lib/onboarding/onboarding-store");
+  const playbookCatalogMod = require("../src/lib/playbook/catalog") as typeof import("../src/lib/playbook/catalog");
+  const reviewBoardMod = require("../src/lib/review/review-board") as typeof import("../src/lib/review/review-board");
+  const reviewTypes = require("../src/types/review") as typeof import("../src/types/review");
+
+  const {
+    getOnboardingGoals,
+    getOnboardingSteps,
+    recommendGoalPlaybook,
+    buildProgressChecklist,
+    getNextBestAction,
+    buildInitialOnboardingState,
+  } = onboardingMod;
+  const {
+    DEMO_PROJECTS,
+    getDemoProject,
+    listDemoProjects,
+    buildDemoLoadPlan,
+  } = demoMod;
+  const {
+    createMemoryOnboardingStore,
+    STORAGE_KEY_ONBOARDING,
+    STORAGE_KEY_DEMO_LOADED,
+  } = storeMod;
+  const { PLAYBOOKS } = playbookCatalogMod;
+  const { summarizeReviewBoard } = reviewBoardMod;
+  const { CRITICAL_REVIEW_ITEM_KINDS } = reviewTypes;
+
+  // ---- Catalog: goals --------------------------------------------------
+
+  const goals = getOnboardingGoals();
+  record(
+    "onboarding: getOnboardingGoals returns exactly 7 entries",
+    goals.length === 7,
+    `Got ${goals.length}`
+  );
+
+  const expectedGoalIds = [
+    "launch-app",
+    "launch-saas-trial",
+    "launch-ecom-promo",
+    "always-on-leadgen",
+    "fix-tracking-or-proof",
+    "agency-deliverable",
+    "just-exploring",
+  ];
+  for (const id of expectedGoalIds) {
+    record(
+      `onboarding: goal '${id}' is present`,
+      goals.some((g) => g.id === id)
+    );
+  }
+  for (const g of goals) {
+    record(
+      `onboarding-goal ${g.id}: label is non-empty`,
+      typeof g.label === "string" && g.label.length > 0
+    );
+    record(
+      `onboarding-goal ${g.id}: description is non-empty`,
+      typeof g.description === "string" && g.description.length > 0
+    );
+    record(
+      `onboarding-goal ${g.id}: recommendedPlaybook is a valid PlaybookId`,
+      !!PLAYBOOKS[g.recommendedPlaybook]
+    );
+    record(
+      `onboarding-goal ${g.id}: primaryModules has >= 3 entries`,
+      Array.isArray(g.primaryModules) && g.primaryModules.length >= 3,
+      `Got ${g.primaryModules.length}`
+    );
+  }
+
+  // ---- Catalog: steps --------------------------------------------------
+
+  const steps = getOnboardingSteps();
+  record(
+    "onboarding: getOnboardingSteps returns exactly 7 entries",
+    steps.length === 7,
+    `Got ${steps.length}`
+  );
+  // Orders 1..7 contiguous.
+  const stepOrders = steps.map((s) => s.order);
+  record(
+    "onboarding: step orders are 1..7 contiguous",
+    stepOrders.every((o, i) => o === i + 1),
+    `Got [${stepOrders.join(", ")}]`
+  );
+  // Canonical order.
+  const canonical = [
+    "pick-goal",
+    "create-or-load-project",
+    "review-strategy",
+    "capture-proof-or-confirm",
+    "approve-critical-items",
+    "plan-first-test-batch",
+    "export-or-handoff",
+  ];
+  record(
+    "onboarding: step ids match canonical sequence",
+    canonical.every((id, i) => steps[i].id === id)
+  );
+  for (const s of steps) {
+    record(
+      `onboarding-step ${s.id}: label is non-empty`,
+      typeof s.label === "string" && s.label.length > 0
+    );
+    record(
+      `onboarding-step ${s.id}: description is non-empty`,
+      typeof s.description === "string" && s.description.length > 0
+    );
+    record(
+      `onboarding-step ${s.id}: estimatedMinutes in [1, 5]`,
+      s.estimatedMinutes >= 1 && s.estimatedMinutes <= 5,
+      `Got ${s.estimatedMinutes}`
+    );
+  }
+
+  // ---- recommendGoalPlaybook -------------------------------------------
+
+  record(
+    "onboarding-recommend: launch-app → mobile-app-launch",
+    recommendGoalPlaybook("launch-app") === "mobile-app-launch"
+  );
+  record(
+    "onboarding-recommend: launch-saas-trial → saas-free-trial-launch",
+    recommendGoalPlaybook("launch-saas-trial") === "saas-free-trial-launch"
+  );
+  record(
+    "onboarding-recommend: launch-ecom-promo → ecommerce-seasonal-promo",
+    recommendGoalPlaybook("launch-ecom-promo") === "ecommerce-seasonal-promo"
+  );
+  record(
+    "onboarding-recommend: always-on-leadgen → local-service-leadgen",
+    recommendGoalPlaybook("always-on-leadgen") === "local-service-leadgen"
+  );
+  record(
+    "onboarding-recommend: fix-tracking-or-proof → landing-cro-sprint (no input)",
+    recommendGoalPlaybook("fix-tracking-or-proof") === "landing-cro-sprint"
+  );
+  record(
+    "onboarding-recommend: agency-deliverable → agency-strategy-sprint (no input)",
+    recommendGoalPlaybook("agency-deliverable") === "agency-strategy-sprint"
+  );
+  record(
+    "onboarding-recommend: just-exploring → agency-strategy-sprint (no input)",
+    recommendGoalPlaybook("just-exploring") === "agency-strategy-sprint"
+  );
+
+  // Override: just-exploring + subscription-app input → mobile-app-launch.
+  const overrideInput = getDemoProject("astro-dating-launch").input;
+  record(
+    "onboarding-recommend: just-exploring + subscription-app + dating input overrides to mobile-app-launch",
+    recommendGoalPlaybook("just-exploring", overrideInput) === "mobile-app-launch"
+  );
+
+  // Determinism.
+  record(
+    "onboarding-recommend: deterministic — same args → same output (no input)",
+    recommendGoalPlaybook("launch-app") === recommendGoalPlaybook("launch-app")
+  );
+  record(
+    "onboarding-recommend: deterministic — same args → same output (with input)",
+    recommendGoalPlaybook("just-exploring", overrideInput) ===
+      recommendGoalPlaybook("just-exploring", overrideInput)
+  );
+
+  // ---- Demo projects ---------------------------------------------------
+
+  const demoIds = ["astro-dating-launch", "saas-free-trial-launch", "ecom-seasonal-promo"] as const;
+  for (const id of demoIds) {
+    const d = getDemoProject(id);
+    record(
+      `onboarding-demo ${id}: exists with documented id`,
+      d && d.id === id
+    );
+    record(
+      `onboarding-demo ${id}: input has audience set`,
+      typeof d.input.audience === "string" && d.input.audience.length > 0
+    );
+    record(
+      `onboarding-demo ${id}: input has corePain set`,
+      typeof d.input.audiencePain === "string" && d.input.audiencePain.length > 0
+    );
+    record(
+      `onboarding-demo ${id}: input has differentiator set`,
+      typeof d.input.differentiator === "string" && d.input.differentiator.length > 0
+    );
+    record(
+      `onboarding-demo ${id}: input has businessModel set`,
+      typeof d.input.businessModel === "string" && d.input.businessModel.length > 0
+    );
+    record(
+      `onboarding-demo ${id}: input has sophistication set`,
+      typeof d.input.sophistication === "string" && d.input.sophistication.length > 0
+    );
+    record(
+      `onboarding-demo ${id}: input has offerContext present`,
+      !!d.input.offerContext
+    );
+    record(
+      `onboarding-demo ${id}: sampleTestResults length >= 4`,
+      d.sampleTestResults.length >= 4,
+      `Got ${d.sampleTestResults.length}`
+    );
+    record(
+      `onboarding-demo ${id}: sampleReviewStatuses length >= 6`,
+      d.sampleReviewStatuses.length >= 6,
+      `Got ${d.sampleReviewStatuses.length}`
+    );
+    record(
+      `onboarding-demo ${id}: sampleNotes length >= 2`,
+      d.sampleNotes.length >= 2,
+      `Got ${d.sampleNotes.length}`
+    );
+  }
+
+  // listDemoProjects returns 3 metadata entries with no input bleed.
+  const metas = listDemoProjects();
+  record(
+    "onboarding-demo: listDemoProjects returns 3 entries",
+    metas.length === 3
+  );
+  record(
+    "onboarding-demo: listDemoProjects entries omit raw input field",
+    metas.every((m) => !("input" in m))
+  );
+
+  // buildDemoLoadPlan — deterministic for same opts.
+  const opts = { projectId: "proj-demo-1", runId: "run-demo-1", nowMs: 1_700_000_000_000 };
+  for (const id of demoIds) {
+    const d = getDemoProject(id);
+    const plan1 = buildDemoLoadPlan(d, opts);
+    const plan2 = buildDemoLoadPlan(d, opts);
+    record(
+      `onboarding-demo ${id}: buildDemoLoadPlan deterministic — same opts → deep equal`,
+      JSON.stringify(plan1) === JSON.stringify(plan2)
+    );
+    record(
+      `onboarding-demo ${id}: plan.project.id === opts.projectId`,
+      plan1.project.metadata.id === opts.projectId
+    );
+    record(
+      `onboarding-demo ${id}: plan.run.id === opts.runId`,
+      plan1.run.id === opts.runId
+    );
+    // Every testResult.cellId must reference a cell present in the
+    // run's creativeTestingMatrix.testCells.
+    const validIds = new Set(
+      plan1.run.strategy.creativeTestingMatrix.testCells.map((c) => c.id)
+    );
+    record(
+      `onboarding-demo ${id}: every testResult.cellId references a real test cell`,
+      plan1.testResults.every((r) => validIds.has(r.testCellId))
+    );
+    // appliedPlaybookId equals demo.recommendedPlaybook.
+    record(
+      `onboarding-demo ${id}: appliedPlaybookId equals demo.recommendedPlaybook`,
+      plan1.appliedPlaybookId === d.recommendedPlaybook
+    );
+    // Every reviewItem.kind is a valid ReviewItemKind.
+    const validKinds = new Set([
+      "positioning",
+      "offer",
+      "proof-assets",
+      "first-test-batch",
+      "campaign-setup",
+      "client-report",
+      "tracking-readiness",
+      "creative-qa",
+      "launch-readiness",
+      "next-iteration-plan",
+    ]);
+    record(
+      `onboarding-demo ${id}: every reviewItem.kind is a valid ReviewItemKind`,
+      plan1.reviewItems.every((it) => validKinds.has(it.kind))
+    );
+    // All 6 critical review kinds present.
+    const presentKinds = new Set(plan1.reviewItems.map((it) => it.kind));
+    record(
+      `onboarding-demo ${id}: all 6 critical review kinds are present in plan.reviewItems`,
+      CRITICAL_REVIEW_ITEM_KINDS.every((k) => presentKinds.has(k))
+    );
+  }
+
+  // ---- Progress checklist ----------------------------------------------
+
+  const emptyCtx = {};
+  const emptyList = buildProgressChecklist(emptyCtx);
+  record(
+    "onboarding-progress: empty ctx → 0 / 7 done",
+    emptyList.length === 7 && emptyList.every((it) => it.done === false)
+  );
+
+  const goalOnlyCtx = {
+    onboardingState: {
+      ...buildInitialOnboardingState(),
+      goalId: "launch-app" as const,
+    },
+  };
+  const goalOnly = buildProgressChecklist(goalOnlyCtx);
+  record(
+    "onboarding-progress: goalId set → 1 / 7 done (pick-goal)",
+    goalOnly.filter((it) => it.done).length === 1 &&
+      goalOnly.find((it) => it.id === "pick-goal")?.done === true
+  );
+
+  // Project loaded.
+  const demoLoad = buildDemoLoadPlan(
+    getDemoProject("astro-dating-launch"),
+    opts
+  );
+  const projectCtx = {
+    ...goalOnlyCtx,
+    project: demoLoad.project,
+  };
+  const projectList = buildProgressChecklist(projectCtx);
+  record(
+    "onboarding-progress: goalId + project → 2 / 7 done",
+    projectList.filter((it) => it.done).length === 2
+  );
+
+  // + run + strategy.
+  const runCtx = {
+    ...projectCtx,
+    latestRun: demoLoad.run,
+    strategy: demoLoad.run.strategy,
+  };
+  const runList = buildProgressChecklist(runCtx);
+  record(
+    "onboarding-progress: goalId + project + run + strategy → >= 3 / 7 done",
+    runList.filter((it) => it.done).length >= 3
+  );
+  // The strategy already carries a proof plan and a first test batch,
+  // so step 4 and 6 should already flip.
+  record(
+    "onboarding-progress: capture-proof-or-confirm flips when proofReadinessScore >= 50 (synthetic ctx)",
+    buildProgressChecklist({
+      ...runCtx,
+      proofAssetPlan: {
+        ...demoLoad.run.strategy.proofAssetPlan,
+        proofReadinessScore: 75,
+        missingBeforeSpend: [],
+      },
+    }).find((it) => it.id === "capture-proof-or-confirm")?.done === true
+  );
+  // Review board summary → step 5.
+  const summary = summarizeReviewBoard({
+    projectId: opts.projectId,
+    runId: opts.runId,
+    items: demoLoad.reviewItems.map((it) => ({
+      ...it,
+      // Force all critical to approved + zero unresolved comments.
+      status: CRITICAL_REVIEW_ITEM_KINDS.includes(it.kind)
+        ? ("approved" as const)
+        : it.status,
+    })),
+    comments: [],
+  });
+  const reviewReadyCtx = { ...runCtx, reviewSummary: summary };
+  record(
+    "onboarding-progress: approve-critical-items flips when approvalReadiness === 'ready'",
+    buildProgressChecklist(reviewReadyCtx).find((it) => it.id === "approve-critical-items")?.done === true
+  );
+  // First batch >= 3.
+  record(
+    "onboarding-progress: plan-first-test-batch flips when recommendedFirstBatch.length >= 3",
+    runList.find((it) => it.id === "plan-first-test-batch")?.done ===
+      (demoLoad.run.strategy.creativeTestingMatrix.recommendedFirstBatch.length >= 3)
+  );
+  // Determinism.
+  record(
+    "onboarding-progress: identical ctx → identical checklist",
+    JSON.stringify(buildProgressChecklist(runCtx)) ===
+      JSON.stringify(buildProgressChecklist(runCtx))
+  );
+
+  // ---- Next best action -----------------------------------------------
+
+  record(
+    "onboarding-next: empty state → kind='pick-goal'",
+    getNextBestAction(emptyCtx).kind === "pick-goal"
+  );
+  record(
+    "onboarding-next: goal set, no project → kind='load-demo'",
+    getNextBestAction(goalOnlyCtx).kind === "load-demo"
+  );
+  // Weak input.
+  const weakInputCtx = {
+    ...projectCtx,
+    inputQuality: {
+      score: 20,
+      status: "weak" as const,
+      warnings: [],
+      suggestions: [],
+      rewrittenHints: {
+        audience: "",
+        corePain: "",
+        differentiator: "",
+        goal: "",
+        proofNeeded: [],
+      },
+    },
+  };
+  record(
+    "onboarding-next: project + weak input → kind='fill-input'",
+    getNextBestAction(weakInputCtx).kind === "fill-input"
+  );
+  // No run yet.
+  record(
+    "onboarding-next: project but no run → kind='fill-input'",
+    getNextBestAction(projectCtx).kind === "fill-input"
+  );
+  // Tracking < 50.
+  record(
+    "onboarding-next: project + tracking < 50 → kind='fix-tracking'",
+    getNextBestAction({
+      ...runCtx,
+      trackingReadiness: { ...demoLoad.run.strategy.trackingReadiness, score: 30 },
+    }).kind === "fix-tracking"
+  );
+  // Branches below need a passing trackingReadiness to clear the
+  // earlier branch — the demo's tracking score is intentionally low.
+  const passingTracking = { ...demoLoad.run.strategy.trackingReadiness, score: 90 };
+  // Proof < 50 + skeptical.
+  record(
+    "onboarding-next: project + proofReadiness < 50 + skeptical → kind='capture-proof'",
+    getNextBestAction({
+      ...runCtx,
+      trackingReadiness: passingTracking,
+      proofAssetPlan: {
+        ...demoLoad.run.strategy.proofAssetPlan,
+        proofReadinessScore: 20,
+      },
+    }).kind === "capture-proof"
+  );
+  // Review not-ready.
+  const notReadySummary = summarizeReviewBoard({
+    projectId: opts.projectId,
+    runId: opts.runId,
+    items: demoLoad.reviewItems,
+    comments: [],
+  });
+  record(
+    "onboarding-next: project + review not-ready → kind='approve-critical'",
+    getNextBestAction({
+      ...runCtx,
+      trackingReadiness: passingTracking,
+      proofAssetPlan: {
+        ...demoLoad.run.strategy.proofAssetPlan,
+        proofReadinessScore: 80,
+        missingBeforeSpend: [],
+      },
+      reviewSummary: notReadySummary,
+    }).kind === "approve-critical"
+  );
+  // All clean → export-report.
+  const exportCtx = {
+    ...runCtx,
+    trackingReadiness: passingTracking,
+    proofAssetPlan: {
+      ...demoLoad.run.strategy.proofAssetPlan,
+      proofReadinessScore: 80,
+      missingBeforeSpend: [],
+    },
+    reviewSummary: summary,
+  };
+  record(
+    "onboarding-next: all clean + export not done → kind='export-report'",
+    getNextBestAction(exportCtx).kind === "export-report"
+  );
+  // All done.
+  record(
+    "onboarding-next: all clean + export completed → kind='all-done'",
+    getNextBestAction({
+      ...exportCtx,
+      onboardingState: {
+        ...exportCtx.onboardingState!,
+        completedStepIds: ["export-or-handoff"],
+      },
+    }).kind === "all-done"
+  );
+
+  // ---- Persistence -----------------------------------------------------
+
+  record(
+    "onboarding-store: STORAGE_KEY_ONBOARDING is the exact versioned key",
+    STORAGE_KEY_ONBOARDING === "bigad:onboarding:v1"
+  );
+  record(
+    "onboarding-store: STORAGE_KEY_DEMO_LOADED is the exact versioned key",
+    STORAGE_KEY_DEMO_LOADED === "bigad:demo-loaded:v1"
+  );
+
+  {
+    const mem = createMemoryOnboardingStore();
+    mem.setGoal("launch-app");
+    record(
+      "onboarding-store: setGoal roundtrips via getState",
+      mem.getState().goalId === "launch-app"
+    );
+    mem.markStepCompleted("pick-goal");
+    mem.markStepCompleted("pick-goal");
+    record(
+      "onboarding-store: markStepCompleted dedupes (no double append)",
+      mem.getState().completedStepIds.filter((s) => s === "pick-goal").length === 1
+    );
+    mem.markDemoLoaded("astro-dating-launch");
+    record(
+      "onboarding-store: markDemoLoaded + wasDemoLoaded",
+      mem.wasDemoLoaded("astro-dating-launch") === true
+    );
+    mem.dismiss();
+    record(
+      "onboarding-store: dismiss flips state.dismissed to true",
+      mem.getState().dismissed === true
+    );
+    mem.undismiss();
+    record(
+      "onboarding-store: undismiss flips state.dismissed back to false",
+      mem.getState().dismissed === false
+    );
+    mem.reset();
+    record(
+      "onboarding-store: reset clears goalId and completed steps",
+      mem.getState().goalId === undefined &&
+        mem.getState().completedStepIds.length === 0
+    );
+    record(
+      "onboarding-store: reset clears demo-loaded entries",
+      mem.wasDemoLoaded("astro-dating-launch") === false
+    );
+  }
+
+  // ---- Engine purity ---------------------------------------------------
+
+  const onbDet1 = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const onbDet2 = buildStrategy(ASTRO_DATING_EXAMPLE);
+  record(
+    "onboarding: buildStrategy determinism preserved after Onboarding layer added",
+    JSON.stringify(onbDet1) === JSON.stringify(onbDet2)
+  );
+
+  // ---- Export brief — Campaign Log onboarding line --------------------
+
+  // Build a workspace with a run + onboarding state and confirm the
+  // Campaign Log section gains the one-line goal sentence.
+  const ws = {
+    runs: [demoLoad.run],
+    results: demoLoad.testResults,
+    onboardingState: {
+      ...buildInitialOnboardingState(),
+      goalId: "launch-app" as const,
+    },
+  };
+  const briefWithOnboarding = generateExportBrief(
+    demoLoad.run.input,
+    demoLoad.run.strategy,
+    ws
+  );
+  record(
+    "onboarding-export: Campaign Log contains 'Onboarding goal:' when goalId set",
+    briefWithOnboarding.includes("**Onboarding goal:**")
+  );
+  // Without goalId → no onboarding line.
+  const briefNoGoal = generateExportBrief(demoLoad.run.input, demoLoad.run.strategy, {
+    runs: [demoLoad.run],
+    results: demoLoad.testResults,
+  });
+  record(
+    "onboarding-export: omits 'Onboarding goal:' when no onboardingState supplied",
+    !briefNoGoal.includes("**Onboarding goal:**")
+  );
+}
+
 // Report.
 let failed = 0;
 for (const c of checks) {

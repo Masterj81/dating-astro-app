@@ -14,6 +14,18 @@ import {
 } from "@/components/ReviewPanel";
 import { AgencyTab, useAgencySelection } from "@/components/AgencyPanel";
 import { PlaybookTab, usePlaybookSelection } from "@/components/PlaybookPanel";
+import {
+  OnboardingGoalPill,
+  OnboardingWelcomePanel,
+  useOnboarding,
+} from "@/components/OnboardingWelcomePanel";
+import { NextBestActionCard } from "@/components/NextBestActionCard";
+import { ProgressChecklistCard } from "@/components/ProgressChecklistCard";
+import {
+  buildProgressChecklist,
+  getNextBestAction,
+} from "@/lib/onboarding/onboarding";
+import { summarizeReviewBoard } from "@/lib/review/review-board";
 import { buildStrategy } from "@/lib/engine";
 import { buildNextIterationPlan } from "@/lib/engine/iteration-planner";
 import { generateExportBrief } from "@/lib/engine/export-brief";
@@ -63,6 +75,8 @@ export default function Page() {
   const playbookState = usePlaybookSelection({
     projectId: workspaceState.activeProjectId,
   });
+
+  const onboarding = useOnboarding();
 
   // Base strategy from the engine — pure, deterministic.
   const baseStrategy = useMemo(() => buildStrategy(input), [input]);
@@ -120,6 +134,36 @@ export default function Page() {
     input.name.trim() || input.audience.trim() || input.differentiator.trim()
   );
 
+  // Onboarding visibility: render the welcome panel ONLY when the user
+  // has no saved projects AND has not dismissed it.
+  const showWelcome =
+    workspaceState.projects.length === 0 && !onboarding.state.dismissed;
+
+  // Onboarding derivation — pure, no Date.now. Feeds NextBestActionCard
+  // and ProgressChecklistCard inside the Workspace tab.
+  const latestRunForCtx = workspaceState.runs[workspaceState.runs.length - 1];
+  const reviewSummary =
+    reviewState.run && reviewState.items.length > 0
+      ? summarizeReviewBoard({
+          projectId: workspaceState.activeProjectId ?? "",
+          runId: reviewState.run.id,
+          items: reviewState.items,
+          comments: reviewState.comments,
+        })
+      : undefined;
+  const onboardingCtx = {
+    project: workspaceState.activeProject ?? undefined,
+    latestRun: latestRunForCtx,
+    strategy,
+    reviewSummary,
+    proofAssetPlan: strategy.proofAssetPlan,
+    trackingReadiness: strategy.trackingReadiness,
+    inputQuality: strategy.inputQuality,
+    onboardingState: onboarding.state,
+  };
+  const progress = buildProgressChecklist(onboardingCtx);
+  const nextAction = getNextBestAction(onboardingCtx);
+
   return (
     <main className="grid h-dvh min-h-dvh w-full grid-rows-[auto_1fr] bg-ink-950 text-ink-100 md:grid-cols-[380px_1fr] md:grid-rows-1">
       <InputPanel
@@ -135,13 +179,32 @@ export default function Page() {
           currentStrategy={strategy}
           onLoadInput={setInput}
         />
+        {onboarding.state.goalId ? (
+          <OnboardingGoalPill onboarding={onboarding} />
+        ) : null}
+        {showWelcome ? (
+          <OnboardingWelcomePanel
+            onboarding={onboarding}
+            onLoadInput={setInput}
+            onCreateEmpty={() => setInput(EMPTY_INPUT)}
+          />
+        ) : null}
         <div className="min-h-0 flex-1">
           <StrategyView
             input={input}
             strategy={strategy}
             hasMeaningfulInput={hasMeaningfulInput}
             workspaceSlot={
-              <WorkspaceTab state={workspaceState} currentStrategy={strategy} />
+              <WorkspaceTab
+                state={workspaceState}
+                currentStrategy={strategy}
+                onboardingSlot={
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <NextBestActionCard action={nextAction} />
+                    <ProgressChecklistCard items={progress} />
+                  </div>
+                }
+              />
             }
             reviewSlot={<ReviewBoardTab state={reviewState} />}
             agencySlot={
