@@ -76,6 +76,7 @@ import { windowKindLabel } from "@/lib/engine/calendar";
 import { critiqueHook } from "@/lib/engine/hook-critic";
 import { diagnoseKpi } from "@/lib/engine/kpi-diagnosis";
 import { CopyableCard } from "./CopyableCard";
+import { EconomicsTab } from "./EconomicsPanel";
 import type { ProductInput } from "@/types/strategy";
 
 type Tab =
@@ -86,6 +87,7 @@ type Tab =
   | "diagnosis"
   | "offers"
   | "calendar"
+  | "economics"
   | "angles"
   | "concepts"
   | "briefs"
@@ -116,6 +118,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "diagnosis", label: "Diagnosis" },
   { id: "offers", label: "Offer architecture" },
   { id: "calendar", label: "Calendar" },
+  { id: "economics", label: "Economics" },
   { id: "angles", label: "Angles" },
   { id: "concepts", label: "Concepts" },
   { id: "briefs", label: "Briefs" },
@@ -218,6 +221,9 @@ export function StrategyView({ input, strategy, hasMeaningfulInput, workspaceSlo
         {tab === "diagnosis" && <DiagnosisTab diagnosis={strategy.diagnosis} />}
         {tab === "offers" && <OffersTab strategy={strategy} />}
         {tab === "calendar" && <CalendarTab calendar={strategy.campaignCalendar} />}
+        {tab === "economics" && (
+          <EconomicsTab input={input} strategy={strategy} />
+        )}
         {tab === "angles" && <AnglesTab strategy={strategy} />}
         {tab === "concepts" && <ConceptsTab strategy={strategy} input={input} />}
         {tab === "briefs" && <BriefsTab strategy={strategy} />}

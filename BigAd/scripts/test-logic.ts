@@ -1217,7 +1217,8 @@ record(
   `Got ${greenJourney.currentStage}`
 );
 
-// Determinism.
+// Determinism. The build inside buildStrategy passes `unitEconomics`,
+// so the standalone call must mirror it to deep-equal.
 const jsTwice = buildJourneyStatus({
   trackingReadiness: a.trackingReadiness,
   kpiLadder: a.kpiLadder,
@@ -1229,6 +1230,7 @@ const jsTwice = buildJourneyStatus({
   variantSets: a.variantSets,
   proofAssetPlan: a.proofAssetPlan,
   audienceAvatars: a.audienceAvatars,
+  unitEconomics: a.unitEconomics,
 });
 record(
   "journeyStatus: deterministic across calls",
@@ -1309,7 +1311,15 @@ record(
       w.message.length > 0
   )
 );
-const validBlockerKinds = new Set(["tracking", "kpi", "review", "creative", "scope"]);
+const validBlockerKinds = new Set([
+  "tracking",
+  "kpi",
+  "review",
+  "creative",
+  "scope",
+  "asset",
+  "economics",
+]);
 record(
   "journeyStatus: every blocker.kind is a valid JourneyBlockerKind",
   a.journeyStatus.blockers.every((b) => validBlockerKinds.has(b.kind))
@@ -7267,6 +7277,521 @@ for (const { name, strategy } of fixtures) {
   record(
     "asset: plan.derivedAt is the max of all asset.updatedAt (zero baseline)",
     zeroPlan.derivedAt === 0
+  );
+}
+
+// ============================================================================
+// === Unit Economics / Offer Lab ===
+// ============================================================================
+//
+// Tests cover: pure-function determinism, subscription LTV math, allowable
+// CAC math, breakeven ROAS / payback derivation, missing-field warnings,
+// readiness classification, offer scenario derivation, journey-status
+// integration, and the markdown export hook.
+
+{
+  const economicsMod = require("../src/lib/economics/unit-economics") as typeof import("../src/lib/economics/unit-economics");
+  const journeyMod = require("../src/lib/engine/journey-status") as typeof import("../src/lib/engine/journey-status");
+  const exportMod = require("../src/lib/engine/export-brief") as typeof import("../src/lib/engine/export-brief");
+
+  const {
+    buildUnitEconomics,
+    buildOfferScenarioResults,
+    calculateSubscriptionLtv,
+    calculateAllowableCac,
+    classifyEconomicsReadiness,
+  } = economicsMod;
+  const { buildJourneyStatus } = journeyMod;
+  const { generateExportBrief } = exportMod;
+
+  // ---- Determinism --------------------------------------------------------
+
+  const ueA1 = buildUnitEconomics(ASTRO_DATING_EXAMPLE);
+  const ueA2 = buildUnitEconomics(ASTRO_DATING_EXAMPLE);
+  record(
+    "economics: buildUnitEconomics deterministic for AstroDating",
+    JSON.stringify(ueA1) === JSON.stringify(ueA2)
+  );
+  record(
+    "economics: derivedAt is exactly 0 (no Date.now)",
+    ueA1.derivedAt === 0
+  );
+
+  const astroStrategy2 = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const scenA1 = buildOfferScenarioResults(
+    ASTRO_DATING_EXAMPLE,
+    astroStrategy2.offers
+  );
+  const scenA2 = buildOfferScenarioResults(
+    ASTRO_DATING_EXAMPLE,
+    astroStrategy2.offers
+  );
+  record(
+    "economics: buildOfferScenarioResults deterministic for AstroDating",
+    JSON.stringify(scenA1) === JSON.stringify(scenA2)
+  );
+
+  const detA = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const detB = buildStrategy(ASTRO_DATING_EXAMPLE);
+  record(
+    "economics: buildStrategy(AstroDating) is byte-identical across calls (engine determinism preserved)",
+    JSON.stringify(detA) === JSON.stringify(detB)
+  );
+  record(
+    "economics: strategy.unitEconomics.derivedAt is 0 inside buildStrategy",
+    detA.unitEconomics.derivedAt === 0
+  );
+
+  // ---- Subscription LTV math ---------------------------------------------
+
+  const sub = calculateSubscriptionLtv({
+    monthlyPrice: 14.99,
+    cogsPercent: 0.3,
+    monthlyChurnRate: 0.1,
+  });
+  record(
+    "economics: subscription expectedMonthsRetained === 10 for 10% monthly churn",
+    sub.expectedMonthsRetained === 10
+  );
+  record(
+    "economics: subscription grossMargin === 0.7 when COGS 30%",
+    Math.abs(sub.grossMargin - 0.7) < 0.0001
+  );
+  // 14.99 * 0.7 * 10 = 104.93
+  record(
+    "economics: subscription expectedLtv ≈ 104.93 (14.99 × 0.7 × 10)",
+    Math.abs(sub.expectedLtv - 104.93) < 0.01,
+    `Got ${sub.expectedLtv}`
+  );
+
+  const subOverride = calculateSubscriptionLtv({
+    monthlyPrice: 10,
+    cogsPercent: 0,
+    averageMonthsRetained: 12,
+  });
+  record(
+    "economics: subscription averageMonthsRetained override takes precedence over churn",
+    subOverride.expectedMonthsRetained === 12
+  );
+
+  const subClamped = calculateSubscriptionLtv({
+    monthlyPrice: 10,
+    cogsPercent: 0,
+    monthlyChurnRate: 0.001,
+  });
+  record(
+    "economics: subscription expectedMonthsRetained clamps to <= 48",
+    subClamped.expectedMonthsRetained <= 48
+  );
+
+  // ---- Allowable CAC math ------------------------------------------------
+
+  const cacNoTrial = calculateAllowableCac({
+    expectedLtv: 100,
+    targetMarginPercent: 0.3,
+  });
+  record(
+    "economics: allowable CAC === LTV × target margin (no trial)",
+    Math.abs(cacNoTrial.allowableCac - 30) < 0.01
+  );
+  record(
+    "economics: trialAdjustedLtv === expectedLtv when no free trial",
+    cacNoTrial.trialAdjustedLtv === 100
+  );
+
+  const cacWithTrial = calculateAllowableCac({
+    expectedLtv: 100,
+    targetMarginPercent: 0.3,
+    trialToPaidRate: 0.4,
+    hasFreeTrial: true,
+  });
+  record(
+    "economics: trialAdjustedLtv === expectedLtv × trial-to-paid rate when trial present",
+    Math.abs(cacWithTrial.trialAdjustedLtv - 40) < 0.01
+  );
+  record(
+    "economics: allowable CAC === trialAdjustedLtv × target margin (with trial)",
+    Math.abs(cacWithTrial.allowableCac - 12) < 0.01
+  );
+
+  // ---- Resolved fields and fallbacks -------------------------------------
+
+  const missingAovInput: ProductInput = {
+    ...ASTRO_DATING_EXAMPLE,
+    price: "$49 one-time",
+    businessModel: "one-time",
+    offerContext: { cogsPercent: 30, targetMarginPercent: 30 },
+  };
+  const ueMissingAov = buildUnitEconomics(missingAovInput);
+  record(
+    "economics: resolvedAov falls back to resolvedPrice when AOV missing",
+    ueMissingAov.resolvedAov === 49
+  );
+  record(
+    "economics: warnings include 'missing-aov' when AOV not provided",
+    ueMissingAov.warnings.some((w) => w.kind === "missing-aov")
+  );
+
+  const noCogsInput: ProductInput = {
+    ...ASTRO_DATING_EXAMPLE,
+    offerContext: { targetMarginPercent: 30 },
+  };
+  const ueNoCogs = buildUnitEconomics(noCogsInput);
+  record(
+    "economics: warnings include 'missing-cogs' when COGS not provided",
+    ueNoCogs.warnings.some((w) => w.kind === "missing-cogs")
+  );
+  record(
+    "economics: grossMargin falls back to 0.7 (1 - 0.3 default COGS)",
+    Math.abs((ueNoCogs.grossMargin ?? 0) - 0.7) < 0.0001
+  );
+
+  // ---- Breakeven ROAS math -----------------------------------------------
+
+  const ueLowCogs: ProductInput = {
+    ...ASTRO_DATING_EXAMPLE,
+    offerContext: {
+      cogsPercent: 30,
+      targetMarginPercent: 25,
+      targetROAS: 3.0,
+      currentAOV: 60,
+    },
+  };
+  const lc = buildUnitEconomics(ueLowCogs);
+  // breakevenRoas = 1 / 0.7 = 1.428571
+  record(
+    "economics: breakevenRoas ≈ 1/grossMargin (COGS 30% → ≈1.43)",
+    Math.abs((lc.breakevenRoas ?? 0) - 1.4286) < 0.001,
+    `Got ${lc.breakevenRoas}`
+  );
+
+  // ---- Target ROAS below breakeven → blocker → unviable ------------------
+
+  const unviableInput: ProductInput = {
+    ...ASTRO_DATING_EXAMPLE,
+    offerContext: {
+      cogsPercent: 30,
+      targetMarginPercent: 30,
+      targetROAS: 1.2,
+      currentAOV: 60,
+    },
+  };
+  const ueUnviable = buildUnitEconomics(unviableInput);
+  record(
+    "economics: target ROAS < breakeven emits 'target-roas-below-breakeven' blocker",
+    ueUnviable.warnings.some(
+      (w) =>
+        w.kind === "target-roas-below-breakeven" && w.severity === "blocker"
+    )
+  );
+  record(
+    "economics: status is 'unviable' when a blocker warning is present",
+    ueUnviable.status === "unviable"
+  );
+
+  // ---- Free trial without trial-to-paid rate -----------------------------
+
+  // AstroDating is freemium + price has 'Free' → hasFreeTrial true, no
+  // trial-to-paid rate → missing-trial-to-paid warning.
+  record(
+    "economics: subscription/freemium + free trial without rate emits missing-trial-to-paid",
+    ueA1.warnings.some((w) => w.kind === "missing-trial-to-paid")
+  );
+
+  // ---- Classification: viable case ---------------------------------------
+
+  const viableInput: ProductInput = {
+    ...ASTRO_DATING_EXAMPLE,
+    businessModel: "one-time",
+    price: "$80 one-time",
+    offerContext: {
+      cogsPercent: 25,
+      targetMarginPercent: 40,
+      targetROAS: 3.5,
+      currentAOV: 80,
+    },
+  };
+  const ueViable = buildUnitEconomics(viableInput);
+  record(
+    "economics: clean inputs + healthy ROAS cushion → status 'viable'",
+    ueViable.status === "viable",
+    `Got ${ueViable.status} with warnings: ${ueViable.warnings.map((w) => w.kind).join(", ")}`
+  );
+
+  // ---- Classification: tight case ----------------------------------------
+
+  // Subscription with 2+ warnings → tight
+  const tightInput: ProductInput = {
+    ...ASTRO_DATING_EXAMPLE,
+    businessModel: "subscription",
+    price: "$5/month",
+    offerContext: {
+      cogsPercent: 30,
+      targetMarginPercent: 30,
+      targetROAS: 1.5,
+      currentAOV: 5,
+    },
+  };
+  const ueTight = buildUnitEconomics(tightInput);
+  record(
+    "economics: 2+ warnings or tight ROAS margin or low CAC → status 'tight' or 'unviable'",
+    ueTight.status === "tight" || ueTight.status === "unviable",
+    `Got ${ueTight.status}`
+  );
+
+  // ---- Classification: incomplete case -----------------------------------
+
+  const incompleteInput: ProductInput = {
+    ...ASTRO_DATING_EXAMPLE,
+    price: "TBD",
+    businessModel: "subscription",
+    offerContext: undefined,
+  };
+  const ueIncomplete = buildUnitEconomics(incompleteInput);
+  record(
+    "economics: no price resolvable → status 'incomplete'",
+    ueIncomplete.status === "incomplete"
+  );
+  record(
+    "economics: incomplete summary still has derivedAt === 0",
+    ueIncomplete.derivedAt === 0
+  );
+
+  // classifyEconomicsReadiness directly callable
+  record(
+    "economics: classifyEconomicsReadiness mirrors buildUnitEconomics output",
+    classifyEconomicsReadiness(ueA1) === ueA1.status
+  );
+
+  // ---- Offer scenarios ---------------------------------------------------
+
+  const scenarios = buildOfferScenarioResults(
+    ASTRO_DATING_EXAMPLE,
+    astroStrategy2.offers
+  );
+  record(
+    "economics: offer scenarios count matches offers count",
+    scenarios.length === astroStrategy2.offers.length
+  );
+  record(
+    "economics: every offer scenario carries a non-empty riskNote",
+    scenarios.every((s) => typeof s.riskNote === "string" && s.riskNote.length > 0)
+  );
+  record(
+    "economics: every offer scenario carries a viability status",
+    scenarios.every((s) =>
+      ["viable", "tight", "unviable", "incomplete"].includes(s.viability)
+    )
+  );
+  record(
+    "economics: every offer scenario carries a warnings array (possibly empty)",
+    scenarios.every((s) => Array.isArray(s.warnings))
+  );
+  // Order stable across calls.
+  const scenariosAgain = buildOfferScenarioResults(
+    ASTRO_DATING_EXAMPLE,
+    astroStrategy2.offers
+  );
+  record(
+    "economics: offer scenario order stable across calls",
+    scenarios.map((s) => s.offerId).join(",") ===
+      scenariosAgain.map((s) => s.offerId).join(",")
+  );
+  // Empty offers -> empty result
+  record(
+    "economics: empty offers input returns empty scenarios array",
+    buildOfferScenarioResults(ASTRO_DATING_EXAMPLE, []).length === 0
+  );
+
+  // ---- Journey Status integration ----------------------------------------
+
+  const baseJourneyArgs = {
+    trackingReadiness: astroStrategy2.trackingReadiness,
+    kpiLadder: astroStrategy2.kpiLadder,
+    kpiDiagnosis: astroStrategy2.kpiDiagnosis,
+    adReview: astroStrategy2.adReview,
+    creatorBriefs: astroStrategy2.creatorBriefs,
+    shotLists: astroStrategy2.shotLists,
+    videoScripts: astroStrategy2.videoScripts,
+    variantSets: astroStrategy2.variantSets,
+    proofAssetPlan: astroStrategy2.proofAssetPlan,
+    audienceAvatars: astroStrategy2.audienceAvatars,
+  };
+
+  const journeyUnviable = buildJourneyStatus({
+    ...baseJourneyArgs,
+    unitEconomics: ueUnviable,
+  });
+  record(
+    "economics: journey-status emits economics-kind blocker when status 'unviable'",
+    journeyUnviable.blockers.some((b) => b.kind === "economics")
+  );
+  record(
+    "economics: ready-to-spend NOT reached when unitEconomics is 'unviable'",
+    journeyUnviable.currentStage !== "ready-to-spend" &&
+      journeyUnviable.readyToSpend === false
+  );
+
+  const journeyTight = buildJourneyStatus({
+    ...baseJourneyArgs,
+    unitEconomics: ueTight,
+  });
+  record(
+    "economics: journey-status emits economics-kind warning when status 'tight'",
+    journeyTight.warnings.some((w) => w.kind === "economics") ||
+      journeyTight.blockers.some((b) => b.kind === "economics")
+  );
+
+  const journeyViable = buildJourneyStatus({
+    ...baseJourneyArgs,
+    unitEconomics: ueViable,
+  });
+  record(
+    "economics: journey-status emits no economics blocker when status 'viable'",
+    !journeyViable.blockers.some((b) => b.kind === "economics")
+  );
+
+  // Legacy caller (no unitEconomics) → behaviour unchanged.
+  const journeyLegacy = buildJourneyStatus(baseJourneyArgs);
+  record(
+    "economics: legacy journey-status call without unitEconomics produces a valid stage",
+    typeof journeyLegacy.currentStage === "string" &&
+      journeyLegacy.currentStage.length > 0
+  );
+  record(
+    "economics: legacy journey-status call has no economics-kind entries",
+    !journeyLegacy.blockers.some((b) => b.kind === "economics") &&
+      !journeyLegacy.warnings.some((w) => w.kind === "economics")
+  );
+
+  // ---- Markdown export ---------------------------------------------------
+
+  const briefWithEconomics = generateExportBrief(
+    ASTRO_DATING_EXAMPLE,
+    astroStrategy2
+  );
+  record(
+    "economics-export: brief contains '## Unit Economics / Offer Lab'",
+    briefWithEconomics.includes("## Unit Economics / Offer Lab")
+  );
+  record(
+    "economics-export: brief contains '### Summary' inside the economics section",
+    briefWithEconomics.includes("### Summary")
+  );
+  record(
+    "economics-export: brief contains '### Offer scenarios' table",
+    briefWithEconomics.includes("### Offer scenarios")
+  );
+  record(
+    "economics-export: brief contains '### Warnings' when warnings present",
+    briefWithEconomics.includes("### Warnings")
+  );
+  record(
+    "economics-export: brief contains '### Recommended action'",
+    briefWithEconomics.includes("### Recommended action")
+  );
+
+  // Unviable status surfaces in the brief's Status line.
+  const unviableStrategy = buildStrategy(unviableInput);
+  const briefUnviable = generateExportBrief(unviableInput, unviableStrategy);
+  record(
+    "economics-export: brief reflects 'Unviable' status when economics unviable",
+    briefUnviable.includes("**Status:** Unviable")
+  );
+
+  // Export determinism — same input → same export string.
+  const briefDet1 = generateExportBrief(ASTRO_DATING_EXAMPLE, astroStrategy2);
+  const briefDet2 = generateExportBrief(ASTRO_DATING_EXAMPLE, astroStrategy2);
+  record(
+    "economics-export: same input produces byte-identical export string",
+    briefDet1 === briefDet2
+  );
+
+  // ---- Strategy fields ---------------------------------------------------
+
+  record(
+    "economics: strategy.unitEconomics present after buildStrategy",
+    !!detA.unitEconomics && typeof detA.unitEconomics.status === "string"
+  );
+  record(
+    "economics: strategy.offerScenarios present and non-empty after buildStrategy",
+    Array.isArray(detA.offerScenarios) && detA.offerScenarios.length > 0
+  );
+
+  // Subscription block present for freemium/subscription, absent otherwise.
+  record(
+    "economics: subscription block present for AstroDating (freemium)",
+    !!detA.unitEconomics.subscription
+  );
+  const ueOneTime = buildUnitEconomics(HEIRLOOM_BREW_EXAMPLE);
+  record(
+    "economics: subscription block absent for one-time (HeirloomBrew)",
+    !ueOneTime.subscription
+  );
+
+  // ---- targetRoas fallback warning ---------------------------------------
+
+  const noTargetRoasInput: ProductInput = {
+    ...ASTRO_DATING_EXAMPLE,
+    offerContext: {
+      cogsPercent: 30,
+      targetMarginPercent: 30,
+      currentAOV: 50,
+    },
+  };
+  const ueNoRoas = buildUnitEconomics(noTargetRoasInput);
+  record(
+    "economics: missing targetRoas emits a derivation info warning",
+    ueNoRoas.warnings.some((w) => w.kind === "missing-target-roas")
+  );
+  record(
+    "economics: derived target ROAS ≈ breakevenRoas × 1.4",
+    Math.abs(
+      (ueNoRoas.targetRoas ?? 0) - (ueNoRoas.breakevenRoas ?? 0) * 1.4
+    ) < 0.05
+  );
+
+  // ---- roasMargin sign ---------------------------------------------------
+
+  record(
+    "economics: roasMargin === targetRoas - breakevenRoas",
+    typeof ueA1.roasMargin === "number" &&
+      typeof ueA1.targetRoas === "number" &&
+      typeof ueA1.breakevenRoas === "number" &&
+      Math.abs(
+        ueA1.roasMargin - (ueA1.targetRoas - ueA1.breakevenRoas)
+      ) < 0.01
+  );
+
+  // ---- StrategyView Economics tab insertion ------------------------------
+
+  // Re-import for the test scope; tab labels live in StrategyView. We
+  // assert the Economics tab is present and lands after Calendar (index
+  // >= 7). Index 7 leaves the pinned first-7 invariant untouched.
+  record(
+    "economics: tab insertion present in StrategyView (label 'Economics')",
+    tabLabels.includes("Economics")
+  );
+  record(
+    "economics: Economics tab lands at index >= 7 (first-7 pinning intact)",
+    tabLabels.indexOf("Economics") >= 7
+  );
+
+  // ---- gross margin too low warning --------------------------------------
+
+  const lowMarginInput: ProductInput = {
+    ...ASTRO_DATING_EXAMPLE,
+    offerContext: {
+      cogsPercent: 80,
+      targetMarginPercent: 10,
+      targetROAS: 6,
+      currentAOV: 40,
+    },
+  };
+  const ueLowMargin = buildUnitEconomics(lowMarginInput);
+  record(
+    "economics: grossMargin < 0.30 emits 'gross-margin-too-low' warning",
+    ueLowMargin.warnings.some((w) => w.kind === "gross-margin-too-low")
   );
 }
 

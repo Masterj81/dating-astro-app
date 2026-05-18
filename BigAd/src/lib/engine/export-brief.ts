@@ -248,6 +248,9 @@ export function generateExportBrief(
   });
   lines.push("");
 
+  // 5b. Unit Economics / Offer Lab
+  appendUnitEconomicsSection(lines, strategy);
+
   // 6. Campaign calendar
   section(lines, "Campaign Calendar");
   lines.push(
@@ -1573,6 +1576,169 @@ function oneLine(s: string): string {
 function section(lines: string[], title: string) {
   lines.push(`## ${title}`);
   lines.push("");
+}
+
+function appendUnitEconomicsSection(
+  lines: string[],
+  strategy: Strategy
+): void {
+  const ue = strategy.unitEconomics;
+  if (!ue || ue.status === undefined) return;
+
+  section(lines, "Unit Economics / Offer Lab");
+
+  lines.push(`**Status:** ${economicsStatusLabel(ue.status)}`);
+  if (ue.businessModel) {
+    const priceStr = formatDollars(ue.resolvedPrice);
+    const suffix =
+      ue.businessModel === "subscription" || ue.businessModel === "freemium"
+        ? "/mo"
+        : "";
+    lines.push(
+      `**Business model:** ${ue.businessModel} · resolved price ${priceStr}${suffix}`
+    );
+  }
+  lines.push("");
+
+  // Summary
+  if (ue.resolvedPrice !== undefined) {
+    lines.push(`### Summary`);
+    lines.push(`- Gross margin: ${formatPercent(ue.grossMargin)}`);
+    lines.push(`- Expected LTV: ${formatDollars(ue.expectedLtv)}`);
+    lines.push(`- Allowable CAC: ${formatDollars(ue.allowableCac)}`);
+    lines.push(`- Breakeven CPA: ${formatDollars(ue.breakevenCpa)}`);
+    if (ue.breakevenRoas !== undefined) {
+      lines.push(`- Breakeven ROAS: ${ue.breakevenRoas.toFixed(2)}`);
+    }
+    if (ue.targetRoas !== undefined) {
+      const cushion =
+        typeof ue.roasMargin === "number"
+          ? ` (cushion ${ue.roasMargin >= 0 ? "+" : ""}${ue.roasMargin.toFixed(2)})`
+          : "";
+      lines.push(`- Target ROAS: ${ue.targetRoas.toFixed(2)}${cushion}`);
+    }
+    if (typeof ue.paybackMonths === "number") {
+      lines.push(`- Payback: ${ue.paybackMonths.toFixed(1)} months`);
+    }
+    lines.push("");
+  }
+
+  // Subscription block
+  if (ue.subscription) {
+    lines.push(`### Subscription details`);
+    lines.push(
+      `- Monthly price: ${formatDollars(ue.subscription.monthlyPrice)}`
+    );
+    lines.push(
+      `- Expected months retained: ${ue.subscription.expectedMonthsRetained.toFixed(1)}`
+    );
+    lines.push(
+      `- Trial-adjusted LTV: ${formatDollars(ue.subscription.trialAdjustedLtv)}`
+    );
+    lines.push("");
+  }
+
+  // Offer scenarios
+  if (strategy.offerScenarios && strategy.offerScenarios.length > 0) {
+    lines.push(`### Offer scenarios`);
+    lines.push("");
+    lines.push(
+      `| Offer | Price | AOV | GM | Breakeven CPA | Breakeven ROAS | Allowable CAC | Viability | Risk |`
+    );
+    lines.push(
+      `| ----- | ----- | --- | -- | ------------- | -------------- | ------------- | --------- | ---- |`
+    );
+    for (const s of strategy.offerScenarios) {
+      const risk = s.riskNote.replace(/\|/g, "/");
+      lines.push(
+        `| ${s.offerName} | ${formatDollars(s.price)} | ${formatDollars(s.aov)} | ${formatPercent(s.grossMargin)} | ${formatDollars(s.breakevenCpa)} | ${s.breakevenRoas.toFixed(2)} | ${formatDollars(s.allowableCac)} | ${s.viability} | ${risk} |`
+      );
+    }
+    lines.push("");
+  }
+
+  // Assumptions (only when fallback defaults were applied)
+  const fallbackWarnings = ue.warnings.filter(
+    (w) =>
+      w.kind === "missing-cogs" ||
+      w.kind === "missing-churn-rate" ||
+      w.kind === "missing-aov" ||
+      w.kind === "missing-trial-to-paid" ||
+      w.kind === "missing-target-roas"
+  );
+  if (fallbackWarnings.length > 0) {
+    lines.push(`### Assumptions`);
+    for (const w of fallbackWarnings) {
+      lines.push(`- ${w.message}`);
+    }
+    lines.push("");
+  }
+
+  // Warnings
+  if (ue.warnings.length > 0) {
+    lines.push(`### Warnings`);
+    for (const w of ue.warnings) {
+      const sev =
+        w.severity === "blocker"
+          ? "[blocker]"
+          : w.severity === "warning"
+          ? "[warning]"
+          : "[info]";
+      lines.push(`- ${sev} ${w.kind} — ${w.message} — ${w.fix}`);
+    }
+    lines.push("");
+  }
+
+  // Recommended action
+  lines.push(`### Recommended action`);
+  lines.push(economicsRecommendedAction(strategy));
+  lines.push("");
+}
+
+function economicsStatusLabel(
+  status: Strategy["unitEconomics"]["status"]
+): string {
+  return (
+    {
+      viable: "Viable",
+      tight: "Tight",
+      unviable: "Unviable",
+      incomplete: "Incomplete",
+    }[status] ?? status
+  );
+}
+
+function economicsRecommendedAction(strategy: Strategy): string {
+  const ue = strategy.unitEconomics;
+  switch (ue.status) {
+    case "unviable":
+      return "Reprice or reduce COGS before spend.";
+    case "tight":
+      return "Define kill rules tight; one-variable testing only.";
+    case "viable":
+      return "Cleared for testing — proceed to creative production.";
+    case "incomplete": {
+      const missing: string[] = [];
+      for (const w of ue.warnings) {
+        if (w.kind === "missing-price") missing.push("price");
+        if (w.kind === "missing-aov") missing.push("AOV");
+        if (w.kind === "missing-cogs") missing.push("COGS %");
+        if (w.kind === "missing-target-roas") missing.push("target ROAS");
+      }
+      const tail = missing.length > 0 ? missing.join(", ") : "commercial inputs";
+      return `Provide missing inputs: ${tail}.`;
+    }
+  }
+}
+
+function formatDollars(n: number | undefined): string {
+  if (typeof n !== "number" || !Number.isFinite(n)) return "$0.00";
+  return `$${n.toFixed(2)}`;
+}
+
+function formatPercent(n: number | undefined): string {
+  if (typeof n !== "number" || !Number.isFinite(n)) return "—";
+  return `${Math.round(n * 100)}%`;
 }
 
 function appendAssetProductionPlan(

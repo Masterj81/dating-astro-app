@@ -18,6 +18,7 @@ import type {
   ProofAssetPlan,
   ShotList,
   TrackingReadinessScore,
+  UnitEconomicsSummary,
   VariantSet,
   VideoScript,
 } from "@/types/strategy";
@@ -53,6 +54,13 @@ export interface JourneyStatusArgs {
   // for pending must-have assets and gates `ready-to-spend` behind
   // readinessScore >= 70 with no pending must-haves. Absent → no gate.
   assetSummary?: AssetProductionSummary;
+  // Unit Economics / Offer Lab — when provided, journey-status emits
+  // an economics-kind entry whenever the readiness status is not
+  // `viable`. Severity escalates to `blocker` for `unviable`. When
+  // `status === 'unviable'`, `ready-to-spend` is blocked. `tight`
+  // status surfaces a warning chip but does not block. Absent → no
+  // economics gate (backward-compat with every caller pre-economics).
+  unitEconomics?: UnitEconomicsSummary;
 }
 
 // Ad-review weight floor for "review-passed". The shipped checklist has
@@ -226,6 +234,69 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     }
   }
 
+  // Unit Economics / Offer Lab — when a summary is supplied and the
+  // readiness is anything but `viable`, emit an economics-kind entry.
+  // Severity escalates to `blocker` when status === `unviable` or
+  // when a `target-roas-below-breakeven` warning is present. `tight`
+  // surfaces a warning. `incomplete` is a soft warning so the missing
+  // input prompt makes it into the journey block.
+  if (args.unitEconomics) {
+    const ue = args.unitEconomics;
+    const hasBelowBreakeven = ue.warnings.some(
+      (w) => w.kind === "target-roas-below-breakeven"
+    );
+    const hasMissingTrial = ue.warnings.some(
+      (w) =>
+        w.kind === "subscription-without-trial-rate" ||
+        w.kind === "missing-trial-to-paid"
+    );
+    if (ue.status === "unviable") {
+      const topWarning =
+        ue.warnings.find((w) => w.severity === "blocker") ??
+        ue.warnings.find((w) => w.severity === "warning") ??
+        ue.warnings[0];
+      const messageTail = topWarning ? topWarning.message : "see economics tab";
+      blockers.push({
+        kind: "economics",
+        severity: "blocker",
+        message: `Unit economics unviable: ${messageTail}`,
+      });
+    } else if (hasBelowBreakeven) {
+      const t = (ue.targetRoas ?? 0).toFixed(2);
+      const b = (ue.breakevenRoas ?? 0).toFixed(2);
+      blockers.push({
+        kind: "economics",
+        severity: "blocker",
+        message: `Target ROAS ${t} below breakeven ${b}`,
+      });
+    } else if (ue.status === "tight") {
+      const topKinds = ue.warnings
+        .filter((w) => w.severity === "warning")
+        .slice(0, 2)
+        .map((w) => w.kind)
+        .join(", ");
+      const tail = topKinds || "thin margin or tight payback";
+      warnings.push({
+        kind: "economics",
+        severity: "warning",
+        message: `Unit economics tight: ${tail}`,
+      });
+    } else if (ue.status === "incomplete") {
+      warnings.push({
+        kind: "economics",
+        severity: "warning",
+        message: "Unit economics incomplete — provide price and commercial inputs to compute viability.",
+      });
+    }
+    if (hasMissingTrial && ue.status !== "unviable") {
+      warnings.push({
+        kind: "economics",
+        severity: "warning",
+        message: "Subscription with free trial but trial→paid rate not provided",
+      });
+    }
+  }
+
   // Execution OS — first batch presence is a prerequisite for
   // ready-to-spend. When the matrix isn't supplied (legacy callers /
   // backward-compat with tests that pre-date the Execution OS phase),
@@ -260,12 +331,20 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     (args.assetSummary.readinessScore >= 70 &&
       args.assetSummary.pendingMustHaveIds.length === 0);
 
-  // Operational blockers count — review-kind and asset-kind blockers
-  // are tracked through their own gates at the review-passed stage,
-  // not as creative-planned regressions.
+  // Operational blockers count — review-kind, asset-kind, and
+  // economics-kind blockers are tracked through their own gates at the
+  // review-passed / ready-to-spend stages, not as creative-planned
+  // regressions.
   const operationalBlockersCount = blockers.filter(
-    (b) => b.kind !== "review" && b.kind !== "asset"
+    (b) =>
+      b.kind !== "review" && b.kind !== "asset" && b.kind !== "economics"
   ).length;
+
+  // Unit Economics gate — only enforced when a summary was supplied.
+  // `tight` does NOT block; only `unviable` blocks the final hop to
+  // ready-to-spend. Absent → no gate (backward-compat).
+  const economicsReady =
+    !args.unitEconomics || args.unitEconomics.status !== "unviable";
 
   // Stage selection — earliest match wins.
   const stage = pickStage({
@@ -280,6 +359,7 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     proofReady,
     approvalReady,
     assetReady,
+    economicsReady,
   });
 
   const readyToSpend = stage === "ready-to-spend";
@@ -320,6 +400,7 @@ function pickStage(args: {
   proofReady: boolean;
   approvalReady: boolean;
   assetReady: boolean;
+  economicsReady: boolean;
 }): JourneyStage {
   if (args.creatorBriefsCount === 0) return "strategy-drafted";
   if (args.trackingScore < 70 || args.blockersCount > 0) return "creative-planned";
@@ -338,6 +419,9 @@ function pickStage(args: {
   // Asset Production gate — same backward-compat: receives
   // `assetReady = true` when no assetSummary was supplied.
   if (!args.assetReady) return "review-passed";
+  // Unit Economics gate — only blocks when status === `unviable`.
+  // `tight` is non-blocking (warning only). Absent → economicsReady = true.
+  if (!args.economicsReady) return "review-passed";
   return "ready-to-spend";
 }
 

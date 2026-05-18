@@ -2,6 +2,21 @@
 // These types describe the input the user fills in and the strategy
 // output the deterministic engine produces.
 
+import type {
+  OfferScenarioResult,
+  UnitEconomicsSummary,
+} from "./economics";
+
+export type {
+  EconomicsReadinessStatus,
+  EconomicsWarning,
+  EconomicsWarningKind,
+  OfferScenarioResult,
+  SubscriptionEconomics,
+  UnitEconomicsInput,
+  UnitEconomicsSummary,
+} from "./economics";
+
 export type AwarenessLevel =
   | "unaware"
   | "problem-aware"
@@ -343,6 +358,12 @@ export interface Strategy {
   creativeTestingMatrix: CreativeTestingMatrix;
   campaignSetup: CampaignSetup;
   nextIterationPlan: NextIterationPlan;
+
+  // Unit Economics / Offer Lab — derived deterministically from input
+  // (and the offer recommendations above) so the engine output stays
+  // self-contained. `derivedAt` is always 0.
+  unitEconomics: UnitEconomicsSummary;
+  offerScenarios: OfferScenarioResult[];
 
   exportBrief: string;
 }
@@ -752,7 +773,8 @@ export type JourneyBlockerKind =
   | "review"
   | "creative"
   | "scope"
-  | "asset";
+  | "asset"
+  | "economics";
 
 export interface JourneyBlocker {
   kind: JourneyBlockerKind;

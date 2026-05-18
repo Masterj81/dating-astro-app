@@ -41,6 +41,10 @@ import { buildProofAssetPlan } from "./proof-asset-planner";
 import { buildCreativeTestingMatrix } from "./testing-matrix";
 import { buildCampaignSetup } from "./campaign-setup";
 import { buildNextIterationPlan } from "./iteration-planner";
+import {
+  buildOfferScenarioResults,
+  buildUnitEconomics,
+} from "../economics/unit-economics";
 
 // buildStrategy — deterministic local strategy generator. No API calls.
 // Future: swap in an LLM adapter (see src/lib/llm.ts) per-section.
@@ -192,6 +196,12 @@ export function buildStrategy(input: ProductInput): Strategy {
     adConceptCards,
   });
 
+  // Unit Economics / Offer Lab — derived deterministically from the
+  // ProductInput plus the engine's offer recommendations. Sits before
+  // journey-status so the journey block can gate ready-to-spend on it.
+  const unitEconomics = buildUnitEconomics(input);
+  const offerScenarios = buildOfferScenarioResults(input, offers);
+
   // Journey status is computed last because it synthesises everything above.
   const journeyStatus = buildJourneyStatus({
     trackingReadiness,
@@ -206,6 +216,7 @@ export function buildStrategy(input: ProductInput): Strategy {
     audienceAvatars,
     creativeTestingMatrix,
     appliedAdReviews,
+    unitEconomics,
   });
 
   const partial: Omit<Strategy, "genericFlags" | "copyIssues" | "exportBrief"> = {
@@ -250,6 +261,8 @@ export function buildStrategy(input: ProductInput): Strategy {
     creativeTestingMatrix,
     campaignSetup,
     nextIterationPlan,
+    unitEconomics,
+    offerScenarios,
   };
 
   // Generic-copy guard runs against the strategy we just produced. If
@@ -363,3 +376,10 @@ export { buildProofAssetPlan } from "./proof-asset-planner";
 export { buildCreativeTestingMatrix } from "./testing-matrix";
 export { buildCampaignSetup } from "./campaign-setup";
 export { buildNextIterationPlan } from "./iteration-planner";
+export {
+  buildUnitEconomics,
+  buildOfferScenarioResults,
+  calculateSubscriptionLtv,
+  calculateAllowableCac,
+  classifyEconomicsReadiness,
+} from "../economics/unit-economics";

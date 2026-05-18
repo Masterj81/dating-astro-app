@@ -986,3 +986,71 @@ liste `missingBlockers` viennent gater `ready-to-spend` quand on les
 passe au Journey Status. L'export `## Asset Production Plan` est
 optionnel, byte-identique en son absence. Persistance locale sous
 `bigad:assets:v1`; le moteur reste deterministe.
+
+## Unit Economics / Offer Lab
+
+The Unit Economics / Offer Lab turns the ProductInput plus the engine's
+ranked offers into a profitability summary the operator reads
+side-by-side with the offer architecture. The new `Economics` tab
+(between Calendar and Angles) carries a viability pill — `viable`
+(green), `tight` (amber), `unviable` (red), `incomplete` (grey) — plus
+six summary cards (AOV, gross margin, expected LTV, allowable CAC,
+breakeven ROAS, target ROAS with the cushion vs. breakeven), a
+subscription block when the business model is subscription or freemium
+(monthly price, expected months retained, trial-adjusted LTV, payback
+months), and a per-offer scenario table with the breakeven CPA, the
+breakeven ROAS at the offer's discount, the allowable CAC, a viability
+pill, and a one-sentence risk note.
+
+The math is deterministic and runs entirely in the browser. Gross
+margin is `1 - cogsPercent`; breakeven ROAS is `1 / grossMargin`;
+allowable CAC is `LTV × targetMargin` for one-time products and
+`trialAdjustedLtv × targetMargin` for subscriptions. Subscription LTV
+is `monthlyPrice × grossMargin × expectedMonthsRetained`, where
+expected months is `1 / monthlyChurnRate` (default 10% monthly churn,
+clamped to [1, 48] months). When a free trial is present, LTV is
+multiplied by the trial-to-paid rate (default 40%). Payback months is
+`breakevenCpa / (monthlyPrice × grossMargin)`, clamped to [0.5, 48].
+Every default the engine falls back on emits a warning so the operator
+sees exactly which value is an assumption versus a measured input.
+
+Warnings cover the common ways the math can fail in production:
+`missing-price` (blocker — engine cannot run), `target-roas-below-
+breakeven` (blocker — no path to profit at the assumed margin),
+`incoherent-price-business-model` (warning — a $300/mo subscription
+or a sub-$5 single unit), `gross-margin-too-low` (warning — < 30%),
+`payback-too-long` (warning — > 12 months), `cac-window-tight`
+(warning — allowable CAC < $5 or < 15% of breakeven CPA), and a
+missing-trial-to-paid / missing-churn / missing-cogs / missing-aov
+trio that surfaces every default that was applied. The Recommended
+action panel rolls everything up to one sentence — `Reprice or reduce
+COGS before spend` (unviable), `Define kill rules tight; one-variable
+testing only` (tight), `Cleared for testing — proceed to creative
+production` (viable), `Provide missing inputs: ...` (incomplete).
+
+Journey-status integration is automatic: the engine threads the
+economics summary into `buildJourneyStatus` so `unviable` raises a
+blocker chip in the journey block and blocks the final hop to
+`ready-to-spend`, while `tight` raises a warning chip but does not
+block. The export brief gains a `## Unit Economics / Offer Lab`
+section between Offer Architecture and Campaign Calendar covering the
+status, summary, subscription details, offer scenarios table,
+assumptions list (every default that was applied), warnings, and the
+recommended action. `buildStrategy(input)` stays byte-identical for
+identical input — the new fields are pure derivations and
+`derivedAt` is always `0`.
+
+En francais : l'onglet `Economics` (entre Calendar et Angles) calcule
+la marge brute, la LTV attendue, le CAC autorise, le CPA et le ROAS de
+breakeven, et le payback en mois — purement deterministes, derives de
+ProductInput. Une pastille de viabilite (`viable` / `tight` /
+`unviable` / `incomplete`) chapeaute six cartes resume, un bloc
+abonnement quand le modele est subscription ou freemium, et un tableau
+par offre montrant le CPA / ROAS de breakeven et le CAC autorise pour
+chaque levier recommande. Le bloc d'avertissements liste chaque defaut
+applique (COGS 30%, churn 10%, trial-to-paid 40%) pour que l'operateur
+voie ce qui est mesure versus suppose. Le journey-status emet un
+chip `economics` (warning pour `tight`, blocker pour `unviable`) et
+`ready-to-spend` exige `status !== 'unviable'`. L'export gagne une
+section `## Unit Economics / Offer Lab`; le moteur reste deterministe
+et `derivedAt` est toujours `0`.
