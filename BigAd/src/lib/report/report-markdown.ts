@@ -33,7 +33,7 @@ export function renderClientReportMarkdown(report: ClientReport): string {
   const lines: string[] = [];
 
   // Title + header lines (always emitted — they're not a toggleable section).
-  lines.push(`# Client Report — ${report.project.metadata.name}`);
+  lines.push(`# CampaignOS Report — ${report.project.metadata.name}`);
   lines.push("");
   lines.push(`Generated: ${report.generatedAt}`);
   lines.push(`Primary run: ${report.primaryRunId}`);

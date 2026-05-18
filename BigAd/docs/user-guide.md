@@ -1,11 +1,11 @@
-# Guide BigAd
+# Guide CampaignOS (formerly BigAd)
 
-BigAd aide a transformer une idee produit en plan marketing exploitable :
+CampaignOS aide a transformer une idee produit en plan marketing exploitable :
 positionnement, angles publicitaires, offres, calendrier de lancement,
 briefs createurs, scripts video, landing copy, store copy, tracking readiness,
 KPI targets et export markdown.
 
-Le bon usage de BigAd n'est pas de copier toute la sortie telle quelle. Le bon
+Le bon usage de CampaignOS n'est pas de copier toute la sortie telle quelle. Le bon
 usage est de s'en servir comme poste de pilotage : il montre quoi dire, quoi
 tester, quoi produire, et ce qui bloque avant de depenser.
 
@@ -39,7 +39,7 @@ le terminal VS Code et garde ce terminal ouvert.
 
 ## Comment remplir les inputs
 
-BigAd fonctionne mieux avec des inputs courts, concrets et propres. Evite les
+CampaignOS fonctionne mieux avec des inputs courts, concrets et propres. Evite les
 phrases de 40 mots, parce que le moteur peut les reutiliser dans des hooks,
 headlines ou overlays.
 
@@ -279,12 +279,12 @@ tes inputs sont probablement trop longs.
 
 ### Audience Avatars
 
-Sert a choisir le ton et la preuve. Pour un marche sceptique, BigAd va demander
+Sert a choisir le ton et la preuve. Pour un marche sceptique, CampaignOS va demander
 plus de screenshots, demo clips, customer quotes et before/after.
 
 ### Offer Architecture
 
-Choisis l'offre a tester. Pour une app subscription, BigAd devrait privilegier :
+Choisis l'offre a tester. Pour une app subscription, CampaignOS devrait privilegier :
 
 - free trial
 - guarantee si elle est vraie et juridiquement safe
@@ -336,7 +336,7 @@ un mauvais tracking donne de mauvaises decisions.
 
 ### Landing et App Store
 
-Ce sont des drafts. Edite-les avant publication. BigAd donne une structure, mais
+Ce sont des drafts. Edite-les avant publication. CampaignOS donne une structure, mais
 tu dois retirer les phrases trop longues, verifier les claims, et ajouter la
 preuve reelle.
 
@@ -414,9 +414,9 @@ Goal:
 Increase free trial starts and paid subscription conversions.
 ```
 
-## Comment juger une sortie BigAd
+## Comment juger une sortie CampaignOS
 
-Une bonne sortie BigAd doit avoir :
+Une bonne sortie CampaignOS doit avoir :
 
 - un angle que tu peux dire a voix haute en 3 secondes
 - une preuve visible, pas seulement une promesse
@@ -491,7 +491,7 @@ vague, differentiator trop generique, goal traite comme promesse client,
 champs offerContext manquants, marche sceptique sans preuve nommee) et des
 suggestions de reecriture pour `audience`, `core pain`, `differentiator`,
 `goal`. La section `Rewritten hints` affiche un comparatif "tu as ecrit X" vs
-"BigAd suggere Y" par champ, et liste les 2 a 4 types de preuves dont le
+"CampaignOS suggere Y" par champ, et liste les 2 a 4 types de preuves dont le
 produit a besoin.
 
 Le tab `Proof` (place apres `Launch readiness`) montre le `Proof readiness
@@ -507,7 +507,7 @@ le go.
 
 ## Execution OS
 
-Trois nouveaux modules transforment BigAd d'un generateur de strategie en
+Trois nouveaux modules transforment CampaignOS d'un generateur de strategie en
 cockpit de media buying : `Creative Testing Matrix`, `Campaign Setup Builder`,
 et `Next Iteration Planner`. Ils sont reunis dans un nouveau tab `Execution`
 place entre `Launch readiness` et `Proof`.
@@ -545,7 +545,7 @@ transforment en warnings creative individuels pour la tracabilite.
 
 ## Project Workspace
 
-BigAd peut sauvegarder ton travail. Le bandeau en haut de la page expose le
+CampaignOS peut sauvegarder ton travail. Le bandeau en haut de la page expose le
 `ProjectSwitcher` : selectionne un projet existant, ou tape un nom et clique
 `Save as new project` pour persister les inputs courants. Une fois un projet
 actif, le bouton `Save run` snapshot l'input + la strategie generee dans
@@ -670,7 +670,7 @@ of the same board produce byte-identical output.
 ## Agency Packaging Layer
 
 The `Agency` tab (placed between `Review` and `Report` in the tab strip)
-packages a BigAd run for an agency-style delivery. It is a thin client
+packages a CampaignOS run for an agency-style delivery. It is a thin client
 layer over the engine — the engine itself never sees the agency
 selection, so `buildStrategy(input)` stays byte-identical regardless of
 which template, role, or package is picked.
@@ -693,7 +693,7 @@ Three registries drive the tab:
 - **Package presets** — four scopes (`strategy-sprint`,
   `launch-sprint`, `growth-os-setup`, `custom-build`). Each carries a
   summary, deliverables list, timeline range in days, USD price range
-  (operator-side reference), the BigAd modules included, the client's
+  (operator-side reference), the CampaignOS modules included, the client's
   responsibilities, an upsell path, and the acceptance criteria the
   engagement is signed off against. Selecting an upsell card swaps the
   current package selection so the operator can walk a client up the
@@ -726,7 +726,7 @@ browser.
 
 The `Playbooks` tab (placed between `Agency` and `Report` in the tab
 strip) wraps the engine with ten opinionated, frozen recipes for the
-most common BigAd-ready archetypes:
+most common CampaignOS-ready archetypes:
 
 - `saas-free-trial-launch` — self-serve SaaS optimising trial_start,
   activation, and subscribe.
@@ -788,7 +788,7 @@ Below the recommended card sit:
 - A **top alternatives** grid showing playbooks ranked 2-5 with their
   fit score and one or two reasons.
 - The **recommended modules** chip strip in generation order — these
-  are the BigAd tabs the playbook expects the operator to lean on
+  are the CampaignOS tabs the playbook expects the operator to lean on
   first.
 - The **execution checklist** derived from the playbook fields
   (inputs, proof, creative, tracking, review, launch).
@@ -807,7 +807,7 @@ applies.
 
 ## Maintenance du guide
 
-Quand BigAd ajoute un nouveau module, mets a jour ce guide si le module change
+Quand CampaignOS ajoute un nouveau module, mets a jour ce guide si le module change
 le workflow utilisateur. Le README peut rester technique ; ce guide doit rester
 operator-friendly.
 
@@ -833,7 +833,7 @@ emballe le run pour une livraison de type agence : cinq templates de projet
 creator-product-launch), cinq vues de role (owner, client, media-buyer,
 creator, strategist) et quatre packages (strategy-sprint, launch-sprint,
 growth-os-setup, custom-build) chacun avec ses deliverables, sa fourchette
-de duree, sa fourchette de prix, les modules BigAd inclus, les
+de duree, sa fourchette de prix, les modules CampaignOS inclus, les
 responsabilites client et les criteres d'acceptation. En dessous, un
 **delivery summary** deterministe regroupe ce qui a ete decide, ce qui
 attend approbation, ce qui partira en premier, les assets manquants, ce

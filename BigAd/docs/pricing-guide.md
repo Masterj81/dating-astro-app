@@ -1,12 +1,12 @@
-# BigAd Pricing Guide
+# CampaignOS (formerly BigAd) Pricing Guide
 
-Ce document donne une base de prix pour vendre un projet comme BigAd :
+Ce document donne une base de prix pour vendre un projet comme CampaignOS :
 un outil qui combine software, strategie marketing, media buying logic,
 creative operations, exports et diagnostics de lancement.
 
 ## Positionnement
 
-Ne pas vendre BigAd comme un simple generateur de briefs.
+Ne pas vendre CampaignOS comme un simple generateur de briefs.
 
 Le vendre comme :
 
@@ -32,15 +32,15 @@ Sources utiles :
 - Novara Labs, MVP development cost 2026 :
   https://novaralabs.tech/blog/mvp-development-cost-2026
 
-## Si tu construis BigAd pour un client
+## Si tu construis CampaignOS pour un client
 
 | Scope | Prix recommande |
 | --- | ---: |
-| MVP simple BigAd-like | $20k-$35k |
-| Version serieuse comme BigAd actuel | $45k-$90k |
+| MVP simple CampaignOS-like | $20k-$35k |
+| Version serieuse comme CampaignOS actuel | $45k-$90k |
 | Produit complet avec comptes, sauvegarde, billing, historique, collaboration | $100k-$180k+ |
 
-## Si tu vends BigAd comme SaaS
+## Si tu vends CampaignOS comme SaaS
 
 | Segment | Prix recommande |
 | --- | ---: |
@@ -49,18 +49,18 @@ Sources utiles :
 | Agency / team | $399-$999/mo |
 | Enterprise / custom | $1.5k-$5k/mo |
 
-## Si tu vends BigAd comme service
+## Si tu vends CampaignOS comme service
 
 | Offre | Prix recommande |
 | --- | ---: |
-| Audit + strategie BigAd exportee | $1.5k-$3k |
+| Audit + strategie CampaignOS exportee | $1.5k-$3k |
 | Launch plan complet avec ads, briefs, tracking checklist | $5k-$10k |
 | 4 semaines d'accompagnement go-to-market | $8k-$15k |
 | Retainer mensuel optimisation | $3k-$8k/mo |
 
 ## Packages recommandes
 
-### BigAd Strategy Sprint
+### CampaignOS Strategy Sprint
 
 Prix :
 
@@ -79,7 +79,7 @@ Inclut :
 - export markdown
 - 60-90 minutes de walkthrough
 
-### BigAd Launch Sprint
+### CampaignOS Launch Sprint
 
 Prix :
 
@@ -99,7 +99,7 @@ Inclut :
 - kill/scale rules
 - 2 semaines de support async
 
-### BigAd Growth OS Setup
+### CampaignOS Growth OS Setup
 
 Prix :
 
@@ -116,7 +116,7 @@ Inclut :
 - coordination createur / media buyer
 - 4 semaines d'accompagnement
 
-### Custom BigAd-like Software Build
+### Custom CampaignOS-like Software Build
 
 Prix minimum :
 
@@ -142,10 +142,10 @@ Inclut selon scope :
 Le meilleur pricing de depart :
 
 ```text
-BigAd Strategy Sprint: $2,500
-BigAd Launch Sprint: $7,500
-BigAd Growth OS Setup: $15,000
-Custom BigAd-like software build: $50,000+
+CampaignOS Strategy Sprint: $2,500
+CampaignOS Launch Sprint: $7,500
+CampaignOS Growth OS Setup: $15,000
+Custom CampaignOS-like software build: $50,000+
 ```
 
 ## Regle simple
@@ -162,7 +162,7 @@ Si le client veut une execution marketing prete a lancer :
 $7.5k-$15k
 ```
 
-Si le client veut son propre logiciel BigAd-like :
+Si le client veut son propre logiciel CampaignOS-like :
 
 ```text
 $50k-$180k+

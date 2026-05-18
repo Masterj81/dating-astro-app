@@ -78,7 +78,7 @@ export function InputPanel({ value, onChange, onLoadExample, onReset }: Props) {
     <aside className="flex h-full w-full flex-col gap-4 overflow-y-auto border-r border-ink-700 bg-ink-950 p-5">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-base font-semibold text-ink-50">BigAd</h1>
+          <h1 className="text-base font-semibold text-ink-50">CampaignOS, formerly BigAd</h1>
           <p className="text-xxs text-ink-400">Marketing strategy workspace</p>
         </div>
         <div className="flex gap-2">

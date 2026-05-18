@@ -108,7 +108,7 @@ function detectAudienceWarnings(
       kind: "audience-too-long",
       field: "audience",
       severity: "warning",
-      message: "Audience is a full sentence — BigAd will struggle to fit it in a hook.",
+      message: "Audience is a full sentence — CampaignOS will struggle to fit it in a hook.",
       fix: "Tighten to a noun phrase under 8 words.",
     });
     const labels = deriveCopyLabels(input, []);
@@ -237,7 +237,7 @@ function detectGoalWarning(
       field: "goal",
       severity: "warning",
       message:
-        "Goal reads as a business KPI — BigAd never uses it in customer-facing copy.",
+        "Goal reads as a business KPI — CampaignOS never uses it in customer-facing copy.",
       fix:
         "The goal field is for your business KPI — separate from the customer promise. Keep it for internal use.",
     });

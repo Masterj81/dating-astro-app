@@ -327,7 +327,7 @@ function EmptyState() {
           <li>— Single-screen export brief, ready to paste</li>
         </ul>
         <p className="mt-6 text-xxs text-ink-500">
-          BigAd uses general direct-response principles (awareness,
+          CampaignOS uses general direct-response principles (awareness,
           sophistication, central promise, unique mechanism). No API call,
           no data leaves your browser.
         </p>
@@ -596,7 +596,7 @@ function RewrittenHintsTable({
         Rewritten hints
       </p>
       <p className="mt-2 text-xs text-ink-400">
-        Compact comparison: what you wrote vs what BigAd suggests.
+        Compact comparison: what you wrote vs what CampaignOS suggests.
       </p>
       <div className="mt-3 flex flex-col gap-2">
         {rows.map((r) => (
@@ -609,7 +609,7 @@ function RewrittenHintsTable({
               {r.you}
             </p>
             <p className="text-xs text-ink-100">
-              <span className="text-ink-400">BigAd: </span>
+              <span className="text-ink-400">CampaignOS: </span>
               {r.bigAd}
             </p>
           </div>

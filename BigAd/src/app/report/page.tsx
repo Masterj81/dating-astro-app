@@ -103,10 +103,10 @@ export default function ReportPage() {
     return (
       <main className="report-shell">
         <ReportPrintStyles />
-        <h1>Client Report</h1>
+        <h1>CampaignOS (formerly BigAd) Report</h1>
         <p>
           No active project, or no saved runs for this project. Open the main
-          BigAd workspace, select a project, save at least one run, then come
+          CampaignOS workspace, select a project, save at least one run, then come
           back to this page.
         </p>
         <p className="no-print">
@@ -131,7 +131,7 @@ export default function ReportPage() {
       <ReportPrintStyles />
 
       <header className="report-header">
-        <h1>Client Report — {projectName}</h1>
+        <h1>CampaignOS (formerly BigAd) Report — {projectName}</h1>
         <p className="report-meta">
           Generated: {report.generatedAt}
           {" · "}Primary run: <code>{report.primaryRunId}</code>
