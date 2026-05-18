@@ -722,6 +722,89 @@ Selection state persists in `localStorage` under the versioned key
 `bigad:agency-selection:v1`, scoped per project. Nothing leaves the
 browser.
 
+## Playbook Library
+
+The `Playbooks` tab (placed between `Agency` and `Report` in the tab
+strip) wraps the engine with ten opinionated, frozen recipes for the
+most common BigAd-ready archetypes:
+
+- `saas-free-trial-launch` — self-serve SaaS optimising trial_start,
+  activation, and subscribe.
+- `mobile-app-launch` — consumer subscription app paid push with
+  install / trial_start / subscribe events.
+- `dating-app-launch` — consumer dating app launch in a mature
+  category, leaning on founder story and safety claims.
+- `ecommerce-seasonal-promo` — three-tier promo on a seasonal calendar
+  with prospecting + engaged + site retargeting.
+- `local-service-leadgen` — always-on geo-targeted lead generation
+  optimising CPL and qualified leads.
+- `creator-product-drop` — creator-led product drop leveraging an
+  existing waitlist plus paid amplification.
+- `waitlist-launch` — pre-launch demand validation that captures
+  email + intent ahead of the real launch.
+- `retargeting-rescue` — ROAS rescue on an existing 60-day pool, with
+  exclusions and frequency discipline.
+- `landing-cro-sprint` — landing-page A/B sprint with one-variable
+  discipline and warm-traffic measurement.
+- `agency-strategy-sprint` — 5-7 day strategy + first-test-batch
+  deliverable for new agency clients.
+
+Each playbook carries a category, best-for / not-for phrasing, the
+business model + campaign type + awareness + sophistication it
+expects, channel mix, ordered recommended modules, required input
+fields, 3-6 concrete proof requirements, 6-10 ordered execution steps,
+3-6 launch gates, a default test plan (cell-count range, formats,
+one-variable-at-a-time, budget / kill / scale rule hints), reporting
+KPIs, review approval kinds, an estimated timeline range, and 2-5
+risk notes.
+
+The tab opens with a **recommended playbook** card showing the fit
+score, why-it-fits bullets, and an "Apply playbook" button. The
+recommender is pure and deterministic: it scores every playbook
+against `business-model match (+25)`, `campaign-type match (+15)`,
+`awareness match (+10)`, `sophistication fit (+8 / -5)`, `category
+coherence (+10)`, `channel overlap (up to +9)`, `proof / tracking
+readiness alignment (+5 each)`, `required-inputs presence (up to
++10)`, an `anti-fit penalty (-20)` for `retargeting-rescue` when no
+retargeting pool exists, and a `+5 nudge` when the agency template
+nominates the playbook. Ties break by playbook id ascending — stable
+for any input. `derivedAt` is the max of strategy / input timestamps
+when present; it is never `Date.now()`.
+
+Applying a playbook does **not** mutate `ProductInput`. It only sets
+the local applied-playbook record under `localStorage`
+(`bigad:applied-playbook:v1`) and feeds context to the UI and to the
+markdown `Export brief`, which gains an optional
+`## Playbook Recommendation` section with the selected playbook, the
+execution checklist, the launch gates with pass / fail markers when
+computable, the default test plan, the reporting focus, and the risk
+notes. With no playbook context, the brief is byte-identical to the
+pre-playbook build.
+
+Below the recommended card sit:
+
+- A **suggested next actions** panel with the next three execution
+  steps from the active playbook.
+- A **top alternatives** grid showing playbooks ranked 2-5 with their
+  fit score and one or two reasons.
+- The **recommended modules** chip strip in generation order — these
+  are the BigAd tabs the playbook expects the operator to lean on
+  first.
+- The **execution checklist** derived from the playbook fields
+  (inputs, proof, creative, tracking, review, launch).
+- The **required proof** list, with green checkmarks when a matching
+  asset appears in the strategy's proof asset plan.
+- The **launch gates** list with pass / fail markers for tracking and
+  proof readiness when computable.
+- The **default test plan** with cell-count range, formats, budget
+  guidance, kill rule hint, and scale rule hint.
+- The **reporting focus** chips.
+- The **risk notes** bullet list.
+
+The engine itself never sees the playbook selection — `buildStrategy(
+input)` is byte-identical regardless of which playbook the operator
+applies.
+
 ## Maintenance du guide
 
 Quand BigAd ajoute un nouveau module, mets a jour ce guide si le module change
@@ -759,3 +842,22 @@ l'export markdown gagne une section `## Agency Delivery Pack` lorsqu'au
 moins un champ agency est fourni. La selection est stockee dans
 `localStorage` sous la cle versionnee `bigad:agency-selection:v1` —
 encore une fois, le moteur reste pur et rien ne quitte le navigateur.
+La `Playbook Library` (onglet `Playbooks`, entre `Agency` et `Report`)
+propose dix recettes deterministes (saas-free-trial-launch,
+mobile-app-launch, dating-app-launch, ecommerce-seasonal-promo,
+local-service-leadgen, creator-product-drop, waitlist-launch,
+retargeting-rescue, landing-cro-sprint, agency-strategy-sprint) avec
+pour chacune le business-model attendu, le campaign-type, l'awareness,
+la sophistication, les canaux, les modules recommandes, les inputs
+requis, les exigences de proof, 6-10 etapes ordonnees, les launch gates,
+un test-plan par defaut (cellules, formats, budget / kill / scale), les
+KPIs de reporting et les risques. Le recommander pur classe les dix
+playbooks via un fit-score 0-100 (business-model +25, campaign-type
++15, awareness +10, sophistication +/-, channel overlap, readiness
+alignment, inputs presents, anti-fit retargeting -20, nudge agency
++5); les egalites cassent par id ascendant et `derivedAt` ne lit jamais
+`Date.now()`. Appliquer un playbook ne mute jamais le ProductInput —
+ca pose juste la selection dans `localStorage`
+(`bigad:applied-playbook:v1`) et l'export gagne une section
+`## Playbook Recommendation` avec la checklist d'execution, les gates,
+le test-plan, le reporting et les risques.

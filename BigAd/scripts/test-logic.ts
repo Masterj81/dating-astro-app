@@ -5557,6 +5557,565 @@ for (const { name, strategy } of fixtures) {
   );
 }
 
+// ============================================================================
+// === Playbook Library ===
+// ============================================================================
+//
+// Tests cover: catalog completeness (10 playbooks), the deterministic
+// recommendation engine (fit-score ordering, anti-fit rules, agency
+// nudge, determinism), the in-memory store roundtrip, the markdown
+// export hook, and the buildStrategy determinism guard.
+
+{
+  const playbookCatalog = require("../src/lib/playbook/catalog") as typeof import("../src/lib/playbook/catalog");
+  const playbookRecommend = require("../src/lib/playbook/recommend") as typeof import("../src/lib/playbook/recommend");
+  const playbookStoreMod = require("../src/lib/playbook/playbook-store") as typeof import("../src/lib/playbook/playbook-store");
+
+  const { PLAYBOOKS, listPlaybooks, getPlaybook } = playbookCatalog;
+  const { recommendPlaybooks } = playbookRecommend;
+  const { createMemoryPlaybookStore, STORAGE_KEY_APPLIED_PLAYBOOK } =
+    playbookStoreMod;
+
+  // ---- Catalog completeness --------------------------------------------
+
+  const expectedPlaybookIds = [
+    "saas-free-trial-launch",
+    "mobile-app-launch",
+    "dating-app-launch",
+    "ecommerce-seasonal-promo",
+    "local-service-leadgen",
+    "creator-product-drop",
+    "waitlist-launch",
+    "retargeting-rescue",
+    "landing-cro-sprint",
+    "agency-strategy-sprint",
+  ] as const;
+
+  record(
+    "playbook: PLAYBOOKS has exactly 10 entries",
+    Object.keys(PLAYBOOKS).length === 10,
+    `Got ${Object.keys(PLAYBOOKS).length}`
+  );
+  record(
+    "playbook: PLAYBOOKS has all 10 expected ids",
+    expectedPlaybookIds.every((id) => !!PLAYBOOKS[id])
+  );
+  record(
+    "playbook: listPlaybooks returns 10 playbooks",
+    listPlaybooks().length === 10
+  );
+
+  for (const id of expectedPlaybookIds) {
+    const p = getPlaybook(id);
+    record(
+      `playbook ${id}: has non-empty name`,
+      typeof p.name === "string" && p.name.length > 0
+    );
+    record(
+      `playbook ${id}: bestFor >= 3`,
+      p.bestFor.length >= 3,
+      `Got ${p.bestFor.length}`
+    );
+    record(
+      `playbook ${id}: notFor >= 2`,
+      p.notFor.length >= 2,
+      `Got ${p.notFor.length}`
+    );
+    record(
+      `playbook ${id}: businessModels >= 1`,
+      p.businessModels.length >= 1
+    );
+    record(
+      `playbook ${id}: campaignTypes >= 1`,
+      p.campaignTypes.length >= 1
+    );
+    record(
+      `playbook ${id}: awarenessStages >= 1`,
+      p.awarenessStages.length >= 1
+    );
+    record(
+      `playbook ${id}: channels >= 1`,
+      p.channels.length >= 1
+    );
+    record(
+      `playbook ${id}: recommendedModules >= 3`,
+      p.recommendedModules.length >= 3,
+      `Got ${p.recommendedModules.length}`
+    );
+    record(
+      `playbook ${id}: requiredInputs >= 1`,
+      p.requiredInputs.length >= 1
+    );
+    record(
+      `playbook ${id}: proofRequirements >= 3`,
+      p.proofRequirements.length >= 3,
+      `Got ${p.proofRequirements.length}`
+    );
+    record(
+      `playbook ${id}: executionSteps between 6 and 10`,
+      p.executionSteps.length >= 6 && p.executionSteps.length <= 10,
+      `Got ${p.executionSteps.length}`
+    );
+    // executionSteps orders are 1..N contiguous (no gaps)
+    const orders = p.executionSteps.map((s) => s.order);
+    const contiguous = orders.every((o, i) => o === i + 1);
+    record(
+      `playbook ${id}: executionSteps orders are 1..N contiguous`,
+      contiguous,
+      `Got [${orders.join(", ")}]`
+    );
+    record(
+      `playbook ${id}: launchGates >= 3`,
+      p.launchGates.length >= 3,
+      `Got ${p.launchGates.length}`
+    );
+    record(
+      `playbook ${id}: defaultTestPlan.cellCount.min < max`,
+      p.defaultTestPlan.cellCount.min < p.defaultTestPlan.cellCount.max,
+      `Got ${p.defaultTestPlan.cellCount.min} / ${p.defaultTestPlan.cellCount.max}`
+    );
+    record(
+      `playbook ${id}: defaultTestPlan.cellCount.min >= 1`,
+      p.defaultTestPlan.cellCount.min >= 1
+    );
+    record(
+      `playbook ${id}: defaultTestPlan.cellCount.max <= 12`,
+      p.defaultTestPlan.cellCount.max <= 12
+    );
+    record(
+      `playbook ${id}: defaultTestPlan has >= 1 format`,
+      p.defaultTestPlan.formats.length >= 1
+    );
+    record(
+      `playbook ${id}: reportingFocus >= 3`,
+      p.reportingFocus.length >= 3,
+      `Got ${p.reportingFocus.length}`
+    );
+    record(
+      `playbook ${id}: reviewRequirements >= 1`,
+      p.reviewRequirements.length >= 1
+    );
+    record(
+      `playbook ${id}: estimatedTimelineDays.min < max`,
+      p.estimatedTimelineDays.min < p.estimatedTimelineDays.max
+    );
+    record(
+      `playbook ${id}: riskNotes >= 2`,
+      p.riskNotes.length >= 2,
+      `Got ${p.riskNotes.length}`
+    );
+  }
+
+  // ---- Recommendation engine: determinism + ordering ------------------
+
+  const playbookStrategy = buildStrategy(ASTRO_DATING_EXAMPLE);
+
+  // Determinism: same input twice → deep equal.
+  const rec1 = recommendPlaybooks(ASTRO_DATING_EXAMPLE, playbookStrategy);
+  const rec2 = recommendPlaybooks(ASTRO_DATING_EXAMPLE, playbookStrategy);
+  record(
+    "playbook-recommend: determinism — two calls produce deep-equal output",
+    JSON.stringify(rec1) === JSON.stringify(rec2)
+  );
+
+  // ranked.length === 10 always.
+  record(
+    "playbook-recommend: ranked.length === 10",
+    rec1.ranked.length === 10
+  );
+
+  // scores in non-increasing order.
+  const orderedOk = rec1.ranked.every(
+    (s, i) => i === 0 || rec1.ranked[i - 1].score >= s.score
+  );
+  record(
+    "playbook-recommend: scores are in non-increasing order",
+    orderedOk,
+    `Got scores: ${rec1.ranked.map((r) => r.score).join(", ")}`
+  );
+
+  // derivedAt is NOT Date.now() — two calls "5ms apart" return identical.
+  // We simulate by calling back-to-back; the recommendation must not
+  // pull wall-clock.
+  const recT1 = recommendPlaybooks(ASTRO_DATING_EXAMPLE, playbookStrategy);
+  // Spin briefly to ensure any Date.now() read would differ.
+  const startSpin = Date.now();
+  while (Date.now() - startSpin < 6) {
+    // tight spin >5ms
+  }
+  const recT2 = recommendPlaybooks(ASTRO_DATING_EXAMPLE, playbookStrategy);
+  record(
+    "playbook-recommend: derivedAt is NOT Date.now() — two calls ~5ms apart agree",
+    recT1.derivedAt === recT2.derivedAt
+  );
+
+  // AstroDating fixture: dating-app-launch OR mobile-app-launch in top 2.
+  const astroTop2 = rec1.ranked.slice(0, 2).map((r) => r.playbookId);
+  record(
+    "playbook-recommend: AstroDating fixture — dating-app-launch or mobile-app-launch in top 2",
+    astroTop2.includes("dating-app-launch") ||
+      astroTop2.includes("mobile-app-launch"),
+    `Top 2: ${astroTop2.join(", ")}`
+  );
+
+  // topScore non-empty reasons.
+  record(
+    "playbook-recommend: topScore.reasons non-empty when top score > 0",
+    !rec1.topScore || rec1.topScore.reasons.length > 0
+  );
+
+  // SaaS fixture → saas-free-trial-launch is top 1.
+  const saasFixture: ProductInput = {
+    name: "Clearframe",
+    category: "saas",
+    description:
+      "Self-serve SaaS for B2B teams to model unit economics in 5 minutes — no spreadsheets, no implementation calls.",
+    price: "$39/seat/mo",
+    businessModel: "subscription",
+    audience:
+      "B2B finance leaders and operators at 20-200 person SaaS companies who hate quarterly board-deck rebuilds",
+    audiencePain:
+      "Rebuilding the same unit-economics deck every quarter, chasing spreadsheets nobody owns, and trusting models nobody can audit",
+    competitors: "Causal, Cube, Mosaic",
+    differentiator:
+      "A model that pulls live numbers from Stripe and the data warehouse so the board deck rebuilds itself in under a minute",
+    goal: "Drive 200 self-serve trial_start events per month with a 25% activation rate inside 14 days",
+    awareness: "solution-aware",
+    sophistication: "skeptical-market",
+    campaignType: "launch",
+    offerContext: {
+      cogsPercent: 15,
+      targetMarginPercent: 60,
+      currentAOV: 468,
+      targetROAS: 2.5,
+    },
+  };
+  const saasStrategy = buildStrategy(saasFixture);
+  const saasRec = recommendPlaybooks(saasFixture, saasStrategy);
+  record(
+    "playbook-recommend: SaaS fixture — saas-free-trial-launch is top 1",
+    saasRec.ranked[0]?.playbookId === "saas-free-trial-launch",
+    `Top: ${saasRec.ranked[0]?.playbookId}`
+  );
+
+  // Ecommerce seasonal fixture → ecommerce-seasonal-promo is top 1.
+  const ecommerceFixture: ProductInput = {
+    name: "Solstice",
+    category: "specialty home goods",
+    description:
+      "A holiday gifting brand of artisan ceramics shipped from named potters — every bowl tagged with the studio it came from.",
+    price: "$58 average per piece",
+    businessModel: "one-time",
+    audience:
+      "specialty-home gift buyers who want a present that does not feel mass-market for the Q4 holiday season",
+    audiencePain:
+      "Last-minute holiday gifts that all look identical from the same big box retailers and feel impersonal under the tree",
+    competitors: "Food52, Anthropologie, Crate & Barrel",
+    differentiator:
+      "Every piece names the potter studio and ships with a card the artist wrote — not a brand marketing team",
+    goal: "Hit $250k in November–December gifting revenue with a 3.0x ROAS across paid channels",
+    awareness: "problem-aware",
+    sophistication: "skeptical-market",
+    campaignType: "seasonal",
+    offerContext: {
+      cogsPercent: 40,
+      targetMarginPercent: 35,
+      currentAOV: 92,
+      targetROAS: 3.0,
+    },
+  };
+  const ecomStrategy = buildStrategy(ecommerceFixture);
+  const ecomRec = recommendPlaybooks(ecommerceFixture, ecomStrategy);
+  record(
+    "playbook-recommend: Ecommerce seasonal fixture — ecommerce-seasonal-promo is top 1",
+    ecomRec.ranked[0]?.playbookId === "ecommerce-seasonal-promo",
+    `Top: ${ecomRec.ranked[0]?.playbookId}`
+  );
+
+  // Cold launch fixture (no retargeting pool) → retargeting-rescue NOT top 1.
+  const coldLaunchFixture: ProductInput = {
+    name: "Newvine",
+    category: "wellness app",
+    description:
+      "A brand-new daily breath-work app launching with no existing audience and no retargeting pool.",
+    price: "Free with $7/month premium",
+    businessModel: "freemium",
+    audience:
+      "stressed knowledge workers in their thirties trying to add a daily nervous-system reset to their routine",
+    audiencePain:
+      "Anxious mornings and afternoon crashes that meditation apps treat with content, not with a daily reset that actually fits a workday",
+    competitors: "Calm, Headspace, Othership",
+    differentiator:
+      "Sub-90-second guided breath sessions designed to slot between meetings, not replace them",
+    goal: "Launch with 5,000 installs in the first 30 days at a sub-$3 CPI",
+    awareness: "problem-aware",
+    sophistication: "amplified-claims",
+    campaignType: "launch",
+  };
+  const coldStrategy = buildStrategy(coldLaunchFixture);
+  const coldRec = recommendPlaybooks(coldLaunchFixture, coldStrategy);
+  const coldTop1 = coldRec.ranked[0]?.playbookId;
+  record(
+    "playbook-recommend: cold-launch fixture — retargeting-rescue is NOT top 1",
+    coldTop1 !== "retargeting-rescue",
+    `Top: ${coldTop1}`
+  );
+  const coldTop3 = coldRec.ranked.slice(0, 3).map((r) => r.playbookId);
+  record(
+    "playbook-recommend: cold-launch fixture — retargeting-rescue outside top 3",
+    !coldTop3.includes("retargeting-rescue"),
+    `Top 3: ${coldTop3.join(", ")}`
+  );
+
+  // Local service fixture → local-service-leadgen is top 1.
+  const localServiceFixture: ProductInput = {
+    name: "Northshore Roofing",
+    category: "local roofing service",
+    description:
+      "A family-owned roofing contractor covering the north shore neighborhoods with 4.9-star Google reviews from named locals.",
+    price: "$8-15k per typical job",
+    businessModel: "services",
+    audience:
+      "homeowners in the north-shore neighborhoods whose roofs need repair or replacement this season",
+    audiencePain:
+      "Calling three roofers and getting three different quotes a week apart while water keeps coming through the ceiling",
+    competitors: "Local roofers and big-box installation services",
+    differentiator:
+      "Same-week site visit with a written quote and named-technician follow-up, not a call-center triage",
+    goal: "Drive 30 qualified leads per month at a cost-per-lead under $80",
+    awareness: "problem-aware",
+    sophistication: "amplified-claims",
+    campaignType: "always-on",
+  };
+  const localStrategy = buildStrategy(localServiceFixture);
+  const localRec = recommendPlaybooks(localServiceFixture, localStrategy);
+  record(
+    "playbook-recommend: local service fixture — local-service-leadgen is top 1",
+    localRec.ranked[0]?.playbookId === "local-service-leadgen",
+    `Top: ${localRec.ranked[0]?.playbookId}`
+  );
+
+  // Creator product fixture → creator-product-drop is top 1.
+  const creatorProductFixture: ProductInput = {
+    name: "Tide & Stone",
+    category: "creator-led ceramics",
+    description:
+      "A creator-led ceramics drop with 40k engaged followers waiting on a pre-launch waitlist for the first 200 mugs.",
+    price: "$68 per mug",
+    businessModel: "one-time",
+    audience:
+      "design-curious followers who already know the creator and have signed up for the drop waitlist",
+    audiencePain:
+      "Mass-market ceramics that all look the same and lose the story behind every piece, plus mugs that crack within a year",
+    competitors: "Anthropologie, Etsy, mass-market gift shops",
+    differentiator:
+      "Every mug is thrown by the creator on camera, signed underneath, and shipped with a card written during the firing",
+    goal: "Sell the first 200 mugs inside 72h of the drop with a 4x blended ROAS",
+    awareness: "product-aware",
+    sophistication: "amplified-claims",
+    campaignType: "launch",
+  };
+  const creatorStrategy = buildStrategy(creatorProductFixture);
+  const creatorRec = recommendPlaybooks(
+    creatorProductFixture,
+    creatorStrategy
+  );
+  record(
+    "playbook-recommend: creator product fixture — creator-product-drop is top 1",
+    creatorRec.ranked[0]?.playbookId === "creator-product-drop",
+    `Top: ${creatorRec.ranked[0]?.playbookId}`
+  );
+
+  // Tie-break by id ascending — synthesise two playbook scores with the
+  // same numeric score and verify ordering. Tests with the empty / weak
+  // input: every playbook scores low and many tie at 0.
+  const emptyInput: ProductInput = {
+    name: "",
+    category: "",
+    description: "",
+    price: "",
+    businessModel: "other",
+    audience: "",
+    audiencePain: "",
+    competitors: "",
+    differentiator: "",
+    goal: "",
+    awareness: "unaware",
+    sophistication: "fresh-market",
+  };
+  const emptyStrategy = buildStrategy(emptyInput);
+  const emptyRec = recommendPlaybooks(emptyInput, emptyStrategy);
+  // Find a stretch of equal-score entries and confirm their ids are
+  // ascending — the deterministic stable tie-break.
+  let tieOk = true;
+  for (let i = 1; i < emptyRec.ranked.length; i++) {
+    if (emptyRec.ranked[i].score === emptyRec.ranked[i - 1].score) {
+      if (
+        emptyRec.ranked[i].playbookId <= emptyRec.ranked[i - 1].playbookId &&
+        emptyRec.ranked[i].playbookId !== emptyRec.ranked[i - 1].playbookId
+      ) {
+        tieOk = false;
+        break;
+      }
+    }
+  }
+  record(
+    "playbook-recommend: ties break by playbookId ascending (stable order)",
+    tieOk
+  );
+
+  // missingInputs populated when required inputs missing.
+  // The empty fixture lacks audience / differentiator etc., so every
+  // playbook should have at least one missingInputs entry.
+  const someHasMissing = emptyRec.ranked.some(
+    (r) => r.missingInputs.length > 0
+  );
+  record(
+    "playbook-recommend: missingInputs populated when required inputs missing",
+    someHasMissing
+  );
+
+  // Agency selection nudge: with templateId='app-launch', mobile-app-launch
+  // gets +5 vs. without.
+  const recWithoutAgency = recommendPlaybooks(
+    ASTRO_DATING_EXAMPLE,
+    playbookStrategy
+  );
+  const mobileWithoutAgency = recWithoutAgency.ranked.find(
+    (r) => r.playbookId === "mobile-app-launch"
+  );
+  const recWithAgency = recommendPlaybooks(
+    ASTRO_DATING_EXAMPLE,
+    playbookStrategy,
+    {
+      projectId: "p-nudge",
+      templateId: "app-launch",
+      updatedAt: 0,
+    }
+  );
+  const mobileWithAgency = recWithAgency.ranked.find(
+    (r) => r.playbookId === "mobile-app-launch"
+  );
+  record(
+    "playbook-recommend: agency template 'app-launch' nudges mobile-app-launch by +5",
+    !!mobileWithoutAgency &&
+      !!mobileWithAgency &&
+      mobileWithAgency.score - mobileWithoutAgency.score === 5
+  );
+
+  // ---- Persistence -----------------------------------------------------
+
+  {
+    const store = createMemoryPlaybookStore();
+    record(
+      "playbook-store: empty getApplied returns undefined",
+      store.getApplied("p-x") === undefined
+    );
+    store.setApplied("p-1", "mobile-app-launch");
+    record(
+      "playbook-store: setApplied + getApplied returns same id",
+      store.getApplied("p-1") === "mobile-app-launch"
+    );
+    // Different projects do not collide.
+    store.setApplied("p-2", "saas-free-trial-launch");
+    record(
+      "playbook-store: per-project isolation",
+      store.getApplied("p-1") === "mobile-app-launch" &&
+        store.getApplied("p-2") === "saas-free-trial-launch"
+    );
+    // Overwrite same project.
+    store.setApplied("p-1", "dating-app-launch");
+    record(
+      "playbook-store: setApplied overwrites existing project",
+      store.getApplied("p-1") === "dating-app-launch"
+    );
+    // Clear.
+    store.clear("p-1");
+    record(
+      "playbook-store: clear drops the applied playbook",
+      store.getApplied("p-1") === undefined
+    );
+  }
+
+  record(
+    "playbook-store: STORAGE_KEY_APPLIED_PLAYBOOK is the exact versioned key",
+    STORAGE_KEY_APPLIED_PLAYBOOK === "bigad:applied-playbook:v1"
+  );
+
+  // ---- Export brief — Playbook Recommendation section -----------------
+
+  const briefWithPlaybook = generateExportBrief(
+    ASTRO_DATING_EXAMPLE,
+    playbookStrategy,
+    {
+      playbook: {
+        recommendation: rec1,
+      },
+    }
+  );
+  record(
+    "playbook-export: brief contains '## Playbook Recommendation' header when context provided",
+    briefWithPlaybook.includes("## Playbook Recommendation")
+  );
+  record(
+    "playbook-export: brief contains '### Selected playbook' header",
+    briefWithPlaybook.includes("### Selected playbook")
+  );
+  record(
+    "playbook-export: brief contains '### Execution checklist' header",
+    briefWithPlaybook.includes("### Execution checklist")
+  );
+  record(
+    "playbook-export: brief contains '### Launch gates' header",
+    briefWithPlaybook.includes("### Launch gates")
+  );
+
+  // With explicit `applied` field too.
+  const briefWithApplied = generateExportBrief(
+    ASTRO_DATING_EXAMPLE,
+    playbookStrategy,
+    {
+      playbook: {
+        applied: getPlaybook("mobile-app-launch"),
+      },
+    }
+  );
+  record(
+    "playbook-export: brief emits section when only `applied` is provided",
+    briefWithApplied.includes("## Playbook Recommendation")
+  );
+
+  // Without playbook context → section absent.
+  const briefWithoutPlaybook = generateExportBrief(
+    ASTRO_DATING_EXAMPLE,
+    playbookStrategy
+  );
+  record(
+    "playbook-export: brief omits '## Playbook Recommendation' when context absent",
+    !briefWithoutPlaybook.includes("## Playbook Recommendation")
+  );
+
+  // Empty playbook context (no recommendation, no applied) → section absent.
+  const briefEmptyPlaybook = generateExportBrief(
+    ASTRO_DATING_EXAMPLE,
+    playbookStrategy,
+    { playbook: {} }
+  );
+  record(
+    "playbook-export: brief omits '## Playbook Recommendation' when both fields empty",
+    !briefEmptyPlaybook.includes("## Playbook Recommendation")
+  );
+
+  // ---- Engine purity ---------------------------------------------------
+
+  const detP1 = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const detP2 = buildStrategy(ASTRO_DATING_EXAMPLE);
+  record(
+    "playbook: buildStrategy determinism preserved after Playbook Library added",
+    JSON.stringify(detP1) === JSON.stringify(detP2)
+  );
+}
+
 // Report.
 let failed = 0;
 for (const c of checks) {

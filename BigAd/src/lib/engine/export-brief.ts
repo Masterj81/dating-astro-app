@@ -16,6 +16,10 @@ import type {
   ProjectTemplate,
   RolePreset,
 } from "@/types/agency";
+import type {
+  Playbook,
+  PlaybookRecommendation,
+} from "@/types/playbook";
 import { awarenessLabel } from "./awareness";
 import { sophisticationLabel } from "./sophistication";
 import { windowKindLabel } from "./calendar";
@@ -42,6 +46,14 @@ export interface ExportBriefWorkspaceContext {
     role?: RolePreset;
     pkg?: PackagePreset;
     deliverySummary?: DeliverySummary;
+  };
+  // Optional Playbook Library context — when `recommendation.topPlaybook`
+  // OR `applied` is present, the exporter appends a
+  // `## Playbook Recommendation` section. Absent or empty → existing
+  // brief is byte-identical.
+  playbook?: {
+    recommendation?: PlaybookRecommendation;
+    applied?: Playbook;
   };
 }
 
@@ -1121,7 +1133,147 @@ export function generateExportBrief(
     appendAgencyDeliveryPack(lines, agency);
   }
 
+  // Playbook Recommendation — emitted only when the caller passes a
+  // playbook recommendation with a top playbook OR an applied playbook.
+  // Absent / empty → existing brief is byte-identical to the pre-
+  // playbook build.
+  const playbook = workspace?.playbook;
+  const playbookActive =
+    playbook?.applied ?? playbook?.recommendation?.topPlaybook ?? undefined;
+  if (playbook && playbookActive) {
+    appendPlaybookRecommendation(lines, playbookActive, playbook.recommendation, strategy);
+  }
+
   return lines.join("\n").replace(/\n{3,}/g, "\n\n");
+}
+
+function appendPlaybookRecommendation(
+  lines: string[],
+  active: Playbook,
+  recommendation: PlaybookRecommendation | undefined,
+  strategy: Strategy
+): void {
+  section(lines, "Playbook Recommendation");
+
+  // Selected playbook header
+  lines.push(`### Selected playbook`);
+  const businessModelChip =
+    active.businessModels.length > 0 ? active.businessModels[0] : "";
+  lines.push(
+    `**${active.name}** — ${playbookCategoryLabel(active.category)}${
+      businessModelChip ? ` / ${businessModelChip}` : ""
+    }`
+  );
+  if (recommendation && recommendation.topScore) {
+    lines.push(`Fit score: ${recommendation.topScore.score} / 100`);
+  }
+  lines.push("");
+
+  if (recommendation && recommendation.whyItFits.length > 0) {
+    lines.push(`**Why it fits:**`);
+    for (const r of recommendation.whyItFits) {
+      lines.push(`- ${r}`);
+    }
+    lines.push("");
+  }
+
+  if (recommendation && recommendation.whyItMayNotFit.length > 0) {
+    lines.push(`**Why it may not fit:**`);
+    for (const r of recommendation.whyItMayNotFit) {
+      lines.push(`- ${r}`);
+    }
+    lines.push("");
+  }
+
+  // Execution checklist
+  lines.push(`### Execution checklist`);
+  for (const field of active.requiredInputs) {
+    lines.push(
+      `- [ ] inputs — Validate ProductInput.${field} is filled (required)`
+    );
+  }
+  let proofIdx = 1;
+  for (const proof of active.proofRequirements) {
+    const req = proofIdx <= 3 ? " (required)" : "";
+    lines.push(`- [ ] proof — Capture: ${proof}${req}`);
+    proofIdx += 1;
+  }
+  for (const step of active.executionSteps) {
+    if (
+      step.module === "hooks" ||
+      step.module === "scripts" ||
+      step.module === "concepts" ||
+      step.module === "static-briefs"
+    ) {
+      lines.push(`- [ ] creative — ${step.title} (${step.module}) (required)`);
+    }
+  }
+  for (const kind of active.reviewRequirements) {
+    lines.push(`- [ ] review — Approve ${kind} (required)`);
+  }
+  lines.push("");
+
+  // Launch gates with pass/fail when computable
+  lines.push(`### Launch gates`);
+  const trackingScore = strategy.trackingReadiness?.score ?? 0;
+  const proofScore = strategy.proofAssetPlan?.proofReadinessScore ?? 0;
+  for (const g of active.launchGates) {
+    const lower = g.toLowerCase();
+    let mark = "•";
+    let suffix = "";
+    if (lower.includes("trackingreadiness.score >= 70")) {
+      const pass = trackingScore >= 70;
+      mark = pass ? "[pass]" : "[fail]";
+      suffix = ` (current tracking score: ${trackingScore})`;
+    } else if (
+      lower.includes("proofreadiness") ||
+      lower.includes("proofassetplan.proofreadinessscore")
+    ) {
+      const pass = proofScore >= 50;
+      mark = pass ? "[pass]" : "[fail]";
+      suffix = ` (current proof readiness: ${proofScore})`;
+    }
+    lines.push(`- ${mark} ${g}${suffix}`);
+  }
+  lines.push("");
+
+  // Default test plan
+  lines.push(`### Default test plan`);
+  const tp = active.defaultTestPlan;
+  lines.push(
+    `- Cells: ${tp.cellCount.min}–${tp.cellCount.max}, one-variable: ${tp.oneVariableAtATime ? "yes" : "no"}`
+  );
+  lines.push(`- Formats: ${tp.formats.join(", ")}`);
+  lines.push(`- Budget: ${tp.budgetGuidance}`);
+  lines.push(`- Kill rule: ${tp.killRuleHint}`);
+  lines.push(`- Scale rule: ${tp.scaleRuleHint}`);
+  lines.push("");
+
+  // Reporting focus
+  lines.push(`### Reporting focus`);
+  lines.push(`- ${active.reportingFocus.join(", ")}`);
+  lines.push("");
+
+  // Risk notes
+  lines.push(`### Risk notes`);
+  for (const r of active.riskNotes) {
+    lines.push(`- ${r}`);
+  }
+  lines.push("");
+}
+
+function playbookCategoryLabel(c: string): string {
+  return (
+    {
+      launch: "Launch",
+      "always-on": "Always-on",
+      seasonal: "Seasonal",
+      leadgen: "Lead-gen",
+      rescue: "Rescue",
+      cro: "CRO",
+      service: "Service",
+    }[c] ?? c
+  );
 }
 
 function appendAgencyDeliveryPack(

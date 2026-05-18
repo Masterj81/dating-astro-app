@@ -13,6 +13,7 @@ import {
   useReviewBoard,
 } from "@/components/ReviewPanel";
 import { AgencyTab, useAgencySelection } from "@/components/AgencyPanel";
+import { PlaybookTab, usePlaybookSelection } from "@/components/PlaybookPanel";
 import { buildStrategy } from "@/lib/engine";
 import { buildNextIterationPlan } from "@/lib/engine/iteration-planner";
 import { generateExportBrief } from "@/lib/engine/export-brief";
@@ -56,6 +57,10 @@ export default function Page() {
   });
 
   const agencyState = useAgencySelection({
+    projectId: workspaceState.activeProjectId,
+  });
+
+  const playbookState = usePlaybookSelection({
     projectId: workspaceState.activeProjectId,
   });
 
@@ -153,6 +158,14 @@ export default function Page() {
                     : undefined
                 }
                 learningMemory={workspaceState.learningMemory}
+              />
+            }
+            playbookSlot={
+              <PlaybookTab
+                state={playbookState}
+                input={input}
+                strategy={strategy}
+                agencySelection={agencyState.selection}
               />
             }
           />

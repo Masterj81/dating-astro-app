@@ -100,6 +100,7 @@ type Tab =
   | "workspace"
   | "review"
   | "agency"
+  | "playbooks"
   | "report";
 
 // Tab order follows the stakeholder reading flow:
@@ -128,6 +129,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "workspace", label: "Workspace" },
   { id: "review", label: "Review" },
   { id: "agency", label: "Agency" },
+  { id: "playbooks", label: "Playbooks" },
   { id: "report", label: "Report" },
 ];
 
@@ -148,9 +150,12 @@ interface Props {
   // inside the dedicated "Agency" tab. Same render-prop pattern as
   // workspaceSlot / reviewSlot.
   agencySlot?: React.ReactNode;
+  // Optional slot for the Playbook Library tab body. Rendered inside
+  // the dedicated "Playbooks" tab. Same render-prop pattern.
+  playbookSlot?: React.ReactNode;
 }
 
-export function StrategyView({ input, strategy, hasMeaningfulInput, workspaceSlot, reviewSlot, agencySlot }: Props) {
+export function StrategyView({ input, strategy, hasMeaningfulInput, workspaceSlot, reviewSlot, agencySlot, playbookSlot }: Props) {
   const [tab, setTab] = useState<Tab>("score");
 
   if (!hasMeaningfulInput) {
@@ -228,6 +233,9 @@ export function StrategyView({ input, strategy, hasMeaningfulInput, workspaceSlo
         {tab === "agency" && (
           <div>{agencySlot ?? <AgencyFallback />}</div>
         )}
+        {tab === "playbooks" && (
+          <div>{playbookSlot ?? <PlaybookFallback />}</div>
+        )}
         {tab === "report" && <ReportTab />}
       </div>
     </section>
@@ -285,6 +293,14 @@ function AgencyFallback() {
   return (
     <p className="hairline rounded-lg bg-ink-900 p-4 text-xs text-ink-300">
       Select a template to begin agency packaging.
+    </p>
+  );
+}
+
+function PlaybookFallback() {
+  return (
+    <p className="hairline rounded-lg bg-ink-900 p-4 text-xs text-ink-300">
+      Generate a strategy first to get playbook recommendations.
     </p>
   );
 }
