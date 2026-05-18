@@ -45,6 +45,7 @@ import {
   buildOfferScenarioResults,
   buildUnitEconomics,
 } from "../economics/unit-economics";
+import { buildForecastPlan } from "../forecast/budget-forecast";
 
 // buildStrategy — deterministic local strategy generator. No API calls.
 // Future: swap in an LLM adapter (see src/lib/llm.ts) per-section.
@@ -202,6 +203,22 @@ export function buildStrategy(input: ProductInput): Strategy {
   const unitEconomics = buildUnitEconomics(input);
   const offerScenarios = buildOfferScenarioResults(input, offers);
 
+  // Forecast / Budget Planner — reads the modules above (unitEconomics,
+  // kpiLadder, creativeTestingMatrix, campaignSetup, trackingReadiness)
+  // and emits a deterministic 3-scenario forecast + budget plan. Runs
+  // BEFORE journey-status so the journey block can gate ready-to-spend
+  // on `forecast.status === 'unviable'`. The forecast layer never
+  // calls Date.now(); `derivedAt` is always 0.
+  const forecastStrategySnapshot = {
+    // All upstream fields the forecast planner reads.
+    trackingReadiness,
+    kpiLadder,
+    creativeTestingMatrix,
+    campaignSetup,
+    unitEconomics,
+  } as unknown as Strategy;
+  const forecast = buildForecastPlan(forecastStrategySnapshot);
+
   // Journey status is computed last because it synthesises everything above.
   const journeyStatus = buildJourneyStatus({
     trackingReadiness,
@@ -217,6 +234,7 @@ export function buildStrategy(input: ProductInput): Strategy {
     creativeTestingMatrix,
     appliedAdReviews,
     unitEconomics,
+    forecast,
   });
 
   const partial: Omit<Strategy, "genericFlags" | "copyIssues" | "exportBrief"> = {
@@ -263,6 +281,7 @@ export function buildStrategy(input: ProductInput): Strategy {
     nextIterationPlan,
     unitEconomics,
     offerScenarios,
+    forecast,
   };
 
   // Generic-copy guard runs against the strategy we just produced. If
@@ -383,3 +402,10 @@ export {
   calculateAllowableCac,
   classifyEconomicsReadiness,
 } from "../economics/unit-economics";
+export {
+  buildForecastPlan,
+  buildForecastScenarios,
+  allocateBudgetAcrossTestCells,
+  buildDecisionCheckpoints,
+  classifyForecastReadiness,
+} from "../forecast/budget-forecast";

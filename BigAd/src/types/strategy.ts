@@ -6,6 +6,9 @@ import type {
   OfferScenarioResult,
   UnitEconomicsSummary,
 } from "./economics";
+import type {
+  ForecastPlan,
+} from "./forecast";
 
 export type {
   EconomicsReadinessStatus,
@@ -16,6 +19,18 @@ export type {
   UnitEconomicsInput,
   UnitEconomicsSummary,
 } from "./economics";
+export type {
+  BudgetRecommendation,
+  DecisionCheckpoint,
+  ForecastOutcome,
+  ForecastPlan,
+  ForecastReadinessStatus,
+  ForecastScenario,
+  ForecastScenarioKind,
+  ForecastWarning,
+  ForecastWarningKind,
+  SpendAllocation,
+} from "./forecast";
 
 export type AwarenessLevel =
   | "unaware"
@@ -364,6 +379,11 @@ export interface Strategy {
   // self-contained. `derivedAt` is always 0.
   unitEconomics: UnitEconomicsSummary;
   offerScenarios: OfferScenarioResult[];
+
+  // Forecast / Budget Planner — pure derivation from the modules
+  // above (unitEconomics + kpiLadder + creativeTestingMatrix +
+  // campaignSetup + trackingReadiness). `derivedAt` is always 0.
+  forecast?: ForecastPlan;
 
   exportBrief: string;
 }
@@ -774,7 +794,8 @@ export type JourneyBlockerKind =
   | "creative"
   | "scope"
   | "asset"
-  | "economics";
+  | "economics"
+  | "forecast";
 
 export interface JourneyBlocker {
   kind: JourneyBlockerKind;

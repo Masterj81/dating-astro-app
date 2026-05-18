@@ -1053,4 +1053,107 @@ voie ce qui est mesure versus suppose. Le journey-status emet un
 chip `economics` (warning pour `tight`, blocker pour `unviable`) et
 `ready-to-spend` exige `status !== 'unviable'`. L'export gagne une
 section `## Unit Economics / Offer Lab`; le moteur reste deterministe
-et `derivedAt` est toujours `0`.
+et `derivedAt` est toujours `0`. L'onglet `Forecast` qui suit
+immediatement reprend ces memes economics pour proposer un budget de
+test concret, trois scenarios (conservatif / base / aggressif), une
+repartition par campagne / ad-set / cellule, des checkpoints Day 1 /
+Day 3 / Day 5 / fin-de-test, et une action operateur d'une phrase —
+sans appeler `Date.now()` et sans toucher l'output deterministe du
+moteur.
+
+## Forecast / Budget Planner
+
+The Forecast / Budget Planner sits between Unit Economics and the
+Execution-related tabs. It reads the engine's existing modules
+(`unitEconomics`, `kpiTargetLadder`, `creativeTestingMatrix`,
+`campaignSetup`, `trackingReadiness`) and emits a deterministic budget
+plan plus a three-scenario forecast. The new `Forecast` tab carries a
+status pill (`viable` / `tight` / `unviable` / `incomplete`), a
+confidence pill (`low` / `medium` / `high`), six summary cards
+(recommended test budget, daily budget, duration, expected
+conversions at the base scenario, expected CPA, expected ROAS), a
+scenario table with conservative / base / aggressive rows and the
+funnel math (impressions, clicks, conversions, CPA, ROAS, revenue),
+a spend allocation table grouped by campaign / ad-set / test-cell
+with the share-of-total and one-sentence rationale per row, decision
+checkpoint cards for Day 1 / Day 3 / Day 5 / end-of-test with kill
+(red) / iterate (amber) / scale (green) conditions, a warnings panel,
+and a one-sentence recommended operator action.
+
+Scenario assumptions vary the base deterministically: conservative is
+CTR × 0.7, CVR × 0.7, CPM × 1.2; base is × 1.0 each; aggressive is
+CTR × 1.3, CVR × 1.3, CPM × 0.85. Base CPM / CTR / CVR come from the
+KPI ladder's starter tier when present, otherwise from business-model
+defaults (subscription / freemium → $20 CPM, ecommerce / one-time →
+$15, services → $25, lead-gen → $12; CTR default 1.2% cold, 2.5%
+retargeting; CVR default per business model). AOV / revenue is
+pulled from `economics.resolvedAov`, then `subscription.trialAdjustedLtv`,
+then `expectedLtv`. The budget block computes a minimum learning
+budget (`expectedCpa × 5 conv/cell × cellCount`, floored at
+`cellCount × $15 × 3 days`), a recommended daily budget
+(`cellCount × clamp(expectedCpa × 1.5, $10, $30)`), and a duration
+(`clamp(max(3, smallest cell estimatedRunDays, ceil(minLearning /
+daily)), 3, 14)`). When economics or test cells are missing, the
+planner falls back to $50/day × 7 days × $500 floor and emits the
+matching warning.
+
+The spend allocation table groups by campaign and ad-set when
+`campaignSetup` is present (parsed `budgetSplit` percent applied
+proportionally), then always splits the total budget evenly across
+every cell in `recommendedFirstBatch` — the sum of test-cell rows
+always equals `totalTestBudget` within ±$0.01 rounding tolerance.
+That one-variable-at-a-time split is the discipline the planner
+enforces: even a winning hook does not jump the test queue without
+sharing the spend per cell.
+
+Decision checkpoints anchor the kill / scale loop: Day 1 reads CTR
+against base × 0.4 (kill) / 0.7 (iterate) / 1.3 (scale), Day 3 reads
+CVR with the same thresholds gated by `spend > minLearning / 2`,
+Day 5 reads ROAS against the target × 0.4 / 0.7 / 1.3, and the
+end-of-test card promotes winners (ROAS ≥ target AND CVR ≥ target),
+queues iteration for mid-tier cells, and pauses losers. Each
+checkpoint references the full `cellsAffected` list so the operator
+knows exactly which cells the gate applies to.
+
+Warnings cover the common failure modes: `budget-below-learning-minimum`
+(blocker — the test won't reach 5 conv/cell), `expected-cpa-above-
+allowable-cac` (blocker — base scenario doesn't pay back),
+`conservative-roas-below-target` (warning — the worst case fails the
+profit bar), `conservative-roas-below-breakeven` (blocker — worst
+case loses money on every conversion), `tracking-not-ready` (warning
+when tracking < 70), `no-test-cells` / `no-economics` / `no-kpi-
+targets` (input completeness), and `low-confidence-no-history` (info,
+always emitted until workspace memory results land). Confidence is
+`high` when all four positive signals hold (economics resolved + KPI
+targets present + tracking ≥ 70 + ≥ 3 test cells) and there are zero
+blocker warnings; `medium` when at least two hold with no blocker;
+`low` otherwise. The status classifier returns `unviable` for any
+blocker warning, `incomplete` when both economics and test cells are
+missing, `tight` for 2+ non-info warnings or low confidence, `viable`
+otherwise.
+
+Journey-status integration is automatic: the engine threads the
+forecast plan into `buildJourneyStatus` so `unviable` raises a
+`forecast`-kind blocker chip in the journey block and blocks the
+final hop to `ready-to-spend`, while `tight` raises a warning chip
+but does not block. The export brief gains a `## Forecast / Budget
+Planner` section (status + confidence, budget summary, scenario
+table, spend allocation list, decision checkpoints, warnings,
+recommended operator action) between Unit Economics and Campaign
+Calendar. `buildStrategy(input)` stays byte-identical for identical
+input — the new `forecast` field is a pure derivation and `derivedAt`
+is always `0`.
+
+En francais : l'onglet `Forecast` (entre Economics et Angles) lit les
+sorties du moteur (economics, ladder KPI, matrice de test, campagnes,
+tracking) et propose un budget de test concret avec trois scenarios
+deterministes (conservatif / base / aggressif), une repartition
+campagne / ad-set / cellule, des checkpoints Day 1 / Day 3 / Day 5 /
+fin-de-test, et une action d'une phrase pour l'operateur. La somme
+des budgets par cellule egale toujours le budget total a ±$0.01
+pres — un seul variable testee a la fois, par discipline. Le
+journey-status emet un chip `forecast` (warning pour `tight`,
+blocker pour `unviable`) et `ready-to-spend` exige
+`status !== 'unviable'`. L'export gagne une section `## Forecast /
+Budget Planner`; le moteur reste deterministe et `derivedAt` est
+toujours `0`.

@@ -1217,8 +1217,9 @@ record(
   `Got ${greenJourney.currentStage}`
 );
 
-// Determinism. The build inside buildStrategy passes `unitEconomics`,
-// so the standalone call must mirror it to deep-equal.
+// Determinism. The build inside buildStrategy passes `unitEconomics`
+// + `forecast` + `creativeTestingMatrix` + `appliedAdReviews`, so the
+// standalone call must mirror them to deep-equal.
 const jsTwice = buildJourneyStatus({
   trackingReadiness: a.trackingReadiness,
   kpiLadder: a.kpiLadder,
@@ -1230,7 +1231,10 @@ const jsTwice = buildJourneyStatus({
   variantSets: a.variantSets,
   proofAssetPlan: a.proofAssetPlan,
   audienceAvatars: a.audienceAvatars,
+  creativeTestingMatrix: a.creativeTestingMatrix,
+  appliedAdReviews: a.appliedAdReviews,
   unitEconomics: a.unitEconomics,
+  forecast: a.forecast,
 });
 record(
   "journeyStatus: deterministic across calls",
@@ -1319,6 +1323,7 @@ const validBlockerKinds = new Set([
   "scope",
   "asset",
   "economics",
+  "forecast",
 ]);
 record(
   "journeyStatus: every blocker.kind is a valid JourneyBlockerKind",
@@ -7792,6 +7797,548 @@ for (const { name, strategy } of fixtures) {
   record(
     "economics: grossMargin < 0.30 emits 'gross-margin-too-low' warning",
     ueLowMargin.warnings.some((w) => w.kind === "gross-margin-too-low")
+  );
+}
+
+// ============================================================================
+// === Forecast / Budget Planner ===
+// ============================================================================
+//
+// Tests cover: pure-function determinism, scenario shape + monotonicity,
+// budget recommendation math, allocation sum tolerance, decision
+// checkpoints, warning emission, status classification, journey-status
+// integration, and the markdown export hook. ~50 asserts.
+
+{
+  const forecastMod = require("../src/lib/forecast/budget-forecast") as typeof import("../src/lib/forecast/budget-forecast");
+  const journeyMod = require("../src/lib/engine/journey-status") as typeof import("../src/lib/engine/journey-status");
+  const exportMod = require("../src/lib/engine/export-brief") as typeof import("../src/lib/engine/export-brief");
+
+  const {
+    buildForecastPlan,
+    buildForecastScenarios,
+    allocateBudgetAcrossTestCells,
+    buildDecisionCheckpoints,
+    classifyForecastReadiness,
+  } = forecastMod;
+  const { buildJourneyStatus } = journeyMod;
+  const { generateExportBrief } = exportMod;
+
+  // ---- Determinism --------------------------------------------------------
+
+  const astro = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const planA1 = buildForecastPlan(astro);
+  const planA2 = buildForecastPlan(astro);
+  record(
+    "forecast: buildForecastPlan deterministic for AstroDating",
+    JSON.stringify(planA1) === JSON.stringify(planA2)
+  );
+  record(
+    "forecast: derivedAt is exactly 0 (no Date.now)",
+    planA1.derivedAt === 0
+  );
+
+  const scenA1 = buildForecastScenarios(astro);
+  const scenA2 = buildForecastScenarios(astro);
+  record(
+    "forecast: buildForecastScenarios deterministic for AstroDating",
+    JSON.stringify(scenA1) === JSON.stringify(scenA2)
+  );
+
+  const detA = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const detB = buildStrategy(ASTRO_DATING_EXAMPLE);
+  record(
+    "forecast: buildStrategy(AstroDating) byte-identical across calls (engine determinism preserved)",
+    JSON.stringify(detA) === JSON.stringify(detB)
+  );
+  record(
+    "forecast: strategy.forecast.derivedAt is 0 inside buildStrategy",
+    detA.forecast?.derivedAt === 0
+  );
+  record(
+    "forecast: strategy.forecast present after buildStrategy",
+    !!detA.forecast && typeof detA.forecast.status === "string"
+  );
+
+  // ---- Scenarios shape ----------------------------------------------------
+
+  record(
+    "forecast: exactly 3 scenarios in output",
+    planA1.scenarios.length === 3
+  );
+  record(
+    "forecast: scenarios ordered conservative → base → aggressive",
+    planA1.scenarios[0].kind === "conservative" &&
+      planA1.scenarios[1].kind === "base" &&
+      planA1.scenarios[2].kind === "aggressive"
+  );
+
+  const consA = planA1.scenarios[0];
+  const baseA = planA1.scenarios[1];
+  const aggA = planA1.scenarios[2];
+
+  record(
+    "forecast: conservative.expectedConversions <= base.expectedConversions",
+    consA.outcome.expectedConversions <= baseA.outcome.expectedConversions
+  );
+  record(
+    "forecast: base.expectedConversions <= aggressive.expectedConversions",
+    baseA.outcome.expectedConversions <= aggA.outcome.expectedConversions
+  );
+  record(
+    "forecast: conservative.cpm > base.cpm (worse CPM in conservative)",
+    consA.outcome.assumptions.cpm > baseA.outcome.assumptions.cpm
+  );
+  record(
+    "forecast: aggressive.cpm < base.cpm (better CPM in aggressive)",
+    aggA.outcome.assumptions.cpm < baseA.outcome.assumptions.cpm
+  );
+
+  // ---- Budget --------------------------------------------------------------
+
+  record(
+    "forecast: AstroDating totalTestBudget > 0",
+    planA1.budget.totalTestBudget > 0
+  );
+  record(
+    "forecast: AstroDating recommendedDailyBudget > 0",
+    planA1.budget.recommendedDailyBudget > 0
+  );
+  record(
+    "forecast: AstroDating recommendedTestDurationDays >= 3",
+    planA1.budget.recommendedTestDurationDays >= 3
+  );
+  record(
+    "forecast: AstroDating recommendedTestDurationDays <= 14",
+    planA1.budget.recommendedTestDurationDays <= 14
+  );
+  record(
+    "forecast: AstroDating minimumLearningBudget > 0",
+    planA1.budget.minimumLearningBudget > 0
+  );
+  record(
+    "forecast: AstroDating budget reasoning non-empty",
+    typeof planA1.budget.reasoning === "string" &&
+      planA1.budget.reasoning.length > 0
+  );
+  // minimumLearningBudget derivation is deterministic
+  const planA3 = buildForecastPlan(astro);
+  record(
+    "forecast: minimumLearningBudget deterministic",
+    planA1.budget.minimumLearningBudget === planA3.budget.minimumLearningBudget
+  );
+
+  // ---- Allocation ----------------------------------------------------------
+
+  const cellRows = planA1.allocation.filter((a) => a.refKind === "test-cell");
+  record(
+    "forecast: every recommendedFirstBatch cell has a SpendAllocation row",
+    cellRows.length === astro.creativeTestingMatrix.recommendedFirstBatch.length
+  );
+  const sumCells = cellRows.reduce((s, a) => s + a.budget, 0);
+  record(
+    "forecast: sum of test-cell allocations equals totalTestBudget (±$0.01)",
+    Math.abs(sumCells - planA1.budget.totalTestBudget) <= 0.01,
+    `sum=${sumCells} total=${planA1.budget.totalTestBudget}`
+  );
+  record(
+    "forecast: every allocation row carries a non-empty rationale",
+    planA1.allocation.every(
+      (a) => typeof a.rationale === "string" && a.rationale.length > 0
+    )
+  );
+  // The standalone helper produces the same allocation
+  const standaloneAlloc = allocateBudgetAcrossTestCells(astro);
+  record(
+    "forecast: allocateBudgetAcrossTestCells matches plan.allocation",
+    JSON.stringify(standaloneAlloc) === JSON.stringify(planA1.allocation)
+  );
+
+  // ---- Decision checkpoints -----------------------------------------------
+
+  const labels = planA1.decisionCheckpoints.map((c) => c.label);
+  record(
+    "forecast: decision checkpoints contain Day 1",
+    labels.some((l) => l.startsWith("Day 1"))
+  );
+  record(
+    "forecast: decision checkpoints contain Day 3",
+    labels.some((l) => l.startsWith("Day 3"))
+  );
+  record(
+    "forecast: decision checkpoints contain Day 5 (when duration >= 5)",
+    planA1.budget.recommendedTestDurationDays < 5 ||
+      labels.some((l) => l.startsWith("Day 5"))
+  );
+  record(
+    "forecast: decision checkpoints contain end-of-test",
+    labels.some((l) => l.toLowerCase().includes("end of test"))
+  );
+  record(
+    "forecast: every checkpoint has non-empty kill/iterate/scale conditions",
+    planA1.decisionCheckpoints.every(
+      (c) =>
+        c.killConditions.length > 0 &&
+        c.iterateConditions.length > 0 &&
+        c.scaleConditions.length > 0
+    )
+  );
+  // The standalone helper produces the same checkpoints
+  const standaloneCheckpoints = buildDecisionCheckpoints(astro);
+  record(
+    "forecast: buildDecisionCheckpoints matches plan.decisionCheckpoints",
+    JSON.stringify(standaloneCheckpoints) ===
+      JSON.stringify(planA1.decisionCheckpoints)
+  );
+
+  // ---- Warnings ------------------------------------------------------------
+
+  // AstroDating: $14.99 freemium with 30% COGS, no AOV → tight unit economics
+  // with allowable CAC ≈ $7. Base expected CPA ≈ $60 → above allowable CAC.
+  record(
+    "forecast: AstroDating emits 'expected-cpa-above-allowable-cac' blocker",
+    planA1.warnings.some(
+      (w) =>
+        w.kind === "expected-cpa-above-allowable-cac" &&
+        w.severity === "blocker"
+    )
+  );
+  record(
+    "forecast: AstroDating emits 'tracking-not-ready' warning (tracking < 70)",
+    planA1.warnings.some(
+      (w) => w.kind === "tracking-not-ready" && w.severity === "warning"
+    )
+  );
+  record(
+    "forecast: AstroDating emits 'low-confidence-no-history' info",
+    planA1.warnings.some(
+      (w) => w.kind === "low-confidence-no-history" && w.severity === "info"
+    )
+  );
+  record(
+    "forecast: AstroDating status is 'unviable' (blocker warnings present)",
+    planA1.status === "unviable"
+  );
+
+  // ---- Status: viable case -------------------------------------------------
+
+  // Heirloom Brew: $48 one-time, healthy economics → viable forecast.
+  const brewStrategy = buildStrategy(HEIRLOOM_BREW_EXAMPLE);
+  const planBrew = buildForecastPlan(brewStrategy);
+  record(
+    "forecast: HeirloomBrew confidence is 'high', 'medium', or 'low' (valid)",
+    ["high", "medium", "low"].includes(planBrew.confidence)
+  );
+  record(
+    "forecast: HeirloomBrew status is one of viable/tight/unviable/incomplete",
+    ["viable", "tight", "unviable", "incomplete"].includes(planBrew.status)
+  );
+
+  // ---- Status: budget-below-learning-minimum (forced) ---------------------
+  //
+  // Build a strategy then synthesise a low-budget plan via a craft input
+  // — the engine's plan reflects its own math, so we test the warning
+  // composer by constructing a fixture plan directly.
+  {
+    // Use the engine output but artificially force the warning by
+    // constructing a plan with budget < minimumLearningBudget via the
+    // classifier. The simplest fixture: build a plan whose warnings
+    // include the blocker.
+    const lowBudgetPlan = {
+      ...planA1,
+      budget: {
+        ...planA1.budget,
+        totalTestBudget: 1, // far below the learning minimum
+      },
+    };
+    record(
+      "forecast: classifyForecastReadiness returns 'unviable' for plans with blocker warnings",
+      classifyForecastReadiness(lowBudgetPlan) === "unviable"
+    );
+  }
+
+  // ---- No-test-cells fixture ----------------------------------------------
+  //
+  // Build a strategy where the creativeTestingMatrix has zero
+  // recommendedFirstBatch entries. We do this by patching the strategy
+  // before calling buildForecastPlan.
+  {
+    const stripped = {
+      ...astro,
+      creativeTestingMatrix: {
+        ...astro.creativeTestingMatrix,
+        recommendedFirstBatch: [],
+      },
+    } as typeof astro;
+    const planNoCells = buildForecastPlan(stripped);
+    record(
+      "forecast: empty recommendedFirstBatch → 'no-test-cells' warning emitted",
+      planNoCells.warnings.some((w) => w.kind === "no-test-cells")
+    );
+    record(
+      "forecast: empty recommendedFirstBatch → fallback budget applied",
+      planNoCells.budget.totalTestBudget === 500
+    );
+  }
+
+  // ---- No-economics fixture -----------------------------------------------
+  {
+    const noEcon = {
+      ...astro,
+      unitEconomics: {
+        status: "incomplete",
+        warnings: [],
+        derivedAt: 0,
+      } as typeof astro.unitEconomics,
+    } as typeof astro;
+    const planNoEcon = buildForecastPlan(noEcon);
+    record(
+      "forecast: incomplete economics → 'no-economics' info warning emitted",
+      planNoEcon.warnings.some(
+        (w) => w.kind === "no-economics" && w.severity === "info"
+      )
+    );
+  }
+
+  // ---- Incomplete status (no economics AND no test cells) -----------------
+  {
+    const stripped = {
+      ...astro,
+      creativeTestingMatrix: {
+        ...astro.creativeTestingMatrix,
+        recommendedFirstBatch: [],
+      },
+      unitEconomics: {
+        status: "incomplete",
+        warnings: [],
+        derivedAt: 0,
+      } as typeof astro.unitEconomics,
+    } as typeof astro;
+    const planEmpty = buildForecastPlan(stripped);
+    record(
+      "forecast: no economics AND no test cells → status 'incomplete'",
+      planEmpty.status === "incomplete"
+    );
+  }
+
+  // ---- KPI ladder absent --------------------------------------------------
+  {
+    const noKpi = {
+      ...astro,
+      kpiLadder: { tiers: [], targets: [] } as typeof astro.kpiLadder,
+    } as typeof astro;
+    const planNoKpi = buildForecastPlan(noKpi);
+    record(
+      "forecast: empty kpiLadder → 'no-kpi-targets' info warning emitted",
+      planNoKpi.warnings.some((w) => w.kind === "no-kpi-targets")
+    );
+  }
+
+  // ---- Conservative ROAS below breakeven ----------------------------------
+  // AstroDating already emits this blocker (allowable CAC $6.75, breakeven
+  // ROAS 1.33, conservative ROAS 0.4 — below breakeven).
+  record(
+    "forecast: conservative ROAS < breakeven emits 'conservative-roas-below-breakeven' blocker",
+    planA1.warnings.some(
+      (w) =>
+        w.kind === "conservative-roas-below-breakeven" &&
+        w.severity === "blocker"
+    )
+  );
+  // Conservative ROAS below target (warning, separate signal).
+  record(
+    "forecast: conservative ROAS < target emits 'conservative-roas-below-target' warning",
+    planA1.warnings.some(
+      (w) => w.kind === "conservative-roas-below-target"
+    )
+  );
+
+  // ---- Tight classification fixture --------------------------------------
+  // A plan with 2+ non-info warnings but no blockers → tight.
+  {
+    const tightFixture = {
+      ...planA1,
+      warnings: [
+        {
+          kind: "tracking-not-ready" as const,
+          severity: "warning" as const,
+          message: "x",
+          fix: "y",
+        },
+        {
+          kind: "conservative-roas-below-target" as const,
+          severity: "warning" as const,
+          message: "x",
+          fix: "y",
+        },
+      ],
+      confidence: "medium" as const,
+    };
+    record(
+      "forecast: classifyForecastReadiness returns 'tight' for 2+ non-info warnings",
+      classifyForecastReadiness(tightFixture) === "tight"
+    );
+  }
+
+  // Viable: zero non-info warnings + medium/high confidence.
+  {
+    const viableFixture = {
+      ...planA1,
+      warnings: [
+        {
+          kind: "low-confidence-no-history" as const,
+          severity: "info" as const,
+          message: "x",
+          fix: "y",
+        },
+      ],
+      confidence: "high" as const,
+    };
+    record(
+      "forecast: classifyForecastReadiness returns 'viable' for clean plan",
+      classifyForecastReadiness(viableFixture) === "viable"
+    );
+  }
+
+  // ---- Journey Status integration -----------------------------------------
+
+  const baseJourneyArgs = {
+    trackingReadiness: astro.trackingReadiness,
+    kpiLadder: astro.kpiLadder,
+    kpiDiagnosis: astro.kpiDiagnosis,
+    adReview: astro.adReview,
+    creatorBriefs: astro.creatorBriefs,
+    shotLists: astro.shotLists,
+    videoScripts: astro.videoScripts,
+    variantSets: astro.variantSets,
+    proofAssetPlan: astro.proofAssetPlan,
+    audienceAvatars: astro.audienceAvatars,
+    creativeTestingMatrix: astro.creativeTestingMatrix,
+    appliedAdReviews: astro.appliedAdReviews,
+    unitEconomics: astro.unitEconomics,
+  };
+
+  // AstroDating forecast is unviable.
+  const journeyUnviable = buildJourneyStatus({
+    ...baseJourneyArgs,
+    forecast: planA1,
+  });
+  record(
+    "forecast: journey-status emits 'forecast'-kind blocker when forecast unviable",
+    journeyUnviable.blockers.some((b) => b.kind === "forecast")
+  );
+  record(
+    "forecast: ready-to-spend NOT reached when forecast.status === 'unviable'",
+    journeyUnviable.currentStage !== "ready-to-spend" &&
+      journeyUnviable.readyToSpend === false
+  );
+
+  // Tight: forecast warning but no blocker.
+  const tightForecast: typeof planA1 = {
+    ...planA1,
+    status: "tight",
+    warnings: [
+      {
+        kind: "tracking-not-ready",
+        severity: "warning",
+        message: "x",
+        fix: "y",
+      },
+      {
+        kind: "conservative-roas-below-target",
+        severity: "warning",
+        message: "x",
+        fix: "y",
+      },
+    ],
+  };
+  const journeyTight = buildJourneyStatus({
+    ...baseJourneyArgs,
+    forecast: tightForecast,
+  });
+  record(
+    "forecast: journey-status emits 'forecast'-kind warning when forecast tight",
+    journeyTight.warnings.some((w) => w.kind === "forecast")
+  );
+  // Tight forecast does not block (warning only). ready-to-spend
+  // reachability depends on other gates — but the forecast gate alone
+  // must NOT promote a blocker.
+  record(
+    "forecast: tight forecast does NOT emit a forecast-kind blocker",
+    !journeyTight.blockers.some((b) => b.kind === "forecast")
+  );
+
+  // Viable: no forecast-kind entry.
+  const viableForecast: typeof planA1 = {
+    ...planA1,
+    status: "viable",
+    warnings: [],
+  };
+  const journeyViable = buildJourneyStatus({
+    ...baseJourneyArgs,
+    forecast: viableForecast,
+  });
+  record(
+    "forecast: journey-status emits no forecast blocker when forecast viable",
+    !journeyViable.blockers.some((b) => b.kind === "forecast")
+  );
+
+  // Legacy caller (no forecast) → behaviour unchanged.
+  const journeyLegacy = buildJourneyStatus(baseJourneyArgs);
+  record(
+    "forecast: legacy journey-status call without forecast produces a valid stage",
+    typeof journeyLegacy.currentStage === "string" &&
+      journeyLegacy.currentStage.length > 0
+  );
+  record(
+    "forecast: legacy journey-status call has no forecast-kind entries",
+    !journeyLegacy.blockers.some((b) => b.kind === "forecast") &&
+      !journeyLegacy.warnings.some((w) => w.kind === "forecast")
+  );
+
+  // ---- Markdown export ----------------------------------------------------
+
+  const brief = generateExportBrief(ASTRO_DATING_EXAMPLE, astro);
+  record(
+    "forecast-export: brief contains '## Forecast / Budget Planner'",
+    brief.includes("## Forecast / Budget Planner")
+  );
+  record(
+    "forecast-export: brief contains '### Budget summary'",
+    brief.includes("### Budget summary")
+  );
+  record(
+    "forecast-export: brief contains '### Scenario forecast'",
+    brief.includes("### Scenario forecast")
+  );
+  record(
+    "forecast-export: brief contains '### Spend allocation'",
+    brief.includes("### Spend allocation")
+  );
+  record(
+    "forecast-export: brief contains '### Decision checkpoints'",
+    brief.includes("### Decision checkpoints")
+  );
+  record(
+    "forecast-export: brief reflects 'Unviable' status when forecast unviable",
+    brief.includes("**Status:** Unviable")
+  );
+  // Determinism — same input → same export string.
+  const briefDet1 = generateExportBrief(ASTRO_DATING_EXAMPLE, astro);
+  const briefDet2 = generateExportBrief(ASTRO_DATING_EXAMPLE, astro);
+  record(
+    "forecast-export: same input produces byte-identical export string",
+    briefDet1 === briefDet2
+  );
+
+  // ---- Tab insertion ------------------------------------------------------
+  record(
+    "forecast: tab insertion present in StrategyView (label 'Forecast')",
+    tabLabels.includes("Forecast")
+  );
+  record(
+    "forecast: Forecast tab lands at index >= 8 (after Economics, first-7 pinning intact)",
+    tabLabels.indexOf("Forecast") >= 8
   );
 }
 

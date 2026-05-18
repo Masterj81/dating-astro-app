@@ -251,6 +251,9 @@ export function generateExportBrief(
   // 5b. Unit Economics / Offer Lab
   appendUnitEconomicsSection(lines, strategy);
 
+  // 5c. Forecast / Budget Planner
+  appendForecastSection(lines, strategy);
+
   // 6. Campaign calendar
   section(lines, "Campaign Calendar");
   lines.push(
@@ -1734,6 +1737,169 @@ function economicsRecommendedAction(strategy: Strategy): string {
 function formatDollars(n: number | undefined): string {
   if (typeof n !== "number" || !Number.isFinite(n)) return "$0.00";
   return `$${n.toFixed(2)}`;
+}
+
+function appendForecastSection(lines: string[], strategy: Strategy): void {
+  const f = strategy.forecast;
+  if (!f) return;
+
+  section(lines, "Forecast / Budget Planner");
+
+  lines.push(
+    `**Status:** ${forecastStatusLabel(f.status)}  ·  **Confidence:** ${forecastConfidenceLabel(f.confidence)}`
+  );
+  lines.push("");
+
+  // Budget summary
+  lines.push(`### Budget summary`);
+  lines.push(`- Recommended test budget: ${formatDollars(f.budget.totalTestBudget)}`);
+  lines.push(`- Daily budget: ${formatDollars(f.budget.recommendedDailyBudget)}`);
+  lines.push(`- Duration: ${f.budget.recommendedTestDurationDays} days`);
+  lines.push(
+    `- Minimum learning budget: ${formatDollars(f.budget.minimumLearningBudget)}`
+  );
+  lines.push(`- Reasoning: ${f.budget.reasoning}`);
+  lines.push("");
+
+  // Scenario forecast
+  lines.push(`### Scenario forecast`);
+  lines.push("");
+  lines.push(
+    `| Scenario | Budget | Duration | Clicks | Conversions | CPA | ROAS | Revenue |`
+  );
+  lines.push(
+    `| -------- | ------ | -------- | ------ | ----------- | --- | ---- | ------- |`
+  );
+  for (const s of f.scenarios) {
+    const cpa =
+      typeof s.outcome.expectedCpa === "number"
+        ? formatDollars(s.outcome.expectedCpa)
+        : "—";
+    const roas =
+      typeof s.outcome.expectedRoas === "number"
+        ? `${s.outcome.expectedRoas.toFixed(2)}x`
+        : "—";
+    const revenue =
+      typeof s.outcome.expectedRevenue === "number"
+        ? formatDollars(s.outcome.expectedRevenue)
+        : "—";
+    lines.push(
+      `| ${forecastScenarioLabel(s.kind)} | ${formatDollars(s.budget)} | ${s.durationDays} | ${s.outcome.expectedClicks} | ${s.outcome.expectedConversions} | ${cpa} | ${roas} | ${revenue} |`
+    );
+  }
+  lines.push("");
+
+  // Spend allocation
+  lines.push(`### Spend allocation`);
+  if (f.allocation.length === 0) {
+    lines.push("_No allocation rows — provide test cells to allocate budget._");
+  } else {
+    for (const a of f.allocation) {
+      const pct = (a.shareOfTotal * 100).toFixed(0);
+      lines.push(
+        `- ${forecastAllocLabel(a.refKind)}: ${a.refLabel} — ${formatDollars(a.budget)} (${pct}%) — ${a.rationale}`
+      );
+    }
+  }
+  lines.push("");
+
+  // Decision checkpoints
+  lines.push(`### Decision checkpoints`);
+  if (f.decisionCheckpoints.length === 0) {
+    lines.push("_No checkpoints — duration too short to schedule kill / scale gates._");
+  } else {
+    for (const c of f.decisionCheckpoints) {
+      const cellsTail =
+        c.cellsAffected && c.cellsAffected.length > 0
+          ? ` (cells: ${c.cellsAffected.join(", ")})`
+          : "";
+      lines.push(`- **${c.label}**${cellsTail}`);
+      for (const k of c.killConditions) lines.push(`  - Kill if: ${k}`);
+      for (const it of c.iterateConditions) lines.push(`  - Iterate if: ${it}`);
+      for (const sc of c.scaleConditions) lines.push(`  - Scale if: ${sc}`);
+    }
+  }
+  lines.push("");
+
+  // Warnings
+  if (f.warnings.length > 0) {
+    lines.push(`### Warnings`);
+    for (const w of f.warnings) {
+      const sev =
+        w.severity === "blocker"
+          ? "[blocker]"
+          : w.severity === "warning"
+          ? "[warning]"
+          : "[info]";
+      lines.push(`- ${sev} ${w.kind} — ${w.message} — ${w.fix}`);
+    }
+    lines.push("");
+  }
+
+  // Recommended operator action
+  lines.push(`### Recommended operator action`);
+  lines.push(forecastRecommendedAction(f));
+  lines.push("");
+}
+
+function forecastStatusLabel(
+  status: NonNullable<Strategy["forecast"]>["status"]
+): string {
+  return (
+    {
+      viable: "Viable",
+      tight: "Tight",
+      unviable: "Unviable",
+      incomplete: "Incomplete",
+    }[status] ?? status
+  );
+}
+
+function forecastConfidenceLabel(
+  confidence: NonNullable<Strategy["forecast"]>["confidence"]
+): string {
+  return (
+    {
+      low: "Low",
+      medium: "Medium",
+      high: "High",
+    }[confidence] ?? confidence
+  );
+}
+
+function forecastScenarioLabel(kind: "conservative" | "base" | "aggressive"): string {
+  return (
+    {
+      conservative: "Conservative",
+      base: "Base",
+      aggressive: "Aggressive",
+    }[kind] ?? kind
+  );
+}
+
+function forecastAllocLabel(kind: "campaign" | "ad-set" | "test-cell"): string {
+  return (
+    {
+      campaign: "Campaign",
+      "ad-set": "Ad set",
+      "test-cell": "Test cell",
+    }[kind] ?? kind
+  );
+}
+
+function forecastRecommendedAction(
+  forecast: NonNullable<Strategy["forecast"]>
+): string {
+  switch (forecast.status) {
+    case "unviable":
+      return "Do not spend. Fix the blocker(s) first.";
+    case "tight":
+      return "Spend cautiously. Set kill rules at Day 1 + Day 3.";
+    case "viable":
+      return `Cleared for first batch. Launch at recommended daily budget for ${forecast.budget.recommendedTestDurationDays} days.`;
+    case "incomplete":
+      return "Provide missing inputs to compute forecast.";
+  }
 }
 
 function formatPercent(n: number | undefined): string {

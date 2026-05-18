@@ -10,6 +10,7 @@ import type {
   AudienceAvatar,
   CreativeTestingMatrix,
   CreatorBrief,
+  ForecastPlan,
   JourneyBlocker,
   JourneyStage,
   JourneyStatus,
@@ -61,6 +62,13 @@ export interface JourneyStatusArgs {
   // status surfaces a warning chip but does not block. Absent → no
   // economics gate (backward-compat with every caller pre-economics).
   unitEconomics?: UnitEconomicsSummary;
+  // Forecast / Budget Planner — when provided, journey-status emits a
+  // forecast-kind entry whenever the plan status is not `viable`.
+  // Severity escalates to `blocker` for `unviable` (and that status
+  // also blocks `ready-to-spend`). `tight` surfaces a warning chip but
+  // does not block. Absent → no forecast gate (backward-compat with
+  // every caller that pre-dates the Forecast layer).
+  forecast?: ForecastPlan;
 }
 
 // Ad-review weight floor for "review-passed". The shipped checklist has
@@ -297,6 +305,45 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     }
   }
 
+  // Forecast / Budget Planner — when a plan is supplied and status is
+  // anything but `viable`, emit a forecast-kind entry. Severity
+  // escalates to `blocker` when status === `unviable`. `tight` surfaces
+  // a warning chip but does not block. `incomplete` is a soft warning.
+  if (args.forecast) {
+    const f = args.forecast;
+    if (f.status === "unviable") {
+      const topBlocker =
+        f.warnings.find((w) => w.severity === "blocker") ??
+        f.warnings.find((w) => w.severity === "warning") ??
+        f.warnings[0];
+      const tail = topBlocker ? topBlocker.message : "see forecast tab";
+      blockers.push({
+        kind: "forecast",
+        severity: "blocker",
+        message: `Forecast unviable: ${tail}`,
+      });
+    } else if (f.status === "tight") {
+      const topKinds = f.warnings
+        .filter((w) => w.severity === "warning")
+        .slice(0, 2)
+        .map((w) => w.kind)
+        .join(", ");
+      const tail = topKinds || "thin margin or low confidence";
+      warnings.push({
+        kind: "forecast",
+        severity: "warning",
+        message: `Forecast tight: ${tail}`,
+      });
+    } else if (f.status === "incomplete") {
+      warnings.push({
+        kind: "forecast",
+        severity: "warning",
+        message:
+          "Forecast incomplete — provide economics + test cells to compute a budget plan.",
+      });
+    }
+  }
+
   // Execution OS — first batch presence is a prerequisite for
   // ready-to-spend. When the matrix isn't supplied (legacy callers /
   // backward-compat with tests that pre-date the Execution OS phase),
@@ -331,13 +378,16 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     (args.assetSummary.readinessScore >= 70 &&
       args.assetSummary.pendingMustHaveIds.length === 0);
 
-  // Operational blockers count — review-kind, asset-kind, and
-  // economics-kind blockers are tracked through their own gates at the
+  // Operational blockers count — review-kind, asset-kind, economics-kind,
+  // and forecast-kind blockers are tracked through their own gates at the
   // review-passed / ready-to-spend stages, not as creative-planned
   // regressions.
   const operationalBlockersCount = blockers.filter(
     (b) =>
-      b.kind !== "review" && b.kind !== "asset" && b.kind !== "economics"
+      b.kind !== "review" &&
+      b.kind !== "asset" &&
+      b.kind !== "economics" &&
+      b.kind !== "forecast"
   ).length;
 
   // Unit Economics gate — only enforced when a summary was supplied.
@@ -345,6 +395,11 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
   // ready-to-spend. Absent → no gate (backward-compat).
   const economicsReady =
     !args.unitEconomics || args.unitEconomics.status !== "unviable";
+
+  // Forecast gate — only enforced when a plan was supplied. `tight`
+  // does NOT block; only `unviable` blocks the final hop to
+  // ready-to-spend. Absent → no gate (backward-compat).
+  const forecastReady = !args.forecast || args.forecast.status !== "unviable";
 
   // Stage selection — earliest match wins.
   const stage = pickStage({
@@ -360,6 +415,7 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     approvalReady,
     assetReady,
     economicsReady,
+    forecastReady,
   });
 
   const readyToSpend = stage === "ready-to-spend";
@@ -401,6 +457,7 @@ function pickStage(args: {
   approvalReady: boolean;
   assetReady: boolean;
   economicsReady: boolean;
+  forecastReady: boolean;
 }): JourneyStage {
   if (args.creatorBriefsCount === 0) return "strategy-drafted";
   if (args.trackingScore < 70 || args.blockersCount > 0) return "creative-planned";
@@ -422,6 +479,9 @@ function pickStage(args: {
   // Unit Economics gate — only blocks when status === `unviable`.
   // `tight` is non-blocking (warning only). Absent → economicsReady = true.
   if (!args.economicsReady) return "review-passed";
+  // Forecast gate — only blocks when status === `unviable`. `tight`
+  // is non-blocking (warning only). Absent → forecastReady = true.
+  if (!args.forecastReady) return "review-passed";
   return "ready-to-spend";
 }
 
