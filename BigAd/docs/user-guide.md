@@ -616,8 +616,75 @@ Le timestamp `generatedAt` est derive de `max(updatedAt)` sur les runs et
 results inclus, jamais `Date.now()`, donc deux builds successifs sur le meme
 historique produisent exactement le meme document.
 
+## Review & Approval Layer
+
+Once a project has at least one saved run, the new `Review` tab (placed
+between `Workspace` and `Report` in the tab strip) opens the Review &
+Approval board. The board seeds ten reviewable items from the active
+run's strategy: six **critical** items that block approval (positioning,
+offer, proof assets, first test batch, campaign setup, client report)
+and four **non-critical** reviewable items (tracking readiness, creative
+QA, launch readiness, next iteration plan). Each item has a status
+(pending / approved / needs-changes / blocked), an optional `assignedTo`
+author (owner / client / media-buyer / creator), and a comments thread.
+
+At the top of the tab sits an **approval score** (0-100) and a
+readiness pill (`not-ready` / `partial` / `ready`). The score adds 12
+per approved critical, 5 per approved non-critical, subtracts 10 per
+blocked critical, 5 per critical needing changes, and 2 per unresolved
+comment (cap 20). When every critical is approved and no comments are
+open, an 8-point bonus pushes the score to 100. Readiness flips to
+`ready` only when every critical is approved, no critical is blocked,
+and zero comments are unresolved.
+
+A compact `Client handoff` panel sits at the top of the tab — it
+filters down to items assigned to the client and open client comments,
+so the owner can scan the open thread before diving into the full
+board. The full board exposes a per-author filter chip strip
+(all / owner / client / media-buyer / creator), and each item card
+shows the status switcher, the assigned-to selector, a quick approve
+shortcut, and an inline comments thread with resolve and delete.
+
+When the Review board is non-empty, the markdown `Export brief` gains
+an `## Approval Pack` section: approval score line, critical approvals
+counter, unresolved comments counter, the critical and non-critical
+items lists with their status / approver / unresolved counts, and the
+open comments grouped by author and item. When the board is empty or
+absent, the section is omitted entirely — the rest of the brief is
+byte-identical to the pre-review build.
+
+The Journey Status block above the tab strip reads the same board:
+when readiness is not `ready`, the block raises a `review`-kind entry
+(severity escalates to `blocker` when any critical is blocked or still
+pending) and `ready-to-spend` requires approval on top of every
+existing gate.
+
+Everything persists in `localStorage` under versioned keys
+(`bigad:review-items:v1`, `bigad:review-comments:v1`). Nothing leaves
+the browser. The engine itself stays pure: `buildStrategy(input)` is
+unchanged, and every derived selector (`summarizeReviewBoard`,
+`unresolvedCommentCountByItem`, `criticalBlockingMessages`) reads
+caller-supplied timestamps only — never `Date.now()` — so two reads
+of the same board produce byte-identical output.
+
 ## Maintenance du guide
 
 Quand BigAd ajoute un nouveau module, mets a jour ce guide si le module change
 le workflow utilisateur. Le README peut rester technique ; ce guide doit rester
 operator-friendly.
+
+Le `Review & Approval Layer` (onglet `Review` du strip, entre `Workspace` et
+`Report`) ajoute un board d'approbation par run sauvegardee : six items
+critiques (positionnement, offre, proof assets, premier batch de tests, setup
+campagne, rapport client) et quatre items non-critiques reviewables (tracking
+readiness, creative QA, launch readiness, next iteration plan). Chaque item
+porte un statut (pending / approved / needs-changes / blocked), un assignataire
+(owner / client / media-buyer / creator), et un fil de commentaires; un
+sous-panneau `Client handoff` filtre les items assignes au client et les
+commentaires ouverts du client; un score d'approbation (0-100) et une pastille
+de readiness (`not-ready` / `partial` / `ready`) chapeautent l'onglet; l'export
+markdown gagne une section `## Approval Pack` quand le board contient au moins
+un item, et le `Journey Status` exige `ready` avant de passer `ready-to-spend`.
+Tout est stocke dans `localStorage` sous les cles versionnees
+`bigad:review-items:v1` et `bigad:review-comments:v1` — rien ne quitte le
+navigateur, et le moteur reste pur.

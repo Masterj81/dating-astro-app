@@ -147,6 +147,10 @@ BigAd is stateful when you want it to be. The Project Workspace adds saved proje
 
 `buildClientReport({ project, runs, testResults, learningMemory, toggles?, generatedAt? })` produces a single deterministic document a marketer hands to a founder or stakeholder. The report bundles ten toggleable sections — executive summary (≤12 bullets, ≤24 words each), strategy snapshot, input quality, proof plan, execution plan, campaign setup, test results, learning memory, decision log, and next actions. `renderClientReportMarkdown(report)` emits the same content as a printable markdown file. The deliverable lives at the dedicated `/report` route: a single-column, print-friendly page that reads from `localStorage`, exposes per-section checkboxes (hidden in print), and a "Print / Save as PDF" button wired to the browser's native `window.print()` — no PDF dependency. Same inputs always produce a byte-identical report; `generatedAt` is derived from `max(updatedAt)` across the included runs and results so two builds with identical history match exactly.
 
+## Review & Approval Layer
+
+BigAd adds a Review & Approval Layer that sits above `buildStrategy()` — the engine itself stays pure. Each saved run gets a `ReviewBoard` of ten reviewable items: six **critical** items that block approval (positioning, offer, proof assets, first test batch, campaign setup, client report) and four **non-critical** reviewable items (tracking readiness, creative QA, launch readiness, next iteration plan). Item titles and summaries are derived from the run's strategy at seed time and persisted under versioned localStorage keys (`bigad:review-items:v1`, `bigad:review-comments:v1`); nothing leaves your browser. `summarizeReviewBoard(board)` is pure and deterministic — given the same item statuses and comment timestamps, the output is byte-identical. The approval score (0-100) starts at zero, adds 12 per approved critical and 5 per approved non-critical, subtracts 10 per blocked critical and 5 per critical needing changes, subtracts 2 per unresolved comment (cap 20), and adds an 8-point clean-board bonus when every critical is approved and no comments are open. Readiness is `ready` when every critical is approved with zero unresolved comments and zero blocked items; `not-ready` when any critical is still pending or blocked; `partial` otherwise. When a `reviewSummary` is passed to `buildJourneyStatus()`, the journey-status block raises a `review`-kind entry whenever readiness is not `ready` — severity escalates to `blocker` when any critical is blocked or pending, and `ready-to-spend` requires `approvalReadiness === "ready"` on top of every existing gate. The export brief gains an optional `## Approval Pack` section when the caller passes a non-empty board; without it, the brief is byte-identical to the pre-review build. The dedicated `Review` tab in the workspace surfaces a `ClientHandoffPanel` (items assigned to the client + open client comments), an approval-score header, and a per-author filter chip strip; per-item cards expose the status switcher, the assigned-to selector, an inline comments thread with resolve/delete, and a quick-approve-as-author shortcut.
+
 ## Running it
 
 ```bash
@@ -210,7 +214,8 @@ BigAd/
 │   │   └── page.tsx        Workspace UI (split panel: inputs / strategy)
 │   ├── components/
 │   │   ├── InputPanel.tsx       Left rail — Product / Audience / Market / Competitors / Goal
-│   │   ├── StrategyView.tsx     Right pane — Journey Status banner + tabbed strategy output. Tabs follow the stakeholder reading flow: Score → Positioning → Awareness → Audience avatars → Diagnosis → Offer architecture → Calendar → Angles → Concepts (concept cards + hook library + hook critic + variant spinner + CTA bank + static briefs + TikTok / Meta scripts) → Briefs (+ QA + applied review + editor handoff) → Shots → Launch readiness → Landing → App store → Experiments → Export brief.
+│   │   ├── StrategyView.tsx     Right pane — Journey Status banner + tabbed strategy output. Tabs follow the stakeholder reading flow: Score → Positioning → Awareness → Audience avatars → Diagnosis → Offer architecture → Calendar → Angles → Concepts (concept cards + hook library + hook critic + variant spinner + CTA bank + static briefs + TikTok / Meta scripts) → Briefs (+ QA + applied review + editor handoff) → Shots → Launch readiness → Landing → App store → Experiments → Export brief → Workspace → Review → Report.
+│   │   ├── ReviewPanel.tsx      `useReviewBoard()` hook + `ReviewBoardTab` + `ClientHandoffPanel` — Review & Approval Layer UI
 │   │   └── CopyableCard.tsx     Reusable card with a small copy button
 │   ├── lib/
 │   │   ├── engine/              Deterministic strategy engine (no API)
@@ -255,12 +260,17 @@ BigAd/
 │   │   │   ├── campaign-setup.ts       buildCampaignSetup() — Execution OS: campaign / ad-set / exclusions / UTM / pre-launch checklist
 │   │   │   ├── iteration-planner.ts    buildNextIterationPlan() — Execution OS: one recommendation per weak-signal
 │   │   │   └── export-brief.ts         generateExportBrief() — markdown bundle
+│   │   ├── review/             Review & Approval Layer (above the engine)
+│   │   │   ├── review-board.ts         initialItemsForRun() / summarizeReviewBoard() / unresolvedCommentCountByItem() / criticalBlockingMessages() — pure deterministic derivation
+│   │   │   └── review-store.ts         createBrowserReviewStore() / createMemoryReviewStore() — versioned localStorage persistence
 │   │   ├── example.ts          Three demo payloads — AstroDating (freemium launch), Plotline (subscription always-on), HeirloomBrew (one-time seasonal) — used by the "Load example" button and by `test:logic` to prove materially different inputs produce materially different outputs.
 │   │   └── llm.ts              Adapter interface for plugging an LLM later
 │   └── types/
-│       └── strategy.ts         Shared TypeScript types
+│       ├── strategy.ts         Shared TypeScript types
+│       ├── workspace.ts        Project / run / test-result / learning types
+│       └── review.ts           Review & Approval Layer types — ReviewItem / ReviewComment / ReviewBoardSummary
 ├── scripts/
-│   └── test-logic.ts           `npm run test:logic` — 823 checks
+│   └── test-logic.ts           `npm run test:logic` — 885 checks
 ├── public/
 ├── next.config.ts
 ├── tailwind.config.ts

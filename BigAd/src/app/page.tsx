@@ -8,6 +8,10 @@ import {
   WorkspaceTab,
   useWorkspace,
 } from "@/components/WorkspacePanel";
+import {
+  ReviewBoardTab,
+  useReviewBoard,
+} from "@/components/ReviewPanel";
 import { buildStrategy } from "@/lib/engine";
 import { buildNextIterationPlan } from "@/lib/engine/iteration-planner";
 import { generateExportBrief } from "@/lib/engine/export-brief";
@@ -32,6 +36,23 @@ const EMPTY_INPUT: ProductInput = {
 export default function Page() {
   const [input, setInput] = useState<ProductInput>(EMPTY_INPUT);
   const workspaceState = useWorkspace();
+
+  // Latest saved run for the active project — used to seed the
+  // Review & Approval board. When no run exists, the review tab
+  // renders its empty state ("Save a run first to start a Review
+  // Board").
+  const latestRun = useMemo(() => {
+    const runs = workspaceState.runs;
+    if (runs.length === 0) return null;
+    return runs
+      .slice()
+      .sort((a, b) => (a.runAt < b.runAt ? 1 : a.runAt > b.runAt ? -1 : 0))[0];
+  }, [workspaceState.runs]);
+
+  const reviewState = useReviewBoard({
+    projectId: workspaceState.activeProjectId,
+    run: latestRun,
+  });
 
   // Base strategy from the engine — pure, deterministic.
   const baseStrategy = useMemo(() => buildStrategy(input), [input]);
@@ -112,6 +133,7 @@ export default function Page() {
             workspaceSlot={
               <WorkspaceTab state={workspaceState} currentStrategy={strategy} />
             }
+            reviewSlot={<ReviewBoardTab state={reviewState} />}
           />
         </div>
       </div>

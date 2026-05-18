@@ -21,6 +21,8 @@ import type {
   VariantSet,
   VideoScript,
 } from "@/types/strategy";
+import type { ReviewBoardSummary, ReviewItemKind } from "@/types/review";
+import { reviewItemKindLabel } from "@/lib/review/review-board";
 
 export interface JourneyStatusArgs {
   trackingReadiness: TrackingReadinessScore;
@@ -39,6 +41,12 @@ export interface JourneyStatusArgs {
   // matrix and the per-brief applied reviews to upgrade the stage.
   creativeTestingMatrix?: CreativeTestingMatrix;
   appliedAdReviews?: AppliedAdReview[];
+  // Review & Approval Layer — when provided, journey-status emits a
+  // review-kind warning when the board isn't ready, and gates
+  // `ready-to-spend` behind approvalReadiness === "ready". When
+  // absent, journey-status keeps its pre-review behaviour for
+  // backward compatibility with the legacy 7-arg form.
+  reviewSummary?: ReviewBoardSummary;
 }
 
 // Ad-review weight floor for "review-passed". The shipped checklist has
@@ -155,6 +163,39 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     }
   }
 
+  // Review & Approval Layer — when a reviewSummary is provided and
+  // the board isn't `ready`, emit a review-kind warning. Severity
+  // upgrades to `blocker` when any critical item is blocked or any
+  // pending critical kinds remain — the strongest signal the board
+  // is materially incomplete. When `ready`, no review warning is
+  // emitted. Backward-compatible: with no summary, behaviour is
+  // unchanged.
+  if (args.reviewSummary && args.reviewSummary.approvalReadiness !== "ready") {
+    const pending = args.reviewSummary.pendingCriticalKinds;
+    const firstThreeLabels = pending
+      .slice(0, 3)
+      .map((k: ReviewItemKind) => reviewItemKindLabel(k));
+    const moreSuffix = pending.length > 3 ? `, +${pending.length - 3} more` : "";
+    const labelList =
+      firstThreeLabels.length > 0
+        ? firstThreeLabels.join(", ") + moreSuffix
+        : "approval still pending";
+    const severity: "warning" | "blocker" =
+      args.reviewSummary.blockedItems > 0 || pending.length > 0
+        ? "blocker"
+        : "warning";
+    const entry: JourneyBlocker = {
+      kind: "review",
+      severity,
+      message: `Approval pending: ${labelList}`,
+    };
+    if (severity === "blocker") {
+      blockers.push(entry);
+    } else {
+      warnings.push(entry);
+    }
+  }
+
   // Execution OS — first batch presence is a prerequisite for
   // ready-to-spend. When the matrix isn't supplied (legacy callers /
   // backward-compat with tests that pre-date the Execution OS phase),
@@ -175,6 +216,19 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     !args.proofAssetPlan ||
     args.proofAssetPlan.proofReadinessScore >= 50;
 
+  // Review approval — only gates ready-to-spend when a summary is
+  // supplied. Absent → no gate (backward-compat with every caller
+  // that pre-dates the Review & Approval Layer).
+  const approvalReady =
+    !args.reviewSummary || args.reviewSummary.approvalReadiness === "ready";
+
+  // Operational blockers count — review-kind blockers are tracked
+  // through the approvalReady gate at the review-passed stage,
+  // not as creative-planned regressions.
+  const operationalBlockersCount = blockers.filter(
+    (b) => b.kind !== "review"
+  ).length;
+
   // Stage selection — earliest match wins.
   const stage = pickStage({
     creatorBriefsCount: creatorBriefs.length,
@@ -182,10 +236,11 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     hasLadder: !!kpiLadder && kpiLadder.targets.length > 0,
     diagnosisPrimary: kpiDiagnosis?.primaryCategory ?? "tracking",
     reviewWeight: adReview?.totalWeight ?? 0,
-    blockersCount: blockers.length,
+    blockersCount: operationalBlockersCount,
     firstBatchPresent,
     reviewsReady,
     proofReady,
+    approvalReady,
   });
 
   const readyToSpend = stage === "ready-to-spend";
@@ -224,6 +279,7 @@ function pickStage(args: {
   firstBatchPresent: boolean;
   reviewsReady: boolean;
   proofReady: boolean;
+  approvalReady: boolean;
 }): JourneyStage {
   if (args.creatorBriefsCount === 0) return "strategy-drafted";
   if (args.trackingScore < 70 || args.blockersCount > 0) return "creative-planned";
@@ -234,6 +290,11 @@ function pickStage(args: {
   if (!args.firstBatchPresent) return "review-passed";
   if (!args.reviewsReady) return "review-passed";
   if (!args.proofReady) return "review-passed";
+  // Review & Approval gate — only enforced when a summary was
+  // supplied. The pickStage function receives `approvalReady = true`
+  // when the caller did not pass a reviewSummary, so legacy callers
+  // remain unaffected.
+  if (!args.approvalReady) return "review-passed";
   return "ready-to-spend";
 }
 

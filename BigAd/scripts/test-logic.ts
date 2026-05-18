@@ -4418,6 +4418,649 @@ for (const { name, strategy } of fixtures) {
   }
 }
 
+// ============================================================================
+// Review & Approval Layer
+// ============================================================================
+//
+// Tests cover: deterministic seed of the 10-item board, summary math,
+// readiness gates, the markdown export hook, the journey-status
+// integration, and the in-memory store roundtrip. All assertions are
+// deterministic: no Date.now() inside derived functions.
+
+{
+  const reviewMod = require("../src/lib/review/review-board") as typeof import("../src/lib/review/review-board");
+  const reviewTypes = require("../src/types/review") as typeof import("../src/types/review");
+  const reviewStoreMod = require("../src/lib/review/review-store") as typeof import("../src/lib/review/review-store");
+
+  const {
+    initialItemsForRun,
+    summarizeReviewBoard,
+    unresolvedCommentCountByItem,
+    criticalBlockingMessages,
+  } = reviewMod;
+  const {
+    CRITICAL_REVIEW_ITEM_KINDS,
+    NON_CRITICAL_REVIEW_ITEM_KINDS,
+    REVIEW_ITEM_KIND_ORDER,
+  } = reviewTypes;
+  const {
+    createMemoryReviewStore,
+    STORAGE_KEY_REVIEW_ITEMS,
+    STORAGE_KEY_REVIEW_COMMENTS,
+  } = reviewStoreMod;
+
+  const REVIEW_FIXED_TIME = 1715990400000; // 2024-05-18T00:00:00Z (deterministic)
+  const reviewStrategy = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const reviewRunId = "review-run-1";
+  const reviewProjectId = "review-proj-1";
+
+  // ---- initialItemsForRun: shape + order ---------------------------------
+
+  const seeded = initialItemsForRun(
+    reviewProjectId,
+    reviewRunId,
+    reviewStrategy,
+    REVIEW_FIXED_TIME
+  );
+  record(
+    "review: initialItemsForRun emits exactly 10 items",
+    seeded.length === 10,
+    `Got ${seeded.length}`
+  );
+  record(
+    "review: items follow deterministic kind order",
+    seeded.every((it, i) => it.kind === REVIEW_ITEM_KIND_ORDER[i]),
+    `Got order: ${seeded.map((it) => it.kind).join(", ")}`
+  );
+  record(
+    "review: exactly 6 critical items",
+    seeded.filter((it) => it.critical).length === 6
+  );
+  record(
+    "review: exactly 4 non-critical items",
+    seeded.filter((it) => !it.critical).length === 4
+  );
+  record(
+    "review: critical kinds match the canonical critical set",
+    seeded
+      .filter((it) => it.critical)
+      .every((it, i) => it.kind === CRITICAL_REVIEW_ITEM_KINDS[i])
+  );
+  record(
+    "review: non-critical kinds match the canonical non-critical set",
+    seeded
+      .filter((it) => !it.critical)
+      .every((it, i) => it.kind === NON_CRITICAL_REVIEW_ITEM_KINDS[i])
+  );
+  record(
+    "review: every item id is stable as `${runId}:${kind}`",
+    seeded.every((it) => it.id === `${reviewRunId}:${it.kind}`)
+  );
+  record(
+    "review: every initial item status is 'pending'",
+    seeded.every((it) => it.status === "pending")
+  );
+  record(
+    "review: every initial item updatedAt matches caller-supplied now",
+    seeded.every((it) => it.updatedAt === REVIEW_FIXED_TIME)
+  );
+
+  // Determinism — call twice with identical input, expect byte-identical
+  // JSON output.
+  const seededAgain = initialItemsForRun(
+    reviewProjectId,
+    reviewRunId,
+    reviewStrategy,
+    REVIEW_FIXED_TIME
+  );
+  record(
+    "review: initialItemsForRun is deterministic (byte-identical output)",
+    JSON.stringify(seeded) === JSON.stringify(seededAgain)
+  );
+
+  // ---- summarizeReviewBoard: scoring + readiness ------------------------
+
+  const emptyBoardSummary = summarizeReviewBoard({
+    projectId: reviewProjectId,
+    runId: reviewRunId,
+    items: seeded,
+    comments: [],
+  });
+  record(
+    "review-summary: all-pending → approvalScore 0",
+    emptyBoardSummary.approvalScore === 0,
+    `Got ${emptyBoardSummary.approvalScore}`
+  );
+  record(
+    "review-summary: all-pending → readiness 'not-ready'",
+    emptyBoardSummary.approvalReadiness === "not-ready"
+  );
+  record(
+    "review-summary: criticalTotal is 6",
+    emptyBoardSummary.criticalTotal === 6
+  );
+  record(
+    "review-summary: pendingCriticalKinds lists all 6 critical kinds when pending",
+    emptyBoardSummary.pendingCriticalKinds.length === 6
+  );
+
+  function approveAll(items: ReturnType<typeof initialItemsForRun>) {
+    return items.map((it) => ({
+      ...it,
+      status: "approved" as const,
+      approvedBy: "owner" as const,
+      approvedAt: REVIEW_FIXED_TIME,
+      updatedAt: REVIEW_FIXED_TIME,
+    }));
+  }
+
+  const allApprovedItems = approveAll(seeded);
+  const allApprovedSummary = summarizeReviewBoard({
+    projectId: reviewProjectId,
+    runId: reviewRunId,
+    items: allApprovedItems,
+    comments: [],
+  });
+  // 6 critical × 12 = 72, 4 non-critical × 5 = 20, clean-board bonus 8 → 100.
+  record(
+    "review-summary: all critical + non-critical approved + 0 comments → score 100",
+    allApprovedSummary.approvalScore === 100,
+    `Got ${allApprovedSummary.approvalScore}`
+  );
+  record(
+    "review-summary: all critical approved + 0 comments → readiness 'ready'",
+    allApprovedSummary.approvalReadiness === "ready"
+  );
+  record(
+    "review-summary: criticalApproved === 6 when all critical approved",
+    allApprovedSummary.criticalApproved === 6
+  );
+
+  // 5/6 critical approved → still not-ready since one critical is pending.
+  const fiveOfSixItems = seeded.map((it, i) => {
+    if (it.critical && i < 5) {
+      return {
+        ...it,
+        status: "approved" as const,
+        approvedBy: "owner" as const,
+        approvedAt: REVIEW_FIXED_TIME,
+        updatedAt: REVIEW_FIXED_TIME,
+      };
+    }
+    return it;
+  });
+  const fiveOfSixSummary = summarizeReviewBoard({
+    projectId: reviewProjectId,
+    runId: reviewRunId,
+    items: fiveOfSixItems,
+    comments: [],
+  });
+  record(
+    "review-summary: 5/6 critical approved → readiness 'not-ready'",
+    fiveOfSixSummary.approvalReadiness === "not-ready"
+  );
+  record(
+    "review-summary: 5/6 critical approved → score < 100",
+    fiveOfSixSummary.approvalScore < 100
+  );
+  // 5 × 12 = 60, no non-critical bonus, no clean bonus → 60.
+  record(
+    "review-summary: 5/6 critical approved + 0 non-critical → score 60",
+    fiveOfSixSummary.approvalScore === 60,
+    `Got ${fiveOfSixSummary.approvalScore}`
+  );
+
+  // All critical approved + 3 unresolved comments → readiness partial,
+  // score = base 72 + 20 = 92 (no clean bonus due to unresolved), minus
+  // 3 × 2 = 6 → 86.
+  const threeUnresolvedComments = [
+    {
+      id: "c1",
+      itemId: allApprovedItems[0].id,
+      author: "client" as const,
+      body: "Tighten the for-whom clause.",
+      resolved: false,
+      createdAt: REVIEW_FIXED_TIME,
+    },
+    {
+      id: "c2",
+      itemId: allApprovedItems[0].id,
+      author: "client" as const,
+      body: "Mechanism feels generic.",
+      resolved: false,
+      createdAt: REVIEW_FIXED_TIME,
+    },
+    {
+      id: "c3",
+      itemId: allApprovedItems[1].id,
+      author: "media-buyer" as const,
+      body: "Verify breakeven ROAS.",
+      resolved: false,
+      createdAt: REVIEW_FIXED_TIME,
+    },
+  ];
+  const withCommentsSummary = summarizeReviewBoard({
+    projectId: reviewProjectId,
+    runId: reviewRunId,
+    items: allApprovedItems,
+    comments: threeUnresolvedComments,
+  });
+  record(
+    "review-summary: critical-approved + 3 unresolved → readiness 'partial'",
+    withCommentsSummary.approvalReadiness === "partial"
+  );
+  record(
+    "review-summary: critical-approved + 3 unresolved → score 86",
+    withCommentsSummary.approvalScore === 86,
+    `Got ${withCommentsSummary.approvalScore}`
+  );
+  record(
+    "review-summary: unresolvedComments count matches",
+    withCommentsSummary.unresolvedComments === 3
+  );
+
+  // One critical blocked → readiness 'not-ready', score reduced by 10.
+  // Baseline all-approved minus the one critical we now mark blocked.
+  // critical approvedCount = 5 (60 points), critical blocked = 1 (-10),
+  // non-critical 4 × 5 = 20, no clean bonus → 70.
+  const oneBlockedItems = allApprovedItems.map((it, i) =>
+    it.critical && i === 2 ? { ...it, status: "blocked" as const, approvedBy: undefined, approvedAt: undefined } : it
+  );
+  const oneBlockedSummary = summarizeReviewBoard({
+    projectId: reviewProjectId,
+    runId: reviewRunId,
+    items: oneBlockedItems,
+    comments: [],
+  });
+  record(
+    "review-summary: one critical blocked → readiness 'not-ready'",
+    oneBlockedSummary.approvalReadiness === "not-ready"
+  );
+  record(
+    "review-summary: one critical blocked → score 70 (5×12 + 4×5 - 10)",
+    oneBlockedSummary.approvalScore === 70,
+    `Got ${oneBlockedSummary.approvalScore}`
+  );
+  record(
+    "review-summary: blockedItems count matches",
+    oneBlockedSummary.blockedItems === 1
+  );
+
+  // unresolvedCommentCountByItem counts correctly.
+  const unresolvedByItem = unresolvedCommentCountByItem({
+    projectId: reviewProjectId,
+    runId: reviewRunId,
+    items: allApprovedItems,
+    comments: threeUnresolvedComments,
+  });
+  record(
+    "review: unresolvedCommentCountByItem assigns 2 to first item",
+    unresolvedByItem[allApprovedItems[0].id] === 2
+  );
+  record(
+    "review: unresolvedCommentCountByItem assigns 1 to second item",
+    unresolvedByItem[allApprovedItems[1].id] === 1
+  );
+  record(
+    "review: unresolvedCommentCountByItem assigns 0 to items with no comments",
+    unresolvedByItem[allApprovedItems[3].id] === 0
+  );
+
+  // criticalBlockingMessages — one sentence per pending critical when
+  // not ready, empty when ready.
+  const blockingMessagesEmpty = criticalBlockingMessages({
+    projectId: reviewProjectId,
+    runId: reviewRunId,
+    items: allApprovedItems,
+    comments: [],
+  });
+  record(
+    "review: criticalBlockingMessages is empty when board is ready",
+    blockingMessagesEmpty.length === 0
+  );
+  const blockingMessagesPending = criticalBlockingMessages({
+    projectId: reviewProjectId,
+    runId: reviewRunId,
+    items: seeded, // all-pending
+    comments: [],
+  });
+  record(
+    "review: criticalBlockingMessages emits 6 sentences when all 6 critical pending",
+    blockingMessagesPending.length === 6
+  );
+  record(
+    "review: criticalBlockingMessages mentions Positioning for the pending positioning critical",
+    blockingMessagesPending.some((m) => /Positioning/.test(m))
+  );
+
+  // ---- Journey Status integration ---------------------------------------
+  //
+  // We re-use the same all-green inputs from the existing journey-status
+  // tests so the only variable is the reviewSummary argument.
+
+  const reviewGreenTracking = {
+    ...a.trackingReadiness,
+    score: 95,
+    blockers: 0,
+    warnings: 0,
+    checks: a.trackingReadiness.checks.map((c) => ({
+      ...c,
+      status: "passed" as const,
+      fix: undefined,
+    })),
+    status: "ready" as const,
+  };
+  const reviewGreenDiag = {
+    ...a.kpiDiagnosis,
+    primaryCategory: "healthy" as const,
+    findings: [
+      {
+        category: "healthy" as const,
+        signal: "all sampled KPIs within healthy bounds",
+        inference: "sample is within healthy envelope",
+        recommendedAction: "scale in 20% steps",
+      },
+    ],
+  };
+  // Match the existing journey-status all-green pattern: omit the
+  // Execution OS optional args so proof / first-batch / applied
+  // reviews don't force the stage back to review-passed. These are
+  // covered separately in their own tests above.
+  const greenBaseArgs = {
+    trackingReadiness: reviewGreenTracking,
+    kpiLadder: a.kpiLadder,
+    kpiDiagnosis: reviewGreenDiag,
+    adReview: a.adReview,
+    creatorBriefs: a.creatorBriefs,
+    shotLists: a.shotLists,
+    videoScripts: a.videoScripts,
+    variantSets: a.variantSets,
+  };
+
+  // Provide a not-ready review summary — expect a review warning AND
+  // the stage to drop from ready-to-spend.
+  const notReadySummary = emptyBoardSummary; // all-pending → not-ready
+  const journeyNotReady = buildJourneyStatus({
+    ...greenBaseArgs,
+    reviewSummary: notReadySummary,
+  });
+  const reviewEntriesNotReady = [
+    ...journeyNotReady.blockers,
+    ...journeyNotReady.warnings,
+  ].filter((e: any) => e.kind === "review");
+  record(
+    "journey/review: not-ready summary emits at least one review entry",
+    reviewEntriesNotReady.length >= 1
+  );
+  record(
+    "journey/review: review entry message lists first 3 pending kinds",
+    reviewEntriesNotReady.some(
+      (e: any) =>
+        /Positioning/.test(e.message) &&
+        /Offer/.test(e.message) &&
+        /Proof assets/.test(e.message)
+    )
+  );
+  record(
+    "journey/review: ready-to-spend NOT reached when review is not ready",
+    journeyNotReady.currentStage !== "ready-to-spend"
+  );
+
+  // pendingCriticalKinds > 0 → severity upgraded to blocker.
+  record(
+    "journey/review: pendingCriticalKinds > 0 → severity escalates to blocker",
+    journeyNotReady.blockers.some((b: any) => b.kind === "review")
+  );
+
+  // blockedItems > 0 → severity upgrades to blocker (even when no
+  // pending critical, blocked count alone is enough).
+  const blockedOnlySummary = summarizeReviewBoard({
+    projectId: reviewProjectId,
+    runId: reviewRunId,
+    items: oneBlockedItems,
+    comments: [],
+  });
+  const journeyBlocked = buildJourneyStatus({
+    ...greenBaseArgs,
+    reviewSummary: blockedOnlySummary,
+  });
+  record(
+    "journey/review: blockedItems > 0 escalates review severity to blocker",
+    journeyBlocked.blockers.some((b: any) => b.kind === "review")
+  );
+
+  // Ready summary → no review entry, stage reaches ready-to-spend.
+  const readySummary = allApprovedSummary;
+  const journeyReady = buildJourneyStatus({
+    ...greenBaseArgs,
+    reviewSummary: readySummary,
+  });
+  const readyReviewEntries = [
+    ...journeyReady.blockers,
+    ...journeyReady.warnings,
+  ].filter((e: any) => e.kind === "review");
+  record(
+    "journey/review: ready summary emits NO review warning",
+    readyReviewEntries.length === 0
+  );
+  record(
+    "journey/review: ready summary reaches 'ready-to-spend' when other gates pass",
+    journeyReady.currentStage === "ready-to-spend",
+    `Got ${journeyReady.currentStage}`
+  );
+
+  // Legacy (no reviewSummary) behaviour preserved.
+  const journeyLegacy = buildJourneyStatus(greenBaseArgs);
+  record(
+    "journey/review: legacy form (no reviewSummary) still reaches ready-to-spend",
+    journeyLegacy.currentStage === "ready-to-spend"
+  );
+
+  // ---- Memory store roundtrip --------------------------------------------
+
+  {
+    const store = createMemoryReviewStore();
+    const memRun = {
+      id: "mem-run-1",
+      projectId: "mem-proj-1",
+      runAt: "2026-05-18T00:00:00.000Z",
+      input: ASTRO_DATING_EXAMPLE,
+      strategy: reviewStrategy,
+    };
+    store.initBoardFromRun("mem-proj-1", memRun);
+    const listed = store.listItems("mem-proj-1", memRun.id);
+    record(
+      "review-store: initBoardFromRun seeds 10 items",
+      listed.length === 10
+    );
+    // Idempotency.
+    store.initBoardFromRun("mem-proj-1", memRun);
+    record(
+      "review-store: initBoardFromRun is idempotent",
+      store.listItems("mem-proj-1", memRun.id).length === 10
+    );
+
+    // upsertItem → listItems returns it.
+    const first = listed[0];
+    store.upsertItem({ ...first, status: "approved" });
+    const after = store.listItems("mem-proj-1", memRun.id).find((it: any) => it.id === first.id);
+    record(
+      "review-store: upsertItem updates status",
+      after !== undefined && after.status === "approved"
+    );
+
+    // addComment → listComments returns it.
+    const c = store.addComment({
+      itemId: first.id,
+      author: "client",
+      body: "Tighten the for-whom clause.",
+    });
+    record(
+      "review-store: addComment returns a comment with an id",
+      typeof c.id === "string" && c.id.length > 0
+    );
+    record(
+      "review-store: addComment stamps createdAt",
+      typeof c.createdAt === "number" && c.createdAt > 0
+    );
+    const listedComments = store.listComments(first.id);
+    record(
+      "review-store: listComments returns the new comment",
+      listedComments.length === 1 && listedComments[0].id === c.id
+    );
+
+    // resolveComment.
+    store.resolveComment(c.id);
+    const resolved = store.listComments(first.id)[0];
+    record(
+      "review-store: resolveComment flips resolved + stamps resolvedAt",
+      resolved.resolved === true && typeof resolved.resolvedAt === "number"
+    );
+
+    // deleteItem cascades comments.
+    store.addComment({
+      itemId: first.id,
+      author: "owner",
+      body: "Confirm.",
+    });
+    store.deleteItem(first.id);
+    record(
+      "review-store: deleteItem cascades to comments",
+      store.listComments(first.id).length === 0
+    );
+
+    // clearForRun drops all items + their comments.
+    store.addComment({
+      itemId: listed[1].id,
+      author: "client",
+      body: "Also needs attention.",
+    });
+    store.clearForRun(memRun.id);
+    record(
+      "review-store: clearForRun removes all items for the run",
+      store.listItems("mem-proj-1", memRun.id).length === 0
+    );
+    record(
+      "review-store: clearForRun cascades to comments",
+      store.listComments(listed[1].id).length === 0
+    );
+  }
+
+  // ---- localStorage key constants ----------------------------------------
+
+  record(
+    "review-store: STORAGE_KEY_REVIEW_ITEMS is the exact versioned key",
+    STORAGE_KEY_REVIEW_ITEMS === "bigad:review-items:v1"
+  );
+  record(
+    "review-store: STORAGE_KEY_REVIEW_COMMENTS is the exact versioned key",
+    STORAGE_KEY_REVIEW_COMMENTS === "bigad:review-comments:v1"
+  );
+
+  // ---- Serialization losslessness ----------------------------------------
+
+  {
+    const item = seeded[0];
+    const roundtripItem = JSON.parse(JSON.stringify(item));
+    record(
+      "review: ReviewItem serialization is lossless",
+      JSON.stringify(roundtripItem) === JSON.stringify(item)
+    );
+    const comment = threeUnresolvedComments[0];
+    const roundtripComment = JSON.parse(JSON.stringify(comment));
+    record(
+      "review: ReviewComment serialization is lossless",
+      JSON.stringify(roundtripComment) === JSON.stringify(comment)
+    );
+  }
+
+  // ---- Approval Pack export-brief integration ----------------------------
+
+  {
+    const briefWithBoard = generateExportBrief(
+      ASTRO_DATING_EXAMPLE,
+      reviewStrategy,
+      {
+        reviewBoard: {
+          items: allApprovedItems,
+          comments: threeUnresolvedComments,
+          summary: withCommentsSummary,
+        },
+      }
+    );
+    record(
+      "review-export: Approval Pack header present when board provided",
+      briefWithBoard.includes("## Approval Pack")
+    );
+    record(
+      "review-export: Approval Pack lists every critical item by label",
+      briefWithBoard.includes("Positioning") &&
+        briefWithBoard.includes("Offer") &&
+        briefWithBoard.includes("Proof assets") &&
+        briefWithBoard.includes("First test batch") &&
+        briefWithBoard.includes("Campaign setup") &&
+        briefWithBoard.includes("Client report")
+    );
+    record(
+      "review-export: Approval Pack lists Critical items header",
+      briefWithBoard.includes("### Critical items")
+    );
+    record(
+      "review-export: Approval Pack lists Non-critical items header",
+      briefWithBoard.includes("### Non-critical items")
+    );
+    record(
+      "review-export: Approval Pack lists Open comments header when unresolved present",
+      briefWithBoard.includes("### Open comments")
+    );
+
+    const briefWithoutBoard = generateExportBrief(
+      ASTRO_DATING_EXAMPLE,
+      reviewStrategy
+    );
+    record(
+      "review-export: Approval Pack absent when no board provided",
+      !briefWithoutBoard.includes("## Approval Pack")
+    );
+
+    // Empty board (zero items) → no section.
+    const briefEmptyBoard = generateExportBrief(
+      ASTRO_DATING_EXAMPLE,
+      reviewStrategy,
+      {
+        reviewBoard: {
+          items: [],
+          comments: [],
+          summary: {
+            approvalScore: 0,
+            approvalReadiness: "not-ready",
+            criticalApproved: 0,
+            criticalTotal: 6,
+            unresolvedComments: 0,
+            blockedItems: 0,
+            needsChangesItems: 0,
+            pendingCriticalKinds: [],
+            derivedAt: 0,
+          },
+        },
+      }
+    );
+    record(
+      "review-export: Approval Pack absent when board has zero items",
+      !briefEmptyBoard.includes("## Approval Pack")
+    );
+  }
+
+  // ---- buildStrategy determinism (sanity) --------------------------------
+
+  const detA = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const detB = buildStrategy(ASTRO_DATING_EXAMPLE);
+  record(
+    "review: buildStrategy determinism check holds after Review Layer added",
+    JSON.stringify(detA) === JSON.stringify(detB)
+  );
+}
+
 // Report.
 let failed = 0;
 for (const c of checks) {

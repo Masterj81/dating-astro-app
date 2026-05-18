@@ -98,6 +98,7 @@ type Tab =
   | "experiments"
   | "export"
   | "workspace"
+  | "review"
   | "report";
 
 // Tab order follows the stakeholder reading flow:
@@ -124,6 +125,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "experiments", label: "Experiments" },
   { id: "export", label: "Export brief" },
   { id: "workspace", label: "Workspace" },
+  { id: "review", label: "Review" },
   { id: "report", label: "Report" },
 ];
 
@@ -136,9 +138,13 @@ interface Props {
   // StrategyView itself stays free of localStorage and project-store
   // coupling.
   workspaceSlot?: React.ReactNode;
+  // Optional slot for the Review & Approval Layer tab body. Rendered
+  // inside the dedicated "Review" tab. Same render-prop pattern as
+  // workspaceSlot so StrategyView stays free of review-store coupling.
+  reviewSlot?: React.ReactNode;
 }
 
-export function StrategyView({ input, strategy, hasMeaningfulInput, workspaceSlot }: Props) {
+export function StrategyView({ input, strategy, hasMeaningfulInput, workspaceSlot, reviewSlot }: Props) {
   const [tab, setTab] = useState<Tab>("score");
 
   if (!hasMeaningfulInput) {
@@ -210,6 +216,9 @@ export function StrategyView({ input, strategy, hasMeaningfulInput, workspaceSlo
         {tab === "workspace" && (
           <div>{workspaceSlot ?? <WorkspaceFallback />}</div>
         )}
+        {tab === "review" && (
+          <div>{reviewSlot ?? <ReviewFallback />}</div>
+        )}
         {tab === "report" && <ReportTab />}
       </div>
     </section>
@@ -251,6 +260,14 @@ function WorkspaceFallback() {
   return (
     <p className="hairline rounded-lg bg-ink-900 p-4 text-xs text-ink-300">
       Workspace shell is loading…
+    </p>
+  );
+}
+
+function ReviewFallback() {
+  return (
+    <p className="hairline rounded-lg bg-ink-900 p-4 text-xs text-ink-300">
+      Save a run first to start a Review Board.
     </p>
   );
 }

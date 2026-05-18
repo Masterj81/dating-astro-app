@@ -1,5 +1,15 @@
 import type { ProductInput, Strategy } from "@/types/strategy";
 import type { LearningMemory, SavedRun, TestResult } from "@/types/workspace";
+import type {
+  ReviewBoardSummary,
+  ReviewComment,
+  ReviewItem,
+} from "@/types/review";
+import {
+  CRITICAL_REVIEW_ITEM_KINDS,
+  NON_CRITICAL_REVIEW_ITEM_KINDS,
+} from "@/types/review";
+import { reviewItemKindLabel } from "@/lib/review/review-board";
 import { awarenessLabel } from "./awareness";
 import { sophisticationLabel } from "./sophistication";
 import { windowKindLabel } from "./calendar";
@@ -10,6 +20,14 @@ export interface ExportBriefWorkspaceContext {
   runs?: SavedRun[];
   results?: TestResult[];
   learningMemory?: LearningMemory;
+  // Optional Review & Approval board — when provided AND the board
+  // has at least one item, the exporter appends an `## Approval Pack`
+  // section. Absent or empty → existing brief is byte-identical.
+  reviewBoard?: {
+    items: ReviewItem[];
+    comments: ReviewComment[];
+    summary: ReviewBoardSummary;
+  };
 }
 
 // generateExportBrief — assembles a clean, single-page markdown brief
@@ -1067,7 +1085,109 @@ export function generateExportBrief(
     }
   }
 
+  // Approval Pack — Review & Approval Layer summary. Emitted only
+  // when the caller supplies a non-empty `reviewBoard`. Absent or
+  // empty → existing brief is byte-identical (and existing tests
+  // stay green).
+  const reviewBoard = workspace?.reviewBoard;
+  if (reviewBoard && reviewBoard.items.length > 0) {
+    appendApprovalPack(lines, reviewBoard);
+  }
+
   return lines.join("\n").replace(/\n{3,}/g, "\n\n");
+}
+
+function appendApprovalPack(
+  lines: string[],
+  board: {
+    items: ReviewItem[];
+    comments: ReviewComment[];
+    summary: ReviewBoardSummary;
+  }
+): void {
+  section(lines, "Approval Pack");
+  const s = board.summary;
+  lines.push(
+    `**Approval score:** ${s.approvalScore} / 100 — ${s.approvalReadiness}`
+  );
+  lines.push(
+    `**Critical approvals:** ${s.criticalApproved} / ${s.criticalTotal}`
+  );
+  lines.push(`**Unresolved comments:** ${s.unresolvedComments}`);
+  lines.push("");
+
+  const byKind = new Map<string, ReviewItem>();
+  for (const it of board.items) {
+    byKind.set(it.kind, it);
+  }
+  const unresolvedCountByItem: Record<string, number> = {};
+  for (const it of board.items) unresolvedCountByItem[it.id] = 0;
+  for (const c of board.comments) {
+    if (c.resolved) continue;
+    if (unresolvedCountByItem[c.itemId] === undefined) continue;
+    unresolvedCountByItem[c.itemId] += 1;
+  }
+
+  function emitItemLine(it: ReviewItem): string {
+    const label = reviewItemKindLabel(it.kind);
+    const unresolved = unresolvedCountByItem[it.id] ?? 0;
+    const unresolvedSuffix =
+      unresolved > 0
+        ? ` (${unresolved} unresolved comment${unresolved === 1 ? "" : "s"})`
+        : "";
+    if (it.status === "approved") {
+      const who = it.approvedBy ? ` by ${it.approvedBy}` : "";
+      const when = it.approvedAt
+        ? ` (${new Date(it.approvedAt).toISOString().slice(0, 10)})`
+        : "";
+      return `- [approved] ${label} — approved${who}${when}${unresolvedSuffix}`;
+    }
+    if (it.status === "needs-changes") {
+      return `- [needs-changes] ${label} — needs-changes${unresolvedSuffix}`;
+    }
+    if (it.status === "blocked") {
+      return `- [blocked] ${label} — blocked${unresolvedSuffix}`;
+    }
+    return `- [pending] ${label} — pending${unresolvedSuffix}`;
+  }
+
+  lines.push(`### Critical items`);
+  for (const kind of CRITICAL_REVIEW_ITEM_KINDS) {
+    const it = byKind.get(kind);
+    if (!it) continue;
+    lines.push(emitItemLine(it));
+  }
+  lines.push("");
+
+  lines.push(`### Non-critical items`);
+  for (const kind of NON_CRITICAL_REVIEW_ITEM_KINDS) {
+    const it = byKind.get(kind);
+    if (!it) continue;
+    lines.push(emitItemLine(it));
+  }
+  lines.push("");
+
+  const openComments = board.comments
+    .filter((c) => !c.resolved)
+    .slice()
+    .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+  if (openComments.length > 0) {
+    lines.push(`### Open comments`);
+    for (const c of openComments) {
+      const owningItem = board.items.find((it) => it.id === c.itemId);
+      const kindLabel = owningItem
+        ? reviewItemKindLabel(owningItem.kind)
+        : c.itemId;
+      const when =
+        typeof c.createdAt === "number" && c.createdAt > 0
+          ? ` — ${new Date(c.createdAt).toISOString().slice(0, 10)}`
+          : "";
+      lines.push(
+        `- [${c.author} / ${kindLabel}] "${oneLine(c.body)}"${when}`
+      );
+    }
+    lines.push("");
+  }
 }
 
 function oneLine(s: string): string {
