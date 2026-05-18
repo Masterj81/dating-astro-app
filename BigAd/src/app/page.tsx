@@ -12,6 +12,7 @@ import {
   ReviewBoardTab,
   useReviewBoard,
 } from "@/components/ReviewPanel";
+import { AgencyTab, useAgencySelection } from "@/components/AgencyPanel";
 import { buildStrategy } from "@/lib/engine";
 import { buildNextIterationPlan } from "@/lib/engine/iteration-planner";
 import { generateExportBrief } from "@/lib/engine/export-brief";
@@ -52,6 +53,10 @@ export default function Page() {
   const reviewState = useReviewBoard({
     projectId: workspaceState.activeProjectId,
     run: latestRun,
+  });
+
+  const agencyState = useAgencySelection({
+    projectId: workspaceState.activeProjectId,
   });
 
   // Base strategy from the engine — pure, deterministic.
@@ -134,6 +139,22 @@ export default function Page() {
               <WorkspaceTab state={workspaceState} currentStrategy={strategy} />
             }
             reviewSlot={<ReviewBoardTab state={reviewState} />}
+            agencySlot={
+              <AgencyTab
+                state={agencyState}
+                strategy={strategy}
+                reviewBoard={
+                  reviewState.run
+                    ? {
+                        items: reviewState.items,
+                        comments: reviewState.comments,
+                        summary: reviewState.summary,
+                      }
+                    : undefined
+                }
+                learningMemory={workspaceState.learningMemory}
+              />
+            }
           />
         </div>
       </div>

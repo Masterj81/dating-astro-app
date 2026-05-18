@@ -667,6 +667,61 @@ unchanged, and every derived selector (`summarizeReviewBoard`,
 caller-supplied timestamps only — never `Date.now()` — so two reads
 of the same board produce byte-identical output.
 
+## Agency Packaging Layer
+
+The `Agency` tab (placed between `Review` and `Report` in the tab strip)
+packages a BigAd run for an agency-style delivery. It is a thin client
+layer over the engine — the engine itself never sees the agency
+selection, so `buildStrategy(input)` stays byte-identical regardless of
+which template, role, or package is picked.
+
+Three registries drive the tab:
+
+- **Project templates** — five presets (`app-launch`,
+  `ecommerce-seasonal`, `saas-evergreen`, `local-service-leadgen`,
+  `creator-product-launch`). Picking one shows its campaign type and
+  business model, the default proof requirements that block paid spend,
+  the tracking events the operator should make sure are firing, the
+  recommended output and report sections, the review approvals that
+  matter for this template, and a suggested package.
+- **Role presets** — five views (`owner`, `client`, `media-buyer`,
+  `creator`, `strategist`). Selecting a role surfaces what that role
+  cares about, what they typically approve, what's safe to hide from
+  them, the natural handoff format (meeting / video walkthrough /
+  doc-only / async comments), and 2-5 default questions that role
+  usually opens.
+- **Package presets** — four scopes (`strategy-sprint`,
+  `launch-sprint`, `growth-os-setup`, `custom-build`). Each carries a
+  summary, deliverables list, timeline range in days, USD price range
+  (operator-side reference), the BigAd modules included, the client's
+  responsibilities, an upsell path, and the acceptance criteria the
+  engagement is signed off against. Selecting an upsell card swaps the
+  current package selection so the operator can walk a client up the
+  ladder in place.
+
+Below the three selectors sits a **delivery summary** that is derived
+from the active strategy plus any selected template / role / package
+plus the live review board / learning memory. It groups output into
+six sections: what was decided, what needs approval, what will launch
+first, missing assets, what the client needs to provide, and the next
+meeting agenda. The summary is pure: same input twice produces
+byte-identical output. `derivedAt` is the max of every caller-supplied
+timestamp across the board, memory, and strategy — never `Date.now()`.
+
+Below the summary sit a deduped **client responsibilities** list
+(union of package and template) and a flat **acceptance criteria**
+list (from the package). The markdown `Export brief` gains an
+`## Agency Delivery Pack` section when any agency field is present —
+with the selected template, package, role-based handoff notes, the
+delivery summary, the deduped responsibilities, and the acceptance
+criteria. When no agency context is supplied (or every nested field is
+undefined), the section is omitted entirely so the rest of the brief
+is byte-identical to the pre-agency build.
+
+Selection state persists in `localStorage` under the versioned key
+`bigad:agency-selection:v1`, scoped per project. Nothing leaves the
+browser.
+
 ## Maintenance du guide
 
 Quand BigAd ajoute un nouveau module, mets a jour ce guide si le module change
@@ -688,3 +743,19 @@ un item, et le `Journey Status` exige `ready` avant de passer `ready-to-spend`.
 Tout est stocke dans `localStorage` sous les cles versionnees
 `bigad:review-items:v1` et `bigad:review-comments:v1` — rien ne quitte le
 navigateur, et le moteur reste pur.
+
+Le `Agency Packaging Layer` (onglet `Agency`, entre `Review` et `Report`)
+emballe le run pour une livraison de type agence : cinq templates de projet
+(app-launch, ecommerce-seasonal, saas-evergreen, local-service-leadgen,
+creator-product-launch), cinq vues de role (owner, client, media-buyer,
+creator, strategist) et quatre packages (strategy-sprint, launch-sprint,
+growth-os-setup, custom-build) chacun avec ses deliverables, sa fourchette
+de duree, sa fourchette de prix, les modules BigAd inclus, les
+responsabilites client et les criteres d'acceptation. En dessous, un
+**delivery summary** deterministe regroupe ce qui a ete decide, ce qui
+attend approbation, ce qui partira en premier, les assets manquants, ce
+que le client doit fournir et l'ordre du jour de la prochaine reunion;
+l'export markdown gagne une section `## Agency Delivery Pack` lorsqu'au
+moins un champ agency est fourni. La selection est stockee dans
+`localStorage` sous la cle versionnee `bigad:agency-selection:v1` —
+encore une fois, le moteur reste pur et rien ne quitte le navigateur.

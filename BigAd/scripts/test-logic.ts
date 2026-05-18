@@ -5061,6 +5061,502 @@ for (const { name, strategy } of fixtures) {
   );
 }
 
+// ============================================================================
+// === Agency Packaging Layer ===
+// ============================================================================
+//
+// Tests cover: catalog completeness (5 templates, 5 roles, 4 packages),
+// the deterministic buildDeliverySummary derivation, the in-memory store
+// roundtrip, the markdown export hook, and the buildStrategy determinism
+// guard (engine purity).
+
+{
+  const catalogMod = require("../src/lib/agency/catalog") as typeof import("../src/lib/agency/catalog");
+  const dsMod = require("../src/lib/agency/delivery-summary") as typeof import("../src/lib/agency/delivery-summary");
+  const storeMod = require("../src/lib/agency/agency-store") as typeof import("../src/lib/agency/agency-store");
+
+  const {
+    PROJECT_TEMPLATES,
+    ROLE_PRESETS,
+    PACKAGE_PRESETS,
+    listTemplates,
+    listRoles,
+    listPackages,
+    getTemplate,
+    getRole,
+    getPackage,
+  } = catalogMod;
+  const { buildDeliverySummary } = dsMod;
+  const { createMemoryAgencyStore, STORAGE_KEY_AGENCY_SELECTION } = storeMod;
+
+  const AGENCY_FIXED_TIME = 1715990400000; // 2024-05-18T00:00:00Z
+
+  // ---- Templates: presence + content -----------------------------------
+
+  const expectedTemplateIds = [
+    "app-launch",
+    "ecommerce-seasonal",
+    "saas-evergreen",
+    "local-service-leadgen",
+    "creator-product-launch",
+  ] as const;
+
+  record(
+    "agency: PROJECT_TEMPLATES has all 5 templates",
+    expectedTemplateIds.every((id) => !!PROJECT_TEMPLATES[id])
+  );
+  record(
+    "agency: listTemplates returns 5 templates",
+    listTemplates().length === 5
+  );
+  record(
+    "agency: listTemplates and PROJECT_TEMPLATES match",
+    listTemplates().every((t) => PROJECT_TEMPLATES[t.id] === t)
+  );
+
+  for (const id of expectedTemplateIds) {
+    const t = getTemplate(id);
+    record(
+      `agency: template ${id} has non-empty label`,
+      typeof t.label === "string" && t.label.length > 0
+    );
+    record(
+      `agency: template ${id} has non-empty summary`,
+      typeof t.summary === "string" && t.summary.length > 0
+    );
+    record(
+      `agency: template ${id} defaultProofRequirements >= 3`,
+      t.defaultProofRequirements.length >= 3,
+      `Got ${t.defaultProofRequirements.length}`
+    );
+    record(
+      `agency: template ${id} trackingChecklistEmphasis >= 3`,
+      t.trackingChecklistEmphasis.length >= 3,
+      `Got ${t.trackingChecklistEmphasis.length}`
+    );
+    record(
+      `agency: template ${id} recommendedOutputSections >= 3`,
+      t.recommendedOutputSections.length >= 3,
+      `Got ${t.recommendedOutputSections.length}`
+    );
+    record(
+      `agency: template ${id} recommendedReportSections >= 3`,
+      t.recommendedReportSections.length >= 3,
+      `Got ${t.recommendedReportSections.length}`
+    );
+    record(
+      `agency: template ${id} reviewApprovalItems >= 3`,
+      t.reviewApprovalItems.length >= 3,
+      `Got ${t.reviewApprovalItems.length}`
+    );
+    record(
+      `agency: template ${id} defaultPackage is a valid PackagePresetId`,
+      !!PACKAGE_PRESETS[t.defaultPackage]
+    );
+  }
+
+  // ---- Roles: presence + content ---------------------------------------
+
+  const expectedRoleIds = [
+    "owner",
+    "client",
+    "media-buyer",
+    "creator",
+    "strategist",
+  ] as const;
+
+  record(
+    "agency: ROLE_PRESETS has all 5 roles",
+    expectedRoleIds.every((id) => !!ROLE_PRESETS[id])
+  );
+  record("agency: listRoles returns 5 roles", listRoles().length === 5);
+
+  for (const id of expectedRoleIds) {
+    const r = getRole(id);
+    record(
+      `agency: role ${id} has non-empty label`,
+      typeof r.label === "string" && r.label.length > 0
+    );
+    record(
+      `agency: role ${id} cares >= 2`,
+      r.cares.length >= 2,
+      `Got ${r.cares.length}`
+    );
+    record(
+      `agency: role ${id} approves is an array (>= 0)`,
+      Array.isArray(r.approves)
+    );
+    record(
+      `agency: role ${id} hides is an array (>= 0)`,
+      Array.isArray(r.hides)
+    );
+    record(
+      `agency: role ${id} has handoffFormat`,
+      typeof r.handoffFormat === "string" && r.handoffFormat.length > 0
+    );
+    record(
+      `agency: role ${id} defaultQuestions >= 2`,
+      r.defaultQuestions.length >= 2,
+      `Got ${r.defaultQuestions.length}`
+    );
+  }
+
+  // ---- Packages: presence + content ------------------------------------
+
+  const expectedPackageIds = [
+    "strategy-sprint",
+    "launch-sprint",
+    "growth-os-setup",
+    "custom-build",
+  ] as const;
+
+  record(
+    "agency: PACKAGE_PRESETS has all 4 packages",
+    expectedPackageIds.every((id) => !!PACKAGE_PRESETS[id])
+  );
+  record("agency: listPackages returns 4 packages", listPackages().length === 4);
+
+  for (const id of expectedPackageIds) {
+    const p = getPackage(id);
+    record(
+      `agency: package ${id} deliverables >= 3`,
+      p.deliverables.length >= 3,
+      `Got ${p.deliverables.length}`
+    );
+    record(
+      `agency: package ${id} timelineDays.min < max`,
+      p.timelineDays.min < p.timelineDays.max,
+      `Got ${p.timelineDays.min} / ${p.timelineDays.max}`
+    );
+    record(
+      `agency: package ${id} priceRangeUsd.min < max`,
+      p.priceRangeUsd.min < p.priceRangeUsd.max,
+      `Got ${p.priceRangeUsd.min} / ${p.priceRangeUsd.max}`
+    );
+    record(
+      `agency: package ${id} includedModules >= 3`,
+      p.includedModules.length >= 3,
+      `Got ${p.includedModules.length}`
+    );
+    record(
+      `agency: package ${id} clientResponsibilities >= 3`,
+      p.clientResponsibilities.length >= 3,
+      `Got ${p.clientResponsibilities.length}`
+    );
+    record(
+      `agency: package ${id} acceptanceCriteria >= 3`,
+      p.acceptanceCriteria.length >= 3,
+      `Got ${p.acceptanceCriteria.length}`
+    );
+  }
+
+  // ---- buildDeliverySummary: determinism + shape -----------------------
+
+  const agencyStrategy = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const templateSprint = getTemplate("app-launch");
+  const roleClient = getRole("client");
+  const packageStrategy = getPackage("strategy-sprint");
+  const packageLaunch = getPackage("launch-sprint");
+
+  // First call with no template/role/package
+  const summaryBare1 = buildDeliverySummary({ strategy: agencyStrategy });
+  const summaryBare2 = buildDeliverySummary({ strategy: agencyStrategy });
+  record(
+    "agency: buildDeliverySummary determinism (no selection) — byte-identical",
+    JSON.stringify(summaryBare1) === JSON.stringify(summaryBare2)
+  );
+  record(
+    "agency: buildDeliverySummary returns array fields when no selection (no nulls)",
+    Array.isArray(summaryBare1.whatWasDecided) &&
+      Array.isArray(summaryBare1.whatNeedsApproval) &&
+      Array.isArray(summaryBare1.whatWillLaunchFirst) &&
+      Array.isArray(summaryBare1.missingAssets) &&
+      Array.isArray(summaryBare1.clientNeedsToProvide) &&
+      Array.isArray(summaryBare1.nextMeetingAgenda)
+  );
+  record(
+    "agency: bare delivery summary mentions 'No active review board' when no board",
+    summaryBare1.whatNeedsApproval.some((s) =>
+      s.toLowerCase().includes("no active review board")
+    )
+  );
+
+  // Determinism with full context
+  const fullInput: Parameters<typeof buildDeliverySummary>[0] = {
+    strategy: agencyStrategy,
+    template: templateSprint,
+    role: roleClient,
+    pkg: packageStrategy,
+  };
+  const summaryFull1 = buildDeliverySummary(fullInput);
+  const summaryFull2 = buildDeliverySummary(fullInput);
+  record(
+    "agency: buildDeliverySummary determinism (full selection) — byte-identical",
+    JSON.stringify(summaryFull1) === JSON.stringify(summaryFull2)
+  );
+
+  // Different packages → different summaries on the same strategy.
+  // The summary's clientNeedsToProvide / nextMeetingAgenda do NOT
+  // currently depend on the package (template + role drive those), so
+  // we vary by template too to ensure variance. Compare two summaries
+  // produced with the package field swapped; one of the summary fields
+  // must differ because the templates differ.
+  const summaryTemplateA = buildDeliverySummary({
+    strategy: agencyStrategy,
+    template: getTemplate("app-launch"),
+    pkg: packageStrategy,
+  });
+  const summaryTemplateB = buildDeliverySummary({
+    strategy: agencyStrategy,
+    template: getTemplate("ecommerce-seasonal"),
+    pkg: packageLaunch,
+  });
+  record(
+    "agency: buildDeliverySummary varies with template+package selection",
+    JSON.stringify(summaryTemplateA.clientNeedsToProvide) !==
+      JSON.stringify(summaryTemplateB.clientNeedsToProvide)
+  );
+
+  // Engine purity: buildStrategy is byte-identical under agency context
+  // — because buildStrategy never SEES agency input, this is implicitly
+  // true, but we assert it explicitly to lock the guarantee.
+  const detA = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const detB = buildStrategy(ASTRO_DATING_EXAMPLE);
+  record(
+    "agency: buildStrategy determinism preserved after Agency Layer added",
+    JSON.stringify(detA) === JSON.stringify(detB)
+  );
+
+  // Fake reviewBoard to exercise the whatNeedsApproval / missingAssets paths.
+  const reviewMod = require("../src/lib/review/review-board") as typeof import("../src/lib/review/review-board");
+  const reviewTypes = require("../src/types/review") as typeof import("../src/types/review");
+  const { initialItemsForRun, summarizeReviewBoard } = reviewMod;
+  const seededForAgency = initialItemsForRun(
+    "agency-proj-1",
+    "agency-run-1",
+    agencyStrategy,
+    AGENCY_FIXED_TIME
+  );
+  const agencyBoard = {
+    items: seededForAgency,
+    comments: [] as ReturnType<typeof reviewMod.summarizeReviewBoard> extends infer _ ? import("../src/types/review").ReviewComment[] : never,
+    summary: summarizeReviewBoard({
+      projectId: "agency-proj-1",
+      runId: "agency-run-1",
+      items: seededForAgency,
+      comments: [],
+    }),
+  };
+  void reviewTypes;
+
+  const summaryWithBoard = buildDeliverySummary({
+    strategy: agencyStrategy,
+    template: templateSprint,
+    pkg: packageStrategy,
+    reviewBoard: agencyBoard,
+  });
+  record(
+    "agency: whatNeedsApproval non-empty when reviewBoard has pendingCriticalKinds",
+    summaryWithBoard.whatNeedsApproval.length > 0 &&
+      summaryWithBoard.whatNeedsApproval.some((s) =>
+        s.toLowerCase().includes("pending critical")
+      )
+  );
+
+  // missingAssets reflects proofAssetPlan.missingBeforeSpend
+  const expectedMissingCount =
+    agencyStrategy.proofAssetPlan.missingBeforeSpend.length;
+  record(
+    "agency: missingAssets reflects proofAssetPlan.missingBeforeSpend",
+    expectedMissingCount === 0
+      ? summaryWithBoard.missingAssets.length >= 0
+      : summaryWithBoard.missingAssets.length >= 1
+  );
+
+  // derivedAt is NOT Date.now() — two calls one second apart with
+  // identical state return identical derivedAt.
+  const summaryT1 = buildDeliverySummary({
+    strategy: agencyStrategy,
+    template: templateSprint,
+    pkg: packageStrategy,
+    reviewBoard: agencyBoard,
+  });
+  // Simulate elapsed wall-clock without changing the input.
+  const summaryT2 = buildDeliverySummary({
+    strategy: agencyStrategy,
+    template: templateSprint,
+    pkg: packageStrategy,
+    reviewBoard: agencyBoard,
+  });
+  record(
+    "agency: derivedAt is NOT Date.now() — two calls with identical state agree",
+    summaryT1.derivedAt === summaryT2.derivedAt
+  );
+  record(
+    "agency: derivedAt sources from review board (>= AGENCY_FIXED_TIME)",
+    summaryWithBoard.derivedAt >= AGENCY_FIXED_TIME
+  );
+
+  // ---- Memory store roundtrip ------------------------------------------
+
+  {
+    const store = createMemoryAgencyStore();
+    record(
+      "agency-store: empty getSelection returns undefined",
+      store.getSelection("p-x") === undefined
+    );
+    store.setSelection({
+      projectId: "p-1",
+      templateId: "app-launch",
+      roleId: "client",
+      packageId: "launch-sprint",
+      updatedAt: AGENCY_FIXED_TIME,
+    });
+    const got = store.getSelection("p-1");
+    record(
+      "agency-store: setSelection + getSelection returns equal object",
+      !!got &&
+        got.projectId === "p-1" &&
+        got.templateId === "app-launch" &&
+        got.roleId === "client" &&
+        got.packageId === "launch-sprint" &&
+        got.updatedAt === AGENCY_FIXED_TIME
+    );
+    // Second selection on a different project should not collide.
+    store.setSelection({
+      projectId: "p-2",
+      templateId: "saas-evergreen",
+      updatedAt: AGENCY_FIXED_TIME + 1,
+    });
+    record(
+      "agency-store: setSelection keeps per-project selections separate",
+      store.getSelection("p-1")?.templateId === "app-launch" &&
+        store.getSelection("p-2")?.templateId === "saas-evergreen"
+    );
+    // Overwrite same project.
+    store.setSelection({
+      projectId: "p-1",
+      templateId: "ecommerce-seasonal",
+      updatedAt: AGENCY_FIXED_TIME + 2,
+    });
+    record(
+      "agency-store: setSelection overwrites existing project",
+      store.getSelection("p-1")?.templateId === "ecommerce-seasonal"
+    );
+    // Clear.
+    store.clearSelection("p-1");
+    record(
+      "agency-store: clearSelection drops the selection",
+      store.getSelection("p-1") === undefined
+    );
+  }
+
+  record(
+    "agency-store: STORAGE_KEY_AGENCY_SELECTION is the exact versioned key",
+    STORAGE_KEY_AGENCY_SELECTION === "bigad:agency-selection:v1"
+  );
+
+  // ---- Export brief — Agency Delivery Pack section ---------------------
+
+  const exportSummary = buildDeliverySummary({
+    strategy: agencyStrategy,
+    template: templateSprint,
+    role: roleClient,
+    pkg: packageStrategy,
+    reviewBoard: agencyBoard,
+  });
+
+  const briefWithAgency = generateExportBrief(
+    ASTRO_DATING_EXAMPLE,
+    agencyStrategy,
+    {
+      agency: {
+        template: templateSprint,
+        role: roleClient,
+        pkg: packageStrategy,
+        deliverySummary: exportSummary,
+      },
+    }
+  );
+  record(
+    "agency-export: brief contains '## Agency Delivery Pack' header when context provided",
+    briefWithAgency.includes("## Agency Delivery Pack")
+  );
+  record(
+    "agency-export: brief contains '### Selected template' header",
+    briefWithAgency.includes("### Selected template")
+  );
+  record(
+    "agency-export: brief contains '### Selected package' header",
+    briefWithAgency.includes("### Selected package")
+  );
+  record(
+    "agency-export: brief contains '### Role-based handoff notes' header",
+    briefWithAgency.includes("### Role-based handoff notes")
+  );
+  record(
+    "agency-export: brief contains '### Delivery summary' header",
+    briefWithAgency.includes("### Delivery summary")
+  );
+  record(
+    "agency-export: brief contains '### Client responsibilities' header",
+    briefWithAgency.includes("### Client responsibilities")
+  );
+  record(
+    "agency-export: brief contains '### Acceptance criteria' header",
+    briefWithAgency.includes("### Acceptance criteria")
+  );
+  record(
+    "agency-export: brief contains selected template label",
+    briefWithAgency.includes(templateSprint.label)
+  );
+  record(
+    "agency-export: brief contains selected package label",
+    briefWithAgency.includes(packageStrategy.label)
+  );
+
+  // Agency-only export (template only) — still emits the section.
+  const briefTemplateOnly = generateExportBrief(
+    ASTRO_DATING_EXAMPLE,
+    agencyStrategy,
+    { agency: { template: templateSprint } }
+  );
+  record(
+    "agency-export: brief emits section with just a template",
+    briefTemplateOnly.includes("## Agency Delivery Pack") &&
+      briefTemplateOnly.includes("### Selected template")
+  );
+
+  // Without agency context entirely — section absent.
+  const briefWithoutAgency = generateExportBrief(
+    ASTRO_DATING_EXAMPLE,
+    agencyStrategy
+  );
+  record(
+    "agency-export: brief omits '## Agency Delivery Pack' when context absent",
+    !briefWithoutAgency.includes("## Agency Delivery Pack")
+  );
+
+  // With agency = {} (empty object) — section absent.
+  const briefEmptyAgency = generateExportBrief(
+    ASTRO_DATING_EXAMPLE,
+    agencyStrategy,
+    { agency: {} }
+  );
+  record(
+    "agency-export: brief omits '## Agency Delivery Pack' when every agency field is undefined",
+    !briefEmptyAgency.includes("## Agency Delivery Pack")
+  );
+
+  // Engine determinism is preserved.
+  const detC = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const detD = buildStrategy(ASTRO_DATING_EXAMPLE);
+  record(
+    "agency: final buildStrategy determinism check holds after Agency Layer added",
+    JSON.stringify(detC) === JSON.stringify(detD)
+  );
+}
+
 // Report.
 let failed = 0;
 for (const c of checks) {

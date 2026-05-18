@@ -10,6 +10,12 @@ import {
   NON_CRITICAL_REVIEW_ITEM_KINDS,
 } from "@/types/review";
 import { reviewItemKindLabel } from "@/lib/review/review-board";
+import type {
+  DeliverySummary,
+  PackagePreset,
+  ProjectTemplate,
+  RolePreset,
+} from "@/types/agency";
 import { awarenessLabel } from "./awareness";
 import { sophisticationLabel } from "./sophistication";
 import { windowKindLabel } from "./calendar";
@@ -27,6 +33,15 @@ export interface ExportBriefWorkspaceContext {
     items: ReviewItem[];
     comments: ReviewComment[];
     summary: ReviewBoardSummary;
+  };
+  // Optional Agency Packaging Layer context — when any field is
+  // present, the exporter appends an `## Agency Delivery Pack`
+  // section. Absent or fully empty → existing brief is byte-identical.
+  agency?: {
+    template?: ProjectTemplate;
+    role?: RolePreset;
+    pkg?: PackagePreset;
+    deliverySummary?: DeliverySummary;
   };
 }
 
@@ -1094,7 +1109,170 @@ export function generateExportBrief(
     appendApprovalPack(lines, reviewBoard);
   }
 
+  // Agency Delivery Pack — emitted only when at least one agency
+  // field is provided. When the whole `agency` object is absent or
+  // every nested field is undefined, the section is omitted entirely
+  // (existing export tests stay green).
+  const agency = workspace?.agency;
+  if (
+    agency &&
+    (agency.template || agency.role || agency.pkg || agency.deliverySummary)
+  ) {
+    appendAgencyDeliveryPack(lines, agency);
+  }
+
   return lines.join("\n").replace(/\n{3,}/g, "\n\n");
+}
+
+function appendAgencyDeliveryPack(
+  lines: string[],
+  agency: {
+    template?: ProjectTemplate;
+    role?: RolePreset;
+    pkg?: PackagePreset;
+    deliverySummary?: DeliverySummary;
+  }
+): void {
+  section(lines, "Agency Delivery Pack");
+
+  if (agency.template) {
+    const t = agency.template;
+    lines.push(`### Selected template`);
+    lines.push(
+      `**${t.label}** — ${businessModelLabel(t.businessModel)}, ${campaignTypeLabelAgency(t.campaignType)} campaign`
+    );
+    lines.push(`- Default proof requirements:`);
+    for (const r of t.defaultProofRequirements) {
+      lines.push(`  - ${r}`);
+    }
+    lines.push(`- Tracking emphasis:`);
+    for (const r of t.trackingChecklistEmphasis) {
+      lines.push(`  - ${r}`);
+    }
+    lines.push("");
+  }
+
+  if (agency.pkg) {
+    const p = agency.pkg;
+    lines.push(`### Selected package`);
+    lines.push(
+      `**${p.label}** — $${p.priceRangeUsd.min.toLocaleString("en-US")}–$${p.priceRangeUsd.max.toLocaleString("en-US")} over ${p.timelineDays.min}–${p.timelineDays.max} days`
+    );
+    lines.push(`- Deliverables:`);
+    for (const d of p.deliverables) {
+      lines.push(`  - ${d}`);
+    }
+    lines.push(`- Client responsibilities:`);
+    for (const c of p.clientResponsibilities) {
+      lines.push(`  - ${c}`);
+    }
+    lines.push(`- Acceptance criteria:`);
+    for (const c of p.acceptanceCriteria) {
+      lines.push(`  - ${c}`);
+    }
+    lines.push("");
+  }
+
+  if (agency.role) {
+    const r = agency.role;
+    lines.push(`### Role-based handoff notes`);
+    lines.push(`**${r.label}** — ${r.handoffFormat} format`);
+    lines.push(`- Cares about: ${r.cares.join(", ")}`);
+    if (r.approves.length > 0) {
+      lines.push(
+        `- Approves: ${r.approves.map((k) => reviewItemKindLabel(k)).join(", ")}`
+      );
+    } else {
+      lines.push(`- Approves: advisory; no default approvals.`);
+    }
+    if (r.hides.length > 0) {
+      lines.push(`- Hides: ${r.hides.join(", ")}`);
+    }
+    lines.push(`- Default questions:`);
+    for (const q of r.defaultQuestions) {
+      lines.push(`  - ${q}`);
+    }
+    lines.push("");
+  }
+
+  if (agency.deliverySummary) {
+    const ds = agency.deliverySummary;
+    lines.push(`### Delivery summary`);
+    appendBulletGroup(lines, "What was decided", ds.whatWasDecided);
+    appendBulletGroup(lines, "What needs approval", ds.whatNeedsApproval);
+    appendBulletGroup(lines, "What will launch first", ds.whatWillLaunchFirst);
+    appendBulletGroup(lines, "Missing assets", ds.missingAssets);
+    appendBulletGroup(lines, "Client needs to provide", ds.clientNeedsToProvide);
+    appendBulletGroup(lines, "Next meeting agenda", ds.nextMeetingAgenda);
+  }
+
+  // Flat helper lists — deduped responsibilities + acceptance criteria
+  // pulled from package + template.
+  if (agency.pkg || agency.template) {
+    const responsibilities: string[] = [];
+    if (agency.pkg) {
+      for (const c of agency.pkg.clientResponsibilities) responsibilities.push(c);
+    }
+    if (agency.template) {
+      for (const r of agency.template.defaultProofRequirements) responsibilities.push(r);
+    }
+    const dedupedResponsibilities = Array.from(new Set(responsibilities));
+    if (dedupedResponsibilities.length > 0) {
+      lines.push(`### Client responsibilities`);
+      for (const c of dedupedResponsibilities) {
+        lines.push(`- ${c}`);
+      }
+      lines.push("");
+    }
+  }
+
+  if (agency.pkg) {
+    lines.push(`### Acceptance criteria`);
+    for (const c of agency.pkg.acceptanceCriteria) {
+      lines.push(`- ${c}`);
+    }
+    lines.push("");
+  }
+}
+
+function appendBulletGroup(
+  lines: string[],
+  title: string,
+  items: string[]
+): void {
+  lines.push(`**${title}:**`);
+  if (items.length === 0) {
+    lines.push(`- (nothing yet)`);
+  } else {
+    for (const i of items) {
+      lines.push(`- ${i}`);
+    }
+  }
+  lines.push("");
+}
+
+function businessModelLabel(m: string): string {
+  return (
+    {
+      "subscription-app": "Subscription app",
+      ecommerce: "E-commerce",
+      saas: "SaaS",
+      "local-service": "Local service",
+      "creator-product": "Creator product",
+    }[m] ?? m
+  );
+}
+
+function campaignTypeLabelAgency(t: string): string {
+  return (
+    {
+      "always-on": "always-on",
+      "promo-3-tier": "promo 3-tier",
+      seasonal: "seasonal",
+      evergreen: "evergreen",
+      launch: "launch",
+    }[t] ?? t
+  );
 }
 
 function appendApprovalPack(
