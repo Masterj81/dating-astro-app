@@ -1235,6 +1235,7 @@ const jsTwice = buildJourneyStatus({
   appliedAdReviews: a.appliedAdReviews,
   unitEconomics: a.unitEconomics,
   forecast: a.forecast,
+  simulator: a.scenarioSimulator,
 });
 record(
   "journeyStatus: deterministic across calls",
@@ -1324,6 +1325,7 @@ const validBlockerKinds = new Set([
   "asset",
   "economics",
   "forecast",
+  "simulator",
 ]);
 record(
   "journeyStatus: every blocker.kind is a valid JourneyBlockerKind",
@@ -8339,6 +8341,547 @@ for (const { name, strategy } of fixtures) {
   record(
     "forecast: Forecast tab lands at index >= 8 (after Economics, first-7 pinning intact)",
     tabLabels.indexOf("Forecast") >= 8
+  );
+}
+
+// ============================================================================
+// === Scenario Simulator / What-if Lab ===
+// ============================================================================
+//
+// Tests cover: pure-function determinism, exact 5-scenario count + stable
+// ordering, base assumption parity with forecast, lever-direction
+// monotonicity (CVR down / CPM up / trial up / AOV up), sensitivity
+// shape + sorting, recommendation cap + stable ids, journey-status
+// integration (unviable → blocker, only-base-viable → warning, viable →
+// no entry, ready-to-spend gating), and markdown export. ~55 asserts.
+
+{
+  const simulatorMod = require("../src/lib/simulator/scenario-simulator") as typeof import("../src/lib/simulator/scenario-simulator");
+  const journeyMod = require("../src/lib/engine/journey-status") as typeof import("../src/lib/engine/journey-status");
+  const exportMod = require("../src/lib/engine/export-brief") as typeof import("../src/lib/engine/export-brief");
+
+  const {
+    buildScenarioSimulatorPlan,
+    buildDefaultAssumptionSet,
+    simulateScenario,
+    buildSensitivityResults,
+    buildSimulatorRecommendations,
+  } = simulatorMod;
+  const { buildJourneyStatus } = journeyMod;
+  const { generateExportBrief } = exportMod;
+
+  // ---- Determinism --------------------------------------------------------
+
+  const astro = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const plan1 = buildScenarioSimulatorPlan(astro);
+  const plan2 = buildScenarioSimulatorPlan(astro);
+  record(
+    "simulator: buildScenarioSimulatorPlan deterministic for AstroDating",
+    JSON.stringify(plan1) === JSON.stringify(plan2)
+  );
+  record(
+    "simulator: derivedAt is exactly 0 (no Date.now)",
+    plan1.derivedAt === 0
+  );
+
+  const baseAssumptions = buildDefaultAssumptionSet(astro);
+  const sim1 = simulateScenario(astro, baseAssumptions);
+  const sim2 = simulateScenario(astro, baseAssumptions);
+  record(
+    "simulator: simulateScenario deterministic for same base",
+    JSON.stringify(sim1) === JSON.stringify(sim2)
+  );
+
+  const detA = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const detB = buildStrategy(ASTRO_DATING_EXAMPLE);
+  record(
+    "simulator: buildStrategy(AstroDating) byte-identical across calls (engine determinism preserved)",
+    JSON.stringify(detA) === JSON.stringify(detB)
+  );
+  record(
+    "simulator: strategy.scenarioSimulator present after buildStrategy",
+    !!detA.scenarioSimulator &&
+      typeof detA.scenarioSimulator.status === "string"
+  );
+  record(
+    "simulator: strategy.scenarioSimulator.derivedAt is 0",
+    detA.scenarioSimulator?.derivedAt === 0
+  );
+
+  // ---- Scenario count + ordering -----------------------------------------
+
+  record(
+    "simulator: plan.scenarios.length === 5",
+    plan1.scenarios.length === 5
+  );
+
+  const baseIdx = plan1.scenarios.findIndex((s) => s.scenarioId === "base");
+  const higherCpmIdx = plan1.scenarios.findIndex(
+    (s) => s.scenarioId === "higher-cpm"
+  );
+  const lowerCvrIdx = plan1.scenarios.findIndex(
+    (s) => s.scenarioId === "lower-cvr"
+  );
+  const slot4 = plan1.scenarios[3];
+  const higherAovIdx = plan1.scenarios.findIndex(
+    (s) => s.scenarioId === "higher-aov-annual"
+  );
+
+  record("simulator: scenarios[0] is 'base'", baseIdx === 0);
+  record("simulator: scenarios[1] is 'higher-cpm'", higherCpmIdx === 1);
+  record("simulator: scenarios[2] is 'lower-cvr'", lowerCvrIdx === 2);
+  record(
+    "simulator: scenarios[3] is 'better-trial' OR 'better-cvr'",
+    slot4.scenarioId === "better-trial" || slot4.scenarioId === "better-cvr"
+  );
+  record(
+    "simulator: scenarios[4] is 'higher-aov-annual'",
+    higherAovIdx === 4
+  );
+  record(
+    "simulator: every scenario has stable kebab-case scenarioId",
+    plan1.scenarios.every(
+      (s) =>
+        typeof s.scenarioId === "string" &&
+        /^[a-z]+(?:-[a-z0-9]+)*$/.test(s.scenarioId)
+    )
+  );
+
+  // ---- Base vs forecast directional match --------------------------------
+
+  const baseScen = plan1.scenarios[0];
+  const forecastBase = astro.forecast?.scenarios.find((s) => s.kind === "base");
+  if (
+    forecastBase &&
+    typeof forecastBase.outcome.expectedCpa === "number" &&
+    Number.isFinite(baseScen.outcome.cpa)
+  ) {
+    record(
+      "simulator: base.outcome.cpa within ±$2 of forecast base CPA",
+      Math.abs(baseScen.outcome.cpa - forecastBase.outcome.expectedCpa) <= 2
+    );
+  } else {
+    // Forecast base CPA might be undefined when economics is missing — still
+    // pass a soft check that base CPA is a finite number.
+    record(
+      "simulator: base.outcome.cpa is a finite number (forecast CPA unavailable)",
+      Number.isFinite(baseScen.outcome.cpa)
+    );
+  }
+  if (
+    forecastBase &&
+    typeof forecastBase.outcome.expectedRoas === "number"
+  ) {
+    // Note: subscription with trial models revenue as paidConversions × LTV,
+    // while forecast uses AOV — so absolute ROAS can diverge. We assert
+    // direction (both have positive ROAS) rather than exact parity.
+    record(
+      "simulator: base.outcome.roas is positive when forecast base ROAS is positive",
+      baseScen.outcome.roas > 0 && forecastBase.outcome.expectedRoas > 0
+    );
+  } else {
+    record(
+      "simulator: base.outcome.roas is finite (forecast ROAS unavailable)",
+      Number.isFinite(baseScen.outcome.roas)
+    );
+  }
+
+  // ---- Lever direction tests ---------------------------------------------
+
+  const lowerCvr = plan1.scenarios[2];
+  record(
+    "simulator: lower-cvr CPA > base CPA (or both Infinity)",
+    !Number.isFinite(baseScen.outcome.cpa) ||
+      !Number.isFinite(lowerCvr.outcome.cpa) ||
+      lowerCvr.outcome.cpa > baseScen.outcome.cpa
+  );
+  record(
+    "simulator: lower-cvr ROAS < base ROAS",
+    lowerCvr.outcome.roas < baseScen.outcome.roas
+  );
+
+  const higherCpm = plan1.scenarios[1];
+  record(
+    "simulator: higher-cpm CPA > base CPA (or both Infinity)",
+    !Number.isFinite(baseScen.outcome.cpa) ||
+      !Number.isFinite(higherCpm.outcome.cpa) ||
+      higherCpm.outcome.cpa > baseScen.outcome.cpa
+  );
+  record(
+    "simulator: higher-cpm ROAS < base ROAS",
+    higherCpm.outcome.roas < baseScen.outcome.roas
+  );
+
+  // Slot 4 — directional check matches slot type.
+  if (slot4.scenarioId === "better-trial") {
+    record(
+      "simulator: better-trial trialToPaidRate > base trialToPaidRate",
+      typeof slot4.assumptions.trialToPaidRate === "number" &&
+        typeof baseScen.assumptions.trialToPaidRate === "number" &&
+        slot4.assumptions.trialToPaidRate >
+          baseScen.assumptions.trialToPaidRate
+    );
+    record(
+      "simulator: better-trial paidCac < base paidCac (or both Infinity)",
+      slot4.outcome.paidCac === undefined ||
+        baseScen.outcome.paidCac === undefined ||
+        !Number.isFinite(slot4.outcome.paidCac) ||
+        !Number.isFinite(baseScen.outcome.paidCac) ||
+        slot4.outcome.paidCac <= baseScen.outcome.paidCac
+    );
+  } else {
+    record(
+      "simulator: better-cvr CVR > base CVR",
+      slot4.assumptions.cvr > baseScen.assumptions.cvr
+    );
+    record(
+      "simulator: better-cvr ROAS >= base ROAS",
+      slot4.outcome.roas >= baseScen.outcome.roas
+    );
+  }
+
+  const higherAov = plan1.scenarios[4];
+  record(
+    "simulator: higher-aov-annual revenue >= base revenue",
+    higherAov.outcome.revenue >= baseScen.outcome.revenue
+  );
+  record(
+    "simulator: higher-aov-annual currentAov > base currentAov",
+    higherAov.assumptions.currentAov > baseScen.assumptions.currentAov
+  );
+
+  // ---- Sensitivities ------------------------------------------------------
+
+  const sens = plan1.sensitivities;
+  record(
+    "simulator: sensitivities includes 'cpm'",
+    sens.some((s) => s.lever === "cpm")
+  );
+  record(
+    "simulator: sensitivities includes 'ctr'",
+    sens.some((s) => s.lever === "ctr")
+  );
+  record(
+    "simulator: sensitivities includes 'cvr'",
+    sens.some((s) => s.lever === "cvr")
+  );
+  record(
+    "simulator: sensitivities includes 'totalBudget'",
+    sens.some((s) => s.lever === "totalBudget")
+  );
+  record(
+    "simulator: each numeric lever has 4 steps",
+    sens
+      .filter((s) => s.lever !== "offerKind")
+      .every((s) => s.steps.length === 4)
+  );
+  record(
+    "simulator: sensitivities sorted by sensitivityScore desc",
+    sens.every(
+      (s, i) => i === 0 || sens[i - 1].sensitivityScore >= s.sensitivityScore
+    )
+  );
+  record(
+    "simulator: every sensitivityScore is in [0, 100]",
+    sens.every(
+      (s) =>
+        Number.isFinite(s.sensitivityScore) &&
+        s.sensitivityScore >= 0 &&
+        s.sensitivityScore <= 100
+    )
+  );
+
+  // ---- Recommendations ---------------------------------------------------
+
+  record(
+    "simulator: plan.recommendations.length <= 5",
+    plan1.recommendations.length <= 5
+  );
+  record(
+    "simulator: every recommendation has stable id + title + rationale + priority",
+    plan1.recommendations.every(
+      (r) =>
+        typeof r.id === "string" &&
+        r.id.length > 0 &&
+        typeof r.title === "string" &&
+        r.title.length > 0 &&
+        typeof r.rationale === "string" &&
+        r.rationale.length > 0 &&
+        (r.priority === "must-do" ||
+          r.priority === "should-do" ||
+          r.priority === "nice-to-have")
+    )
+  );
+  // Recommendation priority ordering — must-do before should-do before nice-to-have.
+  const priOrder: Record<string, number> = {
+    "must-do": 0,
+    "should-do": 1,
+    "nice-to-have": 2,
+  };
+  record(
+    "simulator: recommendations sorted by priority (must-do → should-do → nice-to-have)",
+    plan1.recommendations.every(
+      (r, i) =>
+        i === 0 ||
+        priOrder[plan1.recommendations[i - 1].priority] <= priOrder[r.priority]
+    )
+  );
+  // buildSimulatorRecommendations called standalone is deterministic.
+  const recs1 = buildSimulatorRecommendations({
+    base: plan1.scenarios[0],
+    scenarios: plan1.scenarios,
+    sensitivities: plan1.sensitivities,
+  });
+  const recs2 = buildSimulatorRecommendations({
+    base: plan1.scenarios[0],
+    scenarios: plan1.scenarios,
+    sensitivities: plan1.sensitivities,
+  });
+  record(
+    "simulator: buildSimulatorRecommendations deterministic",
+    JSON.stringify(recs1) === JSON.stringify(recs2)
+  );
+
+  // ---- Status classification ---------------------------------------------
+
+  record(
+    "simulator: plan.status is one of viable/tight/unviable/incomplete",
+    plan1.status === "viable" ||
+      plan1.status === "tight" ||
+      plan1.status === "unviable" ||
+      plan1.status === "incomplete"
+  );
+
+  // ---- Journey Status integration ----------------------------------------
+
+  const baseJourneyArgs = {
+    trackingReadiness: astro.trackingReadiness,
+    kpiLadder: astro.kpiLadder,
+    kpiDiagnosis: astro.kpiDiagnosis,
+    adReview: astro.adReview,
+    creatorBriefs: astro.creatorBriefs,
+    shotLists: astro.shotLists,
+    videoScripts: astro.videoScripts,
+    variantSets: astro.variantSets,
+    proofAssetPlan: astro.proofAssetPlan,
+    audienceAvatars: astro.audienceAvatars,
+    creativeTestingMatrix: astro.creativeTestingMatrix,
+    appliedAdReviews: astro.appliedAdReviews,
+    unitEconomics: astro.unitEconomics,
+    forecast: astro.forecast,
+  };
+
+  // Forced unviable fixture.
+  const unviableSim: typeof plan1 = {
+    ...plan1,
+    status: "unviable",
+    scenarios: plan1.scenarios.map((s, i) =>
+      i === 0
+        ? { ...s, viability: "unviable" as const }
+        : s
+    ),
+  };
+  const journeyUnviable = buildJourneyStatus({
+    ...baseJourneyArgs,
+    simulator: unviableSim,
+  });
+  record(
+    "simulator: journey-status emits 'simulator'-kind blocker when sim status unviable",
+    journeyUnviable.blockers.some((b) => b.kind === "simulator")
+  );
+  record(
+    "simulator: ready-to-spend NOT reached when simulator.status === 'unviable'",
+    journeyUnviable.currentStage !== "ready-to-spend" &&
+      journeyUnviable.readyToSpend === false
+  );
+
+  // Tight fixture with `only-base-viable` warning.
+  const tightSim: typeof plan1 = {
+    ...plan1,
+    status: "tight",
+    warnings: [
+      {
+        kind: "only-base-viable",
+        severity: "warning",
+        message: "Only base viable",
+        fix: "Test more levers",
+      },
+      {
+        kind: "fragile-to-cvr-drop",
+        severity: "warning",
+        message: "Fragile to CVR drop",
+        fix: "Set kill rule",
+      },
+    ],
+  };
+  const journeyTight = buildJourneyStatus({
+    ...baseJourneyArgs,
+    simulator: tightSim,
+  });
+  record(
+    "simulator: journey-status emits 'simulator'-kind warning when sim tight",
+    journeyTight.warnings.some((w) => w.kind === "simulator")
+  );
+  record(
+    "simulator: only-base-viable surfaces a simulator warning chip",
+    journeyTight.warnings.some(
+      (w) =>
+        w.kind === "simulator" && w.message.includes("only viable in base")
+    )
+  );
+  record(
+    "simulator: tight simulator does NOT emit a simulator-kind blocker",
+    !journeyTight.blockers.some((b) => b.kind === "simulator")
+  );
+
+  // Viable: no simulator entry.
+  const viableSim: typeof plan1 = {
+    ...plan1,
+    status: "viable",
+    warnings: [],
+    scenarios: plan1.scenarios.map((s) => ({
+      ...s,
+      viability: "viable" as const,
+    })),
+  };
+  const journeyViable = buildJourneyStatus({
+    ...baseJourneyArgs,
+    simulator: viableSim,
+  });
+  record(
+    "simulator: journey-status emits no simulator blocker when sim viable",
+    !journeyViable.blockers.some((b) => b.kind === "simulator")
+  );
+  record(
+    "simulator: journey-status emits no simulator warning when sim viable + no warnings",
+    !journeyViable.warnings.some((w) => w.kind === "simulator")
+  );
+
+  // ready-to-spend reachable when tight (warning only) — at least the
+  // simulator gate alone does not block.
+  const tightOnlySim: typeof plan1 = {
+    ...plan1,
+    status: "tight",
+    warnings: [],
+  };
+  const journeyTightOnly = buildJourneyStatus({
+    ...baseJourneyArgs,
+    simulator: tightOnlySim,
+  });
+  record(
+    "simulator: tight status alone does NOT push 'simulator' blocker",
+    !journeyTightOnly.blockers.some((b) => b.kind === "simulator")
+  );
+
+  // Legacy caller without simulator → behaviour unchanged.
+  const journeyLegacy = buildJourneyStatus(baseJourneyArgs);
+  record(
+    "simulator: legacy journey-status call without simulator produces a valid stage",
+    typeof journeyLegacy.currentStage === "string" &&
+      journeyLegacy.currentStage.length > 0
+  );
+  record(
+    "simulator: legacy journey-status call has no simulator-kind entries",
+    !journeyLegacy.blockers.some((b) => b.kind === "simulator") &&
+      !journeyLegacy.warnings.some((w) => w.kind === "simulator")
+  );
+
+  // ---- Markdown export ----------------------------------------------------
+
+  const briefSim = generateExportBrief(ASTRO_DATING_EXAMPLE, astro);
+  record(
+    "simulator-export: brief contains '## Scenario Simulator / What-if Lab'",
+    briefSim.includes("## Scenario Simulator / What-if Lab")
+  );
+  record(
+    "simulator-export: brief contains '### Base assumptions'",
+    briefSim.includes("### Base assumptions")
+  );
+  record(
+    "simulator-export: brief contains '### Scenario comparison'",
+    briefSim.includes("### Scenario comparison")
+  );
+  record(
+    "simulator-export: brief contains '### Most sensitive levers'",
+    briefSim.includes("### Most sensitive levers")
+  );
+  record(
+    "simulator-export: brief contains '### Recommendations'",
+    briefSim.includes("### Recommendations")
+  );
+  // Determinism — same input → same export string.
+  const briefSimDet1 = generateExportBrief(ASTRO_DATING_EXAMPLE, astro);
+  const briefSimDet2 = generateExportBrief(ASTRO_DATING_EXAMPLE, astro);
+  record(
+    "simulator-export: same input produces byte-identical export string",
+    briefSimDet1 === briefSimDet2
+  );
+
+  // ---- Tab insertion ------------------------------------------------------
+  record(
+    "simulator: tab insertion present in StrategyView (label 'Simulator')",
+    tabLabels.includes("Simulator")
+  );
+  record(
+    "simulator: Simulator tab lands at index >= 9 (after Forecast, first-7 pinning intact)",
+    tabLabels.indexOf("Simulator") >= 9
+  );
+
+  // ---- buildDefaultAssumptionSet sanity ----------------------------------
+  const defA = buildDefaultAssumptionSet(astro);
+  const defB = buildDefaultAssumptionSet(astro);
+  record(
+    "simulator: buildDefaultAssumptionSet deterministic",
+    JSON.stringify(defA) === JSON.stringify(defB)
+  );
+  record(
+    "simulator: baseAssumptions.cpm > 0",
+    defA.cpm > 0
+  );
+  record(
+    "simulator: baseAssumptions.totalBudget > 0",
+    defA.totalBudget > 0
+  );
+  record(
+    "simulator: baseAssumptions.grossMargin in (0, 1]",
+    defA.grossMargin > 0 && defA.grossMargin <= 1
+  );
+  record(
+    "simulator: AstroDating (freemium) → hasFreeTrial true",
+    defA.hasFreeTrial === true
+  );
+
+  // ---- HeirloomBrew (one-time) gets 'better-cvr' slot 4 -----------------
+  const heirloom = buildStrategy(HEIRLOOM_BREW_EXAMPLE);
+  const heirloomPlan = buildScenarioSimulatorPlan(heirloom);
+  record(
+    "simulator: HeirloomBrew (one-time) scenarios[3].scenarioId === 'better-cvr'",
+    heirloomPlan.scenarios[3].scenarioId === "better-cvr"
+  );
+  record(
+    "simulator: HeirloomBrew plan has exactly 5 scenarios",
+    heirloomPlan.scenarios.length === 5
+  );
+
+  // Plotline (subscription without trial signal in price) → 'better-cvr'
+  // because the economics layer only flags hasFreeTrial when the price /
+  // description carries the signal.
+  const plotline = buildStrategy(NOTION_LIKE_EXAMPLE);
+  const plotlinePlan = buildScenarioSimulatorPlan(plotline);
+  record(
+    "simulator: Plotline (subscription) plan has exactly 5 scenarios",
+    plotlinePlan.scenarios.length === 5
+  );
+  record(
+    "simulator: Plotline slot 4 is 'better-trial' OR 'better-cvr' (deterministic)",
+    plotlinePlan.scenarios[3].scenarioId === "better-trial" ||
+      plotlinePlan.scenarios[3].scenarioId === "better-cvr"
+  );
+
+  // AstroDating freemium → expect 'better-trial' (freemium implies trial).
+  record(
+    "simulator: AstroDating (freemium) scenarios[3].scenarioId === 'better-trial'",
+    plan1.scenarios[3].scenarioId === "better-trial"
   );
 }
 

@@ -78,6 +78,7 @@ import { diagnoseKpi } from "@/lib/engine/kpi-diagnosis";
 import { CopyableCard } from "./CopyableCard";
 import { EconomicsTab } from "./EconomicsPanel";
 import { ForecastTab } from "./ForecastPanel";
+import { SimulatorTab } from "./SimulatorPanel";
 import type { ProductInput } from "@/types/strategy";
 
 type Tab =
@@ -90,6 +91,7 @@ type Tab =
   | "calendar"
   | "economics"
   | "forecast"
+  | "simulator"
   | "angles"
   | "concepts"
   | "briefs"
@@ -122,6 +124,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "calendar", label: "Calendar" },
   { id: "economics", label: "Economics" },
   { id: "forecast", label: "Forecast" },
+  { id: "simulator", label: "Simulator" },
   { id: "angles", label: "Angles" },
   { id: "concepts", label: "Concepts" },
   { id: "briefs", label: "Briefs" },
@@ -228,6 +231,7 @@ export function StrategyView({ input, strategy, hasMeaningfulInput, workspaceSlo
           <EconomicsTab input={input} strategy={strategy} />
         )}
         {tab === "forecast" && <ForecastTab strategy={strategy} />}
+        {tab === "simulator" && <SimulatorTab strategy={strategy} />}
         {tab === "angles" && <AnglesTab strategy={strategy} />}
         {tab === "concepts" && <ConceptsTab strategy={strategy} input={input} />}
         {tab === "briefs" && <BriefsTab strategy={strategy} />}

@@ -9,6 +9,9 @@ import type {
 import type {
   ForecastPlan,
 } from "./forecast";
+import type {
+  ScenarioSimulatorPlan,
+} from "./simulator";
 
 export type {
   EconomicsReadinessStatus,
@@ -31,6 +34,21 @@ export type {
   ForecastWarningKind,
   SpendAllocation,
 } from "./forecast";
+export type {
+  ScenarioSimulatorPlan,
+  SimulatorAssumptionSet,
+  SimulatorLever,
+  SimulatorOutcome,
+  SimulatorRecommendation,
+  SimulatorRecommendationPriority,
+  SimulatorScenarioResult,
+  SimulatorSensitivityResult,
+  SimulatorSensitivityStep,
+  SimulatorViability,
+  SimulatorWarning,
+  SimulatorWarningKind,
+  SimulatorWarningSeverity,
+} from "./simulator";
 
 export type AwarenessLevel =
   | "unaware"
@@ -384,6 +402,12 @@ export interface Strategy {
   // above (unitEconomics + kpiLadder + creativeTestingMatrix +
   // campaignSetup + trackingReadiness). `derivedAt` is always 0.
   forecast?: ForecastPlan;
+
+  // Scenario Simulator / What-if Lab — pure derivation from
+  // unitEconomics + forecast + offers. Stress-tests the base plan
+  // across higher CPM / lower CVR / better trial / annual-plan
+  // scenarios and ranks lever sensitivities. `derivedAt` is always 0.
+  scenarioSimulator?: ScenarioSimulatorPlan;
 
   exportBrief: string;
 }
@@ -795,7 +819,8 @@ export type JourneyBlockerKind =
   | "scope"
   | "asset"
   | "economics"
-  | "forecast";
+  | "forecast"
+  | "simulator";
 
 export interface JourneyBlocker {
   kind: JourneyBlockerKind;

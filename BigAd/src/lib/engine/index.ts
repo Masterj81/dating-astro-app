@@ -46,6 +46,7 @@ import {
   buildUnitEconomics,
 } from "../economics/unit-economics";
 import { buildForecastPlan } from "../forecast/budget-forecast";
+import { buildScenarioSimulatorPlan } from "../simulator/scenario-simulator";
 
 // buildStrategy — deterministic local strategy generator. No API calls.
 // Future: swap in an LLM adapter (see src/lib/llm.ts) per-section.
@@ -219,6 +220,18 @@ export function buildStrategy(input: ProductInput): Strategy {
   } as unknown as Strategy;
   const forecast = buildForecastPlan(forecastStrategySnapshot);
 
+  // Scenario Simulator / What-if Lab — pure derivation from economics +
+  // forecast + offers. Threaded AFTER forecast so the simulator can read
+  // forecast-resolved base assumptions; AFTER journey-status reads it
+  // below the engine gates ready-to-spend when the base plan is unviable.
+  // Engine determinism preserved — derivedAt is always 0, no Date.now().
+  const simulatorStrategySnapshot = {
+    unitEconomics,
+    forecast,
+    offers,
+  } as unknown as Strategy;
+  const scenarioSimulator = buildScenarioSimulatorPlan(simulatorStrategySnapshot);
+
   // Journey status is computed last because it synthesises everything above.
   const journeyStatus = buildJourneyStatus({
     trackingReadiness,
@@ -235,6 +248,7 @@ export function buildStrategy(input: ProductInput): Strategy {
     appliedAdReviews,
     unitEconomics,
     forecast,
+    simulator: scenarioSimulator,
   });
 
   const partial: Omit<Strategy, "genericFlags" | "copyIssues" | "exportBrief"> = {
@@ -282,6 +296,7 @@ export function buildStrategy(input: ProductInput): Strategy {
     unitEconomics,
     offerScenarios,
     forecast,
+    scenarioSimulator,
   };
 
   // Generic-copy guard runs against the strategy we just produced. If
@@ -409,3 +424,10 @@ export {
   buildDecisionCheckpoints,
   classifyForecastReadiness,
 } from "../forecast/budget-forecast";
+export {
+  buildScenarioSimulatorPlan,
+  buildDefaultAssumptionSet,
+  simulateScenario,
+  buildSensitivityResults,
+  buildSimulatorRecommendations,
+} from "../simulator/scenario-simulator";

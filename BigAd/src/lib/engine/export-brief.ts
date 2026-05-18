@@ -254,6 +254,9 @@ export function generateExportBrief(
   // 5c. Forecast / Budget Planner
   appendForecastSection(lines, strategy);
 
+  // 5d. Scenario Simulator / What-if Lab
+  appendScenarioSimulatorSection(lines, strategy);
+
   // 6. Campaign calendar
   section(lines, "Campaign Calendar");
   lines.push(
@@ -1900,6 +1903,154 @@ function forecastRecommendedAction(
     case "incomplete":
       return "Provide missing inputs to compute forecast.";
   }
+}
+
+// ---- Scenario Simulator / What-if Lab ---------------------------------
+
+function appendScenarioSimulatorSection(
+  lines: string[],
+  strategy: Strategy
+): void {
+  const plan = strategy.scenarioSimulator;
+  if (!plan) return;
+
+  section(lines, "Scenario Simulator / What-if Lab");
+
+  const baseScenario = plan.scenarios.find((s) => s.scenarioId === "base");
+  const baseViabilityLabel = baseScenario
+    ? simulatorViabilityLabel(baseScenario.viability)
+    : "—";
+  lines.push(
+    `**Status:** ${simulatorViabilityLabel(plan.status)}  ·  **Base viability:** ${baseViabilityLabel}`
+  );
+  lines.push("");
+
+  // Base assumptions
+  lines.push(`### Base assumptions`);
+  const b = plan.baseAssumptions;
+  if (typeof b.price === "number") {
+    lines.push(`- Price: ${formatDollars(b.price)}  ·  AOV: ${formatDollars(b.currentAov)}`);
+  } else {
+    lines.push(`- AOV: ${formatDollars(b.currentAov)}`);
+  }
+  lines.push(
+    `- Gross margin: ${(b.grossMargin * 100).toFixed(0)}%  ·  Target ROAS: ${b.targetRoas.toFixed(2)}x`
+  );
+  if (
+    typeof b.trialToPaidRate === "number" ||
+    typeof b.monthlyChurnRate === "number"
+  ) {
+    const trialPart =
+      typeof b.trialToPaidRate === "number"
+        ? `Trial→paid: ${(b.trialToPaidRate * 100).toFixed(0)}%`
+        : "Trial→paid: n/a";
+    const churnPart =
+      typeof b.monthlyChurnRate === "number"
+        ? `Monthly churn: ${(b.monthlyChurnRate * 100).toFixed(0)}%`
+        : "Monthly churn: n/a";
+    lines.push(`- ${trialPart}  ·  ${churnPart}`);
+  }
+  lines.push(
+    `- CPM: ${formatDollars(b.cpm)}  ·  CTR: ${(b.ctr * 100).toFixed(2)}%  ·  CVR: ${(b.cvr * 100).toFixed(2)}%`
+  );
+  lines.push(
+    `- Total budget: ${formatDollars(b.totalBudget)} over ${b.durationDays} days`
+  );
+  lines.push(`- Offer: ${b.offerKind}`);
+  lines.push("");
+
+  // Scenario comparison
+  lines.push(`### Scenario comparison`);
+  lines.push("");
+  lines.push(
+    `| Scenario | Viability | Conv. | Rev. | CPA | ROAS | LTV:CAC | Payback |`
+  );
+  lines.push(
+    `| --- | --- | --- | --- | --- | --- | --- | --- |`
+  );
+  for (const s of plan.scenarios) {
+    const conv = s.outcome.expectedConversions;
+    const rev = formatDollars(s.outcome.revenue);
+    const cpa = Number.isFinite(s.outcome.cpa)
+      ? formatDollars(s.outcome.cpa)
+      : "—";
+    const roas = `${s.outcome.roas.toFixed(2)}x`;
+    const ltvCac =
+      typeof s.outcome.ltvToCacRatio === "number"
+        ? s.outcome.ltvToCacRatio.toFixed(2)
+        : "—";
+    const payback =
+      typeof s.outcome.paybackMonths === "number"
+        ? `${s.outcome.paybackMonths.toFixed(1)}mo`
+        : "—";
+    lines.push(
+      `| ${s.label} | ${simulatorViabilityLabel(s.viability)} | ${conv} | ${rev} | ${cpa} | ${roas} | ${ltvCac} | ${payback} |`
+    );
+  }
+  lines.push("");
+
+  // Most sensitive levers
+  lines.push(`### Most sensitive levers`);
+  if (plan.sensitivities.length === 0) {
+    lines.push("_No sensitivity data — provide base assumptions._");
+  } else {
+    const top = plan.sensitivities.slice(0, 5);
+    for (let i = 0; i < top.length; i += 1) {
+      const s = top[i];
+      const roasDeltas = s.steps
+        .map((st) =>
+          typeof st.deltaRoas === "number" ? st.deltaRoas : null
+        )
+        .filter((v): v is number => typeof v === "number");
+      const roasRange =
+        roasDeltas.length > 0
+          ? `ΔROAS from ${Math.min(...roasDeltas).toFixed(2)} to ${Math.max(...roasDeltas).toFixed(2)}`
+          : "ΔROAS n/a";
+      lines.push(
+        `${i + 1}. **${s.lever}** — sensitivityScore ${s.sensitivityScore} — ${roasRange}`
+      );
+    }
+  }
+  lines.push("");
+
+  // Recommendations
+  lines.push(`### Recommendations`);
+  if (plan.recommendations.length === 0) {
+    lines.push("_No recommendations — base plan is already viable across scenarios._");
+  } else {
+    for (const r of plan.recommendations) {
+      lines.push(`- **${r.priority}**: ${r.title}. ${r.expectedImpact}`);
+    }
+  }
+  lines.push("");
+
+  // Warnings
+  if (plan.warnings.length > 0) {
+    lines.push(`### Warnings`);
+    for (const w of plan.warnings) {
+      const sev =
+        w.severity === "blocker"
+          ? "[blocker]"
+          : w.severity === "warning"
+          ? "[warning]"
+          : "[info]";
+      lines.push(`- ${sev} ${w.kind} — ${w.message} — ${w.fix}`);
+    }
+    lines.push("");
+  }
+}
+
+function simulatorViabilityLabel(
+  v: NonNullable<Strategy["scenarioSimulator"]>["status"]
+): string {
+  return (
+    {
+      viable: "Viable",
+      tight: "Tight",
+      unviable: "Unviable",
+      incomplete: "Incomplete",
+    }[v] ?? v
+  );
 }
 
 function formatPercent(n: number | undefined): string {

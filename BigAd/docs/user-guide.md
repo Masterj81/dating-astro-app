@@ -1156,4 +1156,95 @@ journey-status emet un chip `forecast` (warning pour `tight`,
 blocker pour `unviable`) et `ready-to-spend` exige
 `status !== 'unviable'`. L'export gagne une section `## Forecast /
 Budget Planner`; le moteur reste deterministe et `derivedAt` est
-toujours `0`.
+toujours `0`. L'onglet `Simulator` qui suit immediatement
+reprend ces sorties pour stresser le plan de base contre cinq
+scenarios (base, CPM en hausse, CVR en baisse, lift trial ou CVR,
+AOV annuel) et classer chaque levier par sensibilite — une
+sandbox `what-if` sans toucher l'output deterministe du moteur.
+
+## Scenario Simulator / What-if Lab
+
+The Scenario Simulator / What-if Lab sits AFTER Forecast / Budget
+Planner and BEFORE the Execution-related tabs. It reads the engine's
+already-resolved outputs (`unitEconomics`, `forecast`, `offers`) and
+emits a deterministic stress-test of the base plan. The new
+`Simulator` tab carries a plan status pill, a base viability pill,
+an editable base assumptions card (12 levers as numeric / select
+inputs), a 5-row scenario comparison table, a sensitivity table
+sorted by score, recommendation cards, and a warnings list. Edits
+live in component state only — they never mutate the engine output,
+and a small "Edited (local only)" badge surfaces while edits exist.
+A "Reset to forecast assumptions" button drops back to the engine
+default.
+
+The plan always contains exactly 5 scenarios in stable order: `base`
+(forecast + economics assumptions), `higher-cpm` (CPM × 1.30, "30%
+CPM rise"), `lower-cvr` (CVR × 0.70, "30% CVR drop"), then either
+`better-trial` (trial-to-paid × 1.40, capped at 65%) when the funnel
+is subscription with a free trial, or `better-cvr` (CVR × 1.30) when
+it isn't — exactly one of the two always appears — and finally
+`higher-aov-annual` (AOV × 1.40, churn × 0.85, offer flipped to
+`annual-plan-discount`). Each scenario carries an assumption set, an
+outcome block (impressions, clicks, conversions, trial starts +
+paid conversions when applicable, revenue, gross profit, CPA, paid
+CAC, ROAS, LTV, LTV:CAC, payback months), a one-sentence risk note,
+and a viability tag computed by the same classifier the Economics
+layer uses (unviable when ROAS below breakeven OR paid CAC > LTV OR
+LTV:CAC < 1; tight when ROAS below target OR LTV:CAC < 3 OR payback
+> 12; viable otherwise).
+
+The sensitivity engine sweeps every numeric lever (price, AOV, gross
+margin, target ROAS, trial-to-paid when applicable, monthly churn
+when applicable, CPM, CTR, CVR, total budget, duration days) at
+-20% / -10% / +10% / +20% and computes per-step deltas in CAC,
+ROAS, and payback. `sensitivityScore` is the max abs normalized
+delta across the four steps × 100, clamped to [0, 100]; results sort
+by score descending, then by lever name ascending for stable
+ordering. A qualitative `offerKind` row tests three candidate offers
+(`free-trial-7d`, `free-trial-14d`, `annual-plan-discount`) and is
+ranked alongside the numeric levers.
+
+Recommendations follow a deterministic rule set — raise price 10-15%
+when price sensitivity > 30 AND base LTV:CAC > 4, test a 14-day
+trial when subscription + trial sensitivity > 25 AND trial-to-paid
+< 30%, refresh creative when CPM or CTR is the top lever, lock the
+budget at 70% of forecast when `lower-cvr` is unviable, and offer
+an annual plan when subscription payback > 9 months — capped at five
+and ordered must-do → should-do → nice-to-have. Warnings cover
+`only-base-viable` (≥3 non-base scenarios tight / unviable while
+base is viable), `fragile-to-cvr-drop`, `fragile-to-cpm-rise`,
+`fragile-to-trial-drop`, plus info-severity `no-economics` /
+`no-forecast` and a blocker-severity `no-base-assumptions` when
+neither input layer is present.
+
+Journey-status integration is automatic: the engine threads the
+simulator plan into `buildJourneyStatus` so `unviable` raises a
+`simulator`-kind blocker chip and blocks the final hop to
+`ready-to-spend`, `tight` raises a warning chip but does not block,
+and `only-base-viable` always surfaces as a warning chip when
+present (even when overall status stays viable). The export brief
+gains a `## Scenario Simulator / What-if Lab` section (status +
+base viability, base assumptions list, scenario comparison table,
+top 5 sensitive levers, recommendations, warnings) between the
+Forecast and Campaign Calendar sections. `buildStrategy(input)`
+stays byte-identical for identical input — the new
+`scenarioSimulator` field is a pure derivation and `derivedAt` is
+always `0`.
+
+En francais : l'onglet `Simulator` (apres `Forecast`, avant les
+onglets Execution) lit les sorties du moteur (economics, forecast,
+offres) et stresse le plan de base contre cinq scenarios
+deterministes — base, CPM en hausse de 30%, CVR en baisse de 30%,
+lift trial-to-paid de 40% (ou CVR +30% quand le funnel n'a pas de
+trial), et plan annuel a AOV × 1.40 — puis classe chaque levier
+par sensibilite (-20% / -10% / +10% / +20% pour les leviers
+numeriques, trois offres candidates pour l'offre). Les
+recommandations (jusqu'a cinq) sont ordonnees must-do → should-do
+→ nice-to-have. Le journey-status emet un chip `simulator`
+(warning pour `tight`, blocker pour `unviable`, plus un chip
+permanent `only-base-viable` quand le plan ne tient que dans le
+scenario de base) et `ready-to-spend` exige
+`status !== 'unviable'`. Les modifications dans l'onglet sont
+locales — elles ne touchent jamais l'output deterministe du
+moteur. L'export gagne une section `## Scenario Simulator / What-if
+Lab`; le moteur reste deterministe et `derivedAt` est toujours `0`.

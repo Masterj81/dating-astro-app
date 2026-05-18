@@ -17,6 +17,7 @@ import type {
   KpiDiagnosis,
   KpiTargetLadder,
   ProofAssetPlan,
+  ScenarioSimulatorPlan,
   ShotList,
   TrackingReadinessScore,
   UnitEconomicsSummary,
@@ -69,6 +70,15 @@ export interface JourneyStatusArgs {
   // does not block. Absent → no forecast gate (backward-compat with
   // every caller that pre-dates the Forecast layer).
   forecast?: ForecastPlan;
+  // Scenario Simulator / What-if Lab — when provided, journey-status
+  // emits a simulator-kind entry whenever the plan status is not
+  // `viable`. Severity escalates to `blocker` for `unviable` (which
+  // also blocks `ready-to-spend`). `tight` surfaces a warning chip but
+  // does not block. The `only-base-viable` warning is always raised as
+  // a warning chip when present. Absent → no simulator gate
+  // (backward-compat with every caller that pre-dates the Simulator
+  // layer).
+  simulator?: ScenarioSimulatorPlan;
 }
 
 // Ad-review weight floor for "review-passed". The shipped checklist has
@@ -344,6 +354,58 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     }
   }
 
+  // Scenario Simulator / What-if Lab — when a plan is supplied and the
+  // status is not `viable`, emit a simulator-kind entry. Severity
+  // escalates to `blocker` when status === `unviable`. `tight` surfaces
+  // a warning chip but does not block. The `only-base-viable` plan
+  // warning is also surfaced as a warning chip when present.
+  if (args.simulator) {
+    const sim = args.simulator;
+    if (sim.status === "unviable") {
+      const topWarning =
+        sim.warnings.find((w) => w.severity === "blocker") ??
+        sim.warnings.find((w) => w.severity === "warning") ??
+        sim.warnings[0];
+      const tail = topWarning ? topWarning.message : "base scenario unviable";
+      blockers.push({
+        kind: "simulator",
+        severity: "blocker",
+        message: `Scenario simulator unviable: ${tail}`,
+      });
+    } else if (sim.status === "tight") {
+      const topKinds = sim.warnings
+        .filter((w) => w.severity === "warning")
+        .slice(0, 2)
+        .map((w) => w.kind)
+        .join(", ");
+      const tail = topKinds || "fragile to one or more levers";
+      warnings.push({
+        kind: "simulator",
+        severity: "warning",
+        message: `Scenario simulator tight: ${tail}`,
+      });
+    } else if (sim.status === "incomplete") {
+      warnings.push({
+        kind: "simulator",
+        severity: "warning",
+        message:
+          "Scenario simulator incomplete — provide economics + forecast to stress-test the plan.",
+      });
+    }
+    // Always raise the only-base-viable signal as a warning chip.
+    if (
+      sim.status !== "unviable" &&
+      sim.warnings.some((w) => w.kind === "only-base-viable")
+    ) {
+      warnings.push({
+        kind: "simulator",
+        severity: "warning",
+        message:
+          "Plan only viable in base scenario — fragile to one negative lever",
+      });
+    }
+  }
+
   // Execution OS — first batch presence is a prerequisite for
   // ready-to-spend. When the matrix isn't supplied (legacy callers /
   // backward-compat with tests that pre-date the Execution OS phase),
@@ -379,15 +441,16 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
       args.assetSummary.pendingMustHaveIds.length === 0);
 
   // Operational blockers count — review-kind, asset-kind, economics-kind,
-  // and forecast-kind blockers are tracked through their own gates at the
-  // review-passed / ready-to-spend stages, not as creative-planned
-  // regressions.
+  // forecast-kind, and simulator-kind blockers are tracked through their
+  // own gates at the review-passed / ready-to-spend stages, not as
+  // creative-planned regressions.
   const operationalBlockersCount = blockers.filter(
     (b) =>
       b.kind !== "review" &&
       b.kind !== "asset" &&
       b.kind !== "economics" &&
-      b.kind !== "forecast"
+      b.kind !== "forecast" &&
+      b.kind !== "simulator"
   ).length;
 
   // Unit Economics gate — only enforced when a summary was supplied.
@@ -400,6 +463,14 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
   // does NOT block; only `unviable` blocks the final hop to
   // ready-to-spend. Absent → no gate (backward-compat).
   const forecastReady = !args.forecast || args.forecast.status !== "unviable";
+
+  // Simulator gate — only enforced when a plan was supplied. `tight`
+  // does NOT block; only `unviable` (base scenario unviable or blocker
+  // warning) blocks the final hop to ready-to-spend. Absent → no gate
+  // (backward-compat with every caller that pre-dates the Simulator
+  // layer).
+  const simulatorReady =
+    !args.simulator || args.simulator.status !== "unviable";
 
   // Stage selection — earliest match wins.
   const stage = pickStage({
@@ -416,6 +487,7 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     assetReady,
     economicsReady,
     forecastReady,
+    simulatorReady,
   });
 
   const readyToSpend = stage === "ready-to-spend";
@@ -458,6 +530,7 @@ function pickStage(args: {
   assetReady: boolean;
   economicsReady: boolean;
   forecastReady: boolean;
+  simulatorReady: boolean;
 }): JourneyStage {
   if (args.creatorBriefsCount === 0) return "strategy-drafted";
   if (args.trackingScore < 70 || args.blockersCount > 0) return "creative-planned";
@@ -482,6 +555,9 @@ function pickStage(args: {
   // Forecast gate — only blocks when status === `unviable`. `tight`
   // is non-blocking (warning only). Absent → forecastReady = true.
   if (!args.forecastReady) return "review-passed";
+  // Simulator gate — only blocks when status === `unviable`. `tight`
+  // is non-blocking (warning only). Absent → simulatorReady = true.
+  if (!args.simulatorReady) return "review-passed";
   return "ready-to-spend";
 }
 
