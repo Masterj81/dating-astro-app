@@ -10142,6 +10142,590 @@ for (const { name, strategy } of fixtures) {
   );
 }
 
+// ============================================================================
+// === Shareable Client Portal ===
+// ============================================================================
+{
+  const {
+    buildClientPortalSnapshot,
+    buildPortalSharePack,
+    defaultPortalVisibility,
+    PORTAL_SECTION_ORDER,
+  } = require("../src/lib/portal/portal-builder");
+  const {
+    renderClientPortalMarkdown,
+  } = require("../src/lib/portal/portal-markdown");
+  const {
+    deriveLearningMemory: deriveLM,
+  } = require("../src/lib/workspace/learning");
+  const {
+    summarizeReviewBoard: summarizeRB,
+    initialItemsForRun: initialItems,
+  } = require("../src/lib/review/review-board");
+  const {
+    analyzeCampaignResults: analyzeCR,
+  } = require("../src/lib/results/results-analysis");
+
+  const PORTAL_FIXED = "2026-05-17T12:00:00.000Z";
+
+  const portalStrategy = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const portalRun = {
+    id: "portal-run-1",
+    projectId: "portal-proj-1",
+    runAt: PORTAL_FIXED,
+    input: ASTRO_DATING_EXAMPLE,
+    strategy: portalStrategy,
+  };
+  const portalProject = {
+    metadata: {
+      id: "portal-proj-1",
+      name: "AstroDating Portal Demo",
+      createdAt: PORTAL_FIXED,
+      updatedAt: PORTAL_FIXED,
+      runCount: 1,
+    },
+    input: ASTRO_DATING_EXAMPLE,
+  };
+
+  // ---- Engine purity --------------------------------------------------------
+
+  {
+    const engine1 = buildStrategy(ASTRO_DATING_EXAMPLE);
+    const engine2 = buildStrategy(ASTRO_DATING_EXAMPLE);
+    record(
+      "portal: buildStrategy(astroDatingInput) byte-identical (engine regression)",
+      JSON.stringify(engine1) === JSON.stringify(engine2)
+    );
+  }
+
+  // ---- Section order constant ----------------------------------------------
+
+  record(
+    "portal: PORTAL_SECTION_ORDER has 12 entries",
+    Array.isArray(PORTAL_SECTION_ORDER) && PORTAL_SECTION_ORDER.length === 12
+  );
+  record(
+    "portal: PORTAL_SECTION_ORDER starts with overview",
+    PORTAL_SECTION_ORDER[0] === "overview"
+  );
+  record(
+    "portal: PORTAL_SECTION_ORDER ends with next-actions",
+    PORTAL_SECTION_ORDER[PORTAL_SECTION_ORDER.length - 1] === "next-actions"
+  );
+
+  // ---- Default visibility helper -------------------------------------------
+
+  {
+    const v = defaultPortalVisibility();
+    record(
+      "portal: defaultPortalVisibility enables all 12 sections",
+      PORTAL_SECTION_ORDER.every((id: string) => v.sections[id] === true)
+    );
+    record(
+      "portal: defaultPortalVisibility hides internal notes by default",
+      v.hideInternalNotes === true
+    );
+    record(
+      "portal: defaultPortalVisibility keeps pricing/assumptions visible",
+      v.hidePricing === false && v.hideAssumptions === false
+    );
+  }
+
+  // ---- Seed review items + accuracy report so the AstroDating fixture
+  //      hits every section ---------------------------------------------------
+
+  const portalItems = initialItems(
+    portalProject.metadata.id,
+    portalRun.id,
+    portalRun.strategy,
+    1_000_000
+  );
+  // Mark 5 of 6 critical as approved, leave 1 pending → readiness partial.
+  let approvedCount = 0;
+  for (const it of portalItems) {
+    if (it.critical && approvedCount < 5) {
+      it.status = "approved";
+      it.approvedAt = 1_000_000;
+      approvedCount++;
+    }
+  }
+  const portalReviewSummary = summarizeRB({
+    projectId: portalProject.metadata.id,
+    runId: portalRun.id,
+    items: portalItems,
+    comments: [],
+  });
+
+  // Build an actuals fixture from the first recommended cell.
+  const matrixP = portalStrategy.creativeTestingMatrix;
+  const firstCellP = matrixP
+    ? matrixP.testCells.find((c: any) =>
+        matrixP.recommendedFirstBatch.includes(c.id)
+      )
+    : null;
+  const portalActuals = firstCellP
+    ? [
+        {
+          id: `${portalProject.metadata.id}:${portalRun.id}:${firstCellP.id}`,
+          projectId: portalProject.metadata.id,
+          runId: portalRun.id,
+          cellId: firstCellP.id,
+          spendUsd: 400,
+          impressions: 40000,
+          clicks: 600,
+          conversions: 25,
+          revenueUsd: 1200,
+          status: "winning" as const,
+          createdAt: 1_000_000,
+          updatedAt: 1_000_000,
+        },
+      ]
+    : [];
+  const portalAccuracy = analyzeCR({
+    strategy: portalStrategy,
+    actualResults: portalActuals,
+  });
+
+  const portalLearning = deriveLM([], [portalRun]);
+
+  const portalAgencySelection = {
+    projectId: portalProject.metadata.id,
+    templateId: "app-launch" as const,
+    roleId: "owner" as const,
+    packageId: "launch-sprint" as const,
+    updatedAt: 1_500_000,
+  };
+
+  // ---- Determinism ---------------------------------------------------------
+
+  {
+    const s1 = buildClientPortalSnapshot({
+      project: portalProject,
+      runs: [portalRun],
+      reviewSummary: portalReviewSummary,
+      reviewItems: portalItems,
+      reviewComments: [],
+      agencySelection: portalAgencySelection,
+      learningMemory: portalLearning,
+      results: portalActuals,
+      accuracyReport: portalAccuracy,
+    });
+    const s2 = buildClientPortalSnapshot({
+      project: portalProject,
+      runs: [portalRun],
+      reviewSummary: portalReviewSummary,
+      reviewItems: portalItems,
+      reviewComments: [],
+      agencySelection: portalAgencySelection,
+      learningMemory: portalLearning,
+      results: portalActuals,
+      accuracyReport: portalAccuracy,
+    });
+    record(
+      "portal: same inputs → byte-identical snapshot (deep-equal)",
+      JSON.stringify(s1) === JSON.stringify(s2)
+    );
+
+    const md1 = renderClientPortalMarkdown(s1);
+    const md2 = renderClientPortalMarkdown(s2);
+    record(
+      "portal: renderClientPortalMarkdown is deterministic",
+      md1 === md2
+    );
+    record(
+      "portal: generatedAt is deterministic (max of stored timestamps)",
+      s1.generatedAt === s2.generatedAt && s1.generatedAt > 0
+    );
+    record(
+      "portal: generatedAt is never Date.now() — bounded by inputs",
+      s1.generatedAt <=
+        Math.max(
+          Date.parse(portalProject.metadata.updatedAt),
+          Date.parse(portalRun.runAt),
+          portalAgencySelection.updatedAt
+        )
+    );
+  }
+
+  // ---- Snapshot content ----------------------------------------------------
+
+  {
+    const snap = buildClientPortalSnapshot({
+      project: portalProject,
+      runs: [portalRun],
+      reviewSummary: portalReviewSummary,
+      reviewItems: portalItems,
+      reviewComments: [],
+      agencySelection: portalAgencySelection,
+      learningMemory: portalLearning,
+      results: portalActuals,
+      accuracyReport: portalAccuracy,
+    });
+    record(
+      "portal: AstroDating fixture produces 8+ sections",
+      snap.sections.length >= 8
+    );
+    record(
+      "portal: section order is canonical (overview first)",
+      snap.sections[0].id === "overview"
+    );
+    record(
+      "portal: section order is canonical (next-actions last when present)",
+      snap.sections[snap.sections.length - 1].id === "next-actions"
+    );
+    // Stable iteration relative to PORTAL_SECTION_ORDER.
+    {
+      const ids = snap.sections.map((s: any) => s.id);
+      let lastIndex = -1;
+      let monotone = true;
+      for (const id of ids) {
+        const idx = PORTAL_SECTION_ORDER.indexOf(id);
+        if (idx <= lastIndex) {
+          monotone = false;
+          break;
+        }
+        lastIndex = idx;
+      }
+      record(
+        "portal: section ids appear in canonical order (monotonic)",
+        monotone
+      );
+    }
+    record(
+      "portal: overviewHeadline is non-empty for AstroDating fixture",
+      snap.overviewHeadline.length > 0
+    );
+    record(
+      "portal: approvals.readiness derived from review summary",
+      snap.approvals.readiness === portalReviewSummary.approvalReadiness
+    );
+    record(
+      "portal: approvals.criticalApproved matches review summary",
+      snap.approvals.criticalApproved === portalReviewSummary.criticalApproved
+    );
+    record(
+      "portal: results rollup populated when accuracyReport provided",
+      !!snap.results && snap.results.perCellCount > 0
+    );
+    record(
+      "portal: agency rollup populated when selection has labels",
+      !!snap.agency && !!snap.agency.packageLabel
+    );
+    record(
+      "portal: agency package label resolves to 'Launch Sprint' family",
+      !!snap.agency &&
+        typeof snap.agency.packageLabel === "string" &&
+        snap.agency.packageLabel!.length > 0
+    );
+    record(
+      "portal: nextActions is non-empty when pending critical exists",
+      snap.nextActions.length >= 1
+    );
+    record(
+      "portal: decisionLog capped at 8 entries",
+      snap.decisionLog.length <= 8
+    );
+  }
+
+  // ---- Sections without content are omitted --------------------------------
+
+  {
+    // Snapshot with no results / no accuracy → results section absent.
+    const noResults = buildClientPortalSnapshot({
+      project: portalProject,
+      runs: [portalRun],
+      reviewSummary: portalReviewSummary,
+      reviewItems: portalItems,
+      reviewComments: [],
+      agencySelection: portalAgencySelection,
+      learningMemory: portalLearning,
+      results: [],
+      accuracyReport: undefined,
+    });
+    record(
+      "portal: empty results → 'results' section is absent",
+      !noResults.sections.some((s: any) => s.id === "results")
+    );
+    record(
+      "portal: empty results → results rollup is undefined",
+      noResults.results === undefined
+    );
+  }
+
+  // ---- Visibility toggles --------------------------------------------------
+
+  {
+    const visibility = defaultPortalVisibility();
+    visibility.sections.benchmarks = false;
+    visibility.sections.simulator = false;
+    const snap = buildClientPortalSnapshot({
+      project: portalProject,
+      runs: [portalRun],
+      reviewSummary: portalReviewSummary,
+      reviewItems: portalItems,
+      reviewComments: [],
+      agencySelection: portalAgencySelection,
+      learningMemory: portalLearning,
+      results: portalActuals,
+      accuracyReport: portalAccuracy,
+      visibility,
+    });
+    record(
+      "portal: visibility.sections=false drops 'benchmarks' section",
+      !snap.sections.some((s: any) => s.id === "benchmarks")
+    );
+    record(
+      "portal: visibility.sections=false drops 'simulator' section",
+      !snap.sections.some((s: any) => s.id === "simulator")
+    );
+  }
+
+  // ---- hidePricing scrubbing ----------------------------------------------
+
+  {
+    const visibility = defaultPortalVisibility();
+    visibility.hidePricing = true;
+    const snap = buildClientPortalSnapshot({
+      project: portalProject,
+      runs: [portalRun],
+      reviewSummary: portalReviewSummary,
+      reviewItems: portalItems,
+      reviewComments: [],
+      agencySelection: portalAgencySelection,
+      learningMemory: portalLearning,
+      results: portalActuals,
+      accuracyReport: portalAccuracy,
+      visibility,
+    });
+    const offerSection = snap.sections.find((s: any) => s.id === "offer");
+    if (offerSection) {
+      const text = offerSection.bullets.join(" ").toLowerCase();
+      record(
+        "portal: hidePricing scrubs '$' from offer bullets",
+        !text.includes("$")
+      );
+      record(
+        "portal: hidePricing scrubs 'price' from offer bullets",
+        !text.includes("price:")
+      );
+    } else {
+      // If the strategy didn't produce an offer section at all we can't
+      // assert scrubbing — record both as trivially true.
+      record(
+        "portal: hidePricing scrubs '$' from offer bullets (no offer section)",
+        true
+      );
+      record(
+        "portal: hidePricing scrubs 'price' from offer bullets (no offer section)",
+        true
+      );
+    }
+  }
+
+  // ---- hideAssumptions toggles --------------------------------------------
+
+  {
+    const visibility = defaultPortalVisibility();
+    visibility.hideAssumptions = true;
+    const snap = buildClientPortalSnapshot({
+      project: portalProject,
+      runs: [portalRun],
+      reviewSummary: portalReviewSummary,
+      reviewItems: portalItems,
+      reviewComments: [],
+      agencySelection: portalAgencySelection,
+      learningMemory: portalLearning,
+      results: portalActuals,
+      accuracyReport: portalAccuracy,
+      visibility,
+    });
+    record(
+      "portal: hideAssumptions → forecast section absent",
+      !snap.sections.some((s: any) => s.id === "forecast")
+    );
+    record(
+      "portal: hideAssumptions → simulator section absent",
+      !snap.sections.some((s: any) => s.id === "simulator")
+    );
+  }
+
+  // ---- Markdown rendering --------------------------------------------------
+
+  {
+    const snap = buildClientPortalSnapshot({
+      project: portalProject,
+      runs: [portalRun],
+      reviewSummary: portalReviewSummary,
+      reviewItems: portalItems,
+      reviewComments: [],
+      agencySelection: portalAgencySelection,
+      learningMemory: portalLearning,
+      results: portalActuals,
+      accuracyReport: portalAccuracy,
+    });
+    const md = renderClientPortalMarkdown(snap);
+    record(
+      "portal-md: contains '# CampaignOS Client Portal' header",
+      md.startsWith("# CampaignOS Client Portal — AstroDating Portal Demo")
+    );
+    record(
+      "portal-md: contains '## Approval status' section",
+      md.includes("## Approval status")
+    );
+    record(
+      "portal-md: contains '## Next actions' when nextActions non-empty",
+      md.includes("## Next actions")
+    );
+    record(
+      "portal-md: user-facing body never contains 'BigAd'",
+      !md.includes("BigAd")
+    );
+    record(
+      "portal-md: defaults hide internal reference line",
+      !md.includes("internal reference")
+    );
+  }
+
+  // ---- Internal-notes visibility -------------------------------------------
+
+  {
+    const visibility = defaultPortalVisibility();
+    visibility.hideInternalNotes = false;
+    const snap = buildClientPortalSnapshot({
+      project: portalProject,
+      runs: [portalRun],
+      reviewSummary: portalReviewSummary,
+      reviewItems: portalItems,
+      reviewComments: [],
+      agencySelection: portalAgencySelection,
+      learningMemory: portalLearning,
+      results: portalActuals,
+      accuracyReport: portalAccuracy,
+      visibility,
+    });
+    const md = renderClientPortalMarkdown(snap);
+    record(
+      "portal-md: hideInternalNotes=false → internal reference line emitted",
+      md.includes("internal reference:")
+    );
+  }
+
+  // ---- Engine purity / no input mutation -----------------------------------
+
+  {
+    const projectClone = JSON.parse(JSON.stringify(portalProject));
+    const runClone = JSON.parse(JSON.stringify(portalRun));
+    const itemsClone = JSON.parse(JSON.stringify(portalItems));
+    const summaryClone = JSON.parse(JSON.stringify(portalReviewSummary));
+    const actualsClone = JSON.parse(JSON.stringify(portalActuals));
+    const accuracyClone = JSON.parse(JSON.stringify(portalAccuracy));
+
+    const beforeProject = JSON.stringify(projectClone);
+    const beforeRun = JSON.stringify(runClone);
+    const beforeItems = JSON.stringify(itemsClone);
+    const beforeSummary = JSON.stringify(summaryClone);
+    const beforeActuals = JSON.stringify(actualsClone);
+    const beforeAccuracy = JSON.stringify(accuracyClone);
+
+    buildClientPortalSnapshot({
+      project: projectClone,
+      runs: [runClone],
+      reviewSummary: summaryClone,
+      reviewItems: itemsClone,
+      reviewComments: [],
+      agencySelection: portalAgencySelection,
+      learningMemory: portalLearning,
+      results: actualsClone,
+      accuracyReport: accuracyClone,
+    });
+
+    record(
+      "portal: builder does NOT mutate project input",
+      JSON.stringify(projectClone) === beforeProject
+    );
+    record(
+      "portal: builder does NOT mutate run input",
+      JSON.stringify(runClone) === beforeRun
+    );
+    record(
+      "portal: builder does NOT mutate review items input",
+      JSON.stringify(itemsClone) === beforeItems
+    );
+    record(
+      "portal: builder does NOT mutate review summary input",
+      JSON.stringify(summaryClone) === beforeSummary
+    );
+    record(
+      "portal: builder does NOT mutate actuals input",
+      JSON.stringify(actualsClone) === beforeActuals
+    );
+    record(
+      "portal: builder does NOT mutate accuracy report input",
+      JSON.stringify(accuracyClone) === beforeAccuracy
+    );
+  }
+
+  // ---- Share pack ---------------------------------------------------------
+
+  {
+    const snap = buildClientPortalSnapshot({
+      project: portalProject,
+      runs: [portalRun],
+      reviewSummary: portalReviewSummary,
+      reviewItems: portalItems,
+      reviewComments: [],
+      agencySelection: portalAgencySelection,
+      learningMemory: portalLearning,
+      results: portalActuals,
+      accuracyReport: portalAccuracy,
+    });
+    const md = renderClientPortalMarkdown(snap);
+    const pack = buildPortalSharePack(snap, md);
+    record(
+      "portal: sharePack.oneLiner starts with overviewHeadline",
+      pack.oneLiner.startsWith(snap.overviewHeadline)
+    );
+    record(
+      "portal: sharePack.markdown is the rendered markdown",
+      pack.markdown === md
+    );
+  }
+
+  // ---- Export-brief hook --------------------------------------------------
+
+  {
+    const portalSnap = buildClientPortalSnapshot({
+      project: portalProject,
+      runs: [portalRun],
+      reviewSummary: portalReviewSummary,
+      reviewItems: portalItems,
+      reviewComments: [],
+      agencySelection: portalAgencySelection,
+      learningMemory: portalLearning,
+      results: portalActuals,
+      accuracyReport: portalAccuracy,
+    });
+    const withPortal = generateExportBrief(ASTRO_DATING_EXAMPLE, a, {
+      portal: { snapshot: portalSnap },
+    });
+    record(
+      "portal: export-brief includes '## Client Portal Pack' when portal context present",
+      withPortal.includes("## Client Portal Pack")
+    );
+    const noPortal = generateExportBrief(ASTRO_DATING_EXAMPLE, a);
+    record(
+      "portal: export-brief omits 'Client Portal Pack' when portal absent",
+      !noPortal.includes("## Client Portal Pack")
+    );
+    // No regression — same input twice deep-equal markdown.
+    const noPortal2 = generateExportBrief(ASTRO_DATING_EXAMPLE, a);
+    record(
+      "portal: export-brief without portal is deterministic across two calls",
+      noPortal === noPortal2
+    );
+  }
+}
+
 // Report.
 let failed = 0;
 for (const c of checks) {

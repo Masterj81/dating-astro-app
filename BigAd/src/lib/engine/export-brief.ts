@@ -31,6 +31,7 @@ import type {
   ResultDecisionRecommendation,
   ResultImportIssue,
 } from "@/types/results";
+import type { ClientPortalSnapshot } from "@/types/portal";
 import {
   getOnboardingGoal,
 } from "@/lib/onboarding/onboarding";
@@ -91,6 +92,13 @@ export interface ExportBriefWorkspaceContext {
   campaignResults?: {
     report: ForecastAccuracyReport;
     results: CampaignActualResult[];
+  };
+  // Optional Shareable Client Portal context — when supplied AND the
+  // snapshot has at least one visible section, the exporter appends a
+  // `## Client Portal Pack` section after Results. Absent or empty
+  // sections → existing brief is byte-identical.
+  portal?: {
+    snapshot: ClientPortalSnapshot;
   };
 }
 
@@ -1230,6 +1238,16 @@ export function generateExportBrief(
       campaignResults.report,
       campaignResults.results
     );
+  }
+
+  // Shareable Client Portal Pack — emitted only when the caller passes
+  // the portal context AND the snapshot has at least one visible
+  // section. Sits AFTER Results so the narrative flows Strategy →
+  // Results → Client-facing portal pointer. Absent or empty → brief is
+  // byte-identical to the no-portal output.
+  const portal = workspace?.portal;
+  if (portal && portal.snapshot.sections.length > 0) {
+    appendClientPortalPackSection(lines, portal.snapshot);
   }
 
   return lines.join("\n").replace(/\n{3,}/g, "\n\n");
@@ -2765,3 +2783,57 @@ function signedPct(pct: number): string {
 // Reference the result-issue type imports so the bundler keeps them in
 // scope even when the section is never emitted in some builds.
 type _UnusedResultsImports = ResultDecisionRecommendation | ResultImportIssue;
+
+// ---- Client Portal Pack ----------------------------------------------
+
+function readinessLabel(
+  r: ClientPortalSnapshot["approvals"]["readiness"]
+): string {
+  if (r === "ready") return "Ready";
+  if (r === "partial") return "Partial";
+  return "Not ready";
+}
+
+function portalIso(ms: number): string {
+  if (ms <= 0) return "n/a";
+  try {
+    return new Date(ms).toISOString();
+  } catch {
+    return "n/a";
+  }
+}
+
+function appendClientPortalPackSection(
+  lines: string[],
+  snapshot: ClientPortalSnapshot
+): void {
+  section(lines, "Client Portal Pack");
+  lines.push(`_Last published: ${portalIso(snapshot.generatedAt)}_`);
+  lines.push("");
+  lines.push(`> ${snapshot.overviewHeadline}`);
+  lines.push("");
+
+  lines.push(`### Approval status`);
+  const parts: string[] = [];
+  parts.push(`**Readiness:** ${readinessLabel(snapshot.approvals.readiness)}`);
+  parts.push(
+    `Critical approved ${snapshot.approvals.criticalApproved}/${snapshot.approvals.criticalTotal}`
+  );
+  if (snapshot.approvals.unresolvedComments > 0) {
+    parts.push(
+      `Unresolved comments ${snapshot.approvals.unresolvedComments}`
+    );
+  }
+  lines.push(parts.join(" · "));
+  lines.push("");
+
+  if (snapshot.nextActions.length > 0) {
+    lines.push(`### Next actions`);
+    let n = 1;
+    for (const a of snapshot.nextActions) {
+      lines.push(`${n}. ${a}`);
+      n++;
+    }
+    lines.push("");
+  }
+}

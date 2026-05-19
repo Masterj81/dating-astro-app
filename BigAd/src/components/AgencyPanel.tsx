@@ -551,6 +551,16 @@ function DeliverySummarySection({ summary }: { summary: DeliverySummary }) {
       <Group title="Missing assets" items={summary.missingAssets} />
       <Group title="Client needs to provide" items={summary.clientNeedsToProvide} />
       <Group title="Next meeting agenda" items={summary.nextMeetingAgenda} />
+      <p className="mt-4">
+        <a
+          href="/portal"
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-sm border border-ink-700 bg-ink-800 px-3 py-1.5 text-xxs text-ink-100 hover:border-accent hover:text-white"
+        >
+          Open client portal
+        </a>
+      </p>
     </section>
   );
 }

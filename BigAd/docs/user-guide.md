@@ -1415,4 +1415,81 @@ le bloque pas. L'export gagne une section
 `## Results / Forecast Accuracy` (precision globale, totaux, CPA /
 ROAS ponderes vs forecast, table des 10 lignes les plus recentes,
 recommandations de decision, problemes d'import) des qu'au moins
-une cellule est saisie.
+une cellule est saisie. La boucle se cloture par le **Shareable
+Client Portal** : un livrable client-facing distinct du rapport
+interne — voir ci-dessous.
+
+## Shareable Client Portal
+
+The **Client Portal** is a sister surface to the Client-Ready Report
+tuned for handoff to the founder or stakeholder. Open it at the
+`/portal` route — either click `Open client portal` from the
+`Report` tab or from the Agency tab's Delivery Summary, or browse to
+`http://127.0.0.1:3100/portal` directly. The page reads the active
+project, its newest run, the review board, the agency selection, the
+learning memory, and any logged actuals from local storage, then
+renders twelve canonical sections in stable order: **Overview**,
+**Strategy snapshot**, **Offer**, **Audience**, **Proof**,
+**Execution**, **Forecast**, **Simulator**, **Benchmarks**,
+**Approval status**, **Results**, **Next actions**. Empty sections
+(no proof plan yet, no actuals logged, no agency selection) are
+omitted entirely — no empty headers, no placeholder text.
+
+Three high-level toggles decide what the client sees:
+
+- **Hide pricing** — strips `$` and price labels from the Offer
+  section, useful when the package quote is still under negotiation.
+- **Hide internal notes** (default on) — drops the
+  `internal reference: <projectId>` footer so the client never sees
+  your local project id.
+- **Hide assumptions** — drops the Forecast and Simulator sections
+  in one click, useful when the deliverable is a "results so far"
+  recap and the client doesn't need to relitigate every assumption.
+
+The toolbar also lets you toggle each of the twelve sections
+individually, switch projects when multiple exist, print or save as
+PDF (browser-native, no third-party dependency), download a
+`campaignos-portal-<slug>.md` markdown file, and copy a one-liner
+("overview headline · top three next actions") to the clipboard for
+quick paste into a chat or DM.
+
+The builder is pure and deterministic — same stored state →
+byte-identical snapshot. `generatedAt` is the maximum of every
+stored `updatedAt` / `runAt` / `derivedAt` value, never `Date.now()`,
+so two opens of the same portal produce exactly the same document.
+Nothing leaves the browser — no backend, no auth, no public hosting.
+The portal SITS ABOVE the engine: `buildStrategy(input)` stays
+byte-identical regardless of which projects, runs, or results exist.
+
+The export brief (`Export brief` tab) gains an optional
+`## Client Portal Pack` section when the caller passes the portal
+context — a short pointer block with the last-published date, the
+overview headline, the approval status one-liner, and the top three
+next actions. The full deliverable lives at `/portal`; the brief's
+section is the breadcrumb that sends the reader there.
+
+En francais : l'onglet `Portal` (ouvert via la route `/portal` ou le
+bouton `Open client portal` dans `Report` ou la fiche
+"Delivery summary" de `Agency`) est le livrable client-facing —
+distinct du rapport interne `/report`. Il reprend l'etat stocke
+(projet actif, run la plus recente, board de review, selection
+agence, learning memory, resultats reels) et rend douze sections
+canoniques dans un ordre stable — **Overview**, **Strategy
+snapshot**, **Offer**, **Audience**, **Proof**, **Execution**,
+**Forecast**, **Simulator**, **Benchmarks**, **Approval status**,
+**Results**, **Next actions** — en omettant celles qui n'ont pas
+encore de contenu. Trois reglages haut niveau pilotent la posture
+client-facing : `Hide pricing` retire `$` et libelles de prix de la
+section Offre; `Hide internal notes` (active par defaut) supprime la
+ligne `internal reference: <projectId>`; `Hide assumptions` enleve
+Forecast et Simulator d'un clic quand le livrable est un recap
+post-launch. Boutons : `Print / Save as PDF` (dialogue natif du
+navigateur), `Download Markdown` (`campaignos-portal-<slug>.md`),
+`Copy client summary` (one-liner `overview headline · top three
+next actions`). Le builder est pur et deterministique :
+`generatedAt` est derive du max des timestamps stockes, jamais
+`Date.now()`, donc deux ouvertures du meme portail produisent
+exactement le meme document. Rien ne quitte le navigateur. L'export
+gagne une section optionnelle `## Client Portal Pack` (date,
+overview, statut d'approbation, top trois next actions) quand le
+contexte portail est fourni.

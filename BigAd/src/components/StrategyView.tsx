@@ -302,7 +302,7 @@ function ReportTab() {
         the browser&rsquo;s native dialog. Section toggles let you hide
         anything that doesn&rsquo;t belong in the hand-off.
       </p>
-      <p className="mt-4">
+      <p className="mt-4 flex flex-wrap gap-2">
         <a
           href="/report"
           target="_blank"
@@ -310,6 +310,14 @@ function ReportTab() {
           className="rounded-sm border border-ink-700 bg-ink-800 px-3 py-1.5 text-ink-100 hover:border-accent hover:text-white"
         >
           Open client report
+        </a>
+        <a
+          href="/portal"
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-sm border border-ink-700 bg-ink-800 px-3 py-1.5 text-ink-100 hover:border-accent hover:text-white"
+        >
+          Open client portal
         </a>
       </p>
     </div>
