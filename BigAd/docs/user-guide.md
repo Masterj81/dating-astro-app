@@ -1,4 +1,4 @@
-# Guide CampaignOS (formerly BigAd)
+# Guide CampaignOS
 
 CampaignOS aide a transformer une idee produit en plan marketing exploitable :
 positionnement, angles publicitaires, offres, calendrier de lancement,

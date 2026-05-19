@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "CampaignOS (formerly BigAd) — marketing strategy workspace",
+  title: "CampaignOS — marketing strategy workspace",
   description:
     "Turn a product idea into a complete marketing strategy: positioning, awareness, offer, ads, landing copy, store copy, and experiments.",
 };

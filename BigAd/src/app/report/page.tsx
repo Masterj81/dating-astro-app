@@ -103,7 +103,7 @@ export default function ReportPage() {
     return (
       <main className="report-shell">
         <ReportPrintStyles />
-        <h1>CampaignOS (formerly BigAd) Report</h1>
+        <h1>CampaignOS Report</h1>
         <p>
           No active project, or no saved runs for this project. Open the main
           CampaignOS workspace, select a project, save at least one run, then come
@@ -131,7 +131,7 @@ export default function ReportPage() {
       <ReportPrintStyles />
 
       <header className="report-header">
-        <h1>CampaignOS (formerly BigAd) Report — {projectName}</h1>
+        <h1>CampaignOS Report — {projectName}</h1>
         <p className="report-meta">
           Generated: {report.generatedAt}
           {" · "}Primary run: <code>{report.primaryRunId}</code>
@@ -169,7 +169,7 @@ export default function ReportPage() {
             <a
               className="report-btn"
               href={md}
-              download={`bigad-report-${projectName.replace(/\s+/g, "-").toLowerCase()}.md`}
+              download={`campaignos-report-${projectName.replace(/\s+/g, "-").toLowerCase()}.md`}
             >
               Download Markdown
             </a>

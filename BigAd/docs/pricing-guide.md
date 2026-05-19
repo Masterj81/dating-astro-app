@@ -1,4 +1,4 @@
-# CampaignOS (formerly BigAd) Pricing Guide
+# CampaignOS Pricing Guide
 
 Ce document donne une base de prix pour vendre un projet comme CampaignOS :
 un outil qui combine software, strategie marketing, media buying logic,

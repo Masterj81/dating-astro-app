@@ -1,10 +1,10 @@
-# CampaignOS, formerly BigAd
+# CampaignOS
 
 CampaignOS is a marketing-strategy workspace for founders, solopreneurs, and marketers. Describe a product on the left; get a complete, copyable marketing strategy on the right — quality score, positioning, awareness analysis, offer diagnosis, ranked ad angles, landing copy, app store listing, a starter A/B testing plan, and a one-press markdown export.
 
 The first screen is the workspace itself, not a marketing landing page.
 
-Source lives under `BigAd/` (the folder path is kept as-is from the previous codename).
+> **Naming.** CampaignOS is the product name. BigAd remains the internal repository folder name — source lives under `BigAd/` for migration continuity (folder path, npm package name, and `bigad:*:v1` localStorage keys are intentionally unchanged).
 
 For day-to-day use, see the operator guide: [`docs/user-guide.md`](docs/user-guide.md).
 
