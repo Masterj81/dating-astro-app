@@ -15,6 +15,7 @@ import {
 import { AgencyTab, useAgencySelection } from "@/components/AgencyPanel";
 import { PlaybookTab, usePlaybookSelection } from "@/components/PlaybookPanel";
 import { AssetTab, useAssetProduction } from "@/components/AssetPanel";
+import { ResultsTab } from "@/components/ResultsPanel";
 import { PLAYBOOKS } from "@/lib/playbook/catalog";
 import {
   OnboardingGoalPill,
@@ -251,6 +252,13 @@ export default function Page() {
                 state={assetProductionState}
                 input={input}
                 strategy={strategy}
+              />
+            }
+            resultsSlot={
+              <ResultsTab
+                strategy={strategy}
+                projectId={workspaceState.activeProjectId}
+                runId={latestRun?.id ?? null}
               />
             }
           />

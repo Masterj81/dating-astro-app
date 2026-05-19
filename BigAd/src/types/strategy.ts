@@ -849,7 +849,8 @@ export type JourneyBlockerKind =
   | "economics"
   | "forecast"
   | "simulator"
-  | "benchmark";
+  | "benchmark"
+  | "results";
 
 export interface JourneyBlocker {
   kind: JourneyBlockerKind;

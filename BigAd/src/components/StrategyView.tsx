@@ -80,6 +80,7 @@ import { EconomicsTab } from "./EconomicsPanel";
 import { ForecastTab } from "./ForecastPanel";
 import { SimulatorTab } from "./SimulatorPanel";
 import { BenchmarkTab } from "./BenchmarkPanel";
+import { ResultsTab } from "./ResultsPanel";
 import type { ProductInput } from "@/types/strategy";
 
 type Tab =
@@ -94,6 +95,7 @@ type Tab =
   | "forecast"
   | "simulator"
   | "benchmarks"
+  | "results"
   | "angles"
   | "concepts"
   | "briefs"
@@ -128,6 +130,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "forecast", label: "Forecast" },
   { id: "simulator", label: "Simulator" },
   { id: "benchmarks", label: "Benchmarks" },
+  { id: "results", label: "Results" },
   { id: "angles", label: "Angles" },
   { id: "concepts", label: "Concepts" },
   { id: "briefs", label: "Briefs" },
@@ -170,9 +173,16 @@ interface Props {
   // Optional slot for the Asset Production Manager tab body. Rendered
   // inside the dedicated "Assets" tab. Same render-prop pattern.
   assetSlot?: React.ReactNode;
+  // Optional slot for the Results / Forecast Accuracy Loop tab body.
+  // Rendered inside the dedicated "Results" tab. Render-prop pattern
+  // again so StrategyView stays free of results-store / projectId /
+  // runId coupling. When absent, the Results tab renders an empty
+  // state via the default `ResultsTab` ({ strategy, projectId: null,
+  // runId: null }).
+  resultsSlot?: React.ReactNode;
 }
 
-export function StrategyView({ input, strategy, hasMeaningfulInput, workspaceSlot, reviewSlot, agencySlot, playbookSlot, assetSlot }: Props) {
+export function StrategyView({ input, strategy, hasMeaningfulInput, workspaceSlot, reviewSlot, agencySlot, playbookSlot, assetSlot, resultsSlot }: Props) {
   const [tab, setTab] = useState<Tab>("score");
 
   if (!hasMeaningfulInput) {
@@ -236,6 +246,13 @@ export function StrategyView({ input, strategy, hasMeaningfulInput, workspaceSlo
         {tab === "forecast" && <ForecastTab strategy={strategy} />}
         {tab === "simulator" && <SimulatorTab strategy={strategy} />}
         {tab === "benchmarks" && <BenchmarkTab strategy={strategy} />}
+        {tab === "results" && (
+          <div>
+            {resultsSlot ?? (
+              <ResultsTab strategy={strategy} projectId={null} runId={null} />
+            )}
+          </div>
+        )}
         {tab === "angles" && <AnglesTab strategy={strategy} />}
         {tab === "concepts" && <ConceptsTab strategy={strategy} input={input} />}
         {tab === "briefs" && <BriefsTab strategy={strategy} />}

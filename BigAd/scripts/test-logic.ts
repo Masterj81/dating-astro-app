@@ -1328,6 +1328,7 @@ const validBlockerKinds = new Set([
   "forecast",
   "simulator",
   "benchmark",
+  "results",
 ]);
 record(
   "journeyStatus: every blocker.kind is a valid JourneyBlockerKind",
@@ -9442,6 +9443,702 @@ for (const { name, strategy } of fixtures) {
       "Offer architecture",
       "Calendar",
     ].every((label, i) => tabLabels[i] === label)
+  );
+}
+
+// === Results / Forecast Accuracy ===
+{
+  const {
+    analyzeCampaignResults,
+    parseCsvResults,
+  } = require("../src/lib/results/results-analysis");
+  const {
+    createMemoryResultsStore,
+    STORAGE_KEY_CAMPAIGN_ACTUALS,
+  } = require("../src/lib/results/results-store");
+
+  // Use the AstroDating strategy as a fixture — it has a non-empty
+  // creativeTestingMatrix + a forecast snapshot.
+  const strategyR = a;
+  const matrixR = strategyR.creativeTestingMatrix;
+  const firstBatchR = matrixR
+    ? matrixR.testCells.filter((c) =>
+        matrixR.recommendedFirstBatch.includes(c.id)
+      )
+    : [];
+  const firstCell = firstBatchR[0];
+  const secondCell = firstBatchR[1];
+
+  // Storage key must be exactly the versioned constant.
+  record(
+    "results: STORAGE_KEY_CAMPAIGN_ACTUALS exactly 'bigad:campaign-actuals:v1'",
+    STORAGE_KEY_CAMPAIGN_ACTUALS === "bigad:campaign-actuals:v1"
+  );
+
+  // ---- Determinism --------------------------------------------------------
+
+  // Deep-equal across two calls with the same actuals.
+  const fixtureActuals = firstCell
+    ? [
+        {
+          id: `p-r:r-1:${firstCell.id}`,
+          projectId: "p-r",
+          runId: "r-1",
+          cellId: firstCell.id,
+          spendUsd: 500,
+          impressions: 50000,
+          clicks: 750,
+          conversions: 30,
+          revenueUsd: 1500,
+          status: "winning" as const,
+          createdAt: 1,
+          updatedAt: 2,
+        },
+      ]
+    : [];
+
+  const reportR1 = analyzeCampaignResults({
+    strategy: strategyR,
+    actualResults: fixtureActuals,
+  });
+  const reportR2 = analyzeCampaignResults({
+    strategy: strategyR,
+    actualResults: fixtureActuals,
+  });
+  record(
+    "results: analyzeCampaignResults is deep-equal across two calls",
+    JSON.stringify(reportR1) === JSON.stringify(reportR2)
+  );
+  record(
+    "results: report.derivedAt is always 0",
+    reportR1.derivedAt === 0 && reportR2.derivedAt === 0
+  );
+
+  // Engine regression — buildStrategy(astroDatingInput) twice deep-equal.
+  {
+    const engine1 = buildStrategy(ASTRO_DATING_EXAMPLE);
+    const engine2 = buildStrategy(ASTRO_DATING_EXAMPLE);
+    record(
+      "results: buildStrategy(astroDatingInput) byte-identical (engine regression)",
+      JSON.stringify(engine1) === JSON.stringify(engine2)
+    );
+  }
+
+  // ---- Analysis math ------------------------------------------------------
+
+  // Derived metric math on a known fixture: spend=500, impressions=50000,
+  // clicks=750, conversions=30, revenue=1500.
+  // Expect cpm=10, ctr=0.015, cvr=0.04, cpa=16.67, roas=3.
+  if (firstCell) {
+    const rowFix = reportR1.perCell.find(
+      (row: any) => row.cellId === firstCell.id
+    );
+    const m = (k: string) =>
+      rowFix?.metrics.find((mm: any) => mm.metric === k);
+    record(
+      "results: cpm derived correctly (spend/imp*1000 = 10)",
+      m("cpm")?.actualValue === 10
+    );
+    record(
+      "results: ctr derived correctly (clicks/imp = 0.015)",
+      m("ctr")?.actualValue === 0.015
+    );
+    record(
+      "results: cvr derived correctly (conv/clicks = 0.04)",
+      m("cvr")?.actualValue === 0.04
+    );
+    record(
+      "results: cpa derived correctly (spend/conv ~ 16.67)",
+      Math.abs((m("cpa")?.actualValue ?? 0) - 16.67) < 0.01
+    );
+    record(
+      "results: roas derived correctly (revenue/spend = 3)",
+      m("roas")?.actualValue === 3
+    );
+  } else {
+    record("results: cpm derived correctly (vacuous — no first batch)", true);
+    record("results: ctr derived correctly (vacuous — no first batch)", true);
+    record("results: cvr derived correctly (vacuous — no first batch)", true);
+    record("results: cpa derived correctly (vacuous — no first batch)", true);
+    record("results: roas derived correctly (vacuous — no first batch)", true);
+  }
+
+  // Inconsistent totals: clicks > impressions.
+  if (firstCell) {
+    const reportBad = analyzeCampaignResults({
+      strategy: strategyR,
+      actualResults: [
+        {
+          id: `p-r:r-1:${firstCell.id}`,
+          projectId: "p-r",
+          runId: "r-1",
+          cellId: firstCell.id,
+          spendUsd: 100,
+          impressions: 100,
+          clicks: 200,
+          conversions: 5,
+          revenueUsd: 250,
+          status: "inconclusive" as const,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+    });
+    record(
+      "results: clicks > impressions → inconsistent-totals issue",
+      reportBad.importIssues.some(
+        (i: any) =>
+          i.kind === "inconsistent-totals" && i.cellId === firstCell.id
+      )
+    );
+  } else {
+    record("results: clicks > impressions → inconsistent-totals issue (vacuous)", true);
+  }
+
+  // No-spend-no-data: 0/0/0/0.
+  if (firstCell) {
+    const reportEmpty = analyzeCampaignResults({
+      strategy: strategyR,
+      actualResults: [
+        {
+          id: `p-r:r-1:${firstCell.id}`,
+          projectId: "p-r",
+          runId: "r-1",
+          cellId: firstCell.id,
+          spendUsd: 0,
+          impressions: 0,
+          clicks: 0,
+          conversions: 0,
+          status: "needs-more-data" as const,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+    });
+    record(
+      "results: zero spend / zero data → no-spend-no-data issue",
+      reportEmpty.importIssues.some((i: any) => i.kind === "no-spend-no-data")
+    );
+  } else {
+    record("results: zero spend / zero data → no-spend-no-data issue (vacuous)", true);
+  }
+
+  // Cell id not in strategy.
+  {
+    const reportOrphan = analyzeCampaignResults({
+      strategy: strategyR,
+      actualResults: [
+        {
+          id: "p-r:r-1:not-a-real-cell",
+          projectId: "p-r",
+          runId: "r-1",
+          cellId: "not-a-real-cell",
+          spendUsd: 50,
+          impressions: 5000,
+          clicks: 50,
+          conversions: 1,
+          revenueUsd: 80,
+          status: "inconclusive" as const,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+    });
+    record(
+      "results: orphan cellId → cell-id-not-in-strategy issue",
+      reportOrphan.importIssues.some(
+        (i: any) => i.kind === "cell-id-not-in-strategy"
+      )
+    );
+  }
+
+  // ---- Decision logic -----------------------------------------------------
+
+  // Pull the forecast ROAS from the report's snapshot to drive thresholds.
+  const baseSnap = reportR1.perCell[0]?.forecastSnapshot;
+  const forecastRoas = baseSnap?.expectedRoas;
+  const minLearning =
+    strategyR.forecast?.budget?.minimumLearningBudget ?? 0;
+  const cellCountR = matrixR
+    ? matrixR.testCells.filter((c: any) =>
+        matrixR.recommendedFirstBatch.includes(c.id)
+      ).length
+    : 0;
+  const perCellLearning =
+    cellCountR > 0 && minLearning > 0 ? minLearning / cellCountR : 0;
+  const safeSpend = perCellLearning * 0.4 + 1; // strictly above the gate
+
+  if (firstCell && typeof forecastRoas === "number" && forecastRoas > 0) {
+    // Scale rule: ROAS > forecast * 1.2 AND conversions >= 5 AND spend
+    // above gate.
+    const spendScale = Math.max(safeSpend, 100);
+    const revenueScale = spendScale * forecastRoas * 1.5; // 1.5x > 1.2x
+    const reportScale = analyzeCampaignResults({
+      strategy: strategyR,
+      actualResults: [
+        {
+          id: `p-r:r-1:${firstCell.id}`,
+          projectId: "p-r",
+          runId: "r-1",
+          cellId: firstCell.id,
+          spendUsd: spendScale,
+          impressions: 20000,
+          clicks: 400,
+          conversions: 10,
+          revenueUsd: revenueScale,
+          status: "winning" as const,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+    });
+    const rowScale = reportScale.perCell.find(
+      (r: any) => r.cellId === firstCell.id
+    );
+    record(
+      "results: ROAS > forecast × 1.2 with ≥5 conv → 'scale'",
+      rowScale?.decision?.decision === "scale"
+    );
+
+    // Pause: ROAS < forecast * 0.6.
+    const spendPause = Math.max(safeSpend, 100);
+    const revenuePause = spendPause * forecastRoas * 0.4; // 0.4x < 0.6x
+    const reportPause = analyzeCampaignResults({
+      strategy: strategyR,
+      actualResults: [
+        {
+          id: `p-r:r-1:${firstCell.id}`,
+          projectId: "p-r",
+          runId: "r-1",
+          cellId: firstCell.id,
+          spendUsd: spendPause,
+          impressions: 20000,
+          clicks: 400,
+          conversions: 10,
+          revenueUsd: revenuePause,
+          status: "losing" as const,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+    });
+    const rowPause = reportPause.perCell.find(
+      (r: any) => r.cellId === firstCell.id
+    );
+    record(
+      "results: ROAS < forecast × 0.6 → 'pause'",
+      rowPause?.decision?.decision === "pause"
+    );
+
+    // Iterate: ROAS 0.7-1.2 × forecast.
+    const spendIter = Math.max(safeSpend, 100);
+    const revenueIter = spendIter * forecastRoas * 1.0; // exactly 1x
+    const reportIter = analyzeCampaignResults({
+      strategy: strategyR,
+      actualResults: [
+        {
+          id: `p-r:r-1:${firstCell.id}`,
+          projectId: "p-r",
+          runId: "r-1",
+          cellId: firstCell.id,
+          spendUsd: spendIter,
+          impressions: 20000,
+          clicks: 400,
+          conversions: 10,
+          revenueUsd: revenueIter,
+          status: "inconclusive" as const,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+    });
+    const rowIter = reportIter.perCell.find(
+      (r: any) => r.cellId === firstCell.id
+    );
+    record(
+      "results: ROAS within 0.7-1.2 × forecast → 'iterate'",
+      rowIter?.decision?.decision === "iterate"
+    );
+
+    // Needs-more-data: spend below the learning gate (only meaningful
+    // when the gate is positive).
+    if (perCellLearning > 0) {
+      const spendLow = perCellLearning * 0.1; // far below the gate
+      const reportLow = analyzeCampaignResults({
+        strategy: strategyR,
+        actualResults: [
+          {
+            id: `p-r:r-1:${firstCell.id}`,
+            projectId: "p-r",
+            runId: "r-1",
+            cellId: firstCell.id,
+            spendUsd: spendLow,
+            impressions: 1000,
+            clicks: 20,
+            conversions: 1,
+            revenueUsd: spendLow * forecastRoas,
+            status: "needs-more-data" as const,
+            createdAt: 1,
+            updatedAt: 1,
+          },
+        ],
+      });
+      const rowLow = reportLow.perCell.find(
+        (r: any) => r.cellId === firstCell.id
+      );
+      record(
+        "results: low spend → 'needs-more-data'",
+        rowLow?.decision?.decision === "needs-more-data"
+      );
+    } else {
+      record("results: low spend → 'needs-more-data' (vacuous — no learning gate)", true);
+    }
+  } else {
+    record("results: ROAS > forecast × 1.2 with ≥5 conv → 'scale' (vacuous)", true);
+    record("results: ROAS < forecast × 0.6 → 'pause' (vacuous)", true);
+    record("results: ROAS within 0.7-1.2 × forecast → 'iterate' (vacuous)", true);
+    record("results: low spend → 'needs-more-data' (vacuous)", true);
+  }
+
+  // ---- Overall accuracy ---------------------------------------------------
+
+  if (firstCell && typeof forecastRoas === "number" && forecastRoas > 0) {
+    // Overall accuracy is gated by totalSpend >= minLearning * 0.4. Use a
+    // spend value comfortably above the gate so the classifier reaches
+    // the better/on/worse branch.
+    const overallGate = Math.max(minLearning * 0.4 + 50, 200);
+    const spendBetter = overallGate;
+    const reportBetter = analyzeCampaignResults({
+      strategy: strategyR,
+      actualResults: [
+        {
+          id: `p-r:r-1:${firstCell.id}`,
+          projectId: "p-r",
+          runId: "r-1",
+          cellId: firstCell.id,
+          spendUsd: spendBetter,
+          impressions: 20000,
+          clicks: 400,
+          conversions: 10,
+          revenueUsd: spendBetter * forecastRoas * 1.5,
+          status: "winning" as const,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+    });
+    record(
+      "results: weighted ROAS > forecast × 1.1 → 'better-than-forecast'",
+      reportBetter.overallAccuracy === "better-than-forecast"
+    );
+
+    // On-target: within ±10%.
+    const reportOn = analyzeCampaignResults({
+      strategy: strategyR,
+      actualResults: [
+        {
+          id: `p-r:r-1:${firstCell.id}`,
+          projectId: "p-r",
+          runId: "r-1",
+          cellId: firstCell.id,
+          spendUsd: spendBetter,
+          impressions: 20000,
+          clicks: 400,
+          conversions: 10,
+          revenueUsd: spendBetter * forecastRoas * 1.0,
+          status: "inconclusive" as const,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+    });
+    record(
+      "results: weighted ROAS within ±10% → 'on-target'",
+      reportOn.overallAccuracy === "on-target"
+    );
+
+    // Worse-than-forecast: < forecast × 0.9.
+    const reportWorse = analyzeCampaignResults({
+      strategy: strategyR,
+      actualResults: [
+        {
+          id: `p-r:r-1:${firstCell.id}`,
+          projectId: "p-r",
+          runId: "r-1",
+          cellId: firstCell.id,
+          spendUsd: spendBetter,
+          impressions: 20000,
+          clicks: 400,
+          conversions: 10,
+          revenueUsd: spendBetter * forecastRoas * 0.5,
+          status: "losing" as const,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+    });
+    record(
+      "results: weighted ROAS < forecast × 0.9 → 'worse-than-forecast'",
+      reportWorse.overallAccuracy === "worse-than-forecast"
+    );
+
+    // Insufficient data: low total spend (below learning × 0.4).
+    if (minLearning > 0) {
+      const reportInsuff = analyzeCampaignResults({
+        strategy: strategyR,
+        actualResults: [
+          {
+            id: `p-r:r-1:${firstCell.id}`,
+            projectId: "p-r",
+            runId: "r-1",
+            cellId: firstCell.id,
+            spendUsd: minLearning * 0.05,
+            impressions: 500,
+            clicks: 10,
+            conversions: 0,
+            status: "needs-more-data" as const,
+            createdAt: 1,
+            updatedAt: 1,
+          },
+        ],
+      });
+      record(
+        "results: low total spend → 'insufficient-data'",
+        reportInsuff.overallAccuracy === "insufficient-data"
+      );
+    } else {
+      record("results: low total spend → 'insufficient-data' (vacuous — no learning budget)", true);
+    }
+  } else {
+    record("results: weighted ROAS > forecast × 1.1 → 'better-than-forecast' (vacuous)", true);
+    record("results: weighted ROAS within ±10% → 'on-target' (vacuous)", true);
+    record("results: weighted ROAS < forecast × 0.9 → 'worse-than-forecast' (vacuous)", true);
+    record("results: low total spend → 'insufficient-data' (vacuous)", true);
+  }
+
+  // ---- Persistence (memory store) ----------------------------------------
+
+  {
+    const store = createMemoryResultsStore();
+    const cellId = firstCell?.id ?? "test-1";
+    const projectId = "p-mem";
+    const runId = "run-mem";
+
+    // upsert + list + get
+    const upserted = store.upsertResult({
+      projectId,
+      runId,
+      cellId,
+      spendUsd: 100,
+      impressions: 10000,
+      clicks: 150,
+      conversions: 6,
+      revenueUsd: 240,
+      status: "winning",
+    });
+    record(
+      "results-store: stable id is `${projectId}:${runId}:${cellId}`",
+      upserted.id === `${projectId}:${runId}:${cellId}`
+    );
+
+    const list1 = store.listResults(projectId, runId);
+    record(
+      "results-store: upsert + list returns the row",
+      list1.length === 1 && list1[0].cellId === cellId
+    );
+    const got = store.getResult(upserted.id);
+    record(
+      "results-store: getResult returns the row",
+      !!got && got!.id === upserted.id
+    );
+
+    // delete
+    store.deleteResult(upserted.id);
+    record(
+      "results-store: deleteResult removes the row",
+      store.listResults(projectId, runId).length === 0
+    );
+
+    // re-add then clearForRun cascades
+    store.upsertResult({
+      projectId,
+      runId,
+      cellId,
+      spendUsd: 50,
+      impressions: 5000,
+      clicks: 75,
+      conversions: 3,
+      revenueUsd: 120,
+      status: "inconclusive",
+    });
+    store.upsertResult({
+      projectId,
+      runId: "other-run",
+      cellId,
+      spendUsd: 10,
+      impressions: 1000,
+      clicks: 15,
+      conversions: 0,
+      status: "inconclusive",
+    });
+    store.clearForRun(projectId, runId);
+    record(
+      "results-store: clearForRun cascades to that run only",
+      store.listResults(projectId, runId).length === 0 &&
+        store.listResults(projectId, "other-run").length === 1
+    );
+  }
+
+  // ---- CSV parsing --------------------------------------------------------
+
+  {
+    // Valid CSV with all required columns + a quoted notes field with a comma.
+    const csvOk =
+      `cellId,spend,impressions,clicks,conversions,revenue,status,notes,daysRun\n` +
+      `${firstCell?.id ?? "test-1"},500,50000,750,30,1500,winning,"strong hook, weak proof",7\n`;
+    const parsedOk = parseCsvResults(csvOk, "p-csv", "r-csv");
+    record(
+      "results-csv: valid CSV parses with zero issues",
+      parsedOk.results.length === 1 && parsedOk.issues.length === 0
+    );
+    record(
+      "results-csv: quoted comma in notes preserved",
+      parsedOk.results[0]?.notes === "strong hook, weak proof"
+    );
+
+    // Missing required field → ResultImportIssue.
+    const csvMissing =
+      `cellId,spend,impressions,clicks\n` +
+      `${firstCell?.id ?? "test-1"},500,50000,750\n`;
+    const parsedMissing = parseCsvResults(csvMissing, "p-csv", "r-csv");
+    record(
+      "results-csv: missing required header emits an issue",
+      parsedMissing.issues.some(
+        (i: any) => i.kind === "missing-cell-id" && i.rowNumber === 1
+      )
+    );
+  }
+
+  // ---- Journey Status (results) ------------------------------------------
+
+  {
+    const {
+      buildJourneyStatus: buildJS,
+    } = require("../src/lib/engine/journey-status");
+    const baseArgs = {
+      trackingReadiness: strategyR.trackingReadiness,
+      kpiLadder: strategyR.kpiLadder,
+      kpiDiagnosis: strategyR.kpiDiagnosis,
+      adReview: strategyR.adReview,
+      creatorBriefs: strategyR.creatorBriefs,
+      shotLists: strategyR.shotLists,
+      videoScripts: strategyR.videoScripts,
+      variantSets: strategyR.variantSets,
+    };
+    const jsWith = buildJS({
+      ...baseArgs,
+      campaignResults: { hasSavedRuns: true, hasResults: false },
+    });
+    record(
+      "results: hasSavedRuns + !hasResults → 'results' warning emitted",
+      jsWith.warnings.some((w: any) => w.kind === "results")
+    );
+    record(
+      "results: 'results' warning does NOT block ready-to-spend (no blocker added)",
+      !jsWith.blockers.some((b: any) => b.kind === "results")
+    );
+    const jsBoth = buildJS({
+      ...baseArgs,
+      campaignResults: { hasSavedRuns: true, hasResults: true },
+    });
+    record(
+      "results: hasSavedRuns + hasResults → no 'results' warning",
+      !jsBoth.warnings.some((w: any) => w.kind === "results")
+    );
+  }
+
+  // ---- Export brief -------------------------------------------------------
+
+  {
+    const {
+      generateExportBrief: genExportR,
+    } = require("../src/lib/engine/export-brief");
+
+    // Without campaignResults context — section absent.
+    const briefAbsent = genExportR(ASTRO_DATING_EXAMPLE, strategyR);
+    record(
+      "results-export: section absent when no campaignResults context is passed",
+      !briefAbsent.includes("## Results / Forecast Accuracy")
+    );
+
+    if (firstCell) {
+      // With campaignResults context — section + sub-sections present.
+      const ctxActuals = [
+        {
+          id: `p-r:r-1:${firstCell.id}`,
+          projectId: "p-r",
+          runId: "r-1",
+          cellId: firstCell.id,
+          spendUsd: 500,
+          impressions: 50000,
+          clicks: 750,
+          conversions: 30,
+          revenueUsd: 1500,
+          status: "winning" as const,
+          createdAt: 1,
+          updatedAt: 2,
+        },
+      ];
+      const ctxReport = analyzeCampaignResults({
+        strategy: strategyR,
+        actualResults: ctxActuals,
+      });
+      const briefWith = genExportR(ASTRO_DATING_EXAMPLE, strategyR, {
+        campaignResults: { report: ctxReport, results: ctxActuals },
+      });
+      record(
+        "results-export: contains '## Results / Forecast Accuracy' header",
+        briefWith.includes("## Results / Forecast Accuracy")
+      );
+      record(
+        "results-export: contains '### Latest results' sub-section",
+        briefWith.includes("### Latest results")
+      );
+      record(
+        "results-export: contains '### Decision recommendations' sub-section",
+        briefWith.includes("### Decision recommendations")
+      );
+    } else {
+      record("results-export: contains '## Results / Forecast Accuracy' header (vacuous)", true);
+      record("results-export: contains '### Latest results' sub-section (vacuous)", true);
+      record("results-export: contains '### Decision recommendations' sub-section (vacuous)", true);
+    }
+  }
+
+  // ---- No mutation --------------------------------------------------------
+
+  {
+    const before = JSON.stringify(strategyR.forecast);
+    analyzeCampaignResults({
+      strategy: strategyR,
+      actualResults: fixtureActuals,
+    });
+    const after = JSON.stringify(strategyR.forecast);
+    record(
+      "results: analyzeCampaignResults does NOT mutate strategy.forecast",
+      before === after
+    );
+  }
+
+  // ---- Tab insertion ------------------------------------------------------
+
+  record(
+    "results: tab insertion present in StrategyView (label 'Results')",
+    tabLabels.includes("Results")
+  );
+  record(
+    "results: 'Results' tab lands AFTER 'Benchmarks'",
+    tabLabels.indexOf("Results") > tabLabels.indexOf("Benchmarks")
   );
 }
 

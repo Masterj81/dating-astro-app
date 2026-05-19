@@ -1332,3 +1332,87 @@ bloque `ready-to-spend`. L'export gagne une section
 `## Benchmarks / Calibration` entre le Scenario Simulator et le
 Campaign Calendar; le moteur reste deterministe et `derivedAt`
 est toujours `0`.
+
+## Results / Forecast Accuracy Loop
+
+Once a run is live, the **Results** tab (right after **Benchmarks**)
+is where you log what actually happened and check it against the
+forecast. CampaignOS treats this layer as post-launch quality, not a
+pre-spend gate — nothing here blocks `ready-to-spend`. Open the tab,
+pick the run, and either type per-cell actuals into the form
+(spend / impressions / clicks / conversions, plus optional revenue /
+notes / days run / status) or paste a CSV with the header
+`cellId,spend,impressions,clicks,conversions,revenue,status,notes,daysRun`
+into the import box. Revenue, notes and daysRun are optional; quoted
+commas inside notes are preserved. CSV-time issues
+(`missing-cell-id`, `invalid-number`, `duplicate-cell-id`,
+`inconsistent-totals`, `no-spend-no-data`) surface in the import
+preview before anything is applied, and analysis-time issues
+(`cell-id-not-in-strategy`, `inconsistent-totals`, `no-spend-no-data`)
+land in the same flagged list after rows are saved.
+
+`analyzeCampaignResults({ strategy, actualResults })` is pure and
+deterministic — `derivedAt` is always `0` — and emits a
+`ForecastAccuracyReport` with three reads of the data. Per-cell
+metric comparisons cover CPM / CTR / CPC / CVR / CPA / ROAS against
+the base scenario's forecast snapshot, each carrying a status
+(`far-better`, `better`, `on-target`, `worse`, `far-worse`,
+`no-forecast`, `no-actual`) so the table tells you which lever
+moved. Per-cell decisions follow deterministic thresholds:
+ROAS above forecast × 1.2 with at least five conversions AND spend
+above the per-cell learning gate (40% of
+`forecast.budget.minimumLearningBudget / cellCount`) recommends
+**scale** (must-do); ROAS between 0.7-1.2 × forecast recommends
+**iterate** (should-do); ROAS below forecast × 0.6 recommends
+**pause** (must-do); spend below the gate or missing ROAS signal
+stays at **needs-more-data** (should-do). Overall accuracy classifies
+the weighted totals to `better-than-forecast` (ROAS above forecast
+× 1.1), `on-target` (within ±10%), `worse-than-forecast` (below
+× 0.9), or `insufficient-data` when total spend hasn't cleared the
+learning budget × 0.4.
+
+Actuals persist locally under the versioned
+`bigad:campaign-actuals:v1` key — never sent anywhere, never thread
+back into `buildStrategy()` (engine output stays byte-identical for
+identical input). Result ids are stable (`projectId:runId:cellId`)
+so re-saving the same cell overwrites the previous reading instead
+of duplicating. Journey-status integration is automatic: when a run
+has been saved but no actuals have been logged yet, the journey
+block raises a `results`-kind warning ("Saved run with no actual
+results logged — log results to close the loop") so the open loop
+is visible alongside the other gates; this is a warning only, never
+a blocker. The export brief gains a `## Results / Forecast Accuracy`
+section once at least one cell has been logged — overall accuracy,
+total spend / conversions / revenue, weighted CPA + ROAS against
+the forecast, a `### Latest results` table of the ten most recent
+rows, a `### Decision recommendations` list, and a `### Import
+issues` list when problems remain. Without logged results, the
+brief stays byte-identical to the pre-results build.
+
+En francais : l'onglet `Results` (apres `Benchmarks`) est ou tu
+saisis les resultats reels d'une campagne lancee. Tu peux remplir
+le tableau cellule par cellule (depenses / impressions / clics /
+conversions, plus revenu / notes / jours / statut optionnels) ou
+coller un CSV avec l'en-tete
+`cellId,spend,impressions,clicks,conversions,revenue,status,notes,daysRun`.
+Les problemes d'import (cellule inconnue, totaux incoherents, ligne
+vide, doublon, nombre invalide) apparaissent avant application. La
+comparaison forecast vs reel couvre CPM / CTR / CPC / CVR / CPA /
+ROAS avec un chip par metrique (`far-better`, `better`,
+`on-target`, `worse`, `far-worse`), et chaque cellule recoit une
+decision deterministe : **scale** quand le ROAS depasse la
+prevision × 1.2 avec ≥5 conversions et un budget au-dessus du seuil
+d'apprentissage, **iterate** entre 0.7 et 1.2 ×, **pause** sous
+0.6 ×, **needs-more-data** sinon. La precision globale classe la
+depense ponderee en `better-than-forecast` / `on-target` /
+`worse-than-forecast` / `insufficient-data`. Les resultats restent
+locaux (`bigad:campaign-actuals:v1`) et ne re-rentrent jamais dans
+`buildStrategy` : le moteur reste pur, `derivedAt` est toujours
+`0`. Le journey-status emet un chip `results` quand un run est
+sauvegarde sans resultats logges; c'est un warning uniquement,
+jamais un blocker — la boucle se ferme apres le lancement, elle ne
+le bloque pas. L'export gagne une section
+`## Results / Forecast Accuracy` (precision globale, totaux, CPA /
+ROAS ponderes vs forecast, table des 10 lignes les plus recentes,
+recommandations de decision, problemes d'import) des qu'au moins
+une cellule est saisie.

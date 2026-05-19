@@ -25,6 +25,12 @@ import type {
   AssetProductionPlan,
   AssetProductionSummary,
 } from "@/types/assets";
+import type {
+  CampaignActualResult,
+  ForecastAccuracyReport,
+  ResultDecisionRecommendation,
+  ResultImportIssue,
+} from "@/types/results";
 import {
   getOnboardingGoal,
 } from "@/lib/onboarding/onboarding";
@@ -76,6 +82,15 @@ export interface ExportBriefWorkspaceContext {
   assetProduction?: {
     plan: AssetProductionPlan;
     summary: AssetProductionSummary;
+  };
+  // Optional Results / Forecast Accuracy Loop context — when supplied
+  // AND `report.perCell.length > 0`, the exporter appends a
+  // `## Results / Forecast Accuracy` section AFTER the Benchmarks /
+  // Calibration section. Absent or empty perCell → existing brief is
+  // byte-identical.
+  campaignResults?: {
+    report: ForecastAccuracyReport;
+    results: CampaignActualResult[];
   };
 }
 
@@ -1200,6 +1215,21 @@ export function generateExportBrief(
   const assetProduction = workspace?.assetProduction;
   if (assetProduction && assetProduction.plan.assets.length > 0) {
     appendAssetProductionPlan(lines, assetProduction.plan, assetProduction.summary);
+  }
+
+  // Results / Forecast Accuracy Loop — emitted only when the caller
+  // passes the campaignResults context AND the report has per-cell
+  // rows. Sits after the Benchmarks / Calibration section
+  // (alphabetically Benchmarks is emitted inline by the engine, so the
+  // workspace-context section appends here). Absent or empty → existing
+  // brief is byte-identical.
+  const campaignResults = workspace?.campaignResults;
+  if (campaignResults && campaignResults.report.perCell.length > 0) {
+    appendCampaignResultsSection(
+      lines,
+      campaignResults.report,
+      campaignResults.results
+    );
   }
 
   return lines.join("\n").replace(/\n{3,}/g, "\n\n");
@@ -2582,3 +2612,156 @@ function reviewAxisLabel(axis: string): string {
     }[axis] ?? axis
   );
 }
+
+// ---- Results / Forecast Accuracy Loop --------------------------------
+
+function appendCampaignResultsSection(
+  lines: string[],
+  report: ForecastAccuracyReport,
+  results: CampaignActualResult[]
+): void {
+  section(lines, "Results / Forecast Accuracy");
+
+  lines.push(
+    `**Overall accuracy:** ${overallAccuracyLabel(report.overallAccuracy)}`
+  );
+
+  const totalLine: string[] = [];
+  totalLine.push(`**Total spend:** $${report.totals.totalSpendUsd.toFixed(2)}`);
+  totalLine.push(`**Conversions:** ${report.totals.totalConversions}`);
+  if (typeof report.totals.totalRevenueUsd === "number") {
+    totalLine.push(`**Revenue:** $${report.totals.totalRevenueUsd.toFixed(2)}`);
+  }
+  lines.push(totalLine.join(" · "));
+
+  if (
+    typeof report.totals.weightedCpa === "number" &&
+    typeof report.totals.forecastWeightedCpa === "number" &&
+    report.totals.forecastWeightedCpa > 0
+  ) {
+    const deltaPct =
+      ((report.totals.weightedCpa - report.totals.forecastWeightedCpa) /
+        report.totals.forecastWeightedCpa) *
+      100;
+    lines.push(
+      `**Weighted CPA:** $${report.totals.weightedCpa.toFixed(2)} (forecast $${report.totals.forecastWeightedCpa.toFixed(2)}, ${signedPct(deltaPct)})`
+    );
+  } else if (typeof report.totals.weightedCpa === "number") {
+    lines.push(`**Weighted CPA:** $${report.totals.weightedCpa.toFixed(2)}`);
+  }
+
+  if (
+    typeof report.totals.weightedRoas === "number" &&
+    typeof report.totals.forecastWeightedRoas === "number" &&
+    report.totals.forecastWeightedRoas > 0
+  ) {
+    const deltaPct =
+      ((report.totals.weightedRoas - report.totals.forecastWeightedRoas) /
+        report.totals.forecastWeightedRoas) *
+      100;
+    lines.push(
+      `**Weighted ROAS:** ${report.totals.weightedRoas.toFixed(2)}x (forecast ${report.totals.forecastWeightedRoas.toFixed(2)}x, ${signedPct(deltaPct)})`
+    );
+  } else if (typeof report.totals.weightedRoas === "number") {
+    lines.push(`**Weighted ROAS:** ${report.totals.weightedRoas.toFixed(2)}x`);
+  }
+
+  lines.push("");
+
+  // Latest results (10 most recent)
+  lines.push(`### Latest results (${Math.min(10, results.length)} most recent)`);
+  lines.push("");
+  lines.push(`| Cell | Status | Spend | Conv. | CPA | ROAS | Δ ROAS |`);
+  lines.push(`| --- | --- | --- | --- | --- | --- | --- |`);
+  const sorted = results
+    .slice()
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, 10);
+  if (sorted.length === 0) {
+    lines.push(`| _none_ | — | — | — | — | — | — |`);
+  } else {
+    for (const r of sorted) {
+      const cpa =
+        r.conversions > 0
+          ? `$${(r.spendUsd / r.conversions).toFixed(2)}`
+          : "—";
+      const roas =
+        typeof r.revenueUsd === "number" && r.spendUsd > 0
+          ? `${(r.revenueUsd / r.spendUsd).toFixed(2)}x`
+          : "—";
+      // Δ ROAS relative to per-cell forecast snapshot
+      const forecastRoas = report.perCell.find(
+        (row) => row.cellId === r.cellId
+      )?.forecastSnapshot?.expectedRoas;
+      let deltaCell = "—";
+      if (
+        typeof forecastRoas === "number" &&
+        forecastRoas > 0 &&
+        typeof r.revenueUsd === "number" &&
+        r.spendUsd > 0
+      ) {
+        const actualRoas = r.revenueUsd / r.spendUsd;
+        const pct = ((actualRoas - forecastRoas) / forecastRoas) * 100;
+        deltaCell = signedPct(pct);
+      }
+      lines.push(
+        `| ${r.cellId} | ${r.status} | $${r.spendUsd.toFixed(2)} | ${r.conversions} | ${cpa} | ${roas} | ${deltaCell} |`
+      );
+    }
+  }
+  lines.push("");
+
+  // Decision recommendations
+  if (report.recommendations.length > 0) {
+    lines.push(`### Decision recommendations`);
+    for (const rec of report.recommendations) {
+      lines.push(
+        `- **${rec.decision}** — ${rec.cellId} — ${rec.rationale} (${rec.priority})`
+      );
+    }
+    lines.push("");
+  }
+
+  // Import issues
+  if (report.importIssues.length > 0) {
+    lines.push(`### Import issues`);
+    for (const issue of report.importIssues) {
+      lines.push(
+        `- ${issue.kind}${issue.cellId ? ` — cell ${issue.cellId}` : ""}${
+          typeof issue.rowNumber === "number" ? ` — row ${issue.rowNumber}` : ""
+        } — ${issue.message} — ${issue.fix}`
+      );
+    }
+    lines.push("");
+  }
+
+  lines.push(
+    "_Results captured locally in this browser — never sent anywhere and never re-enters the engine._"
+  );
+  lines.push("");
+}
+
+function overallAccuracyLabel(
+  v: ForecastAccuracyReport["overallAccuracy"]
+): string {
+  return (
+    {
+      "on-target": "On target",
+      "better-than-forecast": "Better than forecast",
+      "worse-than-forecast": "Worse than forecast",
+      mixed: "Mixed",
+      "insufficient-data": "Insufficient data",
+    }[v] ?? v
+  );
+}
+
+function signedPct(pct: number): string {
+  if (!Number.isFinite(pct)) return "—";
+  const rounded = Math.round(pct);
+  if (rounded > 0) return `+${rounded}%`;
+  return `${rounded}%`;
+}
+
+// Reference the result-issue type imports so the bundler keeps them in
+// scope even when the section is never emitted in some builds.
+type _UnusedResultsImports = ResultDecisionRecommendation | ResultImportIssue;

@@ -89,6 +89,18 @@ export interface JourneyStatusArgs {
   // (backward-compat with every caller that pre-dates the Benchmarks
   // layer).
   benchmarkCalibration?: BenchmarkCalibration;
+  // Results / Forecast Accuracy Loop — when provided, journey-status
+  // emits a `results`-kind warning when a run has been saved but no
+  // actual results have been logged yet. Post-launch quality gate
+  // only — never blocks `ready-to-spend` (the loop closes a campaign,
+  // it doesn't gate the launch). Absent → no results entry
+  // (backward-compat with every caller that pre-dates the Results
+  // layer).
+  campaignResults?: {
+    hasSavedRuns: boolean;
+    hasResults: boolean;
+    daysSinceFirstRun?: number;
+  };
 }
 
 // Ad-review weight floor for "review-passed". The shipped checklist has
@@ -456,6 +468,22 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     }
   }
 
+  // Results / Forecast Accuracy Loop — when provided AND the workspace
+  // has saved at least one run without logging any actual results, emit
+  // a `results`-kind warning so the operator sees the open loop. Never
+  // a blocker — this is post-launch quality, not a pre-spend gate.
+  if (args.campaignResults && args.campaignResults.hasSavedRuns && !args.campaignResults.hasResults) {
+    const daysTail =
+      typeof args.campaignResults.daysSinceFirstRun === "number"
+        ? ` (${args.campaignResults.daysSinceFirstRun}d since first run)`
+        : "";
+    warnings.push({
+      kind: "results",
+      severity: "warning",
+      message: `Saved run with no actual results logged${daysTail} — log results to close the loop`,
+    });
+  }
+
   // Execution OS — first batch presence is a prerequisite for
   // ready-to-spend. When the matrix isn't supplied (legacy callers /
   // backward-compat with tests that pre-date the Execution OS phase),
@@ -501,7 +529,8 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
       b.kind !== "economics" &&
       b.kind !== "forecast" &&
       b.kind !== "simulator" &&
-      b.kind !== "benchmark"
+      b.kind !== "benchmark" &&
+      b.kind !== "results"
   ).length;
 
   // Unit Economics gate — only enforced when a summary was supplied.
