@@ -8,6 +8,7 @@ import type {
   AdReviewChecklist,
   AppliedAdReview,
   AudienceAvatar,
+  BenchmarkCalibration,
   CreativeTestingMatrix,
   CreatorBrief,
   ForecastPlan,
@@ -79,6 +80,15 @@ export interface JourneyStatusArgs {
   // (backward-compat with every caller that pre-dates the Simulator
   // layer).
   simulator?: ScenarioSimulatorPlan;
+  // Benchmarks / Calibration Layer — when provided, journey-status
+  // emits a benchmark-kind entry for high-spend uncalibrated plans
+  // (blocker), low calibration confidence (warning), and far-from-range
+  // metric comparisons (warning). `ready-to-spend` is blocked only by
+  // the high-spend-uncalibrated state — low confidence / outliers
+  // surface as warnings but do not block. Absent → no benchmark gate
+  // (backward-compat with every caller that pre-dates the Benchmarks
+  // layer).
+  benchmarkCalibration?: BenchmarkCalibration;
 }
 
 // Ad-review weight floor for "review-passed". The shipped checklist has
@@ -406,6 +416,46 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     }
   }
 
+  // Benchmarks / Calibration Layer — when supplied, surface three
+  // signals: high-spend uncalibrated (blocker), low calibration
+  // confidence (warning), and far-from-range comparisons (warning).
+  // Only the blocker gates ready-to-spend; the warnings are advisory.
+  if (args.benchmarkCalibration) {
+    const cal = args.benchmarkCalibration;
+    const highSpendWarning = cal.warnings.find(
+      (w) => w.kind === "high-spend-uncalibrated"
+    );
+    if (highSpendWarning) {
+      blockers.push({
+        kind: "benchmark",
+        severity: "blocker",
+        message: `Benchmark calibration: ${highSpendWarning.message}`,
+      });
+    }
+    if (cal.confidence === "low") {
+      warnings.push({
+        kind: "benchmark",
+        severity: "warning",
+        message: "Low benchmark calibration confidence",
+      });
+    }
+    const farOutliers = cal.comparisons.filter(
+      (c) =>
+        c.status === "far-below-range" || c.status === "far-above-range"
+    );
+    if (farOutliers.length >= 1) {
+      const labels = farOutliers
+        .slice(0, 2)
+        .map((c) => `${c.metric} (${c.status})`)
+        .join(", ");
+      warnings.push({
+        kind: "benchmark",
+        severity: "warning",
+        message: `Forecast far from benchmark on: ${labels}`,
+      });
+    }
+  }
+
   // Execution OS — first batch presence is a prerequisite for
   // ready-to-spend. When the matrix isn't supplied (legacy callers /
   // backward-compat with tests that pre-date the Execution OS phase),
@@ -441,16 +491,17 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
       args.assetSummary.pendingMustHaveIds.length === 0);
 
   // Operational blockers count — review-kind, asset-kind, economics-kind,
-  // forecast-kind, and simulator-kind blockers are tracked through their
-  // own gates at the review-passed / ready-to-spend stages, not as
-  // creative-planned regressions.
+  // forecast-kind, simulator-kind, and benchmark-kind blockers are
+  // tracked through their own gates at the review-passed /
+  // ready-to-spend stages, not as creative-planned regressions.
   const operationalBlockersCount = blockers.filter(
     (b) =>
       b.kind !== "review" &&
       b.kind !== "asset" &&
       b.kind !== "economics" &&
       b.kind !== "forecast" &&
-      b.kind !== "simulator"
+      b.kind !== "simulator" &&
+      b.kind !== "benchmark"
   ).length;
 
   // Unit Economics gate — only enforced when a summary was supplied.
@@ -472,6 +523,16 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
   const simulatorReady =
     !args.simulator || args.simulator.status !== "unviable";
 
+  // Benchmarks gate — only enforced when a calibration was supplied AND
+  // a high-spend-uncalibrated blocker is present. Low confidence /
+  // outlier warnings do NOT block. Absent → no gate (backward-compat
+  // with every caller that pre-dates the Benchmarks layer).
+  const benchmarkReady =
+    !args.benchmarkCalibration ||
+    !args.benchmarkCalibration.warnings.some(
+      (w) => w.kind === "high-spend-uncalibrated"
+    );
+
   // Stage selection — earliest match wins.
   const stage = pickStage({
     creatorBriefsCount: creatorBriefs.length,
@@ -488,6 +549,7 @@ export function buildJourneyStatus(args: JourneyStatusArgs): JourneyStatus {
     economicsReady,
     forecastReady,
     simulatorReady,
+    benchmarkReady,
   });
 
   const readyToSpend = stage === "ready-to-spend";
@@ -531,6 +593,7 @@ function pickStage(args: {
   economicsReady: boolean;
   forecastReady: boolean;
   simulatorReady: boolean;
+  benchmarkReady: boolean;
 }): JourneyStage {
   if (args.creatorBriefsCount === 0) return "strategy-drafted";
   if (args.trackingScore < 70 || args.blockersCount > 0) return "creative-planned";
@@ -558,6 +621,10 @@ function pickStage(args: {
   // Simulator gate — only blocks when status === `unviable`. `tight`
   // is non-blocking (warning only). Absent → simulatorReady = true.
   if (!args.simulatorReady) return "review-passed";
+  // Benchmarks gate — only blocks when high-spend-uncalibrated is
+  // present. Low confidence / outlier warnings do NOT block. Absent →
+  // benchmarkReady = true.
+  if (!args.benchmarkReady) return "review-passed";
   return "ready-to-spend";
 }
 

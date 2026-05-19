@@ -1248,3 +1248,87 @@ scenario de base) et `ready-to-spend` exige
 locales — elles ne touchent jamais l'output deterministe du
 moteur. L'export gagne une section `## Scenario Simulator / What-if
 Lab`; le moteur reste deterministe et `derivedAt` est toujours `0`.
+Une couche `Benchmarks` (apres `Simulator`) compare ensuite la
+prevision aux fourchettes de planification : il s'agit de
+**reperes de planification, pas de donnees temps reel**, et les
+profils manuels saisis dans l'UI restent locaux — ils n'entrent
+jamais dans le moteur.
+
+## Benchmarks / Calibration Layer
+
+The Benchmarks / Calibration Layer sits AFTER the Scenario Simulator
+and BEFORE the Execution-related tabs. It is pure derivation:
+`buildBenchmarkCalibration(strategy)` reads the engine's
+already-resolved outputs (`forecast`, `unitEconomics`) plus the input
+dimensions (businessModel, campaignType, awareness, sophistication,
+channel signal, category) and selects the top 1-3 planning-benchmark
+profiles from a frozen 10-entry catalog. The selected profiles drive
+consensus ranges that the forecast's resolved values are compared
+against — CPM, CTR, CPC, CVR, CPA, ROAS, AOV, LTV, trial-to-paid,
+and monthly churn each get a comparison row carrying a status
+(`within-range`, `below-range`, `above-range`, `far-below-range`,
+`far-above-range`, or `no-benchmark`), a signed delta, and a delta
+percent.
+
+**Built-in numbers are planning benchmarks, not real-time data.**
+The catalog ships sensible 2026 planning ranges spanning subscription
+apps, SaaS, ecommerce, local services, creator products, and B2B
+services across Meta, TikTok, LinkedIn, Google Search, and Google
+PMax. Each profile's `caveat` field opens with the literal phrase
+"Planning benchmark, not real-time data." so the disclosure rides
+along with every recommendation downstream. No scraping, no live API,
+no third-party benchmark feed.
+
+Recommendations land for comparisons that fall outside the range —
+must-do for `far-below-range` / `far-above-range`, should-do for
+near misses, each carrying the metric, the current forecast value,
+the suggested median, and a one-sentence rationale. The calibration
+layer is display-only: recommendations never modify the forecast or
+simulator outputs. The new `Benchmarks` tab carries a status pill
+(`calibrated` / `partially-calibrated` / `uncalibrated` /
+`incomplete`), a confidence pill, top-3 profile cards (label, fit
+score, matched-dimension chips, confidence, caveat), the comparison
+table, recommendation cards, a warnings list, and a manual benchmark
+form. Saving a manual override writes to a versioned
+`bigad:benchmark-profiles:v1` localStorage namespace and surfaces
+the entry below the form with a delete button. Manual profiles are
+**never threaded into the engine** — they're local annotations
+only.
+
+Journey-status integration is automatic: the engine threads the
+calibration into `buildJourneyStatus` so the `high-spend-uncalibrated`
+warning (emitted when total test budget > $5000 and the calibration
+is `uncalibrated`) escalates to a `benchmark`-kind blocker that
+blocks the final hop to `ready-to-spend`. Low calibration confidence
+raises a `benchmark`-kind warning chip but does not block. Far-below
+or far-above comparisons surface a `benchmark`-kind warning naming
+the top 2 outlier metrics. Benchmark blockers are excluded from the
+operational-blocker count, mirroring the review / asset / economics /
+forecast / simulator pattern. The export brief gains a
+`## Benchmarks / Calibration` section (status + confidence, selected
+planning benchmarks, metric comparison table, recommended assumption
+adjustments, warnings, planning-benchmark disclosure line) between
+the Scenario Simulator and Campaign Calendar sections.
+`buildStrategy(input)` stays byte-identical for identical input —
+the new `benchmarkCalibration` field is a pure derivation and
+`derivedAt` is always `0`.
+
+En francais : l'onglet `Benchmarks` (apres `Simulator`, avant les
+onglets Execution) compare la prevision aux fourchettes de
+planification d'un catalogue de 10 profils figes (subscription
+apps, SaaS, ecommerce, services locaux, produits createurs, B2B sur
+Meta, TikTok, LinkedIn, Google Search, Google PMax). Chaque profil
+porte la formule "Planning benchmark, not real-time data" parce que
+**ce ne sont pas des donnees temps reel** — ce sont des reperes de
+planification 2026. Les recommandations (must-do / should-do /
+nice-to-have) ne modifient jamais l'output du moteur. Les
+overrides manuels saisis dans le formulaire restent locaux
+(`bigad:benchmark-profiles:v1`) et ne touchent pas
+`buildStrategy`. Le journey-status emet un chip `benchmark`
+(blocker pour `high-spend-uncalibrated`, warning pour la confiance
+faible et pour les ecarts `far-below-range` /
+`far-above-range`); seul le blocker `high-spend-uncalibrated`
+bloque `ready-to-spend`. L'export gagne une section
+`## Benchmarks / Calibration` entre le Scenario Simulator et le
+Campaign Calendar; le moteur reste deterministe et `derivedAt`
+est toujours `0`.

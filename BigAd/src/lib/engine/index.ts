@@ -47,6 +47,7 @@ import {
 } from "../economics/unit-economics";
 import { buildForecastPlan } from "../forecast/budget-forecast";
 import { buildScenarioSimulatorPlan } from "../simulator/scenario-simulator";
+import { buildBenchmarkCalibration } from "../benchmarks/calibration";
 
 // buildStrategy — deterministic local strategy generator. No API calls.
 // Future: swap in an LLM adapter (see src/lib/llm.ts) per-section.
@@ -232,6 +233,22 @@ export function buildStrategy(input: ProductInput): Strategy {
   } as unknown as Strategy;
   const scenarioSimulator = buildScenarioSimulatorPlan(simulatorStrategySnapshot);
 
+  // Benchmarks / Calibration Layer — pure derivation from forecast +
+  // economics + input dimensions. Runs AFTER the Scenario Simulator so
+  // the journey block can gate ready-to-spend on high-spend uncalibrated
+  // plans. The calibration layer reads the input via the `__input`
+  // escape hatch attached to its snapshot so it can score profile fit
+  // against businessModel / campaignType / awareness / sophistication /
+  // channel signal. `derivedAt` is always 0 — no Date.now(), no random.
+  const benchmarkStrategySnapshot = {
+    unitEconomics,
+    forecast,
+    offers,
+    campaignCalendar,
+    __input: input,
+  } as unknown as Strategy;
+  const benchmarkCalibration = buildBenchmarkCalibration(benchmarkStrategySnapshot);
+
   // Journey status is computed last because it synthesises everything above.
   const journeyStatus = buildJourneyStatus({
     trackingReadiness,
@@ -249,6 +266,7 @@ export function buildStrategy(input: ProductInput): Strategy {
     unitEconomics,
     forecast,
     simulator: scenarioSimulator,
+    benchmarkCalibration,
   });
 
   const partial: Omit<Strategy, "genericFlags" | "copyIssues" | "exportBrief"> = {
@@ -297,6 +315,7 @@ export function buildStrategy(input: ProductInput): Strategy {
     offerScenarios,
     forecast,
     scenarioSimulator,
+    benchmarkCalibration,
   };
 
   // Generic-copy guard runs against the strategy we just produced. If
@@ -431,3 +450,20 @@ export {
   buildSensitivityResults,
   buildSimulatorRecommendations,
 } from "../simulator/scenario-simulator";
+export {
+  buildBenchmarkCalibration,
+  buildBenchmarkWarnings,
+  selectBenchmarkProfiles,
+  calibrateForecastAssumptions,
+} from "../benchmarks/calibration";
+export {
+  BUILT_IN_BENCHMARK_PROFILES,
+  getBenchmarkProfile,
+  listBenchmarkProfiles,
+} from "../benchmarks/catalog";
+export {
+  STORAGE_KEY_BENCHMARK_PROFILES,
+  createBrowserBenchmarkStore,
+  createMemoryBenchmarkStore,
+} from "../benchmarks/benchmark-store";
+export type { BenchmarkStore } from "../benchmarks/benchmark-store";

@@ -79,6 +79,7 @@ import { CopyableCard } from "./CopyableCard";
 import { EconomicsTab } from "./EconomicsPanel";
 import { ForecastTab } from "./ForecastPanel";
 import { SimulatorTab } from "./SimulatorPanel";
+import { BenchmarkTab } from "./BenchmarkPanel";
 import type { ProductInput } from "@/types/strategy";
 
 type Tab =
@@ -92,6 +93,7 @@ type Tab =
   | "economics"
   | "forecast"
   | "simulator"
+  | "benchmarks"
   | "angles"
   | "concepts"
   | "briefs"
@@ -125,6 +127,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "economics", label: "Economics" },
   { id: "forecast", label: "Forecast" },
   { id: "simulator", label: "Simulator" },
+  { id: "benchmarks", label: "Benchmarks" },
   { id: "angles", label: "Angles" },
   { id: "concepts", label: "Concepts" },
   { id: "briefs", label: "Briefs" },
@@ -232,6 +235,7 @@ export function StrategyView({ input, strategy, hasMeaningfulInput, workspaceSlo
         )}
         {tab === "forecast" && <ForecastTab strategy={strategy} />}
         {tab === "simulator" && <SimulatorTab strategy={strategy} />}
+        {tab === "benchmarks" && <BenchmarkTab strategy={strategy} />}
         {tab === "angles" && <AnglesTab strategy={strategy} />}
         {tab === "concepts" && <ConceptsTab strategy={strategy} input={input} />}
         {tab === "briefs" && <BriefsTab strategy={strategy} />}

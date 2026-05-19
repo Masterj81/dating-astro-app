@@ -257,6 +257,9 @@ export function generateExportBrief(
   // 5d. Scenario Simulator / What-if Lab
   appendScenarioSimulatorSection(lines, strategy);
 
+  // 5e. Benchmarks / Calibration Layer
+  appendBenchmarkCalibrationSection(lines, strategy);
+
   // 6. Campaign calendar
   section(lines, "Campaign Calendar");
   lines.push(
@@ -2051,6 +2054,138 @@ function simulatorViabilityLabel(
       incomplete: "Incomplete",
     }[v] ?? v
   );
+}
+
+// ---- Benchmarks / Calibration Layer -----------------------------------
+
+function appendBenchmarkCalibrationSection(
+  lines: string[],
+  strategy: Strategy
+): void {
+  const cal = strategy.benchmarkCalibration;
+  if (!cal) return;
+
+  section(lines, "Benchmarks / Calibration");
+
+  lines.push(
+    `**Status:** ${benchmarkStatusLabel(cal.status)}  ·  **Confidence:** ${benchmarkConfidenceLabel(cal.confidence)}`
+  );
+  lines.push("");
+
+  // Selected planning benchmarks
+  lines.push(`### Selected planning benchmarks`);
+  if (cal.selectedProfiles.length === 0) {
+    lines.push("_No matching planning benchmark — provide more input signal._");
+  } else {
+    cal.selectedProfiles.forEach((fit, i) => {
+      lines.push(
+        `${i + 1}. **${fit.profile.label}** — fit ${fit.fitScore} — confidence ${benchmarkConfidenceLabel(fit.profile.confidence)}`
+      );
+      lines.push(`   _${fit.profile.caveat}_`);
+    });
+  }
+  lines.push("");
+
+  // Metric comparison
+  lines.push(`### Metric comparison (forecast vs benchmark)`);
+  lines.push("");
+  lines.push(
+    `| Metric | Forecast | Low | Median | High | Status | Δ% |`
+  );
+  lines.push(
+    `| --- | --- | --- | --- | --- | --- | --- |`
+  );
+  if (cal.comparisons.length === 0) {
+    lines.push(`| _none_ | — | — | — | — | — | — |`);
+  } else {
+    for (const c of cal.comparisons) {
+      const unit = c.benchmark?.unit ?? "usd";
+      const fv = formatBenchmarkValue(c.forecastValue, unit);
+      const lo = c.benchmark ? formatBenchmarkValue(c.benchmark.low, unit) : "—";
+      const md = c.benchmark
+        ? formatBenchmarkValue(c.benchmark.median, unit)
+        : "—";
+      const hi = c.benchmark
+        ? formatBenchmarkValue(c.benchmark.high, unit)
+        : "—";
+      const dPct =
+        typeof c.deltaPercent === "number"
+          ? `${(c.deltaPercent * 100).toFixed(1)}%`
+          : "—";
+      lines.push(
+        `| ${c.metric} | ${fv} | ${lo} | ${md} | ${hi} | ${c.status} | ${dPct} |`
+      );
+    }
+  }
+  lines.push("");
+
+  // Recommendations
+  lines.push(`### Recommended assumption adjustments`);
+  if (cal.recommendations.length === 0) {
+    lines.push("_No assumption adjustments — forecast sits inside the planning ranges._");
+  } else {
+    for (const r of cal.recommendations) {
+      lines.push(`- **${r.priority}** — ${r.metric}: ${r.rationale}`);
+    }
+  }
+  lines.push("");
+
+  // Warnings
+  if (cal.warnings.length > 0) {
+    lines.push(`### Warnings`);
+    for (const w of cal.warnings) {
+      const sev =
+        w.severity === "blocker"
+          ? "[blocker]"
+          : w.severity === "warning"
+          ? "[warning]"
+          : "[info]";
+      lines.push(`- ${sev} ${w.kind} — ${w.message} — ${w.fix}`);
+    }
+    lines.push("");
+  }
+
+  lines.push(
+    "_Built-in numbers are planning benchmarks, not real-time data._"
+  );
+  lines.push("");
+}
+
+function benchmarkStatusLabel(
+  s: NonNullable<Strategy["benchmarkCalibration"]>["status"]
+): string {
+  return (
+    {
+      calibrated: "Calibrated",
+      "partially-calibrated": "Partially calibrated",
+      uncalibrated: "Uncalibrated",
+      incomplete: "Incomplete",
+    }[s] ?? s
+  );
+}
+
+function benchmarkConfidenceLabel(
+  c: NonNullable<Strategy["benchmarkCalibration"]>["confidence"]
+): string {
+  return (
+    {
+      low: "Low",
+      medium: "Medium",
+      high: "High",
+    }[c] ?? c
+  );
+}
+
+function formatBenchmarkValue(
+  v: number | undefined,
+  unit: "usd" | "percent" | "multiplier" | "months"
+): string {
+  if (typeof v !== "number" || !Number.isFinite(v)) return "—";
+  if (unit === "usd") return `$${v.toFixed(2)}`;
+  if (unit === "percent") return `${(v * 100).toFixed(2)}%`;
+  if (unit === "multiplier") return `${v.toFixed(2)}x`;
+  if (unit === "months") return `${v.toFixed(1)}mo`;
+  return String(v);
 }
 
 function formatPercent(n: number | undefined): string {

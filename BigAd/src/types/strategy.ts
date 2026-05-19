@@ -12,6 +12,9 @@ import type {
 import type {
   ScenarioSimulatorPlan,
 } from "./simulator";
+import type {
+  BenchmarkCalibration,
+} from "./benchmarks";
 
 export type {
   EconomicsReadinessStatus,
@@ -49,6 +52,23 @@ export type {
   SimulatorWarningKind,
   SimulatorWarningSeverity,
 } from "./simulator";
+export type {
+  BenchmarkCalibration,
+  BenchmarkChannel,
+  BenchmarkComparison,
+  BenchmarkComparisonStatus,
+  BenchmarkFitRule,
+  BenchmarkMetric,
+  BenchmarkMetricKey,
+  BenchmarkProfile,
+  BenchmarkProfileFit,
+  BenchmarkRange,
+  BenchmarkReadinessStatus,
+  BenchmarkRecommendation,
+  BenchmarkSourceKind,
+  BenchmarkWarning,
+  BenchmarkWarningKind,
+} from "./benchmarks";
 
 export type AwarenessLevel =
   | "unaware"
@@ -408,6 +428,14 @@ export interface Strategy {
   // across higher CPM / lower CVR / better trial / annual-plan
   // scenarios and ranks lever sensitivities. `derivedAt` is always 0.
   scenarioSimulator?: ScenarioSimulatorPlan;
+
+  // Benchmarks / Calibration Layer — pure derivation from the
+  // strategy's forecast + economics + input dimensions. Selects
+  // matching planning-benchmark profiles, compares forecast values
+  // against them, and emits recommendations. V1 is display-only —
+  // recommendations do NOT modify forecast/simulator outputs.
+  // `derivedAt` is always 0.
+  benchmarkCalibration?: BenchmarkCalibration;
 
   exportBrief: string;
 }
@@ -820,7 +848,8 @@ export type JourneyBlockerKind =
   | "asset"
   | "economics"
   | "forecast"
-  | "simulator";
+  | "simulator"
+  | "benchmark";
 
 export interface JourneyBlocker {
   kind: JourneyBlockerKind;

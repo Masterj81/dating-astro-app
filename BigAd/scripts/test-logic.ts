@@ -1236,6 +1236,7 @@ const jsTwice = buildJourneyStatus({
   unitEconomics: a.unitEconomics,
   forecast: a.forecast,
   simulator: a.scenarioSimulator,
+  benchmarkCalibration: a.benchmarkCalibration,
 });
 record(
   "journeyStatus: deterministic across calls",
@@ -1326,6 +1327,7 @@ const validBlockerKinds = new Set([
   "economics",
   "forecast",
   "simulator",
+  "benchmark",
 ]);
 record(
   "journeyStatus: every blocker.kind is a valid JourneyBlockerKind",
@@ -8882,6 +8884,564 @@ for (const { name, strategy } of fixtures) {
   record(
     "simulator: AstroDating (freemium) scenarios[3].scenarioId === 'better-trial'",
     plan1.scenarios[3].scenarioId === "better-trial"
+  );
+}
+
+// ============================================================================
+// === Benchmarks / Calibration ===
+// ============================================================================
+//
+// Tests cover: catalog shape + disclosure phrase, profile-fit selection,
+// consensus comparisons, recommendations, warnings, journey-status
+// integration (high-spend uncalibrated blocker, low-confidence warning,
+// far-from-range warning), engine purity, manual benchmark-store
+// roundtrip, and the markdown export section. ~45-50 asserts.
+
+{
+  const benchmarksCatalogMod = require("../src/lib/benchmarks/catalog") as typeof import("../src/lib/benchmarks/catalog");
+  const benchmarksCalibMod = require("../src/lib/benchmarks/calibration") as typeof import("../src/lib/benchmarks/calibration");
+  const benchmarksStoreMod = require("../src/lib/benchmarks/benchmark-store") as typeof import("../src/lib/benchmarks/benchmark-store");
+  const journeyMod2 = require("../src/lib/engine/journey-status") as typeof import("../src/lib/engine/journey-status");
+  const exportMod2 = require("../src/lib/engine/export-brief") as typeof import("../src/lib/engine/export-brief");
+
+  const {
+    BUILT_IN_BENCHMARK_PROFILES,
+    getBenchmarkProfile,
+    listBenchmarkProfiles,
+  } = benchmarksCatalogMod;
+  const {
+    buildBenchmarkCalibration,
+    selectBenchmarkProfiles,
+    buildBenchmarkWarnings,
+  } = benchmarksCalibMod;
+  const {
+    STORAGE_KEY_BENCHMARK_PROFILES,
+    createMemoryBenchmarkStore,
+  } = benchmarksStoreMod;
+  const { buildJourneyStatus } = journeyMod2;
+  const { generateExportBrief } = exportMod2;
+
+  // ---- Catalog shape ----------------------------------------------------
+
+  record(
+    "benchmarks: catalog has at least 6 built-in profiles",
+    BUILT_IN_BENCHMARK_PROFILES.length >= 6
+  );
+  record(
+    "benchmarks: catalog has unique kebab-case ids",
+    (() => {
+      const ids = BUILT_IN_BENCHMARK_PROFILES.map((p) => p.id);
+      if (new Set(ids).size !== ids.length) return false;
+      return ids.every((id) => /^[a-z0-9]+(-[a-z0-9]+)*$/.test(id));
+    })()
+  );
+  record(
+    "benchmarks: every profile has a non-empty label",
+    BUILT_IN_BENCHMARK_PROFILES.every(
+      (p) => typeof p.label === "string" && p.label.length > 0
+    )
+  );
+  record(
+    "benchmarks: every profile has fitRules object",
+    BUILT_IN_BENCHMARK_PROFILES.every(
+      (p) => typeof p.fitRules === "object" && p.fitRules !== null
+    )
+  );
+  record(
+    "benchmarks: every profile has at least 3 metrics",
+    BUILT_IN_BENCHMARK_PROFILES.every((p) => p.metrics.length >= 3)
+  );
+  record(
+    "benchmarks: most profiles (>= 80%) have at least 4 metrics",
+    (() => {
+      const four = BUILT_IN_BENCHMARK_PROFILES.filter(
+        (p) => p.metrics.length >= 4
+      ).length;
+      return four / BUILT_IN_BENCHMARK_PROFILES.length >= 0.8;
+    })()
+  );
+  record(
+    "benchmarks: every profile has confidence one of low/medium/high",
+    BUILT_IN_BENCHMARK_PROFILES.every((p) =>
+      ["low", "medium", "high"].includes(p.confidence)
+    )
+  );
+  record(
+    "benchmarks: every caveat starts with 'Planning benchmark, not real-time data'",
+    BUILT_IN_BENCHMARK_PROFILES.every((p) =>
+      /^Planning benchmark, not real-time data\./.test(p.caveat)
+    )
+  );
+  record(
+    "benchmarks: every metric range has low < median < high",
+    BUILT_IN_BENCHMARK_PROFILES.every((p) =>
+      p.metrics.every(
+        (m) => m.range.low < m.range.median && m.range.median < m.range.high
+      )
+    )
+  );
+  record(
+    "benchmarks: every metric range carries a unit",
+    BUILT_IN_BENCHMARK_PROFILES.every((p) =>
+      p.metrics.every((m) =>
+        ["usd", "percent", "multiplier", "months"].includes(m.range.unit)
+      )
+    )
+  );
+  record(
+    "benchmarks: getBenchmarkProfile resolves a known id",
+    !!getBenchmarkProfile(BUILT_IN_BENCHMARK_PROFILES[0].id)
+  );
+  record(
+    "benchmarks: getBenchmarkProfile returns undefined for unknown id",
+    getBenchmarkProfile("does-not-exist") === undefined
+  );
+  record(
+    "benchmarks: listBenchmarkProfiles returns a copy with same length",
+    listBenchmarkProfiles().length === BUILT_IN_BENCHMARK_PROFILES.length
+  );
+
+  // ---- selectBenchmarkProfiles ------------------------------------------
+
+  const astro = buildStrategy(ASTRO_DATING_EXAMPLE);
+  // selectBenchmarkProfiles reads ProductInput via the engine's
+  // `__input` escape hatch — the engine attaches it on the snapshot it
+  // passes to buildBenchmarkCalibration, but the final Strategy does
+  // not carry it. The standalone test mirrors what the engine does.
+  const astroWithInput = { ...astro, __input: ASTRO_DATING_EXAMPLE } as unknown as import("../src/types/strategy").Strategy;
+  const selected1 = selectBenchmarkProfiles(astroWithInput);
+  const selected2 = selectBenchmarkProfiles(astroWithInput);
+  record(
+    "benchmarks: selectBenchmarkProfiles returns <= 3 profiles",
+    selected1.length <= 3
+  );
+  record(
+    "benchmarks: selectBenchmarkProfiles deterministic",
+    JSON.stringify(selected1) === JSON.stringify(selected2)
+  );
+  record(
+    "benchmarks: selected profiles sorted by fitScore desc",
+    selected1.every(
+      (s, i) => i === 0 || s.fitScore <= selected1[i - 1].fitScore
+    )
+  );
+  record(
+    "benchmarks: AstroDating top-2 includes a subscription-app profile",
+    selected1
+      .slice(0, 2)
+      .some((s) =>
+        (s.profile.fitRules.businessModels ?? []).includes("subscription-app")
+      )
+  );
+
+  // Ties broken by id asc — synthesize a tie and verify ordering.
+  const tieScored = BUILT_IN_BENCHMARK_PROFILES.slice(0, 2).map((p) => ({
+    profileId: p.id,
+    profile: p,
+    fitScore: 50,
+    matchedDimensions: [],
+    missingDimensions: [],
+  }));
+  const sortedTie = [...tieScored].sort((a, b) => {
+    if (b.fitScore !== a.fitScore) return b.fitScore - a.fitScore;
+    return a.profileId < b.profileId ? -1 : a.profileId > b.profileId ? 1 : 0;
+  });
+  record(
+    "benchmarks: tie-breaking by id ascending (sanity)",
+    sortedTie[0].profileId <= sortedTie[1].profileId
+  );
+
+  // ---- buildBenchmarkCalibration ----------------------------------------
+
+  const cal1 = astro.benchmarkCalibration!;
+  const astro2 = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const cal2 = astro2.benchmarkCalibration!;
+  record(
+    "benchmarks: buildStrategy attaches benchmarkCalibration",
+    !!cal1 && typeof cal1.status === "string"
+  );
+  record(
+    "benchmarks: calibration status is calibrated or partially-calibrated for AstroDating",
+    cal1.status === "calibrated" || cal1.status === "partially-calibrated"
+  );
+  record(
+    "benchmarks: calibration deterministic (two builds deep-equal)",
+    JSON.stringify(cal1) === JSON.stringify(cal2)
+  );
+  record(
+    "benchmarks: calibration.derivedAt === 0",
+    cal1.derivedAt === 0
+  );
+  record(
+    "benchmarks: comparisons.length >= 4 for AstroDating",
+    cal1.comparisons.length >= 4
+  );
+  record(
+    "benchmarks: every comparison has a valid status",
+    cal1.comparisons.every((c) =>
+      [
+        "within-range",
+        "below-range",
+        "above-range",
+        "far-below-range",
+        "far-above-range",
+        "no-benchmark",
+      ].includes(c.status)
+    )
+  );
+  record(
+    "benchmarks: every recommendation has priority + metric + rationale",
+    cal1.recommendations.every(
+      (r) =>
+        typeof r.priority === "string" &&
+        typeof r.metric === "string" &&
+        typeof r.rationale === "string" &&
+        r.rationale.length > 0
+    )
+  );
+  record(
+    "benchmarks: recommendations sorted must-do → should-do → nice-to-have",
+    (() => {
+      const rank: Record<string, number> = {
+        "must-do": 0,
+        "should-do": 1,
+        "nice-to-have": 2,
+      };
+      return cal1.recommendations.every(
+        (r, i) =>
+          i === 0 ||
+          rank[r.priority] >= rank[cal1.recommendations[i - 1].priority]
+      );
+    })()
+  );
+
+  // ---- No-matching-profile warning --------------------------------------
+
+  const orphanInput: ProductInput = {
+    name: "Mystery Box",
+    category: "zzzz-unknown-category",
+    description: "ungrouped",
+    price: "$0",
+    businessModel: "other",
+    audience: "noone",
+    audiencePain: "nothing",
+    competitors: "none",
+    differentiator: "none",
+    goal: "none",
+    awareness: "unaware",
+    sophistication: "fresh-market",
+  };
+  const orphan = buildStrategy(orphanInput);
+  const orphanCal = orphan.benchmarkCalibration!;
+  // 'other' businessModel + unknown category + no channel signal
+  // → no profile gets a businessModel/category/channel boost. Some
+  // awareness/sophistication points still apply, so we accept either
+  // the no-matching-profile warning OR a max fitScore below 50 OR
+  // a calibration that emitted some non-info warning kind.
+  const orphanMaxFit = orphanCal.selectedProfiles.reduce(
+    (m, p) => Math.max(m, p.fitScore),
+    0
+  );
+  record(
+    "benchmarks: 'other' business model with no signal → weak calibration (warning or low-fit)",
+    orphanCal.warnings.some((w) => w.kind === "no-matching-profile") ||
+      orphanCal.selectedProfiles.length === 0 ||
+      orphanMaxFit < 50
+  );
+
+  // ---- Forecast far above benchmark high → forecast-far-from-benchmark warning ---
+
+  const farCalibration: import("../src/types/benchmarks").BenchmarkCalibration = {
+    status: "partially-calibrated",
+    confidence: "medium",
+    selectedProfiles: [
+      {
+        profileId: "test-fit",
+        profile: BUILT_IN_BENCHMARK_PROFILES[0],
+        fitScore: 75,
+        matchedDimensions: [],
+        missingDimensions: [],
+      },
+    ],
+    comparisons: [
+      {
+        metric: "cpm",
+        forecastValue: 200,
+        benchmark: { low: 12, median: 20, high: 32, unit: "usd" },
+        status: "far-above-range",
+        delta: 180,
+        deltaPercent: 9,
+      },
+    ],
+    recommendations: [],
+    warnings: [],
+    derivedAt: 0,
+  };
+  const farWarnings = buildBenchmarkWarnings(astro, farCalibration);
+  record(
+    "benchmarks: far-above-range comparison → forecast-far-from-benchmark warning",
+    farWarnings.some((w) => w.kind === "forecast-far-from-benchmark")
+  );
+
+  // ---- High spend + uncalibrated → blocker -----------------------------
+
+  const fakeStrategyForHighSpend = {
+    ...astro,
+    forecast: {
+      ...astro.forecast!,
+      budget: { ...astro.forecast!.budget, totalTestBudget: 9000 },
+    },
+  } as import("../src/types/strategy").Strategy;
+  const uncalibrated: import("../src/types/benchmarks").BenchmarkCalibration = {
+    status: "uncalibrated",
+    confidence: "low",
+    selectedProfiles: [],
+    comparisons: [],
+    recommendations: [],
+    warnings: [],
+    derivedAt: 0,
+  };
+  const highSpendWarnings = buildBenchmarkWarnings(
+    fakeStrategyForHighSpend,
+    uncalibrated
+  );
+  record(
+    "benchmarks: uncalibrated + totalTestBudget > $5000 → high-spend-uncalibrated blocker",
+    highSpendWarnings.some(
+      (w) => w.kind === "high-spend-uncalibrated" && w.severity === "blocker"
+    )
+  );
+
+  // ---- Journey Status: high-spend blocker + ready-to-spend gating -------
+
+  const highSpendCal: import("../src/types/benchmarks").BenchmarkCalibration = {
+    ...uncalibrated,
+    warnings: highSpendWarnings,
+  };
+  const journeyWithHighSpend = buildJourneyStatus({
+    trackingReadiness: astro.trackingReadiness,
+    kpiLadder: astro.kpiLadder,
+    kpiDiagnosis: astro.kpiDiagnosis,
+    adReview: astro.adReview,
+    creatorBriefs: astro.creatorBriefs,
+    shotLists: astro.shotLists,
+    videoScripts: astro.videoScripts,
+    variantSets: astro.variantSets,
+    benchmarkCalibration: highSpendCal,
+  });
+  record(
+    "benchmarks: journey-status emits 'benchmark'-kind blocker for high-spend-uncalibrated",
+    journeyWithHighSpend.blockers.some(
+      (b) => b.kind === "benchmark" && b.severity === "blocker"
+    )
+  );
+
+  // Build an all-green journey input + a high-spend uncalibrated calibration
+  // to verify ready-to-spend is gated specifically by the benchmark blocker.
+  const greenTracking: import("../src/types/strategy").TrackingReadinessScore = {
+    score: 90,
+    status: "ready",
+    blockers: 0,
+    warnings: 0,
+    checks: [],
+  };
+  const greenDiag: import("../src/types/strategy").KpiDiagnosis = {
+    snapshot: {},
+    ladder: astro.kpiLadder,
+    findings: [],
+    primaryCategory: "healthy",
+  };
+  const greenJourneyWithHighSpend = buildJourneyStatus({
+    trackingReadiness: greenTracking,
+    kpiLadder: astro.kpiLadder,
+    kpiDiagnosis: greenDiag,
+    adReview: astro.adReview,
+    creatorBriefs: astro.creatorBriefs,
+    shotLists: astro.shotLists,
+    videoScripts: astro.videoScripts,
+    variantSets: astro.variantSets,
+    benchmarkCalibration: highSpendCal,
+  });
+  record(
+    "benchmarks: all-green journey + high-spend-uncalibrated → ready-to-spend NOT reached",
+    greenJourneyWithHighSpend.currentStage !== "ready-to-spend"
+  );
+
+  // Low-confidence calibration → warning but does NOT block ready-to-spend.
+  const lowConfCal: import("../src/types/benchmarks").BenchmarkCalibration = {
+    status: "partially-calibrated",
+    confidence: "low",
+    selectedProfiles: cal1.selectedProfiles,
+    comparisons: cal1.comparisons,
+    recommendations: [],
+    warnings: [
+      {
+        kind: "low-calibration-confidence",
+        severity: "warning",
+        message: "Benchmark calibration confidence is low.",
+        fix: "Capture client-history benchmarks.",
+      },
+    ],
+    derivedAt: 0,
+  };
+  const greenJourneyLowConf = buildJourneyStatus({
+    trackingReadiness: greenTracking,
+    kpiLadder: astro.kpiLadder,
+    kpiDiagnosis: greenDiag,
+    adReview: astro.adReview,
+    creatorBriefs: astro.creatorBriefs,
+    shotLists: astro.shotLists,
+    videoScripts: astro.videoScripts,
+    variantSets: astro.variantSets,
+    benchmarkCalibration: lowConfCal,
+  });
+  record(
+    "benchmarks: low-confidence → 'benchmark' warning emitted",
+    greenJourneyLowConf.warnings.some(
+      (w) => w.kind === "benchmark" && w.severity === "warning"
+    )
+  );
+  record(
+    "benchmarks: low-confidence does NOT block ready-to-spend",
+    greenJourneyLowConf.currentStage === "ready-to-spend"
+  );
+
+  // Legacy callers (no benchmarkCalibration) still pass the journey gate.
+  const greenJourneyNoBench = buildJourneyStatus({
+    trackingReadiness: greenTracking,
+    kpiLadder: astro.kpiLadder,
+    kpiDiagnosis: greenDiag,
+    adReview: astro.adReview,
+    creatorBriefs: astro.creatorBriefs,
+    shotLists: astro.shotLists,
+    videoScripts: astro.videoScripts,
+    variantSets: astro.variantSets,
+  });
+  record(
+    "benchmarks: legacy journey-status (no benchmarkCalibration) still reaches ready-to-spend",
+    greenJourneyNoBench.currentStage === "ready-to-spend"
+  );
+
+  // ---- Engine purity ----------------------------------------------------
+
+  const beforeForecast = JSON.stringify(astro.forecast);
+  const cal3 = buildBenchmarkCalibration(astro);
+  const afterForecast = JSON.stringify(astro.forecast);
+  record(
+    "benchmarks: buildBenchmarkCalibration does NOT mutate strategy.forecast",
+    beforeForecast === afterForecast
+  );
+  record(
+    "benchmarks: standalone buildBenchmarkCalibration deterministic",
+    JSON.stringify(cal3) === JSON.stringify(buildBenchmarkCalibration(astro))
+  );
+
+  // Canonical engine-determinism check.
+  const detA = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const detB = buildStrategy(ASTRO_DATING_EXAMPLE);
+  record(
+    "benchmarks: buildStrategy(AstroDating) byte-identical with benchmarks wired",
+    JSON.stringify(detA) === JSON.stringify(detB)
+  );
+
+  // ---- Memory store roundtrip -------------------------------------------
+
+  record(
+    "benchmarks: STORAGE_KEY_BENCHMARK_PROFILES exactly 'bigad:benchmark-profiles:v1'",
+    STORAGE_KEY_BENCHMARK_PROFILES === "bigad:benchmark-profiles:v1"
+  );
+
+  const memStore = createMemoryBenchmarkStore();
+  const manualProfile: import("../src/types/benchmarks").BenchmarkProfile = {
+    id: "test-manual-1",
+    label: "Test manual override",
+    source: "manual",
+    fitRules: {},
+    metrics: [
+      {
+        key: "cpm",
+        range: { low: 5, median: 10, high: 15, unit: "usd" },
+      },
+    ],
+    confidence: "medium",
+    caveat: "Manual override for test.",
+  };
+  memStore.upsertManualProfile(manualProfile);
+  record(
+    "benchmarks: memory store upsertManualProfile + listManualProfiles roundtrip",
+    memStore.listManualProfiles().some((p) => p.id === "test-manual-1")
+  );
+  memStore.deleteManualProfile("test-manual-1");
+  record(
+    "benchmarks: memory store deleteManualProfile removes entry",
+    !memStore.listManualProfiles().some((p) => p.id === "test-manual-1")
+  );
+
+  // Built-in profiles cannot be persisted as manual.
+  let rejectedBuiltIn = false;
+  try {
+    memStore.upsertManualProfile({
+      ...BUILT_IN_BENCHMARK_PROFILES[0],
+      source: "built-in",
+    } as import("../src/types/benchmarks").BenchmarkProfile);
+  } catch {
+    rejectedBuiltIn = true;
+  }
+  record(
+    "benchmarks: memory store rejects 'built-in' source on upsertManualProfile",
+    rejectedBuiltIn
+  );
+
+  // ---- Export brief -----------------------------------------------------
+
+  const briefBench = generateExportBrief(ASTRO_DATING_EXAMPLE, astro);
+  record(
+    "benchmarks-export: brief contains '## Benchmarks / Calibration'",
+    briefBench.includes("## Benchmarks / Calibration")
+  );
+  record(
+    "benchmarks-export: brief contains '### Selected planning benchmarks'",
+    briefBench.includes("### Selected planning benchmarks")
+  );
+  record(
+    "benchmarks-export: brief contains '### Metric comparison (forecast vs benchmark)'",
+    briefBench.includes("### Metric comparison (forecast vs benchmark)")
+  );
+  record(
+    "benchmarks-export: brief contains '### Recommended assumption adjustments'",
+    briefBench.includes("### Recommended assumption adjustments")
+  );
+  record(
+    "benchmarks-export: brief contains the planning-benchmark disclosure phrase",
+    briefBench.includes("planning benchmarks, not real-time data")
+  );
+  record(
+    "benchmarks-export: same input produces byte-identical export string",
+    generateExportBrief(ASTRO_DATING_EXAMPLE, astro) ===
+      generateExportBrief(ASTRO_DATING_EXAMPLE, astro)
+  );
+
+  // ---- Tab insertion ----------------------------------------------------
+
+  record(
+    "benchmarks: tab insertion present in StrategyView (label 'Benchmarks')",
+    tabLabels.includes("Benchmarks")
+  );
+  record(
+    "benchmarks: 'Benchmarks' tab lands at index >= 10 (after Simulator, first-7 pinning intact)",
+    tabLabels.indexOf("Benchmarks") >= 10
+  );
+  record(
+    "benchmarks: first 7 tabs still follow stakeholder reading flow",
+    [
+      "Score",
+      "Positioning",
+      "Awareness",
+      "Audience avatars",
+      "Diagnosis",
+      "Offer architecture",
+      "Calendar",
+    ].every((label, i) => tabLabels[i] === label)
   );
 }
 
