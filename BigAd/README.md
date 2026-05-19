@@ -8,6 +8,10 @@ The first screen is the workspace itself, not a marketing landing page.
 
 For day-to-day use, see the operator guide: [`docs/user-guide.md`](docs/user-guide.md).
 
+## Demo
+
+For a sellable founder walkthrough — pre-flight, demo flow, talk-track, and post-demo cleanup — see [`docs/release-demo-checklist.md`](docs/release-demo-checklist.md). The AstroDating Launch demo (loaded from the first-run welcome panel) is the canonical founder demo and exercises every major layer end-to-end.
+
 ## What CampaignOS does
 
 For any product you describe, CampaignOS produces:
@@ -387,7 +391,7 @@ BigAd/
 │       ├── results.ts          Results / Forecast Accuracy Loop types — CampaignActualResult / ResultStatus / ForecastAccuracyReport / ActualVsForecastMetric / ResultDecisionRecommendation / ResultImportIssue / ResultImportIssueKind
 │       └── portal.ts           Shareable Client Portal types — ClientPortalSnapshot / PortalSection / PortalSectionId / PortalVisibilitySettings / PortalSharePack
 ├── scripts/
-│   └── test-logic.ts           `npm run test:logic` — 1772 checks
+│   └── test-logic.ts           `npm run test:logic` — 1826 checks
 ├── public/
 ├── next.config.ts
 ├── tailwind.config.ts

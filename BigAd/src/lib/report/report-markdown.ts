@@ -29,12 +29,59 @@ function h2(lines: string[], title: string): void {
   lines.push("");
 }
 
+// Demo projects are loaded via `buildDemoLoadPlan` which assigns a
+// project id prefixed `demo-<demoId>-…`. Gating the founder demo
+// summary block on this prefix keeps the block out of real client
+// reports while staying deterministic — the gate is a pure substring
+// check on the project id and never reads from `Date.now()`.
+function isDemoProjectId(projectId: string): boolean {
+  return projectId.startsWith("demo-");
+}
+
+function appendFounderDemoSummary(lines: string[]): void {
+  lines.push(`### Founder demo summary`);
+  lines.push("");
+  lines.push(
+    `- Strategy generated deterministically from a single product brief`
+  );
+  lines.push(
+    `- Audience avatars, hooks, offers, and creative testing matrix built without LLMs`
+  );
+  lines.push(
+    `- Unit economics, forecast, and scenario simulator surface viability before spend`
+  );
+  lines.push(
+    `- Benchmarks calibrate forecast against planning ranges`
+  );
+  lines.push(
+    `- Review approval, asset production, and results loop close the workflow`
+  );
+  lines.push(
+    `- Report and client portal share the work in one click`
+  );
+  lines.push("");
+}
+
 export function renderClientReportMarkdown(report: ClientReport): string {
   const lines: string[] = [];
 
   // Title + header lines (always emitted — they're not a toggleable section).
   lines.push(`# CampaignOS Report — ${report.project.metadata.name}`);
   lines.push("");
+
+  // Empty-state path — when the builder receives no runs it emits a
+  // placeholder ClientReport with `isEmpty === true`. Short-circuit to
+  // a graceful sentinel rather than rendering the (necessarily-stubbed)
+  // section bodies. The sentinel string matches the on-page empty-state
+  // copy in `/report` so the two surfaces stay in sync.
+  if (report.isEmpty) {
+    lines.push(
+      `No CampaignOS project found. Create a project and save at least one run, then come back to render this report.`
+    );
+    lines.push("");
+    return lines.join("\n");
+  }
+
   lines.push(`Generated: ${report.generatedAt}`);
   lines.push(`Primary run: ${report.primaryRunId}`);
   if (report.comparison && report.comparison.previous) {
@@ -43,6 +90,14 @@ export function renderClientReportMarkdown(report: ClientReport): string {
     );
   }
   lines.push("");
+
+  // Founder demo summary — emitted only for projects loaded via the
+  // demo flow (project id prefixed `demo-`). Skipped silently on real
+  // client reports so the demo-pack messaging never leaks into a
+  // production deliverable.
+  if (isDemoProjectId(report.project.metadata.id)) {
+    appendFounderDemoSummary(lines);
+  }
 
   // 1. Executive Summary
   if (sectionEnabled(report, "executive-summary")) {

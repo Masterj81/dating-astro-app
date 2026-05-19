@@ -25,6 +25,11 @@ import type {
   KpiName,
   ProductInput,
 } from "./strategy";
+import type {
+  AgencyRoleId,
+  PackagePresetId,
+  ProjectTemplateId,
+} from "./agency";
 
 // ---- Goal ----------------------------------------------------------------
 
@@ -132,11 +137,22 @@ export interface SampleReviewStatus {
   };
 }
 
+// Seeded agency selection — when present, `buildDemoLoadPlan` populates
+// `plan.agencySelection` with this triple so the Agency tab is pre-
+// populated immediately after the demo loads. Optional — demos without
+// it leave the Agency tab in its empty-state explainer.
+export interface SeededAgencySelection {
+  templateId: ProjectTemplateId;
+  roleId: AgencyRoleId;
+  packageId: PackagePresetId;
+}
+
 export interface DemoProject extends DemoProjectMetadata {
   input: ProductInput;
   sampleTestResults: SampleTestResult[]; // 4-8 results — winners + losers + killed-early
   sampleReviewStatuses: SampleReviewStatus[]; // 6-10 covering critical + non-critical
   sampleNotes: string[]; // 2-5 short learnings to pre-populate
+  seededAgencySelection?: SeededAgencySelection;
 }
 
 // ---- Next best action ---------------------------------------------------

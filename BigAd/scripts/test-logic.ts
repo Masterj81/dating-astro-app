@@ -10827,6 +10827,415 @@ for (const { name, strategy } of fixtures) {
   );
 }
 
+// ============================================================================
+// === Release QA / Founder Demo Pack ===
+// ============================================================================
+//
+// Step 4 lock-in: the AstroDating demo is the founder demo. Loading it
+// via `buildDemoLoadPlan` must produce a plan that exercises every
+// major layer (strategy + economics + forecast + simulator + benchmarks
+// + matrix + reviews + agency + playbook). The export surfaces (report
+// markdown + portal markdown) must:
+//   - emit a "Founder demo summary" block for demo projects only
+//   - render an empty-state sentinel rather than crash when the caller
+//     passes no runs
+//   - stay CampaignOS-only on user-facing copy
+//
+// These asserts re-use the AstroDating example and the deterministic
+// engine output `a` already built at the top of this file.
+
+{
+  const releaseDemoMod = require("../src/lib/onboarding/demo-projects") as typeof import("../src/lib/onboarding/demo-projects");
+  const {
+    getDemoProject: getDemoProjectRelease,
+    buildDemoLoadPlan: buildDemoLoadPlanRelease,
+  } = releaseDemoMod;
+  const reviewTypesRelease = require("../src/types/review") as typeof import("../src/types/review");
+  const { CRITICAL_REVIEW_ITEM_KINDS: CRITICAL_KINDS_RELEASE } = reviewTypesRelease;
+
+  const RELEASE_OPTS = {
+    projectId: "demo-astro-dating-launch-release",
+    runId: "demo-astro-dating-launch-release-run-1",
+    nowMs: 1_700_000_000_000,
+  };
+
+  // ---- Demo completeness ----------------------------------------------
+
+  const astro = getDemoProjectRelease("astro-dating-launch");
+  const releasePlan = buildDemoLoadPlanRelease(astro, RELEASE_OPTS);
+
+  record(
+    "release-demo: AstroDating buildDemoLoadPlan populates plan.project",
+    !!releasePlan.project && releasePlan.project.metadata.id === RELEASE_OPTS.projectId
+  );
+  record(
+    "release-demo: AstroDating buildDemoLoadPlan populates plan.run",
+    !!releasePlan.run && releasePlan.run.id === RELEASE_OPTS.runId
+  );
+  record(
+    "release-demo: AstroDating buildDemoLoadPlan populates plan.testResults (>= 4 rows)",
+    releasePlan.testResults.length >= 4
+  );
+
+  const releaseStrategy = releasePlan.run.strategy;
+
+  record(
+    "release-demo: strategy.audienceAvatars is non-empty",
+    Array.isArray(releaseStrategy.audienceAvatars) &&
+      releaseStrategy.audienceAvatars.length >= 1
+  );
+  record(
+    "release-demo: strategy.hookLibrary.items is non-empty",
+    Array.isArray(releaseStrategy.hookLibrary?.items) &&
+      releaseStrategy.hookLibrary.items.length >= 1
+  );
+  record(
+    "release-demo: strategy.offers is non-empty",
+    Array.isArray(releaseStrategy.offers) && releaseStrategy.offers.length >= 1
+  );
+  record(
+    "release-demo: strategy.adConceptCards is non-empty",
+    Array.isArray(releaseStrategy.adConceptCards) &&
+      releaseStrategy.adConceptCards.length >= 1
+  );
+  record(
+    "release-demo: strategy.proofAssetPlan.priorityAssets is non-empty",
+    Array.isArray(releaseStrategy.proofAssetPlan?.priorityAssets) &&
+      releaseStrategy.proofAssetPlan.priorityAssets.length >= 1
+  );
+  record(
+    "release-demo: strategy.creativeTestingMatrix.testCells is non-empty",
+    Array.isArray(releaseStrategy.creativeTestingMatrix?.testCells) &&
+      releaseStrategy.creativeTestingMatrix.testCells.length >= 1
+  );
+  record(
+    "release-demo: strategy.campaignSetup.campaigns is non-empty",
+    Array.isArray(releaseStrategy.campaignSetup?.campaigns) &&
+      releaseStrategy.campaignSetup.campaigns.length >= 1
+  );
+  record(
+    "release-demo: strategy.unitEconomics is present",
+    !!releaseStrategy.unitEconomics
+  );
+  record(
+    "release-demo: strategy.unitEconomics.status is viable or tight (not unviable)",
+    releaseStrategy.unitEconomics.status === "viable" ||
+      releaseStrategy.unitEconomics.status === "tight"
+  );
+  record(
+    "release-demo: strategy.forecast is present",
+    !!releaseStrategy.forecast
+  );
+  // Forecast status is engine-derived and an honest launch-mode plan
+  // often surfaces blockers (cold-launch CPA, no historical tracking).
+  // What we lock in for the demo is that the forecast is COMPUTED (not
+  // 'incomplete') and that it carries scenarios + budget so the founder
+  // can show the layer end-to-end.
+  record(
+    "release-demo: strategy.forecast.status is computed (not 'incomplete')",
+    releaseStrategy.forecast?.status !== "incomplete"
+  );
+  record(
+    "release-demo: strategy.forecast.scenarios.length === 3 (conservative + base + aggressive)",
+    releaseStrategy.forecast?.scenarios.length === 3
+  );
+  record(
+    "release-demo: strategy.scenarioSimulator.scenarios.length === 5",
+    releaseStrategy.scenarioSimulator?.scenarios.length === 5
+  );
+  record(
+    "release-demo: strategy.benchmarkCalibration.selectedProfiles.length >= 1",
+    Array.isArray(releaseStrategy.benchmarkCalibration?.selectedProfiles) &&
+      (releaseStrategy.benchmarkCalibration?.selectedProfiles.length ?? 0) >= 1
+  );
+  record(
+    "release-demo: strategy.creativeTestingMatrix.recommendedFirstBatch.length in [3, 6]",
+    (releaseStrategy.creativeTestingMatrix.recommendedFirstBatch.length ?? 0) >= 3 &&
+      (releaseStrategy.creativeTestingMatrix.recommendedFirstBatch.length ?? 0) <= 6
+  );
+
+  // Review board: 5 of 6 critical approved + 1 needs-changes.
+  const criticalSet = new Set<string>(CRITICAL_KINDS_RELEASE);
+  const criticalItems = releasePlan.reviewItems.filter((it) =>
+    criticalSet.has(it.kind)
+  );
+  const criticalApproved = criticalItems.filter(
+    (it) => it.status === "approved"
+  ).length;
+  const criticalNeedsChanges = criticalItems.filter(
+    (it) => it.status === "needs-changes"
+  ).length;
+  record(
+    "release-demo: AstroDating review board has 5 of 6 critical kinds approved",
+    criticalApproved === 5,
+    `Got ${criticalApproved} approved`
+  );
+  record(
+    "release-demo: AstroDating review board has exactly 1 critical needs-changes",
+    criticalNeedsChanges === 1,
+    `Got ${criticalNeedsChanges} needs-changes`
+  );
+
+  // Agency selection.
+  record(
+    "release-demo: AstroDating plan.agencySelection is populated",
+    !!releasePlan.agencySelection
+  );
+  record(
+    "release-demo: AstroDating plan.agencySelection.templateId === 'app-launch'",
+    releasePlan.agencySelection?.templateId === "app-launch"
+  );
+  record(
+    "release-demo: AstroDating plan.agencySelection.roleId === 'owner'",
+    releasePlan.agencySelection?.roleId === "owner"
+  );
+  record(
+    "release-demo: AstroDating plan.agencySelection.packageId === 'launch-sprint'",
+    releasePlan.agencySelection?.packageId === "launch-sprint"
+  );
+
+  // Applied playbook.
+  record(
+    "release-demo: AstroDating plan.appliedPlaybookId === 'mobile-app-launch'",
+    releasePlan.appliedPlaybookId === "mobile-app-launch"
+  );
+
+  // ---- Determinism ------------------------------------------------------
+
+  const releasePlanTwice = buildDemoLoadPlanRelease(astro, RELEASE_OPTS);
+  record(
+    "release-demo: buildDemoLoadPlan(AstroDating, opts) twice deep-equal",
+    JSON.stringify(releasePlan) === JSON.stringify(releasePlanTwice)
+  );
+
+  const stratTwice1 = buildStrategy(ASTRO_DATING_EXAMPLE);
+  const stratTwice2 = buildStrategy(ASTRO_DATING_EXAMPLE);
+  record(
+    "release-demo: buildStrategy(ASTRO_DATING_EXAMPLE) twice deep-equal (canonical engine regression)",
+    JSON.stringify(stratTwice1) === JSON.stringify(stratTwice2)
+  );
+
+  // ---- Empty-state crash safety ----------------------------------------
+
+  const reportMdModule = require("../src/lib/report/report-markdown");
+  const reportBuilderModule = require("../src/lib/report/report-builder");
+  const renderReportEmpty = reportMdModule.renderClientReportMarkdown;
+  const buildReportEmpty = reportBuilderModule.buildClientReport;
+
+  const EMPTY_TIME = "2026-05-18T12:00:00.000Z";
+  const emptyProject = {
+    metadata: {
+      id: "release-empty-proj",
+      name: "Empty release project",
+      createdAt: EMPTY_TIME,
+      updatedAt: EMPTY_TIME,
+      runCount: 0,
+    },
+    input: ASTRO_DATING_EXAMPLE,
+  };
+
+  let emptyReportThrew = false;
+  let emptyReportMd = "";
+  try {
+    const r = buildReportEmpty({
+      project: emptyProject,
+      runs: [],
+      testResults: [],
+      learningMemory: undefined,
+      generatedAt: EMPTY_TIME,
+    });
+    emptyReportMd = renderReportEmpty(r);
+  } catch {
+    emptyReportThrew = true;
+  }
+  record(
+    "release-demo: buildClientReport + renderClientReportMarkdown with empty runs does NOT throw",
+    !emptyReportThrew
+  );
+  record(
+    "release-demo: empty client-report markdown contains 'No CampaignOS project found' sentinel",
+    emptyReportMd.includes("No CampaignOS project found")
+  );
+  record(
+    "release-demo: empty client-report markdown contains CampaignOS title",
+    emptyReportMd.includes("# CampaignOS Report")
+  );
+
+  const {
+    buildClientPortalSnapshot: buildPortalEmpty,
+    defaultPortalVisibility: defaultVisEmpty,
+  } = require("../src/lib/portal/portal-builder");
+  const { renderClientPortalMarkdown: renderPortalEmpty } = require("../src/lib/portal/portal-markdown");
+
+  let emptyPortalThrew = false;
+  let emptyPortalSnap: any = null;
+  let emptyPortalMd = "";
+  try {
+    emptyPortalSnap = buildPortalEmpty({
+      project: emptyProject,
+      runs: [],
+      visibility: defaultVisEmpty(),
+    });
+    emptyPortalMd = renderPortalEmpty(emptyPortalSnap);
+  } catch {
+    emptyPortalThrew = true;
+  }
+  record(
+    "release-demo: buildClientPortalSnapshot + render with empty runs does NOT throw",
+    !emptyPortalThrew
+  );
+  record(
+    "release-demo: empty portal snapshot has sections.length === 0",
+    emptyPortalSnap && emptyPortalSnap.sections.length === 0
+  );
+  record(
+    "release-demo: empty portal markdown is a non-empty string with CampaignOS headline",
+    emptyPortalMd.length > 0 && emptyPortalMd.includes("# CampaignOS Client Portal")
+  );
+
+  // ---- Founder demo summary block --------------------------------------
+
+  const renderReportDemoBlock = reportMdModule.renderClientReportMarkdown;
+  const buildReportDemoBlock = reportBuilderModule.buildClientReport;
+
+  const DEMO_TIME = "2026-05-18T13:00:00.000Z";
+  const demoProject = {
+    metadata: {
+      id: RELEASE_OPTS.projectId, // starts with "demo-"
+      name: astro.label,
+      createdAt: DEMO_TIME,
+      updatedAt: DEMO_TIME,
+      runCount: 1,
+    },
+    input: astro.input,
+  };
+  const demoRun = {
+    id: RELEASE_OPTS.runId,
+    projectId: RELEASE_OPTS.projectId,
+    runAt: DEMO_TIME,
+    input: astro.input,
+    strategy: releaseStrategy,
+  };
+  const demoReport = buildReportDemoBlock({
+    project: demoProject,
+    runs: [demoRun],
+    testResults: [],
+    learningMemory: {
+      derivedAt: DEMO_TIME,
+      fromResultCount: 0,
+      learnings: [],
+    },
+    generatedAt: DEMO_TIME,
+  });
+  const demoReportMd = renderReportDemoBlock(demoReport);
+  record(
+    "release-demo: demo project report markdown contains '### Founder demo summary' block",
+    demoReportMd.includes("### Founder demo summary")
+  );
+  record(
+    "release-demo: demo project report markdown contains 'deterministically' line in founder summary",
+    demoReportMd.includes("Strategy generated deterministically from a single product brief")
+  );
+
+  // Determinism: same demo project → same founder summary block.
+  const demoReportMd2 = renderReportDemoBlock(demoReport);
+  record(
+    "release-demo: founder demo summary block is deterministic across two renders",
+    demoReportMd === demoReportMd2
+  );
+
+  // Non-demo project (id without `demo-` prefix) must NOT contain the
+  // founder summary block.
+  const nonDemoProject = {
+    metadata: {
+      id: "real-client-proj",
+      name: "Real client project",
+      createdAt: DEMO_TIME,
+      updatedAt: DEMO_TIME,
+      runCount: 1,
+    },
+    input: astro.input,
+  };
+  const nonDemoRun = {
+    id: "real-client-run",
+    projectId: "real-client-proj",
+    runAt: DEMO_TIME,
+    input: astro.input,
+    strategy: releaseStrategy,
+  };
+  const nonDemoReport = buildReportDemoBlock({
+    project: nonDemoProject,
+    runs: [nonDemoRun],
+    testResults: [],
+    learningMemory: {
+      derivedAt: DEMO_TIME,
+      fromResultCount: 0,
+      learnings: [],
+    },
+    generatedAt: DEMO_TIME,
+  });
+  const nonDemoReportMd = renderReportDemoBlock(nonDemoReport);
+  record(
+    "release-demo: non-demo project report markdown does NOT contain '### Founder demo summary' block",
+    !nonDemoReportMd.includes("### Founder demo summary")
+  );
+
+  // Portal founder block.
+  const {
+    buildClientPortalSnapshot: buildPortalDemoBlock,
+    defaultPortalVisibility: defaultVisDemoBlock,
+  } = require("../src/lib/portal/portal-builder");
+  const { renderClientPortalMarkdown: renderPortalDemoBlock } = require("../src/lib/portal/portal-markdown");
+  const demoPortalSnap = buildPortalDemoBlock({
+    project: demoProject,
+    runs: [demoRun],
+    visibility: defaultVisDemoBlock(),
+  });
+  const demoPortalMd = renderPortalDemoBlock(demoPortalSnap);
+  record(
+    "release-demo: demo project portal markdown contains '## Founder demo summary' block",
+    demoPortalMd.includes("## Founder demo summary")
+  );
+  const nonDemoPortalSnap = buildPortalDemoBlock({
+    project: nonDemoProject,
+    runs: [nonDemoRun],
+    visibility: defaultVisDemoBlock(),
+  });
+  const nonDemoPortalMd = renderPortalDemoBlock(nonDemoPortalSnap);
+  record(
+    "release-demo: non-demo project portal markdown does NOT contain '## Founder demo summary' block",
+    !nonDemoPortalMd.includes("Founder demo summary")
+  );
+
+  // ---- Brand-lock reinforcement (Step 4) -------------------------------
+
+  record(
+    "release-demo: demo report markdown contains 'CampaignOS'",
+    demoReportMd.includes("CampaignOS")
+  );
+  record(
+    "release-demo: demo report markdown never leaks user-facing 'BigAd'",
+    !demoReportMd.includes("BigAd")
+  );
+  record(
+    "release-demo: demo portal markdown contains 'CampaignOS'",
+    demoPortalMd.includes("CampaignOS")
+  );
+  record(
+    "release-demo: demo portal markdown never leaks user-facing 'BigAd' (default visibility)",
+    !demoPortalMd.includes("BigAd")
+  );
+  const demoExportBrief = generateExportBrief(astro.input, releaseStrategy);
+  record(
+    "release-demo: demo export brief contains 'CampaignOS'",
+    demoExportBrief.includes("CampaignOS")
+  );
+  record(
+    "release-demo: demo export brief never says 'Generated by BigAd'",
+    !demoExportBrief.includes("Generated by BigAd")
+  );
+}
+
 // Report.
 let failed = 0;
 for (const c of checks) {

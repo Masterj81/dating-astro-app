@@ -1493,3 +1493,34 @@ exactement le meme document. Rien ne quitte le navigateur. L'export
 gagne une section optionnelle `## Client Portal Pack` (date,
 overview, statut d'approbation, top trois next actions) quand le
 contexte portail est fourni.
+
+## Release demo flow
+
+When showing CampaignOS to a buyer, walk the **AstroDating Launch**
+demo end-to-end from the first-run welcome panel. The demo is wired
+to exercise every layer — Strategy, Input Assistant, Proof Plan,
+Economics, Forecast, Simulator, Benchmarks, Assets, Execution,
+Review (5 of 6 critical approved + 1 needs-changes), Results,
+Agency (app-launch template / owner role / launch-sprint package),
+Playbook (mobile-app-launch), Report, and Portal — so a single
+click produces a fully populated workspace. The report and portal
+markdown also emit a short `### Founder demo summary` block when the
+project id starts with `demo-`, so a buyer reading the exported
+deliverable sees what the demo demonstrates at a glance. For the
+pre-flight, demo-flow checklist, talk-track, and post-demo cleanup,
+follow [`docs/release-demo-checklist.md`](release-demo-checklist.md).
+
+En francais : le flow demo se lance depuis le panneau d'accueil
+first-run en cliquant `Load demo: AstroDating Launch`. La demo
+seed un projet complet — strategy + economics + forecast +
+simulator + benchmarks + matrix + reviews (5/6 critiques approves +
+1 needs-changes) + selection agence (template app-launch / role
+owner / package launch-sprint) + playbook applique
+(mobile-app-launch) — donc chaque onglet est immediatement
+populated et le founder peut pointer dessus sans devoir composer
+des donnees a la main. Le report et le portal markdown emettent un
+bloc court `Founder demo summary` quand l'id du projet commence
+par `demo-`, pour que l'export montre en six puces ce que la demo
+demontre. La checklist sellable complete vit dans
+[`docs/release-demo-checklist.md`](release-demo-checklist.md) —
+pre-vol, parcours demo, narratif buyer, nettoyage post-demo.

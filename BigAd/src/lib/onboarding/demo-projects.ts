@@ -22,7 +22,12 @@ import type {
   SampleTestResult,
 } from "@/types/onboarding";
 import type { PlaybookId } from "@/types/playbook";
-import type { AgencySelection } from "@/types/agency";
+import type {
+  AgencyRoleId,
+  AgencySelection,
+  PackagePresetId,
+  ProjectTemplateId,
+} from "@/types/agency";
 import type {
   ReviewComment,
   ReviewItem,
@@ -59,10 +64,15 @@ const DEMO_INPUT_ASTRO_DATING: ProductInput = {
   sophistication: "skeptical-market",
   campaignType: "launch",
   offerContext: {
-    cogsPercent: 25,
-    targetMarginPercent: 25,
-    currentAOV: 60,
-    targetROAS: 2.5,
+    // Subscription-app economics — 16 months of $9 retention yields a
+    // $144 lifetime AOV, 15% payment-processor / hosting COGS, 30%
+    // target margin. The demo intentionally leaves COGS / margin filled
+    // in so the Economics tab reads "viable" or "tight" and the founder
+    // can point at concrete numbers during the walkthrough.
+    cogsPercent: 15,
+    targetMarginPercent: 30,
+    currentAOV: 144,
+    targetROAS: 2.0,
   },
 };
 
@@ -208,11 +218,12 @@ const SAMPLE_REVIEWS_ASTRO_DATING: SampleReviewStatus[] = [
   { kind: "campaign-setup", status: "approved", approvedBy: "media-buyer" },
   {
     kind: "client-report",
-    status: "pending",
+    status: "approved",
+    approvedBy: "owner",
     sampleComment: {
       author: "owner",
-      body: "Report draft ready — confirming readout slot for Friday before circulating.",
-      resolved: false,
+      body: "Report draft circulated — readout slot confirmed for Friday.",
+      resolved: true,
     },
   },
   { kind: "tracking-readiness", status: "approved", approvedBy: "media-buyer" },
@@ -436,6 +447,15 @@ export const DEMO_PROJECTS: Record<DemoProjectMetadata["id"], DemoProject> = {
     sampleTestResults: SAMPLE_RESULTS_ASTRO_DATING,
     sampleReviewStatuses: SAMPLE_REVIEWS_ASTRO_DATING,
     sampleNotes: SAMPLE_NOTES_ASTRO_DATING,
+    // Founder demo — seed agency selection so the Agency tab is
+    // already populated when the buyer clicks through after loading
+    // the demo. Template / role / package match the mobile-app-launch
+    // playbook so the cross-references on the Agency tab line up.
+    seededAgencySelection: {
+      templateId: "app-launch",
+      roleId: "owner",
+      packageId: "launch-sprint",
+    },
   },
   "saas-free-trial-launch": {
     id: "saas-free-trial-launch",
@@ -641,6 +661,20 @@ export function buildDemoLoadPlan(
     cIdx += 1;
   }
 
+  // Agency selection — emitted when the demo carries a
+  // `seededAgencySelection` triple. `updatedAt` derives from the
+  // caller-supplied `nowMs` so the same demo + same opts → byte-
+  // identical agencySelection.
+  const agencySelection: AgencySelection | undefined = demo.seededAgencySelection
+    ? {
+        projectId,
+        templateId: demo.seededAgencySelection.templateId,
+        roleId: demo.seededAgencySelection.roleId,
+        packageId: demo.seededAgencySelection.packageId,
+        updatedAt: nowMs,
+      }
+    : undefined;
+
   return {
     project,
     run,
@@ -648,8 +682,6 @@ export function buildDemoLoadPlan(
     reviewItems,
     reviewComments,
     appliedPlaybookId: demo.recommendedPlaybook,
-    // Agency selection is intentionally left undefined for now —
-    // the demos focus on the playbook + review boards. The UI loader
-    // may compose an AgencySelection at click time if needed.
+    agencySelection,
   };
 }

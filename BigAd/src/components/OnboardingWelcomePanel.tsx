@@ -37,6 +37,10 @@ import {
   createBrowserPlaybookStore,
   type PlaybookStore,
 } from "@/lib/playbook/playbook-store";
+import {
+  createBrowserAgencyStore,
+  type AgencyStore,
+} from "@/lib/agency/agency-store";
 import { PLAYBOOKS } from "@/lib/playbook/catalog";
 import type {
   DemoProjectMetadata,
@@ -128,6 +132,7 @@ interface LoadDemoArgs {
   projectStore: ProjectStore;
   reviewStore: ReviewStore;
   playbookStore: PlaybookStore;
+  agencyStore: AgencyStore;
   onboarding: UseOnboardingResult;
   demoId: DemoProjectMetadata["id"];
   onLoadInput?: (input: ReturnType<typeof getDemoProject>["input"]) => void;
@@ -140,7 +145,7 @@ function newId(prefix: string): string {
 }
 
 function loadDemoIntoWorkspace(args: LoadDemoArgs): string {
-  const { projectStore, reviewStore, playbookStore, onboarding, demoId, onLoadInput } = args;
+  const { projectStore, reviewStore, playbookStore, agencyStore, onboarding, demoId, onLoadInput } = args;
   const demo = getDemoProject(demoId);
   const projectId = newId(`demo-${demo.id}`);
   const runId = `${projectId}-run-1`;
@@ -181,6 +186,9 @@ function loadDemoIntoWorkspace(args: LoadDemoArgs): string {
   }
 
   playbookStore.setApplied(projectId, plan.appliedPlaybookId);
+  if (plan.agencySelection) {
+    agencyStore.setSelection(plan.agencySelection);
+  }
   projectStore.setActiveProject(projectId);
 
   onboarding.markDemoLoaded(demo.id);
@@ -209,12 +217,14 @@ export function OnboardingWelcomePanel({
   const [projectStore, setProjectStore] = useState<ProjectStore | null>(null);
   const [reviewStore, setReviewStore] = useState<ReviewStore | null>(null);
   const [playbookStore, setPlaybookStore] = useState<PlaybookStore | null>(null);
+  const [agencyStore, setAgencyStore] = useState<AgencyStore | null>(null);
 
   useEffect(() => {
     setMounted(true);
     setProjectStore(createBrowserProjectStore());
     setReviewStore(createBrowserReviewStore());
     setPlaybookStore(createBrowserPlaybookStore());
+    setAgencyStore(createBrowserAgencyStore());
   }, []);
 
   if (!mounted) return null;
@@ -222,11 +232,12 @@ export function OnboardingWelcomePanel({
   const demos = listDemoProjects();
 
   function handleLoadDemo(demoId: DemoProjectMetadata["id"]) {
-    if (!projectStore || !reviewStore || !playbookStore) return;
+    if (!projectStore || !reviewStore || !playbookStore || !agencyStore) return;
     loadDemoIntoWorkspace({
       projectStore,
       reviewStore,
       playbookStore,
+      agencyStore,
       onboarding,
       demoId,
       onLoadInput,

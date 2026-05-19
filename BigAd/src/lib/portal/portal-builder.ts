@@ -737,8 +737,34 @@ export function buildClientPortalSnapshot(
   if (!project) {
     throw new Error("buildClientPortalSnapshot: project is required");
   }
+  // Empty-state path — when no runs are passed in, return a placeholder
+  // snapshot with no sections rather than throwing. The renderer walks
+  // `sections` and emits a graceful headline-only document so the
+  // surface never crashes the browser tab.
   if (!runs || runs.length === 0) {
-    throw new Error("buildClientPortalSnapshot: requires at least one run");
+    const visibility = input.visibility ?? defaultPortalVisibility();
+    return {
+      projectId: project.metadata.id,
+      projectName: project.metadata.name,
+      generatedAt: maxStamp([
+        project.metadata.updatedAt,
+        project.metadata.createdAt,
+        project.metadata.lastRunAt,
+      ]),
+      overviewHeadline:
+        `${project.metadata.name} — No CampaignOS project run yet.`,
+      sections: [],
+      visibility,
+      nextActions: [],
+      decisionLog: [],
+      approvals: {
+        readiness: "not-ready",
+        criticalApproved: 0,
+        criticalTotal: 0,
+        pendingKinds: [],
+        unresolvedComments: 0,
+      },
+    };
   }
 
   const latestRun = runs[0];

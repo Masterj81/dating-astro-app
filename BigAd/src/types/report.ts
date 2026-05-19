@@ -120,4 +120,10 @@ export interface ClientReport {
   learningMemory: LearningMemory;
   decisionLog: DecisionLogEntry[];
   nextActions: NextActionItem[];
+  // When true, the builder received zero runs and emitted a placeholder.
+  // The renderer short-circuits to a "No CampaignOS project found"
+  // sentinel without touching the (necessarily-stubbed) interior fields.
+  // Optional + defaults to undefined so existing callers stay
+  // shape-compatible.
+  isEmpty?: boolean;
 }

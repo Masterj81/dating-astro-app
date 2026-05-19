@@ -14,8 +14,13 @@
 
 import type {
   AudienceAvatar,
+  CampaignSetup,
   CampaignWindow,
+  CreativeTestingMatrix,
+  InputQuality,
+  NextIterationPlan,
   OfferRecommendation,
+  ProofAssetPlan,
   Strategy,
 } from "@/types/strategy";
 import type {
@@ -57,7 +62,8 @@ export interface BuildReportArgs {
   project: SavedProject;
   runs: SavedRun[]; // ordered newest-first; primary = runs[0]
   testResults: TestResult[]; // for the runs included
-  learningMemory: LearningMemory;
+  learningMemory?: LearningMemory; // optional — defaulted to an empty
+                                   // memory when the caller has none
   toggles?: Partial<Record<ReportSectionKind, boolean>>; // default: all enabled
   generatedAt?: string; // override for tests; otherwise derived
 }
@@ -584,9 +590,87 @@ function buildNextActions(
 // ---- Builder --------------------------------------------------------------
 
 export function buildClientReport(args: BuildReportArgs): ClientReport {
-  const { project, runs, testResults, learningMemory } = args;
+  const { project, runs, testResults } = args;
+  // Default the learning memory to an empty placeholder when the caller
+  // has none. Keeps the empty-state path one branch shorter and lets
+  // existing tests that pass an explicit memory continue unchanged.
+  const learningMemory: LearningMemory =
+    args.learningMemory ?? {
+      derivedAt: args.generatedAt ?? "",
+      fromResultCount: 0,
+      learnings: [],
+    };
+
+  // Empty-state path — when no runs are passed in, return a placeholder
+  // report rather than throwing. The renderer short-circuits to a
+  // "No CampaignOS project found" sentinel string. Keeping the path
+  // shape-compatible with the populated report means callers that
+  // forward the object to a third-party diff stay unchanged.
   if (!runs || runs.length === 0) {
-    throw new Error("buildClientReport: requires at least one run");
+    const emptyMatrix: CreativeTestingMatrix = {
+      testCells: [],
+      recommendedFirstBatch: [],
+      maxConcurrentTests: 0,
+      testingWarnings: [],
+    };
+    const emptyCampaign: CampaignSetup = {
+      namingConvention: "",
+      campaigns: [],
+      preLaunchChecklist: [],
+    };
+    const emptyIteration: NextIterationPlan = {
+      recommendations: [],
+      nextAssetsToProduce: [],
+      nextAnglesToTry: [],
+    };
+    const emptyProof: ProofAssetPlan = {
+      priorityAssets: [],
+      minimumProofSet: [],
+      missingBeforeSpend: [],
+      proofReadinessScore: 0,
+    };
+    const emptyInputQuality: InputQuality = {
+      score: 0,
+      status: "weak",
+      warnings: [],
+      suggestions: [],
+      rewrittenHints: {
+        audience: "",
+        corePain: "",
+        differentiator: "",
+        goal: "",
+        proofNeeded: [],
+      },
+    };
+    return {
+      generatedAt: args.generatedAt ?? "",
+      project,
+      runs: [],
+      primaryRunId: "",
+      comparison: null,
+      toggles: resolveToggles(args.toggles),
+      executiveSummary: { bullets: [] },
+      strategySnapshot: {
+        positioning: "",
+        topAngle: "",
+        topOffer: "",
+        campaignWindow: "",
+        audience: "",
+        items: [],
+      },
+      inputQuality: emptyInputQuality,
+      proofPlan: emptyProof,
+      executionPlan: {
+        matrix: emptyMatrix,
+        campaign: emptyCampaign,
+        iteration: emptyIteration,
+      },
+      testResults: [],
+      learningMemory,
+      decisionLog: [],
+      nextActions: [],
+      isEmpty: true,
+    };
   }
 
   const toggles = resolveToggles(args.toggles);

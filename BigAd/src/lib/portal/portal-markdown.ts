@@ -29,6 +29,38 @@ function readinessLabel(
   return "Not ready";
 }
 
+// Demo projects are loaded via `buildDemoLoadPlan` which assigns a
+// project id prefixed `demo-<demoId>-…`. Gating the founder demo
+// summary on this prefix keeps the block out of real client portals
+// while staying deterministic.
+function isDemoProjectId(projectId: string): boolean {
+  return projectId.startsWith("demo-");
+}
+
+function appendFounderDemoSummary(lines: string[]): void {
+  lines.push(`## Founder demo summary`);
+  lines.push("");
+  lines.push(
+    `- Strategy generated deterministically from a single product brief`
+  );
+  lines.push(
+    `- Audience avatars, hooks, offers, and creative testing matrix built without LLMs`
+  );
+  lines.push(
+    `- Unit economics, forecast, and scenario simulator surface viability before spend`
+  );
+  lines.push(
+    `- Benchmarks calibrate forecast against planning ranges`
+  );
+  lines.push(
+    `- Review approval, asset production, and results loop close the workflow`
+  );
+  lines.push(
+    `- Report and client portal share the work in one click`
+  );
+  lines.push("");
+}
+
 function emitSection(lines: string[], section: PortalSection): void {
   if (section.bullets.length === 0) return;
   lines.push(`## ${section.title}`);
@@ -58,6 +90,13 @@ export function renderClientPortalMarkdown(
   lines.push("");
   lines.push(`_Last updated: ${isoFromEpoch(snapshot.generatedAt)}_`);
   lines.push("");
+
+  // Founder demo summary — emitted only for projects loaded via the
+  // demo flow (project id prefixed `demo-`). Skipped silently on real
+  // client portals so the demo-pack messaging never reaches a buyer.
+  if (isDemoProjectId(snapshot.projectId)) {
+    appendFounderDemoSummary(lines);
+  }
 
   // Walk sections in their pre-ordered shape. Skip empty content.
   for (const section of snapshot.sections) {
