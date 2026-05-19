@@ -117,9 +117,11 @@ function NatalChartScreenContent() {
   // Generate planetary positions (deterministic fallbacks instead of Math.random)
   const getPlanetaryPositions = (data: NatalChartData): PlanetPosition[] => {
     return [
-      { planet: t('sun'), planetKey: 'sun', sign: data.sun_sign || 'Unknown', degree: 15, house: 1, emoji: '☀️' },
-      { planet: t('moon'), planetKey: 'moon', sign: data.moon_sign || 'Unknown', degree: 22, house: 4, emoji: '🌙' },
-      { planet: t('rising'), planetKey: 'rising', sign: data.rising_sign || 'Unknown', degree: 8, house: 1, emoji: '⬆️' },
+      // Sun/Moon/Rising glyphs flow through PlanetGlyph which normalizes
+      // emoji codepoints to monochrome text glyphs (☉ / ☾ / "ASC").
+      { planet: t('sun'), planetKey: 'sun', sign: data.sun_sign || 'Unknown', degree: 15, house: 1, emoji: '☉' },
+      { planet: t('moon'), planetKey: 'moon', sign: data.moon_sign || 'Unknown', degree: 22, house: 4, emoji: '☽' },
+      { planet: t('rising'), planetKey: 'rising', sign: data.rising_sign || 'Unknown', degree: 8, house: 1, emoji: '↑' },
       { planet: t('mercury') || 'Mercury', planetKey: 'mercury', sign: data.mercury_sign || signs[3], degree: 12, house: 3, emoji: '☿️' },
       { planet: t('venus') || 'Venus', planetKey: 'venus', sign: data.venus_sign || signs[6], degree: 28, house: 7, emoji: '♀️' },
       { planet: t('mars') || 'Mars', planetKey: 'mars', sign: data.mars_sign || signs[0], degree: 5, house: 10, emoji: '♂️' },
@@ -402,22 +404,25 @@ function NatalChartScreenContent() {
         </View>
       )}
 
-      {/* Chart Wheel Visual */}
+      {/* Chart Wheel Visual.
+          Each sign glyph is followed by U+FE0E (text variation selector)
+          so the codepoint is forced into text presentation, not colored
+          emoji. Bounding box is identical across all twelve symbols. */}
       <View style={styles.chartWheel}>
         <View style={styles.wheelOuter}>
           <View style={styles.wheelInner}>
             <AuthBrandMark size={58} />
           </View>
-          <Text style={[styles.wheelSign, { top: 5, left: '45%' }]}>♈</Text>
-          <Text style={[styles.wheelSign, { top: '15%', right: '10%' }]}>♉</Text>
-          <Text style={[styles.wheelSign, { top: '40%', right: 0 }]}>♊</Text>
-          <Text style={[styles.wheelSign, { bottom: '40%', right: 0 }]}>♋</Text>
-          <Text style={[styles.wheelSign, { bottom: '15%', right: '10%' }]}>♌</Text>
-          <Text style={[styles.wheelSign, { bottom: 5, left: '45%' }]}>♍</Text>
-          <Text style={[styles.wheelSign, { bottom: '15%', left: '10%' }]}>♎</Text>
-          <Text style={[styles.wheelSign, { bottom: '40%', left: 0 }]}>♏</Text>
-          <Text style={[styles.wheelSign, { top: '40%', left: 0 }]}>♐</Text>
-          <Text style={[styles.wheelSign, { top: '15%', left: '10%' }]}>♑</Text>
+          <Text accessibilityLabel="Aries" style={[styles.wheelSign, { top: 5, left: '45%' }]}>{'♈︎'}</Text>
+          <Text accessibilityLabel="Taurus" style={[styles.wheelSign, { top: '15%', right: '10%' }]}>{'♉︎'}</Text>
+          <Text accessibilityLabel="Gemini" style={[styles.wheelSign, { top: '40%', right: 0 }]}>{'♊︎'}</Text>
+          <Text accessibilityLabel="Cancer" style={[styles.wheelSign, { bottom: '40%', right: 0 }]}>{'♋︎'}</Text>
+          <Text accessibilityLabel="Leo" style={[styles.wheelSign, { bottom: '15%', right: '10%' }]}>{'♌︎'}</Text>
+          <Text accessibilityLabel="Virgo" style={[styles.wheelSign, { bottom: 5, left: '45%' }]}>{'♍︎'}</Text>
+          <Text accessibilityLabel="Libra" style={[styles.wheelSign, { bottom: '15%', left: '10%' }]}>{'♎︎'}</Text>
+          <Text accessibilityLabel="Scorpio" style={[styles.wheelSign, { bottom: '40%', left: 0 }]}>{'♏︎'}</Text>
+          <Text accessibilityLabel="Sagittarius" style={[styles.wheelSign, { top: '40%', left: 0 }]}>{'♐︎'}</Text>
+          <Text accessibilityLabel="Capricorn" style={[styles.wheelSign, { top: '15%', left: '10%' }]}>{'♑︎'}</Text>
         </View>
       </View>
 

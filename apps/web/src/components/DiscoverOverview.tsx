@@ -11,6 +11,7 @@ import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentTier, type WebTier } from "@/lib/web-subscriptions";
 import { FullCardSkeleton } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
+import { LuminaryGlyph } from "@/components/ZodiacGlyph";
 import {
   findIntent,
   findLifestyleTag,
@@ -360,21 +361,27 @@ export function DiscoverOverview() {
 
               <div className="mt-6 grid grid-cols-3 gap-3">
                 <div className="rounded-2xl border border-accent/20 bg-accent/8 p-3 text-center">
-                  <p className="text-lg">☀️</p>
+                  <div className="flex justify-center">
+                    <LuminaryGlyph kind="sun" size="sm" />
+                  </div>
                   <p className="mt-1 text-[10px] uppercase tracking-widest text-text-dim">{t("discoverSun")}</p>
                   <p className="mt-1 text-sm font-semibold text-white">
                     {currentProfile.sun_sign ? translateSign(currentProfile.sun_sign, locale) : "?"}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-purple/20 bg-purple/8 p-3 text-center">
-                  <p className="text-lg">🌙</p>
+                  <div className="flex justify-center">
+                    <LuminaryGlyph kind="moon" size="sm" />
+                  </div>
                   <p className="mt-1 text-[10px] uppercase tracking-widest text-text-dim">{t("discoverMoon")}</p>
                   <p className="mt-1 text-sm font-semibold text-white">
                     {currentProfile.moon_sign ? translateSign(currentProfile.moon_sign, locale) : "?"}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-border bg-white/[0.04] p-3 text-center">
-                  <p className="text-lg">⬆️</p>
+                  <div className="flex justify-center">
+                    <LuminaryGlyph kind="rising" size="sm" />
+                  </div>
                   <p className="mt-1 text-[10px] uppercase tracking-widest text-text-dim">{t("discoverRising")}</p>
                   <p className="mt-1 text-sm font-semibold text-white">
                     {currentProfile.rising_sign ? translateSign(currentProfile.rising_sign, locale) : "?"}

@@ -9,6 +9,7 @@ import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { ProfilePublicMvpDisplay } from "@/components/ProfilePublicMvpDisplay";
+import { LuminaryGlyph } from "@/components/ZodiacGlyph";
 import { sanitizeLifestyleTags } from "@astro/shared/profile";
 
 type ProfileOverviewProps = {
@@ -223,21 +224,27 @@ export function ProfileOverview({ profileId }: ProfileOverviewProps) {
 
         <div className="mt-6 grid grid-cols-3 gap-3">
           <div className="rounded-2xl border border-accent/20 bg-accent/8 p-3 text-center">
-            <p className="text-lg">☀️</p>
+            <div className="flex justify-center">
+              <LuminaryGlyph kind="sun" size="sm" />
+            </div>
             <p className="mt-1 text-xs uppercase tracking-widest text-text-dim">{t("discoverSun")}</p>
             <p className="mt-1 text-sm font-semibold text-white">
               {profile.sun_sign ? translateSign(profile.sun_sign, locale) : "?"}
             </p>
           </div>
           <div className="rounded-2xl border border-purple/20 bg-purple/8 p-3 text-center">
-            <p className="text-lg">🌙</p>
+            <div className="flex justify-center">
+              <LuminaryGlyph kind="moon" size="sm" />
+            </div>
             <p className="mt-1 text-xs uppercase tracking-widest text-text-dim">{t("discoverMoon")}</p>
             <p className="mt-1 text-sm font-semibold text-white">
               {profile.moon_sign ? translateSign(profile.moon_sign, locale) : "?"}
             </p>
           </div>
           <div className="rounded-2xl border border-border bg-white/[0.04] p-3 text-center">
-            <p className="text-lg">⬆️</p>
+            <div className="flex justify-center">
+              <LuminaryGlyph kind="rising" size="sm" />
+            </div>
             <p className="mt-1 text-xs uppercase tracking-widest text-text-dim">{t("discoverRising")}</p>
             <p className="mt-1 text-sm font-semibold text-white">
               {profile.rising_sign ? translateSign(profile.rising_sign, locale) : "?"}

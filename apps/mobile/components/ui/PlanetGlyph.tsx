@@ -12,6 +12,7 @@ type PlanetGlyphProps = {
 const PLANET_ACCENTS: Record<string, string> = {
   sun: AppTheme.colors.gold,
   moon: AppTheme.colors.textPrimary,
+  rising: AppTheme.colors.gold,
   mercury: AppTheme.colors.cosmicSoft,
   venus: AppTheme.colors.coral,
   mars: AppTheme.colors.warning,
@@ -39,12 +40,16 @@ const SYMBOL_ALIASES: Record<string, { key: string; symbol: string }> = {
   'â™ƒ': { key: 'jupiter', symbol: '♃' },
   '♄': { key: 'saturn', symbol: '♄' },
   'â™„': { key: 'saturn', symbol: '♄' },
+  '⬆️': { key: 'rising', symbol: 'ASC' },
+  'â¬†ï¸': { key: 'rising', symbol: 'ASC' },
+  '↑': { key: 'rising', symbol: 'ASC' },
 };
 
 const PLANET_OFFSETS: Partial<Record<string, number>> = Platform.select({
   android: {
     sun: -0.5,
     moon: -1,
+    rising: 0,
     mercury: -0.5,
     venus: -0.5,
     mars: -0.5,
@@ -53,6 +58,10 @@ const PLANET_OFFSETS: Partial<Record<string, number>> = Platform.select({
   },
   default: {},
 }) as Partial<Record<string, number>>;
+
+// Some symbols are *text labels* not single glyphs (e.g. "ASC" for the
+// Ascendant). They need a smaller font ratio to fit the badge.
+const TEXT_LABEL_KEYS = new Set(['rising']);
 
 export default function PlanetGlyph({
   symbol,
@@ -95,7 +104,9 @@ export default function PlanetGlyph({
             styles.badgeSymbol,
             {
               color: accentColor,
-              fontSize: size * 0.78,
+              fontSize: resolvedKey && TEXT_LABEL_KEYS.has(resolvedKey)
+                ? size * 0.42
+                : size * 0.78,
               transform: [{ translateY: verticalOffset }],
             },
             textStyle,

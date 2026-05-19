@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PremiumGate from '../../components/PremiumGate';
+import { ZodiacGlyph } from '../../components/astro/ZodiacGlyph';
 import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -64,21 +65,6 @@ const SIGNS = [
   'pisces',
 ] as const;
 type SignKey = (typeof SIGNS)[number];
-
-const SIGN_GLYPHS: Record<SignKey, string> = {
-  aries: '♈',
-  taurus: '♉',
-  gemini: '♊',
-  cancer: '♋',
-  leo: '♌',
-  virgo: '♍',
-  libra: '♎',
-  scorpio: '♏',
-  sagittarius: '♐',
-  capricorn: '♑',
-  aquarius: '♒',
-  pisces: '♓',
-};
 
 const AXES = ['love', 'mind', 'body', 'social'] as const;
 type Axis = (typeof AXES)[number];
@@ -294,9 +280,7 @@ function DailyReflectionContent() {
             {t('dailyHoroscopeDateLabel') || 'Today'}
           </Text>
           <View style={styles.heroRow}>
-            <View style={styles.heroGlyphCircle}>
-              <Text style={styles.heroGlyph}>{SIGN_GLYPHS[signKey]}</Text>
-            </View>
+            <ZodiacGlyph sign={signKey} variant="premium" size="md" />
             <View style={styles.heroTextCol}>
               <Text style={styles.heroSign}>{signLabel}</Text>
               <Text style={styles.heroDate}>{dateString}</Text>
@@ -509,20 +493,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
     flexWrap: 'wrap',
-  },
-  heroGlyphCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(232,93,117,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(232,93,117,0.22)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  heroGlyph: {
-    fontSize: 26,
-    color: AppTheme.colors.textPrimary,
   },
   heroTextCol: {
     flexShrink: 1,

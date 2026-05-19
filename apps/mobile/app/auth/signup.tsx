@@ -218,7 +218,12 @@ export default function SignupScreen() {
                 }
               ]}
             >
-              <Text style={styles.zodiacRing}>♈ ♉ ♊ ♋ ♌ ♍ ♎ ♏ ♐ ♑ ♒ ♓</Text>
+              {/* Decorative zodiac ring. Each codepoint is followed by
+                  U+FE0E (text variation selector) to force monochrome
+                  text presentation across all platforms. */}
+              <Text style={styles.zodiacRing} accessibilityLabel="Zodiac signs">
+                {'♈︎ ♉︎ ♊︎ ♋︎ ♌︎ ♍︎ ♎︎ ♏︎ ♐︎ ♑︎ ♒︎ ♓︎'}
+              </Text>
             </Animated.View>
 
             {/* Form with animation */}

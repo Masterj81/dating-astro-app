@@ -19,6 +19,11 @@ import { calculateNatalChart } from '../../services/astrology';
 import { geocodeCity } from '../../services/geocoding';
 import { loadPreSignupDraft } from '../../utils/onboardingDraft';
 import { buttonPress } from '../../services/haptics';
+import {
+  LuminaryGlyph,
+  ZodiacGlyph,
+  normalizeZodiacSign,
+} from '../../components/astro/ZodiacGlyph';
 
 // -- Sign descriptions (short, Co-Star-ish, neutral; placeholders that can
 //    later be moved to i18n once translations are written for all locales).
@@ -96,12 +101,6 @@ const COMPAT_PICKS: Record<string, Array<{ sign: string; score: number; line: st
     { sign: 'capricorn', score: 88, line: 'feeling meets structure' },
     { sign: 'pisces', score: 86, line: 'two oceans, one weather' },
   ],
-};
-
-const SIGN_GLYPH: Record<string, string> = {
-  aries: '♈', taurus: '♉', gemini: '♊', cancer: '♋',
-  leo: '♌', virgo: '♍', libra: '♎', scorpio: '♏',
-  sagittarius: '♐', capricorn: '♑', aquarius: '♒', pisces: '♓',
 };
 
 const capitalize = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
@@ -292,15 +291,22 @@ export default function WelcomePreview() {
         {/* Sun */}
         <Animated.View style={[styles.luminaryCard, { opacity: fadeSun }]}>
           <View style={styles.luminaryHead}>
-            <Text style={styles.luminaryGlyph}>☀️</Text>
+            <LuminaryGlyph kind="sun" size="md" />
             <View style={{ flex: 1 }}>
               <Text style={styles.luminaryLabel}>
-                {t('welcomeSun') || 'Sun in'} {capitalize(chart.sun)} {SIGN_GLYPH[chart.sun] || ''}
+                {t('welcomeSun') || 'Sun in'} {capitalize(chart.sun)}
               </Text>
               <Text style={styles.luminarySublabel}>
                 {t('welcomeWhoYouAre') || 'who you are at center'}
               </Text>
             </View>
+            {normalizeZodiacSign(chart.sun) ? (
+              <ZodiacGlyph
+                sign={normalizeZodiacSign(chart.sun)!}
+                variant="premium"
+                size="sm"
+              />
+            ) : null}
           </View>
           <Text style={styles.luminaryDesc}>{SUN_DESC[chart.sun] || ''}</Text>
         </Animated.View>
@@ -308,15 +314,22 @@ export default function WelcomePreview() {
         {/* Moon */}
         <Animated.View style={[styles.luminaryCard, { opacity: fadeMoon }]}>
           <View style={styles.luminaryHead}>
-            <Text style={styles.luminaryGlyph}>🌙</Text>
+            <LuminaryGlyph kind="moon" size="md" />
             <View style={{ flex: 1 }}>
               <Text style={styles.luminaryLabel}>
-                {t('welcomeMoon') || 'Moon in'} {capitalize(chart.moon)} {SIGN_GLYPH[chart.moon] || ''}
+                {t('welcomeMoon') || 'Moon in'} {capitalize(chart.moon)}
               </Text>
               <Text style={styles.luminarySublabel}>
                 {t('welcomeHowYouFeel') || 'how you love and need'}
               </Text>
             </View>
+            {normalizeZodiacSign(chart.moon) ? (
+              <ZodiacGlyph
+                sign={normalizeZodiacSign(chart.moon)!}
+                variant="premium"
+                size="sm"
+              />
+            ) : null}
           </View>
           <Text style={styles.luminaryDesc}>{MOON_DESC[chart.moon] || ''}</Text>
         </Animated.View>
@@ -325,15 +338,22 @@ export default function WelcomePreview() {
         {chart.rising ? (
           <Animated.View style={[styles.luminaryCard, { opacity: fadeRising }]}>
             <View style={styles.luminaryHead}>
-              <Text style={styles.luminaryGlyph}>⬆️</Text>
+              <LuminaryGlyph kind="rising" size="md" />
               <View style={{ flex: 1 }}>
                 <Text style={styles.luminaryLabel}>
-                  {t('welcomeRising') || 'Rising in'} {capitalize(chart.rising)} {SIGN_GLYPH[chart.rising] || ''}
+                  {t('welcomeRising') || 'Rising in'} {capitalize(chart.rising)}
                 </Text>
                 <Text style={styles.luminarySublabel}>
                   {t('welcomeFirstImpression') || 'how the world meets you'}
                 </Text>
               </View>
+              {normalizeZodiacSign(chart.rising) ? (
+                <ZodiacGlyph
+                  sign={normalizeZodiacSign(chart.rising)!}
+                  variant="premium"
+                  size="sm"
+                />
+              ) : null}
             </View>
             <Text style={styles.luminaryDesc}>{RISING_DESC[chart.rising] || ''}</Text>
           </Animated.View>
@@ -345,14 +365,24 @@ export default function WelcomePreview() {
             {t('welcomeMostCompatible') || 'Most cosmically aligned with you'}
           </Text>
           <View style={styles.compatRow}>
-            {compats.map((c) => (
-              <View key={c.sign} style={styles.compatPill}>
-                <Text style={styles.compatGlyph}>{SIGN_GLYPH[c.sign]}</Text>
-                <Text style={styles.compatName}>{capitalize(c.sign)}</Text>
-                <Text style={styles.compatScore}>{c.score}%</Text>
-                <Text style={styles.compatLine}>{c.line}</Text>
-              </View>
-            ))}
+            {compats.map((c) => {
+              const signKey = normalizeZodiacSign(c.sign);
+              return (
+                <View key={c.sign} style={styles.compatPill}>
+                  {signKey ? (
+                    <ZodiacGlyph
+                      sign={signKey}
+                      variant="premium"
+                      size="sm"
+                      style={{ marginBottom: 6 }}
+                    />
+                  ) : null}
+                  <Text style={styles.compatName}>{capitalize(c.sign)}</Text>
+                  <Text style={styles.compatScore}>{c.score}%</Text>
+                  <Text style={styles.compatLine}>{c.line}</Text>
+                </View>
+              );
+            })}
           </View>
 
           {/* CTA */}
@@ -441,9 +471,6 @@ const styles = StyleSheet.create({
     gap: 14,
     marginBottom: 10,
   },
-  luminaryGlyph: {
-    fontSize: 28,
-  },
   luminaryLabel: {
     ...AppTheme.type.heading,
     color: AppTheme.colors.textPrimary,
@@ -482,11 +509,6 @@ const styles = StyleSheet.create({
     borderRadius: AppTheme.radius.lg,
     padding: 14,
     alignItems: 'center',
-  },
-  compatGlyph: {
-    fontSize: 22,
-    marginBottom: 6,
-    color: AppTheme.colors.textPrimary,
   },
   compatName: {
     ...AppTheme.type.section,

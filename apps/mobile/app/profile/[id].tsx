@@ -29,6 +29,11 @@ import {
 } from 'react-native';
 import { sanitizeLifestyleTags } from '@astro/shared/profile';
 import ProfilePublicMVPSections from '../../components/profile/ProfilePublicMVPSections';
+import {
+  LuminaryGlyph,
+  ZodiacGlyph,
+  normalizeZodiacSign,
+} from '../../components/astro/ZodiacGlyph';
 import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { startConversationWith } from '../../services/conversations';
@@ -165,15 +170,33 @@ export default function ProfileDetailScreen() {
         <View style={styles.body}>
           <View style={styles.signsRow}>
             <View style={styles.signPill}>
-              <Text style={styles.signEmoji}>{'☀️'}</Text>
+              <LuminaryGlyph kind="sun" size="sm" />
+              {(() => {
+                const k = normalizeZodiacSign(profile.sun_sign);
+                return k ? (
+                  <ZodiacGlyph sign={k} variant="inline" size="sm" />
+                ) : null;
+              })()}
               <Text style={styles.signText}>{profile.sun_sign || '?'}</Text>
             </View>
             <View style={styles.signPill}>
-              <Text style={styles.signEmoji}>{'🌙'}</Text>
+              <LuminaryGlyph kind="moon" size="sm" />
+              {(() => {
+                const k = normalizeZodiacSign(profile.moon_sign);
+                return k ? (
+                  <ZodiacGlyph sign={k} variant="inline" size="sm" />
+                ) : null;
+              })()}
               <Text style={styles.signText}>{profile.moon_sign || '?'}</Text>
             </View>
             <View style={styles.signPill}>
-              <Text style={styles.signEmoji}>{'⬆️'}</Text>
+              <LuminaryGlyph kind="rising" size="sm" />
+              {(() => {
+                const k = normalizeZodiacSign(profile.rising_sign);
+                return k ? (
+                  <ZodiacGlyph sign={k} variant="inline" size="sm" />
+                ) : null;
+              })()}
               <Text style={styles.signText}>{profile.rising_sign || '?'}</Text>
             </View>
           </View>
@@ -271,7 +294,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
-  signEmoji: { fontSize: 18 },
   signText: { color: '#fff', fontWeight: '600', fontSize: 14 },
 
   bio: {

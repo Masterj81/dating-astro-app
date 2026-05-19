@@ -1,4 +1,8 @@
 import { Share, Platform } from 'react-native';
+import {
+  ZODIAC_GLYPHS,
+  normalizeZodiacSign,
+} from '../components/astro/ZodiacGlyph';
 
 /**
  * Share service for iOS Share Sheet integration
@@ -53,24 +57,14 @@ async function shareContent(
 }
 
 /**
- * Get zodiac emoji for a sign
+ * Get zodiac glyph for a sign — for use in plain-text share content.
+ * Returns the Unicode astrological symbol (e.g. "♈" for Aries) which
+ * third-party apps will render in their native style. Falls back to a
+ * sparkle if the sign is unknown.
  */
 function getZodiacEmoji(sign: string): string {
-  const emojis: Record<string, string> = {
-    aries: '♈',
-    taurus: '♉',
-    gemini: '♊',
-    cancer: '♋',
-    leo: '♌',
-    virgo: '♍',
-    libra: '♎',
-    scorpio: '♏',
-    sagittarius: '♐',
-    capricorn: '♑',
-    aquarius: '♒',
-    pisces: '♓',
-  };
-  return emojis[sign.toLowerCase()] || '✨';
+  const key = normalizeZodiacSign(sign);
+  return key ? ZODIAC_GLYPHS[key] : '✨';
 }
 
 /**

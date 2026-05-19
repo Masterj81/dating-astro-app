@@ -15,6 +15,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import {
+  ZodiacGlyph,
+  normalizeZodiacSign,
+  type ZodiacSignKey,
+} from '../../components/astro/ZodiacGlyph';
 
 // ── Types ──────────────────────────────────────────────────────────
 type Preferences = {
@@ -41,18 +46,18 @@ const DEFAULTS: Preferences = {
 const ALL_ELEMENTS = ['fire', 'earth', 'air', 'water'] as const;
 
 const ZODIAC_SIGNS = [
-  { name: 'Aries', emoji: '♈', element: 'fire' },
-  { name: 'Taurus', emoji: '♉', element: 'earth' },
-  { name: 'Gemini', emoji: '♊', element: 'air' },
-  { name: 'Cancer', emoji: '♋', element: 'water' },
-  { name: 'Leo', emoji: '♌', element: 'fire' },
-  { name: 'Virgo', emoji: '♍', element: 'earth' },
-  { name: 'Libra', emoji: '♎', element: 'air' },
-  { name: 'Scorpio', emoji: '♏', element: 'water' },
-  { name: 'Sagittarius', emoji: '♐', element: 'fire' },
-  { name: 'Capricorn', emoji: '♑', element: 'earth' },
-  { name: 'Aquarius', emoji: '♒', element: 'air' },
-  { name: 'Pisces', emoji: '♓', element: 'water' },
+  { name: 'Aries', element: 'fire' },
+  { name: 'Taurus', element: 'earth' },
+  { name: 'Gemini', element: 'air' },
+  { name: 'Cancer', element: 'water' },
+  { name: 'Leo', element: 'fire' },
+  { name: 'Virgo', element: 'earth' },
+  { name: 'Libra', element: 'air' },
+  { name: 'Scorpio', element: 'water' },
+  { name: 'Sagittarius', element: 'fire' },
+  { name: 'Capricorn', element: 'earth' },
+  { name: 'Aquarius', element: 'air' },
+  { name: 'Pisces', element: 'water' },
 ] as const;
 
 const ELEMENTS = [
@@ -408,18 +413,29 @@ export default function PreferencesScreen() {
           <Text style={s.sectionTitle}>{t('filterByZodiac') || 'Filter by Zodiac Sign'}</Text>
           <Text style={s.hint}>{t('zodiacFilterHint') || 'Only show profiles with these sun signs'}</Text>
           <View style={s.zodiacGrid}>
-            {ZODIAC_SIGNS.map(sign => (
-              <TouchableOpacity
-                key={sign.name}
-                style={[s.zodiacCard, zodiacFilter.includes(sign.name) && s.cardActive]}
-                onPress={() => toggleZodiac(sign.name)}
-              >
-                <Text style={s.zodiacEmoji}>{sign.emoji}</Text>
-                <Text style={[s.zodiacName, zodiacFilter.includes(sign.name) && s.textActive]}>
-                  {t(sign.name.toLowerCase()) || sign.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {ZODIAC_SIGNS.map(sign => {
+              const isActive = zodiacFilter.includes(sign.name);
+              const signKey = normalizeZodiacSign(sign.name) as ZodiacSignKey;
+              return (
+                <TouchableOpacity
+                  key={sign.name}
+                  style={[s.zodiacCard, isActive && s.cardActive]}
+                  onPress={() => toggleZodiac(sign.name)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${sign.name}${isActive ? ' (selected)' : ''}`}
+                >
+                  <ZodiacGlyph
+                    sign={signKey}
+                    variant="premium"
+                    size="sm"
+                    active={isActive}
+                  />
+                  <Text style={[s.zodiacName, isActive && s.textActive]}>
+                    {t(sign.name.toLowerCase()) || sign.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -533,8 +549,7 @@ const s = StyleSheet.create({
 
   // Zodiac
   zodiacGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  zodiacCard: { width: '22%', aspectRatio: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 2, borderColor: 'transparent' },
-  zodiacEmoji: { fontSize: 20, marginBottom: 4 },
+  zodiacCard: { width: '22%', aspectRatio: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 2, borderColor: 'transparent', gap: 6 },
   zodiacName: { fontSize: 10, color: '#888', textAlign: 'center' },
 
   // Shared active states
