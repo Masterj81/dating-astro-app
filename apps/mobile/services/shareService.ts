@@ -197,7 +197,7 @@ ${emoji} ${capitalize(matchSign)} - ${compatibilityScore}% compatible
  * Share the app itself
  */
 export async function shareApp(): Promise<ShareResult> {
-  const message = `✨ Dating with depth, powered by astrology.
+  const message = `✨ Connection with depth, powered by astrology.
 
 I'm using JUNO to explore connection through real birth-chart synastry.
 

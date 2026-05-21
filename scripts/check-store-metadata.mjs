@@ -6,7 +6,7 @@
 // marketing graphics, share card and transactional emails — for old
 // brand names and swipe/match dating-clone language.
 //
-// SCOPE — three deliberately-targeted tiers (per the brief: scan
+// SCOPE — four deliberately-targeted tiers (per the brief: scan
 // store-facing + marketing-public surfaces, NOT historical migrations,
 // NOT i18n prose, NOT internal code):
 //
@@ -29,6 +29,13 @@
 //      disclaimers and prohibited-term lists. They get POSITIVE marker
 //      checks instead, so the guard can never be made unpassable by the
 //      Apple notes that explain what JUNO is not.
+//
+//   4. PUBLIC WEB MARKETING COPY (the hero + landing-page sections of
+//      every apps/web/messages/<locale>.json). This copy must SELL JUNO
+//      positively — it must carry NO "swipe" vocabulary at all, not even
+//      defensive "no swipe-to-like / swipe-to-pass" phrasing. That
+//      defensive framing is correct, but it belongs ONLY in the App
+//      Review docs of tier 3 — never in the public marketing hero.
 //
 // JUNO is an honest romantic / relationship product: "relationship",
 // "romantic", "love", "synastry", "birth-chart context", "connection",
@@ -167,6 +174,52 @@ const REQUIRED_ASSETS = [
   "docs/brand/juno-icon-exploration/final-juno-icon.svg",
 ];
 
+// --- Tier 4 config: public web marketing copy ------------------------------
+// The hero + landing-page sections of every locale. This copy SELLS JUNO;
+// it must carry no "swipe" vocabulary in any language. The defensive
+// "no swipe-to-like / swipe-to-pass" framing is allowed only in the
+// docs/app-store App Review material (tier 3) — never here.
+const WEB_MESSAGE_LOCALES = ["en", "fr", "es", "pt", "de", "ja", "zh", "ar"];
+const WEB_MARKETING_SECTIONS = [
+  "hero",
+  "features",
+  "howItWorks",
+  "marketingProof",
+  "socialProof",
+];
+const HERO_BANNED = [
+  {
+    term: "swipe",
+    reason:
+      "swipe vocabulary — public marketing must sell positively; the " +
+      "'no swipe-to-like / swipe-to-pass' framing belongs only in docs/app-store",
+  },
+  { term: "astrodating", reason: "former brand name" },
+  { term: "tinder", reason: "competitor brand name" },
+  { term: "bumble", reason: "competitor brand name" },
+  { term: "hinge", reason: "competitor brand name" },
+  { term: "dating clone", reason: "dating-clone framing" },
+  { term: "dating app", reason: "generic-dating framing" },
+  { term: "perfect match", reason: "magic-outcome claim" },
+  { term: "soulmate", reason: "magic-outcome claim" },
+  { term: "guaranteed compatibility", reason: "compatibility guarantee" },
+  { term: "it's a match", reason: "match-celebration phrase" },
+  { term: "it’s a match", reason: "match-celebration phrase (curly apostrophe)" },
+  { term: "find your match", reason: "match-clone tagline" },
+  { term: "find your deeper match", reason: "match-clone tagline" },
+];
+
+// Collect every string value under an object, with its dotted key path.
+function collectStrings(node, prefix, out) {
+  if (typeof node === "string") {
+    out.push({ path: prefix, value: node });
+  } else if (node && typeof node === "object") {
+    for (const [k, v] of Object.entries(node)) {
+      collectStrings(v, prefix ? `${prefix}.${k}` : k, out);
+    }
+  }
+}
+
 function getField(obj, dotted) {
   return dotted.split(".").reduce((o, k) => (o == null ? o : o[k]), obj);
 }
@@ -266,6 +319,37 @@ for (const dc of DOC_CHECKS) {
   }
 }
 
+// --- Tier 4: public web marketing copy -------------------------------------
+for (const locale of WEB_MESSAGE_LOCALES) {
+  const rel = `apps/web/messages/${locale}.json`;
+  const full = path.join(ROOT, rel);
+  if (!fs.existsSync(full)) {
+    fail(rel, "(file)", "—", "web locale file is missing");
+    continue;
+  }
+  let json;
+  try {
+    json = JSON.parse(fs.readFileSync(full, "utf8"));
+  } catch (err) {
+    fail(rel, "(file)", "—", `not valid JSON: ${err.message}`);
+    continue;
+  }
+  for (const section of WEB_MARKETING_SECTIONS) {
+    if (json[section] == null) continue;
+    const strings = [];
+    collectStrings(json[section], section, strings);
+    for (const { path: keyPath, value } of strings) {
+      const lower = value.toLowerCase();
+      for (const { term, reason } of HERO_BANNED) {
+        if (lower.includes(term)) fail(rel, keyPath, term, reason);
+      }
+      if (/\bSATURN\b/.test(value)) {
+        fail(rel, keyPath, "SATURN", "former rebrand name");
+      }
+    }
+  }
+}
+
 // --- Asset existence -------------------------------------------------------
 for (const asset of REQUIRED_ASSETS) {
   if (!fs.existsSync(path.join(ROOT, asset))) {
@@ -290,7 +374,8 @@ if (failures.length > 0) {
 
 console.log(
   "Store metadata guard passed — JUNO branding intact across config, " +
-    "marketing assets, transactional emails and App Review docs; no " +
-    "swipe/match dating-clone language; brand/store raster assets present."
+    "marketing assets, transactional emails, public web marketing copy " +
+    "and App Review docs; no swipe/match dating-clone language; the hero " +
+    "sells positively; brand/store raster assets present."
 );
 process.exit(0);

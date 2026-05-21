@@ -71,7 +71,7 @@ export default function DataDeletionScreen() {
               - Photos and media{'\n'}
               - Birth date and astrological data{'\n'}
               - Messages and chat history{'\n'}
-              - Matches and swipe history{'\n'}
+              - Connections and discovery activity{'\n'}
               - Payment records (except as required by law){'\n'}
               - All other personal data
             </Text>

@@ -115,7 +115,7 @@ export default function PremiumScreen() {
             <PremiumGlyph size={80} />
           </View>
           <h1 style={{ fontSize: 28, fontWeight: 'bold', color: '#fff', margin: '0 0 12px' }}>
-            {t('paywallHeroTitle') || 'The Stars Know Your Match'}
+            {t('paywallHeroTitle') || 'The Stars Know Your Connection'}
           </h1>
           <p style={{ fontSize: 16, color: '#888', margin: '0 0 16px', maxWidth: 340 }}>
             {t('paywallHeroSubtitle') || 'Unlock the cosmic insights that lead to deeper, more meaningful connections'}
@@ -171,10 +171,10 @@ export default function PremiumScreen() {
       // Keys are versioned (`v2`) so stale translations from the swipe-era
       // product can't override the new conversation-first fallback copy.
       // Icons are now glyph components keyed by intent, not emoji strings.
-      { glyph: 'synastry' as const, label: t('paywallBenefitLabelV2_1') || 'Synastry Compatibility', desc: t('paywallBenefitDescV2_1') || 'A side-by-side chart breakdown of how you and a match align' },
+      { glyph: 'synastry' as const, label: t('paywallBenefitLabelV2_1') || 'Synastry Compatibility', desc: t('paywallBenefitDescV2_1') || 'A side-by-side chart breakdown of how two charts align' },
       { glyph: 'natal' as const, label: t('paywallBenefitLabelV2_2') || 'Full Natal Chart Insights', desc: t('paywallBenefitDescV2_2') || 'Explore your sun, moon, rising, and the planets that shape you' },
       { glyph: 'tarot' as const, label: t('paywallBenefitLabelV2_3') || 'Monthly Tarot Reading', desc: t('paywallBenefitDescV2_3') || 'A fresh reading each month to reflect on love and direction' },
-      { glyph: 'conversation' as const, label: t('paywallBenefitLabelV2_4') || 'Conversation-First Matching', desc: t('paywallBenefitDescV2_4') || 'Connect through values, intent, and prompts \u2014 not just photos' },
+      { glyph: 'conversation' as const, label: t('paywallBenefitLabelV2_4') || 'Conversation-First Discovery', desc: t('paywallBenefitDescV2_4') || 'Connect through values, intent, and prompts \u2014 not just photos' },
     ];
 
     return (
@@ -187,7 +187,7 @@ export default function PremiumScreen() {
           <View style={styles.paywallHeroGlyph}>
             <PremiumGlyph size={64} />
           </View>
-          <Text style={styles.paywallTitle}>{t('paywallHeroTitle') || 'The Stars Know Your Match'}</Text>
+          <Text style={styles.paywallTitle}>{t('paywallHeroTitle') || 'The Stars Know Your Connection'}</Text>
           <Text style={styles.paywallSubtitle}>
             {t('paywallHeroSubtitle') || 'Unlock the cosmic insights that lead to deeper, more meaningful connections'}
           </Text>

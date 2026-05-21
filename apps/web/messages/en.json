@@ -22,7 +22,7 @@
   "hero": {
     "badge": "Astrology as a language, not a fortune.",
     "tagline": "Connection with depth.",
-    "description": "See the synastry before the conversation — birth-chart context, guided intros, and voice-led profiles, with no swipe-to-like or swipe-to-pass mechanics.",
+    "description": "See the synastry before the conversation — birth-chart context, guided intros, and voice-led profiles for more intentional connection.",
     "appStore": "App Store",
     "playStore": "Google Play",
     "webApp": "Open Web App",
@@ -72,7 +72,7 @@
     "step2Title": "See the Synastry First",
     "step2Desc": "Read the synastry and connection insight between your charts before you ever start a conversation.",
     "step3Title": "Start an Intentional Conversation",
-    "step3Desc": "Open with a guided intro shaped by your charts — conversation with context, not a swipe-to-like card game."
+    "step3Desc": "Open with a guided intro shaped by your charts — every conversation starts with real context."
   },
   "premium": {
     "badge": "Premium Plans",

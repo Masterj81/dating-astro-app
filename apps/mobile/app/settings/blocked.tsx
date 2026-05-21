@@ -166,7 +166,7 @@ export default function BlockedUsersScreen() {
             <View style={styles.infoCard}>
               <Text style={styles.infoIcon}>{'\u{2139}\u{FE0F}'}</Text>
               <Text style={styles.infoText}>
-                {t('blockInfo') || 'Blocked users cannot see your profile, send you messages, or match with you.'}
+                {t('blockInfo') || 'Blocked users cannot see your profile, send you messages, or connect with you.'}
               </Text>
             </View>
           }
@@ -181,7 +181,7 @@ export default function BlockedUsersScreen() {
           <View style={[styles.infoCard, { marginTop: 24 }]}>
             <Text style={styles.infoIcon}>{'\u{2139}\u{FE0F}'}</Text>
             <Text style={styles.infoText}>
-              {t('blockInfo') || 'Blocked users cannot see your profile, send you messages, or match with you.'}
+              {t('blockInfo') || 'Blocked users cannot see your profile, send you messages, or connect with you.'}
             </Text>
           </View>
         </View>

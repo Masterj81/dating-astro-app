@@ -283,7 +283,7 @@ function ChartRevealOverlay({
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Text style={revealStyles.buttonText}>{t('letsGoDiscover') || "Let's Find Your Matches"}</Text>
+              <Text style={revealStyles.buttonText}>{t('letsGoDiscover') || "Let's Find Your Connections"}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
@@ -775,7 +775,7 @@ export default function BirthInfoScreen() {
     2: {
       icon: '\uD83C\uDF19',
       title: t('stepTwoTitle') || 'Refine Your Chart',
-      subtitle: t('stepTwoSubtitle') || 'These details unlock your Moon and Rising signs for deeper, more accurate matches',
+      subtitle: t('stepTwoSubtitle') || 'These details unlock your Moon and Rising signs for deeper, more accurate connections',
     },
     3: {
       icon: '\u2728',

@@ -162,7 +162,7 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
         | null;
 
       if (!response?.success || !response.profile) {
-        throw new Error(response?.error || t('matchDataMissing') || 'Match profile not found');
+        throw new Error(response?.error || t('matchDataMissing') || 'Profile data not found');
       }
 
       const p = response.profile;
@@ -483,7 +483,7 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
       return (
         <View style={styles.stateCard}>
           <Text style={styles.stateTitle}>
-            {t('matchDataMissing') || 'Match profile data is missing.'}
+            {t('matchDataMissing') || 'Profile data is unavailable.'}
           </Text>
           <TouchableOpacity style={styles.primaryButton} onPress={loadProfiles}>
             <Text style={styles.primaryButtonText}>
@@ -531,7 +531,7 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
                   <Text style={styles.heroJoiner}>{'✦'}</Text>
                   <View style={styles.heroProfileCol}>
                     <Text style={styles.heroProfileName} numberOfLines={1}>
-                      {other?.name || t('match') || 'Match'}
+                      {other?.name || t('match') || 'Connection'}
                     </Text>
                     <Text style={styles.heroProfileSigns} numberOfLines={2}>
                       {translateSign(other?.sun_sign)}
