@@ -18,7 +18,7 @@ export default function PrivacyPolicyScreen() {
         '\u2022 Birth Data: Your birth date, birth time, and birth city, used to calculate your natal chart (Sun, Moon, and Rising signs).\n\n' +
         '\u2022 Profile Information: Photos, bio, occupation, and other details you choose to share on your profile.\n\n' +
         '\u2022 Location Data: Your approximate location to show you nearby profiles and calculate distance.\n\n' +
-        '\u2022 Usage Data: How you interact with the app, including swipes, matches, messages, and feature usage.\n\n' +
+        '\u2022 Usage Data: How you interact with the app, including profile browsing, conversations, messages, and feature usage.\n\n' +
         '\u2022 Device Information: Device type, operating system, app version, and unique device identifiers.',
     },
     {
@@ -27,17 +27,17 @@ export default function PrivacyPolicyScreen() {
         'We use the information we collect to:\n\n' +
         '\u2022 Calculate your astrological natal chart and compatibility scores with other users.\n\n' +
         '\u2022 Show you compatible profiles based on your preferences and astrological compatibility.\n\n' +
-        '\u2022 Enable messaging and matching features between users.\n\n' +
+        '\u2022 Enable messaging and connection features between users.\n\n' +
         '\u2022 Generate personalized horoscopes and astrological insights.\n\n' +
-        '\u2022 Send you notifications about matches, messages, and app updates.\n\n' +
-        '\u2022 Improve our matching algorithms and app experience.\n\n' +
+        '\u2022 Send you notifications about connections, messages, and app updates.\n\n' +
+        '\u2022 Improve our synastry logic and app experience.\n\n' +
         '\u2022 Ensure safety and prevent fraud or abuse on the platform.',
     },
     {
       title: t('dataSharing') || 'How We Share Your Information',
       content:
         'We do not sell your personal data. We may share your information in the following circumstances:\n\n' +
-        '\u2022 With Other Users: Your profile information, photos, and astrological data are visible to other users as part of the matching experience.\n\n' +
+        '\u2022 With Other Users: Your profile information, photos, and astrological data are visible to other users as part of the relationship discovery experience.\n\n' +
         '\u2022 Service Providers: We work with third-party providers for hosting, analytics, payment processing, and push notifications.\n\n' +
         '\u2022 Legal Requirements: We may disclose information if required by law, court order, or government request.\n\n' +
         '\u2022 Safety: We may share information to protect the safety of our users or the public.',

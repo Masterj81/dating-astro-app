@@ -52,7 +52,7 @@ export default function TermsOfServiceScreen() {
         '\u2022 You retain ownership of the content you post on JUNO, including photos, bio text, and messages.\n\n' +
         '\u2022 By posting content, you grant JUNO a non-exclusive, worldwide, royalty-free license to use, display, and distribute your content within the app for the purpose of providing the service.\n\n' +
         '\u2022 This license ends when you delete your content or account.\n\n' +
-        '\u2022 JUNO owns all intellectual property related to the app, including the matching algorithms, astrological calculations, design, and branding.\n\n' +
+        '\u2022 JUNO owns all intellectual property related to the app, including the synastry logic, astrological calculations, design, and branding.\n\n' +
         '\u2022 You may not copy, modify, or distribute any part of the app without permission.',
     },
     {
