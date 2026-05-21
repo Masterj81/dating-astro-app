@@ -63,7 +63,7 @@ export function StickyDownloadBar() {
     >
       <div className="mx-auto flex max-w-md items-center gap-3 px-4 py-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-white">AstroDating</p>
+          <p className="truncate text-sm font-semibold text-white">JUNO</p>
           <p className="truncate text-[11px] text-text-muted">
             {isIOS ? t("iOSInstallHint") : t("badge")}
           </p>

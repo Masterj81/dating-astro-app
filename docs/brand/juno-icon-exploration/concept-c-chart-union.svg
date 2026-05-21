@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>JUNO — Concept C — Chart Union</title>
+  <defs>
+    <radialGradient id="cTile" cx="0.5" cy="0.4" r="0.85">
+      <stop offset="0" stop-color="#141821"/>
+      <stop offset="1" stop-color="#08090b"/>
+    </radialGradient>
+  </defs>
+
+  <!-- app-icon tile -->
+  <rect width="1024" height="1024" rx="224" fill="url(#cTile)"/>
+  <rect x="3" y="3" width="1018" height="1018" rx="221" fill="none" stroke="#e9c873" stroke-opacity="0.10" stroke-width="6"/>
+
+  <!-- Two abstract birth-chart wheels that overlap — a synastric relationship.
+       Each is a ring with house spokes; the overlap zone carries the aspect lines. -->
+  <g transform="translate(512 512)">
+    <!-- LEFT chart wheel (gold) -->
+    <g transform="translate(-118 0)">
+      <circle r="248" fill="none" stroke="#e9c873" stroke-width="22"/>
+      <circle r="150" fill="none" stroke="#e9c873" stroke-width="10" stroke-opacity="0.55"/>
+      <!-- house spokes between the two rings -->
+      <g stroke="#e9c873" stroke-width="9" stroke-opacity="0.7">
+        <line x1="0" y1="-150" x2="0" y2="-248"/>
+        <line x1="130" y1="-75" x2="215" y2="-124"/>
+        <line x1="130" y1="75" x2="215" y2="124"/>
+        <line x1="0" y1="150" x2="0" y2="248"/>
+        <line x1="-130" y1="75" x2="-215" y2="124"/>
+        <line x1="-130" y1="-75" x2="-215" y2="-124"/>
+      </g>
+    </g>
+
+    <!-- RIGHT chart wheel (soft blue) -->
+    <g transform="translate(118 0)">
+      <circle r="248" fill="none" stroke="#7aa7ff" stroke-width="22"/>
+      <circle r="150" fill="none" stroke="#7aa7ff" stroke-width="10" stroke-opacity="0.55"/>
+      <g stroke="#7aa7ff" stroke-width="9" stroke-opacity="0.7">
+        <line x1="0" y1="-150" x2="0" y2="-248"/>
+        <line x1="130" y1="-75" x2="215" y2="-124"/>
+        <line x1="130" y1="75" x2="215" y2="124"/>
+        <line x1="0" y1="150" x2="0" y2="248"/>
+        <line x1="-130" y1="75" x2="-215" y2="124"/>
+        <line x1="-130" y1="-75" x2="-215" y2="-124"/>
+      </g>
+    </g>
+
+    <!-- the union: aspect lines drawn across the shared lens -->
+    <g stroke="#e7e9ee" stroke-width="11" stroke-linecap="round">
+      <line x1="0" y1="-118" x2="0" y2="118"/>
+      <line x1="-58" y1="-66" x2="58" y2="66"/>
+      <line x1="-58" y1="66" x2="58" y2="-66"/>
+    </g>
+    <!-- aspect nodes -->
+    <circle cx="0" cy="-118" r="20" fill="#e7e9ee"/>
+    <circle cx="0" cy="118" r="20" fill="#e7e9ee"/>
+    <circle cx="0" cy="0" r="26" fill="#08090b" stroke="#e7e9ee" stroke-width="9"/>
+  </g>
+</svg>

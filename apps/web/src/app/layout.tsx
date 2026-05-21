@@ -10,8 +10,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "AstroDating",
-  description: "Find your deeper match",
+  title: "JUNO",
+  description: "Synastry-led relationship discovery — birth-chart context before the conversation.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

@@ -1,6 +1,6 @@
 /**
  * ZodiacGlyph — the single source of truth for rendering zodiac signs
- * across the AstroDating web app. Replaces inline emoji strings
+ * across the JUNO web app. Replaces inline emoji strings
  * ('☀️' / '🌙' / '⬆️') and ad-hoc per-component glyph maps.
  *
  * The symbols ♈ ♉ ♊ ♋ ♌ ♍ ♎ ♏ ♐ ♑ ♒ ♓ live in U+2648–U+2653

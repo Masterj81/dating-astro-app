@@ -531,7 +531,7 @@ export function DiscoverOverview() {
                 type="button"
                 onClick={() => {
                   if (!currentProfile) return;
-                  const text = `Discovering real connections on AstroDating\nhttps://astrodatingapp.com`;
+                  const text = `Discovering real connections on JUNO\nhttps://astrodatingapp.com`;
                   if (navigator.share) {
                     navigator.share({ text, title: t("shareTitle") }).catch(() => {});
                   } else if (navigator.clipboard) {

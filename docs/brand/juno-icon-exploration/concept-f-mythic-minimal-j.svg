@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>JUNO — Concept F — Mythic Minimal J</title>
+  <defs>
+    <linearGradient id="fTile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#11141b"/>
+      <stop offset="1" stop-color="#08090b"/>
+    </linearGradient>
+    <linearGradient id="fJ" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3d98f"/>
+      <stop offset="1" stop-color="#e9c873"/>
+    </linearGradient>
+  </defs>
+
+  <!-- app-icon tile -->
+  <rect width="1024" height="1024" rx="224" fill="url(#fTile)"/>
+  <rect x="3" y="3" width="1018" height="1018" rx="221" fill="none" stroke="#e9c873" stroke-opacity="0.10" stroke-width="6"/>
+
+  <!-- A discreet stylized 'J' whose hook is completed by an orbit ring.
+       The J is a single stroke; the ring it hangs from is the relationship orbit. -->
+  <g transform="translate(512 512)">
+    <!-- the orbit ring — the J's terminal becomes a body riding it -->
+    <circle r="252" fill="none" stroke="#7aa7ff" stroke-width="16" stroke-opacity="0.55"/>
+
+    <!-- the 'J' as one continuous calligraphic stroke:
+         a top serif-bar, a descending spine, and a curved foot. -->
+    <path d="M -36 -210
+             L 132 -210
+             M 86 -210
+             L 86 96
+             A 150 150 0 0 1 -214 96"
+          fill="none" stroke="url(#fJ)" stroke-width="56"
+          stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- the foot of the J terminates in a small planet sitting on the orbit -->
+    <circle cx="-214" cy="96" r="44" fill="url(#fJ)"/>
+    <circle cx="-214" cy="96" r="44" fill="none" stroke="#08090b" stroke-width="6"/>
+
+    <!-- a single counter-body on the orbit = the other person, mid-arc -->
+    <circle cx="178" cy="-178" r="30" fill="#7aa7ff"/>
+  </g>
+</svg>

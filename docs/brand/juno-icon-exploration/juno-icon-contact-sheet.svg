@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="980" viewBox="0 0 1200 980">
+  <title>JUNO — Synastry Guide — Icon Exploration Contact Sheet</title>
+  <defs>
+    <!-- ===== shared gradients (suffixed per concept) ===== -->
+    <linearGradient id="csTileVert" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#11141b"/><stop offset="1" stop-color="#08090b"/>
+    </linearGradient>
+    <linearGradient id="csTileDiag" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#11141b"/><stop offset="1" stop-color="#08090b"/>
+    </linearGradient>
+    <radialGradient id="csTileRad" cx="0.5" cy="0.4" r="0.85">
+      <stop offset="0" stop-color="#141821"/><stop offset="1" stop-color="#08090b"/>
+    </radialGradient>
+    <radialGradient id="csTileE" cx="0.5" cy="0.34" r="0.95">
+      <stop offset="0" stop-color="#161a23"/><stop offset="0.62" stop-color="#0d0f15"/><stop offset="1" stop-color="#08090b"/>
+    </radialGradient>
+    <linearGradient id="csGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3d98f"/><stop offset="1" stop-color="#e9c873"/>
+    </linearGradient>
+    <linearGradient id="csArc" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#e9c873"/><stop offset="1" stop-color="#7aa7ff"/>
+    </linearGradient>
+    <radialGradient id="csGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#7aa7ff" stop-opacity="0.40"/><stop offset="1" stop-color="#7aa7ff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- sheet background -->
+  <rect width="1200" height="980" fill="#0b0c10"/>
+
+  <!-- header -->
+  <text x="60" y="74" font-family="Georgia, 'Times New Roman', serif" font-size="38" fill="#e7e9ee">JUNO — Synastry Guide</text>
+  <text x="60" y="108" font-family="Helvetica, Arial, sans-serif" font-size="19" fill="#9aa0ad" letter-spacing="2">APP ICON EXPLORATION · SIX DIRECTIONS</text>
+
+  <!-- ============================================================
+       Tiles laid out at 320x320 on a 3x2 grid.
+       Each tile re-uses concept artwork scaled into a 320 box.
+       Origin offsets: cols x = 60, 460, 860 ; rows y = 150, 560
+       Each concept group is translated then scaled 320/1024 = 0.3125
+       ============================================================ -->
+
+  <!-- ============ A — Juno Glyph / Crown ============ -->
+  <g transform="translate(60 150)">
+    <g transform="scale(0.3125)">
+      <rect width="1024" height="1024" rx="224" fill="url(#csTileVert)"/>
+      <rect x="3" y="3" width="1018" height="1018" rx="221" fill="none" stroke="#e9c873" stroke-opacity="0.10" stroke-width="6"/>
+      <g transform="translate(512 512)">
+        <rect x="-150" y="232" width="300" height="22" rx="11" fill="url(#csGold)"/>
+        <rect x="-15" y="-58" width="30" height="304" rx="15" fill="url(#csGold)"/>
+        <circle cx="0" cy="-150" r="120" fill="none" stroke="url(#csGold)" stroke-width="30"/>
+        <circle cx="0" cy="-150" r="44" fill="#7aa7ff"/>
+        <path d="M -78 -245 L -54 -300 L -28 -252 Z" fill="url(#csGold)"/>
+        <path d="M -26 -262 L 0 -332 L 26 -262 Z" fill="url(#csGold)"/>
+        <path d="M 28 -252 L 54 -300 L 78 -245 Z" fill="url(#csGold)"/>
+        <circle cx="-110" cy="243" r="13" fill="#08090b"/>
+        <circle cx="110" cy="243" r="13" fill="#08090b"/>
+      </g>
+    </g>
+    <text x="0" y="356" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#e9c873" font-weight="bold">A</text>
+    <text x="24" y="356" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#e7e9ee">Juno Glyph / Crown</text>
+  </g>
+
+  <!-- ============ B — Twin Orbits ============ -->
+  <g transform="translate(460 150)">
+    <g transform="scale(0.3125)">
+      <rect width="1024" height="1024" rx="224" fill="url(#csTileDiag)"/>
+      <rect x="3" y="3" width="1018" height="1018" rx="221" fill="none" stroke="#e9c873" stroke-opacity="0.10" stroke-width="6"/>
+      <g transform="translate(512 512)">
+        <ellipse cx="-90" cy="0" rx="178" ry="252" fill="none" stroke="#e9c873" stroke-width="26" transform="rotate(-22)"/>
+        <ellipse cx="90" cy="0" rx="178" ry="252" fill="none" stroke="#7aa7ff" stroke-width="26" transform="rotate(22)"/>
+        <circle cx="0" cy="0" r="58" fill="#08090b"/>
+        <circle cx="0" cy="0" r="58" fill="none" stroke="#e7e9ee" stroke-width="10"/>
+        <circle cx="0" cy="0" r="17" fill="#e7e9ee"/>
+        <circle cx="-218" cy="-86" r="30" fill="#e9c873"/>
+        <circle cx="218" cy="86" r="30" fill="#7aa7ff"/>
+      </g>
+    </g>
+    <text x="0" y="356" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#e9c873" font-weight="bold">B</text>
+    <text x="24" y="356" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#e7e9ee">Twin Orbits</text>
+  </g>
+
+  <!-- ============ C — Chart Union ============ -->
+  <g transform="translate(860 150)">
+    <g transform="scale(0.3125)">
+      <rect width="1024" height="1024" rx="224" fill="url(#csTileRad)"/>
+      <rect x="3" y="3" width="1018" height="1018" rx="221" fill="none" stroke="#e9c873" stroke-opacity="0.10" stroke-width="6"/>
+      <g transform="translate(512 512)">
+        <g transform="translate(-118 0)">
+          <circle r="248" fill="none" stroke="#e9c873" stroke-width="22"/>
+          <circle r="150" fill="none" stroke="#e9c873" stroke-width="10" stroke-opacity="0.55"/>
+          <g stroke="#e9c873" stroke-width="9" stroke-opacity="0.7">
+            <line x1="0" y1="-150" x2="0" y2="-248"/>
+            <line x1="130" y1="-75" x2="215" y2="-124"/>
+            <line x1="130" y1="75" x2="215" y2="124"/>
+            <line x1="0" y1="150" x2="0" y2="248"/>
+            <line x1="-130" y1="75" x2="-215" y2="124"/>
+            <line x1="-130" y1="-75" x2="-215" y2="-124"/>
+          </g>
+        </g>
+        <g transform="translate(118 0)">
+          <circle r="248" fill="none" stroke="#7aa7ff" stroke-width="22"/>
+          <circle r="150" fill="none" stroke="#7aa7ff" stroke-width="10" stroke-opacity="0.55"/>
+          <g stroke="#7aa7ff" stroke-width="9" stroke-opacity="0.7">
+            <line x1="0" y1="-150" x2="0" y2="-248"/>
+            <line x1="130" y1="-75" x2="215" y2="-124"/>
+            <line x1="130" y1="75" x2="215" y2="124"/>
+            <line x1="0" y1="150" x2="0" y2="248"/>
+            <line x1="-130" y1="75" x2="-215" y2="124"/>
+            <line x1="-130" y1="-75" x2="-215" y2="-124"/>
+          </g>
+        </g>
+        <g stroke="#e7e9ee" stroke-width="11" stroke-linecap="round">
+          <line x1="0" y1="-118" x2="0" y2="118"/>
+          <line x1="-58" y1="-66" x2="58" y2="66"/>
+          <line x1="-58" y1="66" x2="58" y2="-66"/>
+        </g>
+        <circle cx="0" cy="-118" r="20" fill="#e7e9ee"/>
+        <circle cx="0" cy="118" r="20" fill="#e7e9ee"/>
+        <circle cx="0" cy="0" r="26" fill="#08090b" stroke="#e7e9ee" stroke-width="9"/>
+      </g>
+    </g>
+    <text x="0" y="356" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#e9c873" font-weight="bold">C</text>
+    <text x="24" y="356" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#e7e9ee">Chart Union</text>
+  </g>
+
+  <!-- ============ D — Guided Connection ============ -->
+  <g transform="translate(60 560)">
+    <g transform="scale(0.3125)">
+      <rect width="1024" height="1024" rx="224" fill="url(#csTileVert)"/>
+      <rect x="3" y="3" width="1018" height="1018" rx="221" fill="none" stroke="#e9c873" stroke-opacity="0.10" stroke-width="6"/>
+      <g transform="translate(512 512)">
+        <circle r="320" fill="none" stroke="#e7e9ee" stroke-width="4" stroke-opacity="0.10"/>
+        <path d="M -238 168 C -120 -200, 120 -200, 238 168" fill="none" stroke="url(#csArc)" stroke-width="34" stroke-linecap="round"/>
+        <circle cx="0" cy="-126" r="26" fill="#e7e9ee"/>
+        <circle cx="0" cy="-126" r="48" fill="none" stroke="#e7e9ee" stroke-width="5" stroke-opacity="0.45"/>
+        <circle cx="-238" cy="168" r="56" fill="#e9c873"/>
+        <circle cx="-238" cy="168" r="80" fill="none" stroke="#e9c873" stroke-width="6" stroke-opacity="0.4"/>
+        <circle cx="238" cy="168" r="56" fill="#7aa7ff"/>
+        <circle cx="238" cy="168" r="80" fill="none" stroke="#7aa7ff" stroke-width="6" stroke-opacity="0.4"/>
+      </g>
+    </g>
+    <text x="0" y="356" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#e9c873" font-weight="bold">D</text>
+    <text x="24" y="356" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#e7e9ee">Guided Connection</text>
+  </g>
+
+  <!-- ============ E — Dark Premium Tile ============ -->
+  <g transform="translate(460 560)">
+    <g transform="scale(0.3125)">
+      <rect width="1024" height="1024" rx="224" fill="url(#csTileE)"/>
+      <rect x="32" y="32" width="960" height="960" rx="196" fill="none" stroke="#e7e9ee" stroke-opacity="0.06" stroke-width="2"/>
+      <rect x="3" y="3" width="1018" height="1018" rx="221" fill="none" stroke="#e9c873" stroke-opacity="0.14" stroke-width="6"/>
+      <g transform="translate(512 512)">
+        <circle r="300" fill="url(#csGlow)"/>
+        <circle cx="-92" cy="0" r="170" fill="none" stroke="url(#csGold)" stroke-width="34"/>
+        <circle cx="92" cy="0" r="170" fill="none" stroke="url(#csGold)" stroke-width="34"/>
+        <path d="M 92 -170 A 170 170 0 0 1 262 0 A 170 170 0 0 1 92 170" fill="none" stroke="url(#csGold)" stroke-width="34"/>
+        <path d="M -3 -142 A 170 170 0 0 0 -3 142" fill="none" stroke="url(#csGold)" stroke-width="34"/>
+        <path d="M 0 -64 L 16 -16 L 64 0 L 16 16 L 0 64 L -16 16 L -64 0 L -16 -16 Z" fill="#7aa7ff"/>
+        <circle r="13" fill="#08090b"/>
+      </g>
+    </g>
+    <text x="0" y="356" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#e9c873" font-weight="bold">E</text>
+    <text x="24" y="356" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#e7e9ee">Dark Premium Tile</text>
+  </g>
+
+  <!-- ============ F — Mythic Minimal J ============ -->
+  <g transform="translate(860 560)">
+    <g transform="scale(0.3125)">
+      <rect width="1024" height="1024" rx="224" fill="url(#csTileVert)"/>
+      <rect x="3" y="3" width="1018" height="1018" rx="221" fill="none" stroke="#e9c873" stroke-opacity="0.10" stroke-width="6"/>
+      <g transform="translate(512 512)">
+        <circle r="252" fill="none" stroke="#7aa7ff" stroke-width="16" stroke-opacity="0.55"/>
+        <path d="M -36 -210 L 132 -210 M 86 -210 L 86 96 A 150 150 0 0 1 -214 96"
+              fill="none" stroke="url(#csGold)" stroke-width="56" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="-214" cy="96" r="44" fill="url(#csGold)"/>
+        <circle cx="-214" cy="96" r="44" fill="none" stroke="#08090b" stroke-width="6"/>
+        <circle cx="178" cy="-178" r="30" fill="#7aa7ff"/>
+      </g>
+    </g>
+    <text x="0" y="356" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#e9c873" font-weight="bold">F</text>
+    <text x="24" y="356" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#e7e9ee">Mythic Minimal J</text>
+  </g>
+
+  <!-- footer -->
+  <text x="60" y="952" font-family="Helvetica, Arial, sans-serif" font-size="14" fill="#6b7080">Exploration only — palette: #08090b / #11141b / #e9c873 / #7aa7ff / #e7e9ee</text>
+</svg>

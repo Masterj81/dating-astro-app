@@ -13,4 +13,4 @@ export function getResend() {
 }
 
 export const EMAIL_FROM =
-  process.env.EMAIL_FROM || "AstroDating <noreply@astrodatingapp.com>";
+  process.env.EMAIL_FROM || "JUNO <noreply@astrodatingapp.com>";

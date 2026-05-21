@@ -133,7 +133,7 @@ call "%MAESTRO%" test .maestro\01-signup-happy-path.yaml --debug-output "%DEBUG_
 echo --- Finished flow 01 (exit=%ERRORLEVEL%)
 call "%MAESTRO%" test .maestro\02-login-logout.yaml --debug-output "%DEBUG_DIR%\02" %ARGS% >> "%MASTER_LOG%" 2>&1
 echo --- Finished flow 02 (exit=%ERRORLEVEL%)
-call "%MAESTRO%" test .maestro\03-discover-swipe-match.yaml --debug-output "%DEBUG_DIR%\03" %ARGS% >> "%MASTER_LOG%" 2>&1
+call "%MAESTRO%" test .maestro\03-discover-browse-message.yaml --debug-output "%DEBUG_DIR%\03" %ARGS% >> "%MASTER_LOG%" 2>&1
 echo --- Finished flow 03 (exit=%ERRORLEVEL%)
 call "%MAESTRO%" test .maestro\04-chat-send-message.yaml --debug-output "%DEBUG_DIR%\04" %ARGS% >> "%MASTER_LOG%" 2>&1
 echo --- Finished flow 04 (exit=%ERRORLEVEL%)

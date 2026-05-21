@@ -54,15 +54,15 @@ export async function claimReferralCode(code: string) {
 
 export async function shareReferralCode(code: string, t: (key: string) => string) {
   const message = Platform.select({
-    ios: `${t('referralShareMessage') || 'Join me on AstroDating! Use my code'} ${code} ${t('referralShareReward') || 'and we both get 1 month of premium free!'}\n\nhttps://astrodatingapp.com`,
-    android: `${t('referralShareMessage') || 'Join me on AstroDating! Use my code'} ${code} ${t('referralShareReward') || 'and we both get 1 month of premium free!'}\n\nhttps://play.google.com/store/apps/details?id=com.astrodatingapp.mobile`,
-    default: `${t('referralShareMessage') || 'Join me on AstroDating! Use my code'} ${code} ${t('referralShareReward') || 'and we both get 1 month of premium free!'}\n\nhttps://astrodatingapp.com`,
+    ios: `${t('referralShareMessage') || 'Join me on JUNO! Use my code'} ${code} ${t('referralShareReward') || 'and we both get 1 month of premium free!'}\n\nhttps://astrodatingapp.com`,
+    android: `${t('referralShareMessage') || 'Join me on JUNO! Use my code'} ${code} ${t('referralShareReward') || 'and we both get 1 month of premium free!'}\n\nhttps://play.google.com/store/apps/details?id=com.astrodatingapp.mobile`,
+    default: `${t('referralShareMessage') || 'Join me on JUNO! Use my code'} ${code} ${t('referralShareReward') || 'and we both get 1 month of premium free!'}\n\nhttps://astrodatingapp.com`,
   });
 
   try {
     await Share.share({
       message,
-      title: t('referralShareTitle') || 'Join AstroDating',
+      title: t('referralShareTitle') || 'Join JUNO',
     });
     return true;
   } catch {

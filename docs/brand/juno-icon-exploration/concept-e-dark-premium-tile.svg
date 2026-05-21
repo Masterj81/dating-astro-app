@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>JUNO — Concept E — Dark Premium Tile</title>
+  <defs>
+    <radialGradient id="eTile" cx="0.5" cy="0.34" r="0.95">
+      <stop offset="0" stop-color="#161a23"/>
+      <stop offset="0.62" stop-color="#0d0f15"/>
+      <stop offset="1" stop-color="#08090b"/>
+    </radialGradient>
+    <linearGradient id="eGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4dd96"/>
+      <stop offset="1" stop-color="#e9c873"/>
+    </linearGradient>
+    <radialGradient id="eGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#7aa7ff" stop-opacity="0.40"/>
+      <stop offset="1" stop-color="#7aa7ff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- dark rounded tile with subtle depth -->
+  <rect width="1024" height="1024" rx="224" fill="url(#eTile)"/>
+  <!-- soft top inner light, no cheap gloss -->
+  <rect x="32" y="32" width="960" height="960" rx="196" fill="none" stroke="#e7e9ee" stroke-opacity="0.06" stroke-width="2"/>
+  <rect x="3" y="3" width="1018" height="1018" rx="221" fill="none" stroke="#e9c873" stroke-opacity="0.14" stroke-width="6"/>
+
+  <!-- central relationship/synastry symbol: two interlocked rings forming a steady union -->
+  <g transform="translate(512 512)">
+    <!-- soft-blue ambient depth behind the emblem -->
+    <circle r="300" fill="url(#eGlow)"/>
+
+    <!-- the two interlocking rings of synastry -->
+    <circle cx="-92" cy="0" r="170" fill="none" stroke="url(#eGold)" stroke-width="34"/>
+    <circle cx="92" cy="0" r="170" fill="none" stroke="url(#eGold)" stroke-width="34"/>
+
+    <!-- re-draw the right ring's leading edge so it reads as truly interlocked -->
+    <path d="M 92 -170 A 170 170 0 0 1 262 0 A 170 170 0 0 1 92 170"
+          fill="none" stroke="url(#eGold)" stroke-width="34"/>
+    <path d="M -3 -142 A 170 170 0 0 0 -3 142"
+          fill="none" stroke="url(#eGold)" stroke-width="34"/>
+
+    <!-- shared centre star — soft blue, the connection point -->
+    <g fill="#7aa7ff">
+      <path d="M 0 -64 L 16 -16 L 64 0 L 16 16 L 0 64 L -16 16 L -64 0 L -16 -16 Z"/>
+    </g>
+    <circle r="13" fill="#08090b"/>
+  </g>
+</svg>

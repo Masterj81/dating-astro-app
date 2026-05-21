@@ -1,4 +1,9 @@
-# AstroDating — Play Store Listing
+> **Superseded for store submission.** The current paste-ready store listing
+> (App Store + Play Store) lives in `docs/app-store/saturn-metadata.md`.
+> Brand names below were updated to JUNO, but framing may still read as
+> dating — defer to the metadata doc.
+
+# JUNO — Play Store Listing
 
 Realigns the live listing with the post-MVP direction: **conversation-first, anti-paywall-to-talk, profile depth (intent + values + lifestyle + prompts + voice + icebreakers)** with astrology as backbone. Replaces the older synastry-only framing.
 
@@ -21,13 +26,13 @@ The live listing (snapshot below) has at least two factual drifts that need to b
 ### Short description (current)
 
 ```
-Find your cosmic match with real birth chart compatibility
+Discover a synastry connection through real birth-chart compatibility
 ```
 *56 / 80 chars. Astrology-only framing.*
 
 ### Full description (current — abridged)
 
-> Find love written in the stars. AstroDating is the only dating app that uses real astrology — not just sun signs — to match you with truly compatible people.
+> Find love written in the stars. JUNO is the only dating app that uses real astrology — not just sun signs — to match you with truly compatible people.
 >
 > ⭐ TRY FREE FOR 7 DAYS — Full access, cancel anytime.
 >
@@ -46,15 +51,15 @@ Issues highlighted above.
 ### App name (max 30 chars)
 
 ```
-AstroDating: Talk, Don't Swipe
+JUNO: Talk, Don't Swipe
 ```
 *30 / 30 chars exactly.*
 
 Alternates if you want to keep "Astrology" higher in the title for ASO:
-- `AstroDating — Real Connection` (29)
-- `AstroDating: Astro + Real Talk` (30)
+- `JUNO — Real Connection` (29)
+- `JUNO: Astro + Real Talk` (30)
 
-If you want to keep the **current name** (`AstroDating`) untouched and only rewrite the descriptions, that's fine — the rewrite below works either way.
+If you want to keep the **current name** (`JUNO`) untouched and only rewrite the descriptions, that's fine — the rewrite below works either way.
 
 ### Short description (max 80 chars) — proposed
 
@@ -72,7 +77,7 @@ Alternates:
 ```
 Tired of swipe culture? Tired of paying just to send the first message?
 
-AstroDating is dating with depth. Match on what actually matters — your values, your lifestyle, your relationship intent — with astrology as the backbone, not a gimmick. Then start a real conversation. The first message is always free.
+JUNO is dating with depth. Match on what actually matters — your values, your lifestyle, your relationship intent — with astrology as the backbone, not a gimmick. Then start a real conversation. The first message is always free.
 
 ━━━━━━━━━━━━━━━━━━━━
 ✨ WHAT MAKES IT DIFFERENT
@@ -150,7 +155,7 @@ English, French, Spanish, Portuguese, German, Japanese, Chinese, Arabic.
 
 🤝 INVITE FRIENDS — Share your referral code, you both get 1 month of premium free.
 
-Done with swipe culture? Looking for someone who shares your values? Curious about astrology? Or you just want to actually talk to people? AstroDating is built for you.
+Done with swipe culture? Looking for someone who shares your values? Curious about astrology? Or you just want to actually talk to people? JUNO is built for you.
 
 Download free. Start a real conversation.
 ```
@@ -163,7 +168,7 @@ Download free. Start a real conversation.
 ### Nom de l'app (max 30 caractères)
 
 ```
-AstroDating : parle, swipe pas
+JUNO : parle, swipe pas
 ```
 
 ### Description courte (max 80 caractères)
@@ -178,7 +183,7 @@ Astro + valeurs + intro vocale. Premier message gratuit, sans paywall.
 ```
 Marre du swipe ? Marre de payer juste pour envoyer le premier message ?
 
-AstroDating, c'est rencontrer en profondeur. On te match sur ce qui compte vraiment — tes valeurs, ton mode de vie, ton intention — avec l'astrologie comme socle, pas comme gimmick. Et après, tu démarres une vraie conversation. Le premier message est toujours gratuit.
+JUNO, c'est rencontrer en profondeur. On te match sur ce qui compte vraiment — tes valeurs, ton mode de vie, ton intention — avec l'astrologie comme socle, pas comme gimmick. Et après, tu démarres une vraie conversation. Le premier message est toujours gratuit.
 
 ━━━━━━━━━━━━━━━━━━━━
 ✨ CE QUI CHANGE
@@ -253,7 +258,7 @@ Disponible en 8 langues : anglais, français, espagnol, portugais, allemand, jap
 
 🤝 INVITE TES AMIS — Partage ton code, vous gagnez tous les deux 1 mois de premium gratuit.
 
-Fini le swipe ? Tu cherches quelqu'un qui partage tes valeurs ? L'astro t'intrigue ? Tu veux juste vraiment parler à des gens ? AstroDating est fait pour toi.
+Fini le swipe ? Tu cherches quelqu'un qui partage tes valeurs ? L'astro t'intrigue ? Tu veux juste vraiment parler à des gens ? JUNO est fait pour toi.
 
 Télécharge gratuitement. Démarre une vraie conversation.
 ```
@@ -271,7 +276,7 @@ Télécharge gratuitement. Démarre une vraie conversation.
 | Super likes | "5/day Celestial" / "Unlimited Cosmic" | **REMOVED** | Feature was deleted (`a811b60`) — listing was lying |
 | Premium tiers | Celestial / Cosmic split with super-likes mention | Single "Premium (optional)" block, no super-likes | Tier structure may still exist in-app; we just don't lean on it as the listing's pitch |
 | Languages line | "8 languages" | "8 languages" (kept) | Still true (en/fr canonical + es/pt/de/ja/zh/ar via V1+V2 i18n) |
-| Closing CTA | "Download AstroDating — your birth chart knows your type" | "Download free. Start a real conversation." | Conversation-first close beats astro-first close given the new framing |
+| Closing CTA | "Download JUNO — your birth chart knows your type" | "Download free. Start a real conversation." | Conversation-first close beats astro-first close given the new framing |
 
 ---
 
@@ -281,4 +286,4 @@ Télécharge gratuitement. Démarre une vraie conversation.
 - [ ] Replace 4-6 screenshots with: profile detail (MVP sections visible), discover card full-bleed, prompts picker, voice intro player, conversation thread (showing free first message), values/lifestyle picker
 - [ ] Update the feature graphic ([apps/mobile/assets/images/google-play-feature-graphic.svg](apps/mobile/assets/images/google-play-feature-graphic.svg) / `-dating.svg` / `-minimal.svg`) — drop "zodiac" headline if any, swap for "Talk first" or "Real connection"
 - [ ] Decide locale fan-out: Play Console allows per-locale listings. We have es/pt/de/ar/ja/zh in-app — translate the short + full descriptions for these too if you want full ASO coverage
-- [ ] Update [docs/growth-plan.md](docs/growth-plan.md) Week 1 ASO section — currently still says title should be "AstroDating — Zodiac Compatibility & Birth Chart Dating", which is the old direction
+- [ ] Update [docs/growth-plan.md](docs/growth-plan.md) Week 1 ASO section — currently still says title should be "JUNO — Zodiac Compatibility & Birth Chart Dating", which is the old direction

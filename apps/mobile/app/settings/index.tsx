@@ -496,7 +496,7 @@ export default function SettingsScreen() {
 
         {/* App Version */}
         <View style={styles.versionContainer}>
-          <Text style={styles.versionText}>AstroDating v1.0.0</Text>
+          <Text style={styles.versionText}>JUNO v1.0.0</Text>
           <Text style={styles.versionSubtext}>{t('madeWithLove') || 'Made with care'}</Text>
         </View>
       </ScrollView>

@@ -26,7 +26,7 @@ type PhoneMockupPlaceholderProps = {
 
 export function PhoneMockupPlaceholder({
   className,
-  ariaLabel = "AstroDating Discover screen — Liam, Virgo · Taurus · Capricorn",
+  ariaLabel = "JUNO Discover screen — Liam, Virgo · Taurus · Capricorn",
   src = "/screenshots/discover.png",
   alt,
   priority = true,

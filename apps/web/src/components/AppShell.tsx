@@ -175,7 +175,7 @@ export function AppShell({
     <div className="flex min-h-screen">
       {/* ─── Desktop Sidebar ─── */}
       <aside
-        aria-label="AstroDating"
+        aria-label="JUNO"
         className={`sticky top-0 hidden h-screen flex-col border-r border-white/8 bg-[rgba(10,12,20,0.85)] backdrop-blur-2xl transition-all duration-300 lg:flex ${
           sidebarCollapsed ? "w-[72px]" : "w-[240px]"
         }`}
@@ -185,7 +185,7 @@ export function AppShell({
           <Link href="/" className="flex items-center gap-3">
             <Image
               src="/icon-192.png"
-              alt="AstroDating"
+              alt="JUNO"
               width={36}
               height={36}
               className="h-9 w-9 shrink-0 rounded-xl ring-1 ring-white/10"
@@ -193,7 +193,7 @@ export function AppShell({
             />
             {!sidebarCollapsed && (
               <span className="text-sm font-semibold tracking-wide text-white/80">
-                AstroDating
+                JUNO
               </span>
             )}
           </Link>
@@ -336,13 +336,13 @@ export function AppShell({
           <Link href="/" className="flex items-center gap-2">
             <Image
               src="/icon-192.png"
-              alt="AstroDating"
+              alt="JUNO"
               width={28}
               height={28}
               className="h-7 w-7 rounded-lg ring-1 ring-white/10"
               priority
             />
-            <span className="text-sm font-semibold text-white/80">AstroDating</span>
+            <span className="text-sm font-semibold text-white/80">JUNO</span>
           </Link>
 
           <div className="flex items-center gap-2">

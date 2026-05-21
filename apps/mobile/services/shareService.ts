@@ -93,7 +93,7 @@ export async function shareHoroscope(
 
 ${horoscopeText}
 
-✨ Get your personalized horoscope on AstroDating!`;
+✨ Get your personalized horoscope on JUNO!`;
 
   return shareContent(message, `${capitalize(sunSign)} Daily Horoscope`);
 }
@@ -125,7 +125,7 @@ export async function shareProfile(
 
 ${chartDetails}
 
-🔮 Discover your cosmic profile on AstroDating!`;
+🔮 Discover your cosmic profile on JUNO!`;
 
   return shareContent(message, `${name}'s Birth Chart`);
 }
@@ -164,7 +164,7 @@ ${capitalize(userSign)} ${userEmoji} + ${capitalize(partnerSign)} ${partnerEmoji
 ${compatibilityScore}% Compatible
 ${description}
 
-🔮 Find your deeper match on AstroDating!`;
+🔮 Explore connection through synastry on JUNO!`;
 
   return shareContent(
     message,
@@ -173,7 +173,9 @@ ${description}
 }
 
 /**
- * Share match result (when two users match)
+ * Share a new connection (when two users start a conversation).
+ * `shareMatch` / `matchName` are legacy internal names kept for callers;
+ * the user-facing copy is connection-first, with no match-celebration.
  */
 export async function shareMatch(
   matchName: string,
@@ -182,15 +184,13 @@ export async function shareMatch(
 ): Promise<ShareResult> {
   const emoji = getZodiacEmoji(matchSign);
 
-  const message = `🎉 I just matched with ${matchName} on AstroDating!
+  const message = `✨ I just connected with ${matchName} on JUNO!
 
-${emoji} ${capitalize(matchSign)} - ${compatibilityScore}% Compatible
+${emoji} ${capitalize(matchSign)} - ${compatibilityScore}% compatible
 
-✨ The stars have aligned! ✨
+🔮 Explore connection through synastry on JUNO!`;
 
-🔮 Find your real connection on AstroDating!`;
-
-  return shareContent(message, 'New AstroDating Match!');
+  return shareContent(message, 'New JUNO Connection');
 }
 
 /**
@@ -199,16 +199,16 @@ ${emoji} ${capitalize(matchSign)} - ${compatibilityScore}% Compatible
 export async function shareApp(): Promise<ShareResult> {
   const message = `✨ Dating with depth, powered by astrology.
 
-I'm using AstroDating to find a deeper match based on real birth-chart compatibility.
+I'm using JUNO to explore connection through real birth-chart synastry.
 
-🔮 Sun, Moon & Rising sign matching
-💕 Real astrology-based compatibility
+🔮 Sun, Moon & Rising chart context
+💕 Real synastry between two birth charts
 ✨ Personalized horoscopes
 
-Download AstroDating and meet someone aligned with you. 🌟`;
+Download JUNO and meet someone aligned with you. 🌟`;
 
   // In production, you'd include the actual App Store URL
-  return shareContent(message, 'AstroDating - Find Your Deeper Match');
+  return shareContent(message, 'JUNO — Synastry Guide');
 }
 
 /**
@@ -237,7 +237,7 @@ export async function sharePlanetaryTransit(
 
 ${description}
 
-✨ Track planetary transits on AstroDating!`;
+✨ Track planetary transits on JUNO!`;
 
   return shareContent(message, `${capitalize(planet)} Transit Update`);
 }
@@ -265,7 +265,7 @@ export async function shareRetrogradeAlert(
 
 Don't let the planets catch you off guard!
 
-🔮 Get retrograde alerts on AstroDating!`;
+🔮 Get retrograde alerts on JUNO!`;
 
   return shareContent(message, `${capitalize(planet)} Retrograde Alert`);
 }
@@ -287,7 +287,7 @@ ${datesStr}`;
     message += `\n\n💫 Best for: ${luckyActivity}`;
   }
 
-  message += `\n\n🔮 Get your personalized lucky days on AstroDating!`;
+  message += `\n\n🔮 Get your personalized lucky days on JUNO!`;
 
   return shareContent(message, 'My Lucky Days');
 }

@@ -13,7 +13,7 @@ export default function TermsOfServiceScreen() {
     {
       title: t('eligibility') || 'Eligibility',
       content:
-        'You must be at least 18 years old to use AstroDating. By creating an account, you confirm that:\n\n' +
+        'You must be at least 18 years old to use JUNO. By creating an account, you confirm that:\n\n' +
         '\u2022 You are at least 18 years of age.\n\n' +
         '\u2022 You are legally able to enter into a binding agreement.\n\n' +
         '\u2022 You are not prohibited from using the service under any applicable law.\n\n' +
@@ -23,7 +23,7 @@ export default function TermsOfServiceScreen() {
     {
       title: t('account') || 'Your Account',
       content:
-        'When you create an AstroDating account, you agree to:\n\n' +
+        'When you create an JUNO account, you agree to:\n\n' +
         '\u2022 Provide accurate, current, and complete information during registration.\n\n' +
         '\u2022 Maintain the security of your password and account.\n\n' +
         '\u2022 Notify us immediately of any unauthorized access to your account.\n\n' +
@@ -49,27 +49,27 @@ export default function TermsOfServiceScreen() {
     {
       title: t('contentOwnership') || 'Content Ownership',
       content:
-        '\u2022 You retain ownership of the content you post on AstroDating, including photos, bio text, and messages.\n\n' +
-        '\u2022 By posting content, you grant AstroDating a non-exclusive, worldwide, royalty-free license to use, display, and distribute your content within the app for the purpose of providing the service.\n\n' +
+        '\u2022 You retain ownership of the content you post on JUNO, including photos, bio text, and messages.\n\n' +
+        '\u2022 By posting content, you grant JUNO a non-exclusive, worldwide, royalty-free license to use, display, and distribute your content within the app for the purpose of providing the service.\n\n' +
         '\u2022 This license ends when you delete your content or account.\n\n' +
-        '\u2022 AstroDating owns all intellectual property related to the app, including the matching algorithms, astrological calculations, design, and branding.\n\n' +
+        '\u2022 JUNO owns all intellectual property related to the app, including the matching algorithms, astrological calculations, design, and branding.\n\n' +
         '\u2022 You may not copy, modify, or distribute any part of the app without permission.',
     },
     {
       title: t('subscriptions') || 'Subscriptions & Payments',
       content:
-        '\u2022 AstroDating offers free and premium subscription tiers.\n\n' +
+        '\u2022 JUNO offers free and premium subscription tiers.\n\n' +
         '\u2022 Premium subscriptions are billed through the App Store or Google Play.\n\n' +
         '\u2022 Subscriptions automatically renew unless canceled at least 24 hours before the end of the current period.\n\n' +
         '\u2022 You can manage or cancel your subscription through your device settings.\n\n' +
         '\u2022 Refunds are handled according to the policies of the App Store or Google Play.\n\n' +
-        '\u2022 AstroDating reserves the right to change subscription prices with advance notice. Price changes will not affect your current billing period.',
+        '\u2022 JUNO reserves the right to change subscription prices with advance notice. Price changes will not affect your current billing period.',
     },
     {
       title: t('termination') || 'Termination',
       content:
         '\u2022 You may delete your account at any time from the Settings screen.\n\n' +
-        '\u2022 AstroDating may suspend or terminate your account if you violate these Terms, engage in harmful behavior, or for any other reason at our discretion.\n\n' +
+        '\u2022 JUNO may suspend or terminate your account if you violate these Terms, engage in harmful behavior, or for any other reason at our discretion.\n\n' +
         '\u2022 Upon termination, your right to use the app ceases immediately.\n\n' +
         '\u2022 We may retain certain information as required by law or for legitimate business purposes.\n\n' +
         '\u2022 Termination does not entitle you to a refund for any unused portion of a paid subscription.',
@@ -77,7 +77,7 @@ export default function TermsOfServiceScreen() {
     {
       title: t('disclaimers') || 'Disclaimers',
       content:
-        '\u2022 AstroDating is provided "as is" and "as available" without warranties of any kind.\n\n' +
+        '\u2022 JUNO is provided "as is" and "as available" without warranties of any kind.\n\n' +
         '\u2022 We do not guarantee that the app will be uninterrupted, error-free, or secure.\n\n' +
         '\u2022 Astrological compatibility scores and horoscopes are for entertainment purposes only and should not be relied upon for making life decisions.\n\n' +
         '\u2022 We are not responsible for the behavior of other users. Always exercise caution when meeting someone in person.\n\n' +
@@ -88,8 +88,8 @@ export default function TermsOfServiceScreen() {
       title: t('limitationOfLiability') || 'Limitation of Liability',
       content:
         'To the maximum extent permitted by law:\n\n' +
-        '\u2022 AstroDating shall not be liable for any indirect, incidental, special, consequential, or punitive damages.\n\n' +
-        '\u2022 Our total liability shall not exceed the amount you paid to AstroDating in the 12 months preceding the claim.\n\n' +
+        '\u2022 JUNO shall not be liable for any indirect, incidental, special, consequential, or punitive damages.\n\n' +
+        '\u2022 Our total liability shall not exceed the amount you paid to JUNO in the 12 months preceding the claim.\n\n' +
         '\u2022 This includes damages for loss of profits, data, or other intangible losses.\n\n' +
         '\u2022 Some jurisdictions do not allow limitations on liability, so these limits may not apply to you.',
     },
@@ -136,7 +136,7 @@ export default function TermsOfServiceScreen() {
         {/* Intro */}
         <View style={styles.introContainer}>
           <Text style={styles.introText}>
-            Welcome to AstroDating. By accessing or using our application, you agree to be bound by these Terms of Service. If you do not agree to these Terms, please do not use the app.
+            Welcome to JUNO. By accessing or using our application, you agree to be bound by these Terms of Service. If you do not agree to these Terms, please do not use the app.
           </Text>
         </View>
 

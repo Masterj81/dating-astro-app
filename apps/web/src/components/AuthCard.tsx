@@ -237,7 +237,7 @@ export function AuthCard({ mode }: AuthCardProps) {
         <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-accent/30 bg-accent/8 p-2 shadow-[0_0_30px_rgba(233,69,96,0.12)]">
           <Image
             src="/icon-192.png"
-            alt="AstroDating"
+            alt="JUNO"
             width={56}
             height={56}
             className="h-14 w-14 rounded-2xl"

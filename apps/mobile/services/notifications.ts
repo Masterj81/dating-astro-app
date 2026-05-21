@@ -169,7 +169,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
           lightColor: '#e94560',
         }),
         Notifications.setNotificationChannelAsync('matches', {
-          name: 'Matches & Likes',
+          name: 'Connections & Messages',
           importance: Notifications.AndroidImportance.HIGH,
           vibrationPattern: [0, 250, 250, 250],
           lightColor: '#e94560',

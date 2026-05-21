@@ -1,6 +1,6 @@
 /**
  * ZodiacGlyph — the single source of truth for rendering zodiac signs
- * across the AstroDating mobile app. Replaces the previous mix of
+ * across the JUNO mobile app. Replaces the previous mix of
  * inline emoji strings ('☀️' for Sun, '🌙' for Moon, '⬆️' for Rising)
  * and ad-hoc per-screen sign-glyph maps. Use this everywhere a sign
  * needs to be shown.

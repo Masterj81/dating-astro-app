@@ -1,5 +1,5 @@
 export const SITE = {
-  name: "AstroDating",
+  name: "JUNO",
   url: process.env.NEXT_PUBLIC_SITE_URL || "https://astrodatingapp.com",
   email: {
     support: "support@astrodatingapp.com",

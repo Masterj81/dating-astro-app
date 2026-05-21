@@ -16,6 +16,7 @@
     "validate:web:locales": "node scripts/validate-web-locales.js",
     "validate:mobile:locales": "node scripts/validate-mobile-locales.js",
     "validate:locales": "npm run validate:web:locales && npm run validate:mobile:locales",
+    "check:store-metadata": "node scripts/check-store-metadata.mjs",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test --continue",

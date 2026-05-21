@@ -92,8 +92,8 @@ export async function POST(request: Request) {
     await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
-      subject: "Account Deletion Code - AstroDating",
-      text: `Your account deletion verification code is: ${code}\n\nThis code expires in 10 minutes.\n\nIf you didn't request this, you can safely ignore this email.\n\n- The AstroDating Team`,
+      subject: "Account Deletion Code - JUNO",
+      text: `Your account deletion verification code is: ${code}\n\nThis code expires in 10 minutes.\n\nIf you didn't request this, you can safely ignore this email.\n\n- The JUNO Team`,
     });
 
     return NextResponse.json({ success: true });

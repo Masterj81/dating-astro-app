@@ -1,0 +1,39 @@
+# 03 - Discover: browse a relationship profile and start a conversation.
+#
+# JUNO's Discover screen is a relationship-profile browser, not a swipe
+# deck. This flow asserts the conversation-first path:
+#   - the relationship-profile card loads
+#   - the Message button starts a conversation
+#   - we land on the chat screen with a working message input
+#
+# There is no like/pass verdict and no match-celebration modal to assert.
+
+appId: com.astrodatingapp.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- runFlow: shared/login-as-test-user.yaml
+
+# The relationship-profile card is visible.
+- extendedWaitUntil:
+    visible:
+      id: "discover-card"
+    timeout: 15000
+- assertVisible:
+    id: "discover-card"
+
+# Start a conversation from the profile card.
+- tapOn:
+    id: "discover-message-button"
+
+# We should land on the chat screen with a working message input.
+- extendedWaitUntil:
+    visible:
+      id: "chat-input"
+    timeout: 12000
+- assertVisible:
+    id: "chat-input"
+- assertVisible:
+    id: "chat-send-button"

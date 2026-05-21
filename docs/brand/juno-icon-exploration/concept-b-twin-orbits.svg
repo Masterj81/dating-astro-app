@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>JUNO — Concept B — Twin Orbits</title>
+  <defs>
+    <linearGradient id="bTile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#11141b"/>
+      <stop offset="1" stop-color="#08090b"/>
+    </linearGradient>
+  </defs>
+
+  <!-- app-icon tile -->
+  <rect width="1024" height="1024" rx="224" fill="url(#bTile)"/>
+  <rect x="3" y="3" width="1018" height="1018" rx="221" fill="none" stroke="#e9c873" stroke-opacity="0.10" stroke-width="6"/>
+
+  <!-- Two orbits that cross — synastry: two charts in relation.
+       One gold, one soft-blue, overlapping in a vesica = the shared field. -->
+  <g transform="translate(512 512)">
+    <!-- left orbit (gold) — slightly elliptical, tilted -->
+    <ellipse cx="-90" cy="0" rx="178" ry="252" fill="none" stroke="#e9c873" stroke-width="26"
+             transform="rotate(-22)"/>
+    <!-- right orbit (soft blue) — mirrored -->
+    <ellipse cx="90" cy="0" rx="178" ry="252" fill="none" stroke="#7aa7ff" stroke-width="26"
+             transform="rotate(22)"/>
+
+    <!-- the shared centre where the two orbits meet -->
+    <circle cx="0" cy="0" r="58" fill="#08090b"/>
+    <circle cx="0" cy="0" r="58" fill="none" stroke="#e7e9ee" stroke-width="10"/>
+    <circle cx="0" cy="0" r="17" fill="#e7e9ee"/>
+
+    <!-- a body riding each orbit -->
+    <circle cx="-218" cy="-86" r="30" fill="#e9c873"/>
+    <circle cx="218" cy="86" r="30" fill="#7aa7ff"/>
+  </g>
+</svg>

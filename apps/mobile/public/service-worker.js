@@ -157,7 +157,7 @@ self.addEventListener('push', (event) => {
   const data = event.data.json();
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'AstroDating', {
+    self.registration.showNotification(data.title || 'JUNO', {
       body: data.body,
       icon: '/icon-192.png',
       badge: '/icon-192.png',

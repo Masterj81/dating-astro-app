@@ -36,7 +36,7 @@ const PROOF_KEYS = ["proofRating", "proofTags", "proofEngine"] as const;
 const JSON_LD = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  "name": "AstroDating",
+  "name": "JUNO",
   "description": "Dating app with depth, using astrology, values, and conversation prompts as a shared language.",
   "applicationCategory": "DatingApplication",
   "url": "https://astrodatingapp.com",
@@ -90,7 +90,7 @@ export default function LandingPage({
             {/* Trust strip — qualitative proofs only, no invented stats */}
             <ul
               className="mx-auto mt-10 flex max-w-full flex-wrap items-center justify-center gap-2 lg:mx-0 lg:justify-start"
-              aria-label="What sets AstroDating apart"
+              aria-label="What sets JUNO apart"
             >
               {PROOF_KEYS.map((key, i) => (
                 <li

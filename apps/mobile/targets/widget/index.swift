@@ -451,8 +451,8 @@ struct AstroDatingWidget: Widget {
             AstroDatingWidgetEntryView(entry: entry)
                 .containerBackground(.clear, for: .widget)
         }
-        .configurationDisplayName("Daily Horoscope")
-        .description("See your daily horoscope at a glance.")
+        .configurationDisplayName("Daily Insight")
+        .description("See your daily astrological insight at a glance.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }

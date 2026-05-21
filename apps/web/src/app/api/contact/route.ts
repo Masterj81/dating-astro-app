@@ -121,7 +121,7 @@ export async function POST(request: Request) {
     await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
-      subject: "We received your message - AstroDating",
+      subject: "We received your message - JUNO",
       html: renderEmailShell({
         eyebrow: "Support",
         title: "We received your message",
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
           </p>
         `,
       }),
-      text: `Hi ${name},\n\nThanks for reaching out! We've received your message and will get back to you within 24 hours.\n\nCategory: ${category}\nYour message:\n${message}\n\n- The AstroDating Team`,
+      text: `Hi ${name},\n\nThanks for reaching out! We've received your message and will get back to you within 24 hours.\n\nCategory: ${category}\nYour message:\n${message}\n\n- The JUNO Team`,
     });
 
     return NextResponse.json({ success: true });

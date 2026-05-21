@@ -13,7 +13,7 @@ export default function PrivacyPolicyScreen() {
     {
       title: t('dataCollection') || 'Information We Collect',
       content:
-        'When you use AstroDating, we collect the following information:\n\n' +
+        'When you use JUNO, we collect the following information:\n\n' +
         '\u2022 Account Information: Your name, email address, date of birth, and password.\n\n' +
         '\u2022 Birth Data: Your birth date, birth time, and birth city, used to calculate your natal chart (Sun, Moon, and Rising signs).\n\n' +
         '\u2022 Profile Information: Photos, bio, occupation, and other details you choose to share on your profile.\n\n' +
@@ -66,7 +66,7 @@ export default function PrivacyPolicyScreen() {
     {
       title: t('childrenPrivacy') || "Children's Privacy",
       content:
-        'AstroDating is intended for users who are 18 years of age or older. We do not knowingly collect personal information from anyone under the age of 18.\n\n' +
+        'JUNO is intended for users who are 18 years of age or older. We do not knowingly collect personal information from anyone under the age of 18.\n\n' +
         'If we learn that we have collected personal data from a user under 18, we will take steps to delete that information as quickly as possible.\n\n' +
         'If you are a parent or guardian and believe your child has provided us with personal information, please contact us so we can take appropriate action.',
     },
@@ -114,7 +114,7 @@ export default function PrivacyPolicyScreen() {
         {/* Intro */}
         <View style={styles.introContainer}>
           <Text style={styles.introText}>
-            AstroDating ({'"'}we{'"'}, {'"'}our{'"'}, or {'"'}us{'"'}) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, share, and protect your personal information when you use our mobile application.
+            JUNO ({'"'}we{'"'}, {'"'}our{'"'}, or {'"'}us{'"'}) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, share, and protect your personal information when you use our mobile application.
           </Text>
         </View>
 

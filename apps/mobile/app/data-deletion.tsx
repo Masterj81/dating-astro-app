@@ -10,12 +10,12 @@ export default function DataDeletionScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           <Text style={styles.title}>Data Deletion Instructions</Text>
-          <Text style={styles.lastUpdated}>AstroDating</Text>
+          <Text style={styles.lastUpdated}>JUNO</Text>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>How to Delete Your Data</Text>
             <Text style={styles.sectionText}>
-              You can delete your AstroDating account and all associated data at any time.
+              You can delete your JUNO account and all associated data at any time.
               Follow these steps:
             </Text>
           </View>
@@ -23,7 +23,7 @@ export default function DataDeletionScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Option 1: Delete from the App</Text>
             <Text style={styles.sectionText}>
-              1. Open the AstroDating app{'\n'}
+              1. Open the JUNO app{'\n'}
               2. Go to your Profile tab{'\n'}
               3. Tap the Settings icon (gear){'\n'}
               4. Scroll down and tap {'"'}Delete Account{'"'}{'\n'}
@@ -80,13 +80,13 @@ export default function DataDeletionScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Facebook Login Users</Text>
             <Text style={styles.sectionText}>
-              If you signed up using Facebook, you can also remove AstroDating{"'"}s
+              If you signed up using Facebook, you can also remove JUNO{"'"}s
               access to your Facebook data:{'\n\n'}
               1. Go to Facebook Settings{'\n'}
               2. Navigate to Apps and Websites{'\n'}
-              3. Find AstroDating and click Remove{'\n\n'}
+              3. Find JUNO and click Remove{'\n\n'}
               Note: This removes Facebook{"'"}s connection but you should also delete
-              your AstroDating account using the steps above to remove all data
+              your JUNO account using the steps above to remove all data
               from our servers.
             </Text>
           </View>

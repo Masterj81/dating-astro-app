@@ -13,7 +13,6 @@ import {
   PanResponder,
   Platform,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -30,7 +29,6 @@ import ReAnimated, {
 import BlockReportMenu from '../../components/BlockReportMenu';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import VoiceIntroPlayer from '../../components/VoiceIntroPlayer';
-import PlanetGlyph from '../../components/ui/PlanetGlyph';
 import CompatibilityGlyph from '../../components/ui/CompatibilityGlyph';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
@@ -50,17 +48,18 @@ import {
   buttonPress,
   refreshTrigger,
 } from '../../services/haptics';
-import { usePremium } from '../../contexts/PremiumContext';
 import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 
 const { width, height } = Dimensions.get('window');
-// Full-bleed card. Action buttons are now overlaid INSIDE the card at
-// the bottom (prev / view profile / message / next), so we only reserve
+// Full-bleed card. Action buttons are overlaid INSIDE the card at the
+// bottom (previous / view profile / message / next), so we only reserve
 // space for the tab bar + a thin safe-area margin. ~100px is enough on
 // Samsung devices with rounded corners.
 const CARD_WIDTH = width;
 const CARD_HEIGHT = Math.max(height - 100, 600);
-const SWIPE_THRESHOLD = 100;
+// Distance the card must be dragged before a release pages to the
+// adjacent profile. INTERNAL constant — paging only, no like/pass verdict.
+const PAGE_THRESHOLD = 100;
 
 type Profile = {
   id: string;
@@ -71,13 +70,13 @@ type Profile = {
   rising_sign: string;
   bio: string;
   image_url?: string | null;
-  photos?: Array<string | null>;
-  images?: Array<string | null>;
+  photos?: (string | null)[];
+  images?: (string | null)[];
   is_verified?: boolean;
   has_voice_intro?: boolean;
   voice_intro_url?: string;
   // MVP profile additions (surfaced via get_discoverable_profiles since
-  // 20260430000002). All optional / nullable — legacy profiles may not
+  // 20260430000002). All optional / nullable -- legacy profiles may not
   // have any of these.
   relationship_intent?: string | null;
   personal_values?: string[] | null;
@@ -95,20 +94,23 @@ export default function DiscoverScreen() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
   const [deckExhausted, setDeckExhausted] = useState(false);
-  // Use discrete direction state instead of raw dragX to avoid per-frame re-renders.
-  // Swipe is now purely navigational (next/previous card) — no like/pass meaning.
-  const [swipeDirection, setSwipeDirection] = useState<'none' | 'left' | 'right'>('none');
+  // Discrete drag-direction state, used only to show a neutral paging hint
+  // while the card is dragged. `dragDirection` is an INTERNAL name -- the
+  // horizontal gesture is navigation between profiles (previous / next).
+  // It carries no like / pass / match meaning and nothing is persisted.
+  const [dragDirection, setDragDirection] = useState<'none' | 'left' | 'right'>('none');
   const dragXRef = useRef(0);
   const hasReachedThresholdRef = useRef(false);
+  // One horizontal offset drives a calm slide between profiles. There is
+  // deliberately no card rotation and no vertical throw -- the card pages
+  // sideways like a carousel, it is not a swipe-to-decide card deck.
   const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const rotation = useSharedValue(0);
   const { t, language } = useLanguage();
   const navigation = useNavigation();
   const reduceMotion = useReduceMotion();
-  const swipeInProgressRef = useRef(false);
+  const navInProgressRef = useRef(false);
   const [startingChat, setStartingChat] = useState(false);
-  // Viewer's own lifestyle tags — used to highlight shared tags on the
+  // Viewer's own lifestyle tags -- used to highlight shared tags on the
   // public card. Fetched once on mount via get_my_full_profile (the same
   // RPC the edit screen uses). Empty array on failure / no tags.
   const [viewerInterests, setViewerInterests] = useState<string[]>([]);
@@ -130,11 +132,9 @@ export default function DiscoverScreen() {
   const profilesRef = useRef(profiles);
   profilesRef.current = profiles;
 
-  const goToNextProfileRef = useRef<(direction: 'left' | 'right') => void>(() => {});
+  const goToProfileRef = useRef<(targetIndex: number) => void>(() => {});
 
   const { user } = useAuth();
-  const { tier } = usePremium();
-  const isFreeUser = tier === 'free';
 
   // Compute card eagerly (before any early returns) to respect Rules of Hooks
   const currentProfile = profiles.length > 0 && currentIndex < profiles.length
@@ -148,7 +148,7 @@ export default function DiscoverScreen() {
   }, [user, reduceMotion]);
 
   // Fetch the viewer's own lifestyle tags so the card can highlight
-  // shared tags on profiles they discover. Read-only one-shot — failure
+  // shared tags on profiles they discover. Read-only one-shot -- failure
   // is silent (the highlight just won't show).
   useEffect(() => {
     if (!user) return;
@@ -201,7 +201,7 @@ export default function DiscoverScreen() {
     try {
       const fetchedProfiles = await withRetry(async () => {
         // Use the RPC function for filtered profiles. The RPC enforces
-        // gender preference matching (bidirectional) — see migration
+        // gender preference matching (bidirectional) -- see migration
         // 20260428000001_fix_discover_gender_filter.sql. Falling back to a
         // raw `discoverable_profiles` view query would silently leak profiles
         // that do not match the viewer's looking_for, which is exactly the
@@ -235,56 +235,46 @@ export default function DiscoverScreen() {
     setLoading(false);
   };
 
-  // Navigation-only "swipe": move to the next card.
-  // No like/pass/super-like meaning is persisted anywhere — this is now
-  // a pure card-deck UX. The `direction` argument is kept only to pick
-  // a haptic / overlay so the gesture still feels alive.
-  const goToNextProfile = async (direction: 'left' | 'right') => {
-    if (swipeInProgressRef.current) return;
-    swipeInProgressRef.current = true;
+  // Core profile navigation -- pages the browser to `targetIndex`.
+  // Discover is a relationship-profile browser: this is navigation only.
+  // There is no like / pass verdict and nothing is persisted. Paging past
+  // the last profile shows the end-of-deck state; paging before the first
+  // profile is a no-op (the card settles back into place).
+  const goToProfile = async (targetIndex: number) => {
+    if (navInProgressRef.current) return;
+    navInProgressRef.current = true;
 
     const currentProfiles = profilesRef.current;
 
-    // Subtle haptic so the gesture has presence; nothing is persisted.
+    // Subtle haptic so paging has presence; nothing is persisted.
     swipeThreshold();
 
-    // Check if we've reached the end of the deck
-    const isLastProfile = currentIndexRef.current >= currentProfiles.length - 1;
+    cancelAnimation(translateX);
+    dragXRef.current = 0;
+    setDragDirection('none');
+    hasReachedThresholdRef.current = false;
 
-    if (isLastProfile) {
-      setDeckExhausted(true);
-      swipeInProgressRef.current = false;
-      dragXRef.current = 0;
-      setSwipeDirection('none');
-      hasReachedThresholdRef.current = false;
-
-      cancelAnimation(translateX);
-      cancelAnimation(translateY);
-      cancelAnimation(rotation);
-      translateX.value = 0;
-      translateY.value = 0;
-      rotation.value = 0;
+    // Before the first profile -- settle back, there is nowhere to go.
+    if (targetIndex < 0) {
+      translateX.value = withSpring(0);
+      navInProgressRef.current = false;
       return;
     }
 
-    const nextIndex = currentIndexRef.current + 1;
+    // Past the last profile -- show the end-of-deck state.
+    if (targetIndex >= currentProfiles.length) {
+      setDeckExhausted(true);
+      translateX.value = 0;
+      navInProgressRef.current = false;
+      return;
+    }
 
-    setCurrentIndex(nextIndex);
-    dragXRef.current = 0;
-    setSwipeDirection('none');
-    hasReachedThresholdRef.current = false;
-
-    // Cancel any ongoing animations and reset values
-    cancelAnimation(translateX);
-    cancelAnimation(translateY);
-    cancelAnimation(rotation);
+    setCurrentIndex(targetIndex);
     translateX.value = 0;
-    translateY.value = 0;
-    rotation.value = 0;
 
-    // Announce for screen readers — compatibility intentionally hidden,
-    // free users see a "Find your compatibility" CTA instead.
-    const nextProfile = currentProfiles[nextIndex];
+    // Announce for screen readers -- compatibility is intentionally hidden,
+    // free users see a "See synastry" CTA instead.
+    const nextProfile = currentProfiles[targetIndex];
     if (nextProfile) {
       announceForAccessibility(
         t('a11y.profileCard', {
@@ -295,11 +285,11 @@ export default function DiscoverScreen() {
       );
     }
 
-    swipeInProgressRef.current = false;
+    navInProgressRef.current = false;
   };
 
-  // Keep ref updated with latest function
-  goToNextProfileRef.current = goToNextProfile;
+  // Keep the ref updated with the latest navigation function.
+  goToProfileRef.current = goToProfile;
 
   const panResponder = useRef(PanResponder.create({
     // Only claim the gesture for horizontal-dominant moves so the inner
@@ -313,94 +303,86 @@ export default function DiscoverScreen() {
     onMoveShouldSetPanResponderCapture: (_, gesture) =>
       Math.abs(gesture.dx) > Math.abs(gesture.dy) && Math.abs(gesture.dx) > 6,
     onPanResponderMove: (_, gestureState) => {
+      // Horizontal slide only -- no rotation, no vertical drift. The card
+      // pages sideways like a carousel; it is not thrown like a swipe card.
       translateX.value = gestureState.dx;
-      translateY.value = gestureState.dy * 0.3;
-      rotation.value = (gestureState.dx / width) * 15;
       dragXRef.current = gestureState.dx;
-      // Only update React state when crossing the overlay visibility threshold (30px)
+      // Update the neutral paging hint once past a 30px threshold.
       const newDir = gestureState.dx > 30 ? 'right' : gestureState.dx < -30 ? 'left' : 'none';
-      setSwipeDirection(prev => prev !== newDir ? newDir : prev);
+      setDragDirection(prev => prev !== newDir ? newDir : prev);
 
-      // Haptic feedback when reaching threshold
-      if (Math.abs(gestureState.dx) > SWIPE_THRESHOLD && !hasReachedThresholdRef.current) {
+      // Subtle haptic when the paging threshold is crossed.
+      if (Math.abs(gestureState.dx) > PAGE_THRESHOLD && !hasReachedThresholdRef.current) {
         hasReachedThresholdRef.current = true;
         swipeThreshold();
-      } else if (Math.abs(gestureState.dx) <= SWIPE_THRESHOLD && hasReachedThresholdRef.current) {
+      } else if (Math.abs(gestureState.dx) <= PAGE_THRESHOLD && hasReachedThresholdRef.current) {
         hasReachedThresholdRef.current = false;
       }
     },
     onPanResponderRelease: (_, gestureState) => {
       hasReachedThresholdRef.current = false;
 
-      if (Math.abs(gestureState.dx) > SWIPE_THRESHOLD) {
-        const direction = gestureState.dx > 0 ? 'right' : 'left';
-        const targetX = direction === 'right' ? width * 1.5 : -width * 1.5;
-        translateX.value = withTiming(targetX, { duration: 300 });
-        rotation.value = withTiming(direction === 'right' ? 30 : -30, { duration: 300 });
-        setTimeout(() => goToNextProfileRef.current(direction), 300);
+      if (Math.abs(gestureState.dx) > PAGE_THRESHOLD) {
+        // Carousel paging: dragging right reveals the PREVIOUS profile,
+        // dragging left reveals the NEXT one. Pure navigation -- no
+        // like / pass, nothing persisted.
+        const goingBack = gestureState.dx > 0;
+        const atFirst = currentIndexRef.current <= 0;
+        if (goingBack && atFirst) {
+          // No previous profile -- settle the card back into place.
+          translateX.value = withSpring(0);
+          dragXRef.current = 0;
+          setDragDirection('none');
+          return;
+        }
+        const targetX = goingBack ? width : -width;
+        const targetIndex = currentIndexRef.current + (goingBack ? -1 : 1);
+        translateX.value = withTiming(targetX, { duration: 260 });
+        setTimeout(() => goToProfileRef.current(targetIndex), 260);
       } else {
         translateX.value = withSpring(0);
-        translateY.value = withSpring(0);
-        rotation.value = withSpring(0);
         dragXRef.current = 0;
-        setSwipeDirection('none');
+        setDragDirection('none');
       }
     },
   })).current;
 
   const animatedCardStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { rotate: `${rotation.value}deg` },
-    ],
+    transform: [{ translateX: translateX.value }],
   }));
 
-  // Navigate to next card via the right-arrow button (no like meaning).
+  // Advance to the next profile via the Next button. Plain list navigation
+  // -- it carries no "like" meaning and persists nothing.
   const handleNext = () => {
-    if (swipeInProgressRef.current || !currentProfile) return;
-    buttonPress();
-    dragXRef.current = 150;
-    setSwipeDirection('right');
-
-    if (reduceMotion) {
-      goToNextProfile('right');
-    } else {
-      translateX.value = withTiming(width * 1.5, { duration: 300 });
-      rotation.value = withTiming(30, { duration: 300 });
-      setTimeout(() => goToNextProfile('right'), 300);
-    }
-  };
-
-  // Navigate to previous-looking card via the left-arrow button (no pass meaning).
-  const handleSkip = () => {
-    if (swipeInProgressRef.current || !currentProfile) return;
+    if (navInProgressRef.current || !currentProfile) return;
     buttonPress();
     dragXRef.current = -150;
-    setSwipeDirection('left');
 
     if (reduceMotion) {
-      goToNextProfile('left');
+      goToProfile(currentIndexRef.current + 1);
     } else {
-      translateX.value = withTiming(-width * 1.5, { duration: 300 });
-      rotation.value = withTiming(-30, { duration: 300 });
-      setTimeout(() => goToNextProfile('left'), 300);
+      translateX.value = withTiming(-width, { duration: 260 });
+      setTimeout(() => goToProfile(currentIndexRef.current + 1), 260);
     }
   };
 
-  const handleShare = async () => {
-    if (!currentProfile) return;
+  // Go back to the previous profile via the Previous button. No-op on the
+  // first profile. This makes Discover a true two-way profile browser.
+  const handlePrevious = () => {
+    if (navInProgressRef.current || !currentProfile) return;
+    if (currentIndexRef.current <= 0) return;
     buttonPress();
-    const message = Platform.select({
-      android: `Discovering real connections on AstroDating \u{1F6F0}\nhttps://play.google.com/store/apps/details?id=com.astrodatingapp.mobile`,
-      default: `Discovering real connections on AstroDating \u{1F6F0}\nhttps://astrodatingapp.com`,
-    });
-    try {
-      await Share.share({ message, title: 'AstroDating' });
-    } catch { /* user cancelled */ }
+    dragXRef.current = 150;
+
+    if (reduceMotion) {
+      goToProfile(currentIndexRef.current - 1);
+    } else {
+      translateX.value = withTiming(width, { duration: 260 });
+      setTimeout(() => goToProfile(currentIndexRef.current - 1), 260);
+    }
   };
 
-  // View profile — opens the public profile detail screen with the full
+  // View profile -- opens the public profile detail screen with the full
   // MVP block. Synastry/compatibility is a separate route reached via
   // `handleFindCompatibility` (top CTA on the card + bottom CTA on the
   // profile detail screen).
@@ -410,7 +392,7 @@ export default function DiscoverScreen() {
     router.push(`/profile/${currentProfile.id}` as any);
   };
 
-  // Free conversation start — no paywall on entering the chat.
+  // Free conversation start -- no paywall on entering the chat.
   const handleStartConversation = async () => {
     if (!currentProfile?.id || startingChat) return;
     buttonPress();
@@ -428,8 +410,9 @@ export default function DiscoverScreen() {
     }
   };
 
-  // Premium CTA: takes the user to synastry for the currently viewed profile.
-  // Compatibility % is hidden from the card itself.
+  // Synastry CTA: takes the user to the synastry insight for the currently
+  // viewed profile. The compatibility % is intentionally hidden from the
+  // card itself -- the chart context is reviewed before any conversation.
   const handleFindCompatibility = () => {
     if (!currentProfile?.id) return;
     buttonPress();
@@ -438,7 +421,7 @@ export default function DiscoverScreen() {
 
   // Apple Guideline 1.2: after a block (or report), remove the profile from
   // the deck in place so the blocked user never reappears in this session.
-  // Block is server-side persisted by BlockReportMenu via blockUser() →
+  // Block is server-side persisted by BlockReportMenu via blockUser() ->
   // blocked_users table; the next deck load will exclude them via the
   // get_discoverable_profiles RPC. Here we just patch the in-memory deck.
   const removeCurrentProfileFromDeck = useCallback(() => {
@@ -460,17 +443,13 @@ export default function DiscoverScreen() {
     const clamped = Math.min(idx, next.length - 1);
     setCurrentIndex(clamped);
 
-    // Reset swipe animation state so the new card renders cleanly.
+    // Reset the paging animation state so the new card renders cleanly.
     cancelAnimation(translateX);
-    cancelAnimation(translateY);
-    cancelAnimation(rotation);
     translateX.value = 0;
-    translateY.value = 0;
-    rotation.value = 0;
     dragXRef.current = 0;
-    setSwipeDirection('none');
+    setDragDirection('none');
     hasReachedThresholdRef.current = false;
-  }, [rotation, translateX, translateY]);
+  }, [translateX]);
 
   const handleRefresh = () => {
     refreshTrigger();
@@ -489,11 +468,11 @@ export default function DiscoverScreen() {
 
   // Rotating loading tips for engagement during load
   const loadingTips = useMemo(() => [
-    t('loadingTip1') || 'Aligning the planets\u2026',
-    t('loadingTip2') || 'Reading the cosmic map\u2026',
-    t('loadingTip3') || 'Consulting the stars\u2026',
-    t('loadingTip4') || 'Charting your constellation\u2026',
-    t('loadingTip5') || 'Syncing with the cosmos\u2026',
+    t('loadingTip1') || 'Aligning the planets…',
+    t('loadingTip2') || 'Reading the cosmic map…',
+    t('loadingTip3') || 'Consulting the stars…',
+    t('loadingTip4') || 'Charting your constellation…',
+    t('loadingTip5') || 'Syncing with the cosmos…',
   ], [t]);
 
   const [loadingTipIndex] = useState(() => Math.floor(Math.random() * 5));
@@ -538,7 +517,7 @@ export default function DiscoverScreen() {
     );
   }
 
-  // End-of-deck state: user has swiped through all profiles
+  // End-of-deck state: the viewer has paged through every profile.
   if (deckExhausted || !currentProfile) {
     return (
       <WebTabWrapper>
@@ -546,10 +525,10 @@ export default function DiscoverScreen() {
           <View style={styles.exhaustedContainer} testID="discover-exhausted">
             <Text style={styles.exhaustedEmoji}>{'\u{1F30C}'}</Text>
             <Text style={styles.exhaustedTitle}>
-              {t('profilesExhausted') || "You've seen everyone!"}
+              {t('profilesExhausted') || 'No more profiles right now'}
             </Text>
             <Text style={styles.exhaustedSubtitle}>
-              {t('profilesExhaustedSub') || 'Check back soon \u2014 new people join every day.'}
+              {t('profilesExhaustedSub') || 'Check back soon or adjust your discovery preferences.'}
             </Text>
             <View style={styles.exhaustedTimeTip}>
               <Text style={styles.exhaustedTimeTipIcon}>{'\u{23F0}'}</Text>
@@ -572,7 +551,7 @@ export default function DiscoverScreen() {
                 <Text style={styles.exhaustedRefreshText}>{t('refresh') || 'Refresh'}</Text>
               </LinearGradient>
             </TouchableOpacity>
-            {/* Daily horoscope re-engagement hook */}
+            {/* Daily insight re-engagement hook */}
             <TouchableOpacity
               style={styles.exhaustedHoroscopeButton}
               onPress={() => {
@@ -621,10 +600,10 @@ export default function DiscoverScreen() {
     <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
       {/* Action error toast */}
       {actionError && (
-        <View style={styles.swipeErrorToast} accessibilityRole="alert">
-          <Text style={styles.swipeErrorText}>{actionError}</Text>
+        <View style={styles.actionErrorToast} accessibilityRole="alert">
+          <Text style={styles.actionErrorText}>{actionError}</Text>
           <TouchableOpacity onPress={() => setActionError(null)}>
-            <Text style={styles.swipeErrorDismiss}>{'\u2715'}</Text>
+            <Text style={styles.actionErrorDismiss}>{'✕'}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -640,7 +619,7 @@ export default function DiscoverScreen() {
               age: currentProfile.age ?? '?',
               sign: currentProfile.sun_sign ?? t('unknown'),
             }) || `${currentProfile.name ?? ''} ${currentProfile.age ?? ''} ${currentProfile.sun_sign ?? ''}`}
-            accessibilityHint={t('a11y.swipeNavigateHint') || 'Swipe to navigate between profiles.'}
+            accessibilityHint={t('a11y.swipeNavigateHint') || 'Browse profiles with gestures or buttons.'}
             accessibilityRole="adjustable"
           >
           {/* Profile image with error fallback */}
@@ -662,11 +641,21 @@ export default function DiscoverScreen() {
             />
           )}
 
-          {/* Report / Block menu — Apple Guideline 1.2 (UGC safety).
+          {/* Intent banner -- frames Discover as a calm, intentional
+              relationship-profile browser rather than a swipe deck.
+              Purely informational, no interaction. */}
+          <View style={styles.intentBanner} pointerEvents="none">
+            <Text style={styles.intentBannerStar}>{'✦'}</Text>
+            <Text style={styles.intentBannerText}>
+              {t('discoverBrowseWithIntention') || 'Browse with intention'}
+            </Text>
+          </View>
+
+          {/* Report / Block menu -- Apple Guideline 1.2 (UGC safety).
               Discrete shield icon, top-right of the card, with a 44pt hit
               area. Positioned absolutely so it never shifts the primary
-              CTAs (prev / view profile / message / next) and has its own
-              touch area outside the swipe gesture path. */}
+              CTAs (previous / view profile / message / next) and has its
+              own touch area outside the paging gesture path. */}
           {user && currentProfile?.id && currentProfile?.name && (
             <View
               style={styles.reportBlockMenuWrap}
@@ -683,39 +672,44 @@ export default function DiscoverScreen() {
             </View>
           )}
 
-          {/* Navigation overlays — purely visual feedback, no like/pass meaning */}
-          {swipeDirection === 'right' && (
+          {/* Paging hint overlays -- neutral navigation feedback only. No
+              like/pass meaning, no red/green, no match. Dragging right
+              pages to the previous profile; dragging left pages to the
+              next profile. */}
+          {dragDirection === 'right' && (
             <Animated.View
-              style={[styles.overlay, styles.navOverlayRight]}
-              accessibilityLabel={t('nextProfile') || 'Next profile'}
+              style={[styles.overlay, styles.navOverlayLeft]}
+              accessibilityLabel={t('a11y.previousButton') || 'Previous profile'}
             >
-              <Text style={[styles.overlayText, styles.navOverlayText]}>{'→'}</Text>
+              <Text style={[styles.overlayText, styles.navOverlayText]}>{'‹'}</Text>
             </Animated.View>
           )}
 
-          {swipeDirection === 'left' && (
+          {dragDirection === 'left' && (
             <Animated.View
-              style={[styles.overlay, styles.navOverlayLeft]}
-              accessibilityLabel={t('skipProfile') || 'Skip profile'}
+              style={[styles.overlay, styles.navOverlayRight]}
+              accessibilityLabel={t('a11y.nextButton') || 'Next profile'}
             >
-              <Text style={[styles.overlayText, styles.navOverlayText]}>{'←'}</Text>
+              <Text style={[styles.overlayText, styles.navOverlayText]}>{'›'}</Text>
             </Animated.View>
           )}
 
           <LinearGradient colors={['transparent', 'rgba(0,0,0,0.9)']} style={styles.cardGradient}>
-            {/* Compatibility CTA replaces the % badge — premium gated */}
+            {/* Synastry CTA -- the chart context entry point. Replaces the
+                old compatibility % badge: the synastry insight is reviewed
+                before any conversation, the score is never shown on the card. */}
             <TouchableOpacity
               style={styles.compatibilityCta}
               onPress={handleFindCompatibility}
               activeOpacity={0.85}
               accessibilityRole="button"
-              accessibilityLabel={t('findYourCompatibility') || 'Find your compatibility'}
+              accessibilityLabel={t('discoverSeeSynastry') || 'See synastry'}
             >
               <View style={styles.compatibilityCtaGlyphWrap}>
                 <CompatibilityGlyph size={22} color={'#FFFFFF'} />
               </View>
               <Text style={styles.compatibilityCtaText}>
-                {t('findYourCompatibility') || 'Find your compatibility'}
+                {t('discoverSeeSynastry') || 'See synastry'}
               </Text>
             </TouchableOpacity>
 
@@ -727,9 +721,15 @@ export default function DiscoverScreen() {
                 {currentProfile.is_verified && <VerifiedBadge size="small" />}
               </View>
 
+              {/* Chart context -- the birth-chart signal the viewer reviews
+                  before deciding to start a conversation. */}
+              <Text style={styles.chartContextLabel}>
+                {'✧'} {t('discoverChartContext') || 'Chart context'}
+              </Text>
+
               <View style={styles.signsRow} accessibilityLabel={`Sun sign: ${currentProfile.sun_sign ?? 'unknown'}, Moon sign: ${currentProfile.moon_sign ?? 'unknown'}, Rising sign: ${currentProfile.rising_sign ?? 'unknown'}`}>
                 <View style={styles.signPill}>
-                  <Text style={styles.signEmoji}>{'\u2600\uFE0F'}</Text>
+                  <Text style={styles.signEmoji}>{'☀️'}</Text>
                   <View>
                     <Text style={styles.signText}>{currentProfile.sun_sign || '?'}</Text>
                     <Text style={styles.signSubtext}>{t('sunSignExplainer')}</Text>
@@ -743,7 +743,7 @@ export default function DiscoverScreen() {
                   </View>
                 </View>
                 <View style={styles.signPill}>
-                  <Text style={styles.signEmoji}>{'\u2B06\uFE0F'}</Text>
+                  <Text style={styles.signEmoji}>{'⬆️'}</Text>
                   <View>
                     <Text style={styles.signText}>{currentProfile.rising_sign || '?'}</Text>
                     <Text style={styles.signSubtext}>{t('risingSignExplainer')}</Text>
@@ -765,7 +765,7 @@ export default function DiscoverScreen() {
                 </View>
               )}
 
-              {/* MVP profile sections — display-only. Sanitization happens
+              {/* MVP profile sections -- display-only. Sanitization happens
                   inside the component so we can pass the raw RPC payload. */}
               <ScrollView
                 style={styles.mvpScroll}
@@ -785,25 +785,29 @@ export default function DiscoverScreen() {
                 />
               </ScrollView>
 
-              {/* Action row overlaid inside the card. 4 buttons:
-                  ← prev / 👤 view profile / 💬 message / → next */}
+              {/* In-card action row -- a relationship-profile browser, not a
+                  swipe deck: Previous / View profile / Message / Next. The
+                  arrows page the browser; they carry no like/pass meaning. */}
               <View style={styles.cardActions} accessibilityRole="toolbar">
                 <TouchableOpacity
-                  style={styles.cardActionButton}
-                  onPress={handleSkip}
+                  style={[
+                    styles.cardActionButton,
+                    currentIndex === 0 && styles.cardActionButtonDisabled,
+                  ]}
+                  onPress={handlePrevious}
+                  disabled={currentIndex === 0}
                   activeOpacity={0.7}
-                  testID="discover-skip-button"
-                  {...getButtonA11yProps(
-                    t('a11y.passButton', { name: currentProfile.name ?? '' }),
-                  )}
+                  testID="discover-prev-button"
+                  {...getButtonA11yProps(t('a11y.previousButton') || 'Previous profile')}
                 >
-                  <Text style={styles.cardActionEmoji}>{'←'}</Text>
+                  <Text style={styles.cardActionEmoji}>{'‹'}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.cardActionButton}
                   onPress={handleViewProfile}
                   activeOpacity={0.85}
+                  testID="discover-view-profile-button"
                   {...getButtonA11yProps(t('viewProfile') || 'View profile')}
                 >
                   <Text style={styles.cardActionEmoji}>{'\u{1F464}'}</Text>
@@ -822,7 +826,12 @@ export default function DiscoverScreen() {
                   {startingChat ? (
                     <Text style={styles.cardActionMessageText}>{'…'}</Text>
                   ) : (
-                    <Text style={styles.cardActionMessageEmoji}>{'\u{1F4AC}'}</Text>
+                    <>
+                      <Text style={styles.cardActionMessageEmoji}>{'\u{1F4AC}'}</Text>
+                      <Text style={styles.cardActionMessageText}>
+                        {t('discoverMessageAction') || 'Message'}
+                      </Text>
+                    </>
                   )}
                 </TouchableOpacity>
 
@@ -833,7 +842,7 @@ export default function DiscoverScreen() {
                   testID="discover-next-button"
                   {...getButtonA11yProps(t('a11y.nextButton') || 'Next profile')}
                 >
-                  <Text style={styles.cardActionEmoji}>{'→'}</Text>
+                  <Text style={styles.cardActionEmoji}>{'›'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -841,18 +850,6 @@ export default function DiscoverScreen() {
           </ReAnimated.View>
         </View>
       </Animated.View>
-
-      {/* Action Buttons */}
-      {/* Score explainer + premium teaser — below card */}
-      {/* Below-card chrome removed. Action buttons (skip / view profile /
-          message / next) are now overlaid INSIDE the card via
-          styles.cardActions, leaving the full-bleed photo to breathe. */}
-
-      {/* Secondary row removed: the top-of-card "Find your compatibility"
-          CTA is the single canonical entry to synastry, and the share
-          button was rarely tapped \u2014 both deleted to declutter the action
-          surface. handleShare and handleFindCompatibility remain available
-          if we want them back somewhere else. */}
 
       <Text style={styles.counter} accessibilityLabel={`Profile ${currentIndex + 1} of ${profiles.length}`}>
         {currentIndex + 1} of {profiles.length}
@@ -873,15 +870,10 @@ const styles = StyleSheet.create({
       minHeight: '100vh',
     }),
   } as any,
-  loadingText: {
-    color: a11yColors.text.secondary,
-    marginTop: 16,
-    fontSize: 14,
-  },
   card: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
-    // Edge-to-edge — no border radius, no border. The full-bleed photo
+    // Edge-to-edge -- no border radius, no border. The full-bleed photo
     // becomes the visual frame of the screen.
     borderRadius: 0,
     overflow: 'hidden',
@@ -916,6 +908,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     padding: 20,
   },
+  // Paging hint overlay -- a single neutral chevron shown while the card
+  // is dragged. No like/pass colour, no rotation, no match meaning.
   overlay: {
     position: 'absolute',
     top: 50,
@@ -925,65 +919,51 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 4,
   },
-  likeOverlay: {
-    right: 20,
-    borderColor: AppTheme.colors.success,
-    backgroundColor: 'rgba(74, 222, 128, 0.4)',
-    transform: [{ rotate: '15deg' }],
-  },
-  nopeOverlay: {
-    left: 20,
-    borderColor: AppTheme.colors.danger,
-    backgroundColor: 'rgba(239, 68, 68, 0.4)',
-    transform: [{ rotate: '-15deg' }],
-  },
   overlayText: {
     fontSize: 32,
     fontWeight: 'bold',
   },
-  likeText: {
-    color: AppTheme.colors.success,
+  navOverlayRight: {
+    right: 20,
+    borderColor: AppTheme.colors.cosmic,
+    backgroundColor: 'rgba(124, 108, 255, 0.30)',
   },
-  nopeText: {
-    color: AppTheme.colors.danger,
+  navOverlayLeft: {
+    left: 20,
+    borderColor: AppTheme.colors.cosmic,
+    backgroundColor: 'rgba(124, 108, 255, 0.30)',
   },
-  compatibilityBadge: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    backgroundColor: AppTheme.colors.coral,
-    borderRadius: 20,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    shadowColor: AppTheme.colors.coral,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.55,
-    shadowRadius: 14,
-    elevation: 10,
-    minWidth: 72,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.20)',
-  },
-  compatibilityNumber: {
+  navOverlayText: {
     color: '#FFFFFF',
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '800',
-    letterSpacing: -0.5,
   },
-  compatibilityLabel: {
-    color: 'rgba(255, 255, 255, 0.95)',
-    fontSize: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
+  // Intent banner -- top-left pill, frames Discover as an intentional
+  // browser. Sober, no interaction.
+  intentBanner: {
+    position: 'absolute',
+    top: 14,
+    left: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: 'rgba(8, 9, 11, 0.62)',
+    borderWidth: 1,
+    borderColor: 'rgba(231, 233, 238, 0.18)',
+    zIndex: 20,
+  },
+  intentBannerStar: {
+    fontSize: 11,
+    color: AppTheme.colors.gold,
+  },
+  intentBannerText: {
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '700',
-  },
-  compatibilityHint: {
-    color: 'rgba(255, 255, 255, 0.80)',
-    fontSize: 9,
-    marginTop: 3,
-    textAlign: 'center',
-    fontWeight: '500',
+    letterSpacing: 0.3,
   },
   cardContent: {
     gap: 12,
@@ -1001,6 +981,16 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.6)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
+  },
+  // "Chart context" label above the sign pills -- makes the synastry /
+  // birth-chart framing explicit on the card.
+  chartContextLabel: {
+    color: 'rgba(255,255,255,0.64)',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: -4,
   },
   voiceIntroContainer: {
     marginTop: 4,
@@ -1030,6 +1020,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.2,
   },
+  signSubtext: {
+    color: 'rgba(255,255,255,0.50)',
+    fontSize: 9,
+    fontWeight: '500',
+    marginTop: 1,
+    letterSpacing: 0.3,
+  },
   bio: {
     color: AppTheme.colors.textSecondary,
     fontSize: 15,
@@ -1045,10 +1042,10 @@ const styles = StyleSheet.create({
   mvpScrollContent: {
     paddingBottom: 8,
   },
-  // In-card action row: prev / view profile / message / next.
+  // In-card action row: previous / view profile / message / next.
   // Sits at the bottom of the gradient overlay so the photo stays
-  // edge-to-edge. Message button gets coral primary treatment, others
-  // are translucent circles to read against the photo.
+  // edge-to-edge. The Message button gets coral primary treatment with a
+  // text label; the others are translucent controls.
   cardActions: {
     marginTop: 16,
     flexDirection: 'row',
@@ -1066,16 +1063,24 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.22)',
   },
-  cardActionEmoji: {
-    fontSize: 22,
-    color: '#fff',
+  cardActionButtonDisabled: {
+    opacity: 0.35,
   },
+  cardActionEmoji: {
+    fontSize: 24,
+    color: '#fff',
+    fontWeight: '700',
+  },
+  // Message button -- a labelled pill, not an icon-only circle. The text
+  // label is the clearest signal that the core action is a conversation.
   cardActionMessageButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    height: 56,
+    paddingHorizontal: 20,
+    borderRadius: 28,
     backgroundColor: AppTheme.colors.coral,
     shadowColor: AppTheme.colors.coral,
     shadowOffset: { width: 0, height: 6 },
@@ -1084,98 +1089,13 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   cardActionMessageEmoji: {
-    fontSize: 26,
+    fontSize: 20,
   },
   cardActionMessageText: {
     color: '#fff',
     fontWeight: '700',
-    fontSize: 16,
-  },
-  viewChartButton: {
-    marginTop: 8,
-    backgroundColor: 'rgba(232, 93, 117, 0.15)',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: AppTheme.radius.pill,
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: 'rgba(232, 93, 117, 0.28)',
-    shadowColor: AppTheme.colors.coral,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.20,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  viewChartText: {
-    color: AppTheme.colors.coral,
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginTop: 28,
-  },
-  actionButton: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.30,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  passButton: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.15)',
-    shadowColor: '#000',
-  },
-  shareButton: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.15)',
-    shadowColor: '#000',
-  },
-  shareEmoji: {
-    fontSize: 22,
-  },
-  superButton: {
-    backgroundColor: 'rgba(124,108,255,0.10)',
-    borderWidth: 2,
-    borderColor: AppTheme.colors.cosmic,
-    shadowColor: AppTheme.colors.cosmic,
-    shadowOpacity: 0.40,
-  },
-  likeButton: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
-    backgroundColor: 'rgba(232, 93, 117, 0.12)',
-    borderWidth: 2.5,
-    borderColor: AppTheme.colors.coral,
-    shadowColor: AppTheme.colors.coral,
-    shadowOpacity: 0.50,
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  passEmoji: {
-    fontSize: 26,
-    color: 'rgba(255,255,255,0.50)',
-  },
-  superEmoji: {
-    fontSize: 26,
-    color: AppTheme.colors.cosmic,
-  },
-  likeEmoji: {
-    fontSize: 34,
-    color: AppTheme.colors.coral,
+    fontSize: 15,
+    letterSpacing: 0.2,
   },
   counter: {
     marginTop: 12,
@@ -1183,8 +1103,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     letterSpacing: 0.5,
   },
-  // Swipe error toast
-  swipeErrorToast: {
+  // Action error toast (e.g. a conversation failed to start).
+  actionErrorToast: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 60 : 20,
     left: 20,
@@ -1203,14 +1123,14 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 10,
   },
-  swipeErrorText: {
+  actionErrorText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
     flex: 1,
     marginRight: 12,
   },
-  swipeErrorDismiss: {
+  actionErrorDismiss: {
     color: 'rgba(255,255,255,0.8)',
     fontSize: 18,
     fontWeight: 'bold',
@@ -1289,98 +1209,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     letterSpacing: 0.3,
   },
-  // Legacy empty state styles (kept for reference but EmptyState component is used)
-  emptyState: {
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyEmoji: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 16,
-    color: a11yColors.text.secondary,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  refreshButton: {
-    backgroundColor: '#e94560',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 10,
-  },
-  refreshText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  deepInsightIcon: {
-    fontSize: 12,
-    color: AppTheme.colors.cosmic,
-  },
-  deepInsightTitle: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.5)',
-  },
-  deepInsightCta: {
-    fontSize: 10,
-    color: AppTheme.colors.cosmic,
-    fontWeight: '700',
-  },
-  superButtonPremium: {
-    borderColor: AppTheme.colors.gold,
-    shadowColor: AppTheme.colors.gold,
-  },
-  premiumDot: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: AppTheme.colors.gold,
-    borderWidth: 1.5,
-    borderColor: AppTheme.colors.canvas,
-  },
-  signSubtext: {
-    color: 'rgba(255,255,255,0.50)',
-    fontSize: 9,
-    fontWeight: '500',
-    marginTop: 1,
-    letterSpacing: 0.3,
-  },
-  belowCardInfo: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginTop: 8,
-    marginBottom: 4,
-    gap: 6,
-  },
-  scoreExplainerText: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 11,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  deepInsightRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  compatBadgeHigh: {
-    backgroundColor: '#22c55e',
-    shadowColor: '#22c55e',
-  },
-  compatBadgeMedium: {
-    backgroundColor: AppTheme.colors.coral,
-    shadowColor: AppTheme.colors.coral,
-  },
   exhaustedHoroscopeButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1432,26 +1260,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     letterSpacing: 0.3,
   },
-
-  // === Conversation-first additions ===
-  navOverlayRight: {
-    right: 20,
-    borderColor: AppTheme.colors.cosmic,
-    backgroundColor: 'rgba(124, 108, 255, 0.30)',
-    transform: [{ rotate: '15deg' }],
-  },
-  navOverlayLeft: {
-    left: 20,
-    borderColor: AppTheme.colors.cosmic,
-    backgroundColor: 'rgba(124, 108, 255, 0.30)',
-    transform: [{ rotate: '-15deg' }],
-  },
-  navOverlayText: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '800',
-  },
-  // Report/Block trigger — top-right of the card, above the compatibility
+  // Report/Block trigger -- top-right of the card, above the synastry
   // CTA. 44pt touch target with a subtle translucent chip background so it
   // reads against any photo. zIndex sits above the gradient + overlays.
   reportBlockMenuWrap: {
@@ -1492,9 +1301,6 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 10,
   },
-  compatibilityCtaIcon: {
-    fontSize: 14,
-  },
   compatibilityCtaGlyphWrap: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -1505,68 +1311,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.3,
-  },
-  primaryMessageButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: AppTheme.colors.coral,
-    shadowColor: AppTheme.colors.coral,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.50,
-    shadowRadius: 16,
-    elevation: 10,
-    minWidth: 160,
-  },
-  primaryMessageIcon: {
-    fontSize: 28,
-  },
-  primaryMessageText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  secondaryActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    marginTop: 14,
-    paddingHorizontal: 20,
-  },
-  compatibilityCtaSecondary: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: AppTheme.radius.pill,
-    backgroundColor: 'rgba(124, 108, 255, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(124, 108, 255, 0.32)',
-  },
-  compatibilityCtaSecondaryIcon: {
-    fontSize: 14,
-  },
-  compatibilityCtaSecondaryText: {
-    color: AppTheme.colors.cosmic,
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  shareSecondary: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
   },
 });

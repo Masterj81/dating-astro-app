@@ -117,8 +117,8 @@ export async function POST(request: Request) {
     await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
-      subject: "Account Deleted - AstroDating",
-      text: `Hi,\n\nYour AstroDating account has been permanently deleted. All associated data (profile, matches, messages) has been removed.\n\nIf you didn't request this, please contact us immediately at support@astrodatingapp.com.\n\n- The AstroDating Team`,
+      subject: "Account Deleted - JUNO",
+      text: `Hi,\n\nYour JUNO account has been permanently deleted. All associated data (profile, matches, messages) has been removed.\n\nIf you didn't request this, please contact us immediately at support@astrodatingapp.com.\n\n- The JUNO Team`,
     });
 
     return NextResponse.json({ success: true });

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "AstroDating",
+    "name": "JUNO",
     "slug": "astro-dating",
     "version": "2.0.0",
     "orientation": "portrait",
@@ -14,10 +14,10 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSPhotoLibraryUsageDescription": "AstroDating needs access to your photo library so you can select photos for your dating profile. For example, you can choose your best photos to show potential matches.",
-        "NSCameraUsageDescription": "AstroDating needs camera access so you can take new photos for your dating profile and record a verification video.",
-        "NSMicrophoneUsageDescription": "AstroDating needs microphone access to record your voice intro and verification video.",
-        "NSSiriUsageDescription": "AstroDating uses Siri to check your horoscope and view matches.",
+        "NSPhotoLibraryUsageDescription": "JUNO needs access to your photo library so you can add photos to your profile.",
+        "NSCameraUsageDescription": "JUNO needs camera access so you can take photos for your profile and record a verification video.",
+        "NSMicrophoneUsageDescription": "JUNO needs microphone access to record your voice intro and verification video.",
+        "NSSiriUsageDescription": "JUNO uses Siri to check your daily insight and open your connections.",
         "NSUserActivityTypes": [
           "CheckHoroscopeIntent",
           "ViewMatchesIntent",
@@ -85,9 +85,9 @@
     "web": {
       "output": "single",
       "favicon": "./assets/images/favicon.png",
-      "name": "AstroDating",
-      "shortName": "AstroDating",
-      "description": "Find your deeper match through astrology",
+      "name": "JUNO — Synastry Guide",
+      "shortName": "JUNO",
+      "description": "Explore romantic connection through birth-chart context, synastry insights, and guided intros — without swipe-first mechanics.",
       "themeColor": "#0f0f1a",
       "backgroundColor": "#0f0f1a",
       "display": "standalone",
@@ -120,15 +120,15 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "AstroDating needs camera access to record your verification video.",
-          "microphonePermission": "AstroDating needs microphone access for video recording.",
+          "cameraPermission": "JUNO needs camera access to record your verification video.",
+          "microphonePermission": "JUNO needs microphone access for video recording.",
           "recordAudioAndroid": true
         }
       ],
       [
         "expo-audio",
         {
-          "microphonePermission": "AstroDating needs microphone access to record your voice intro."
+          "microphonePermission": "JUNO needs microphone access to record your voice intro."
         }
       ],
       "expo-video",

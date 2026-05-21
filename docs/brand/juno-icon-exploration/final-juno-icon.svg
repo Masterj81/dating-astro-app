@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>JUNO — final app icon (Direction E — Dark Premium Tile)</title>
+  <!--
+    PRODUCTION MASTER for the JUNO app icon.
+
+    Direction E: a deep-midnight tile with two interlocking synastry rings
+    in soft ivory, and a small luminous gold point at their shared
+    intersection (the connection point between two charts).
+
+    This is a full-bleed SQUARE master with no baked-in corner radius:
+    iOS, Android (adaptive) and the browser apply their own corner
+    masking. Regenerate every raster icon with:
+        node scripts/generate-juno-brand-assets.mjs
+
+    Palette (only): tile #08090b / #11141b, ivory #f3f4f7 -> #cdd0d9,
+    warm gold #e9c873. No heart, no couple, no arrow, no swipe card,
+    no crystal ball, no zodiac wheel, no sparkle.
+  -->
+  <defs>
+    <radialGradient id="tile" cx="0.5" cy="0.34" r="0.95">
+      <stop offset="0" stop-color="#161a23"/>
+      <stop offset="0.62" stop-color="#0d0f15"/>
+      <stop offset="1" stop-color="#08090b"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3f4f7"/>
+      <stop offset="1" stop-color="#cdd0d9"/>
+    </linearGradient>
+    <radialGradient id="goldGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#e9c873" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#e9c873" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="goldPoint" cx="0.42" cy="0.38" r="0.78">
+      <stop offset="0" stop-color="#fbf0cf"/>
+      <stop offset="0.55" stop-color="#ecce7e"/>
+      <stop offset="1" stop-color="#d9b25b"/>
+    </radialGradient>
+  </defs>
+
+  <!-- deep-midnight tile with restrained radial depth -->
+  <rect width="1024" height="1024" fill="url(#tile)"/>
+
+  <!-- two interlocking synastry rings + luminous gold intersection point -->
+  <g transform="translate(512 512)">
+    <circle r="120" fill="url(#goldGlow)"/>
+    <circle cx="-92" cy="0" r="170" fill="none" stroke="url(#ring)" stroke-width="34"/>
+    <circle cx="92" cy="0" r="170" fill="none" stroke="url(#ring)" stroke-width="34"/>
+    <!-- redraw leading edges so the rings read as truly interlocked -->
+    <path d="M 92 -170 A 170 170 0 0 1 262 0 A 170 170 0 0 1 92 170"
+          fill="none" stroke="url(#ring)" stroke-width="34"/>
+    <path d="M -3 -142 A 170 170 0 0 0 -3 142"
+          fill="none" stroke="url(#ring)" stroke-width="34"/>
+    <!-- the shared connection point -->
+    <circle r="31" fill="url(#goldPoint)"/>
+    <circle r="11" fill="#fdf6e0"/>
+  </g>
+</svg>

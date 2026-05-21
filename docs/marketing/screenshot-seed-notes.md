@@ -1,4 +1,61 @@
-# Screenshot seed notes — two-profile strategy
+# JUNO — store screenshot narrative
+
+Authoritative screenshot plan for the **JUNO — Synastry Guide** store
+listings (App Store + Play Store). JUNO is a synastry-led relationship
+discovery app — the screenshots must read as **chart context before
+conversation**: synastry insight, guided intros, and real profile
+context, with **no swipe cards**.
+
+## The 5-shot sequence
+
+| # | Screen | Caption (overlay copy) | What it shows |
+|---|---|---|---|
+| 1 | Synastry / connection insight | **Explore connection through synastry** | The synastry read between two charts — the romantic signal, shown before any conversation |
+| 2 | Birth-chart context | **See chart context before the conversation** | The birth-chart context a user reviews before deciding to talk |
+| 3 | Profile browser | **Browse relationship profiles with intention** | One relationship profile at a time — calm navigation, no swipe deck |
+| 4 | Guided intro + voice | **Start with guided intros and voice context** | A chart-shaped opening prompt and a voice intro — context, not a cold message |
+| 5 | Relationship insight | **Understand relationship dynamics, not generic profiles** | The relationship-dynamics breakdown framed by the synastry insight |
+
+### Caption copy (paste-ready, in order)
+
+1. Explore connection through synastry
+2. See chart context before the conversation
+3. Browse relationship profiles with intention
+4. Start with guided intros and voice context
+5. Understand relationship dynamics, not generic profiles
+
+## Design direction
+
+- Premium, mature, romantic, intentional. Dark ground; warm gold +
+  soft-blue accents (the JUNO palette — see
+  `docs/brand/juno-icon-exploration/`).
+- Every shot is a **real screen**: synastry context, guided prompt,
+  chart/voice/intention profile.
+- One idea per shot. **No swipe cards, no profile marketplace grid, no
+  "It's a Match!" celebration.**
+- Overlay captions short and declarative — no exclamation marks.
+
+## Forbidden in any JUNO screenshot
+
+Never show or caption: swipe cards / swipe arrows, "Tinder-like" match
+mechanics, "It's a Match!" screens, "perfect match", "soulmate
+guarantee", "find love fast", horoscope-as-prediction claims,
+fortune-telling. Romantic connection, relationship, and synastry **are**
+on-brand and may be shown honestly.
+
+`scripts/check-store-metadata.mjs` scans the store-metadata docs for the
+banned terms — run it before regenerating store assets.
+
+> **Note on existing assets.** `apps/mobile/store-assets/` and
+> `apps/web/public/screenshots/` still hold the previous dating-app
+> captures (Discover swipe, Chat, Compatibility). They must be
+> **recaptured** against the JUNO synastry surfaces above before the next
+> submission; the legacy capture procedure is retained below for
+> reference only.
+
+---
+
+# Legacy capture procedure — two-profile strategy (historical)
 
 Approved approach (2026-05-09). Marketing screenshots use **two distinct
 seed profiles** so each shot can be tuned independently without touching

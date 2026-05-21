@@ -74,13 +74,13 @@ export function InstallPrompt() {
   if (!deferredPrompt && !isIOS) return null;
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-accent/20 bg-accent/8 px-4 py-3" role="region" aria-label={t("installTitle") || "Install AstroDating"}>
+    <div className="flex items-center gap-3 rounded-2xl border border-accent/20 bg-accent/8 px-4 py-3" role="region" aria-label={t("installTitle") || "Install JUNO"}>
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/20 text-accent" aria-hidden="true">
         <PhoneInstallIcon />
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-white">
-          {t("installTitle") || "Install AstroDating"}
+          {t("installTitle") || "Install JUNO"}
         </p>
         <p className="text-xs text-text-muted">
           {t("installSubtitle") || "Add to your home screen for the best experience"}

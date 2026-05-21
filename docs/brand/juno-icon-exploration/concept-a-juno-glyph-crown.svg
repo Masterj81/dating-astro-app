@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>JUNO — Concept A — Juno Glyph / Crown</title>
+  <defs>
+    <linearGradient id="aTile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#11141b"/>
+      <stop offset="1" stop-color="#08090b"/>
+    </linearGradient>
+    <linearGradient id="aGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3d98f"/>
+      <stop offset="1" stop-color="#e9c873"/>
+    </linearGradient>
+  </defs>
+
+  <!-- app-icon tile -->
+  <rect width="1024" height="1024" rx="224" fill="url(#aTile)"/>
+  <rect x="3" y="3" width="1018" height="1018" rx="221" fill="none" stroke="#e9c873" stroke-opacity="0.10" stroke-width="6"/>
+
+  <!-- Juno glyph: the astronomical sceptre/star-on-a-staff, here softened into a partnership emblem.
+       A vertical stand bearing a circle, with a steady horizon bar = commitment, grounding. -->
+  <g transform="translate(512 512)">
+    <!-- grounding horizon bar -->
+    <rect x="-150" y="232" width="300" height="22" rx="11" fill="url(#aGold)"/>
+
+    <!-- the staff / spine of partnership -->
+    <rect x="-15" y="-58" width="30" height="304" rx="15" fill="url(#aGold)"/>
+
+    <!-- the ring of union, crowning the staff -->
+    <circle cx="0" cy="-150" r="120" fill="none" stroke="url(#aGold)" stroke-width="30"/>
+    <!-- inner soft-blue heart of the ring = the relationship itself -->
+    <circle cx="0" cy="-150" r="44" fill="#7aa7ff"/>
+
+    <!-- restrained 'crown' — three rising points read as devotion, not royalty -->
+    <path d="M -78 -245 L -54 -300 L -28 -252 Z" fill="url(#aGold)"/>
+    <path d="M -26 -262 L 0 -332 L 26 -262 Z" fill="url(#aGold)"/>
+    <path d="M 28 -252 L 54 -300 L 78 -245 Z" fill="url(#aGold)"/>
+
+    <!-- two anchoring dots on the horizon = two people, steady -->
+    <circle cx="-110" cy="243" r="13" fill="#08090b"/>
+    <circle cx="110" cy="243" r="13" fill="#08090b"/>
+  </g>
+</svg>
