@@ -58,7 +58,15 @@ export async function generateMetadata({
       description: t("description"),
       images: ["/og-image.png"],
     },
-    icons: { icon: "/favicon.png", apple: "/icon-192.png" },
+    icons: {
+      icon: [
+        { url: "/favicon.ico", sizes: "any" },
+        { url: "/favicon.png", type: "image/png" },
+        { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+        { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      ],
+      apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+    },
     manifest: "/manifest.json",
   };
 }
@@ -85,7 +93,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} dir={dir} className="dark">
       <head>
-        <meta name="theme-color" content="#e94560" />
+        <meta name="theme-color" content="#0f0d17" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="min-h-screen flex flex-col">
