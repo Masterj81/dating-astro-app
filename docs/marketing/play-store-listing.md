@@ -1,9 +1,16 @@
-> **Superseded for store submission.** The current paste-ready store listing
-> (App Store + Play Store) lives in `docs/app-store/saturn-metadata.md`.
-> Brand names below were updated to JUNO, but framing may still read as
-> dating — defer to the metadata doc.
+> **⚠️ SUPERSEDED — historical reference only.** The current paste-ready
+> store listing (App Store + Play Store: title, subtitle, short / full
+> description, keywords, category) lives in
+> [`docs/app-store/juno-metadata.md`](../app-store/juno-metadata.md), and
+> the App Review pack in
+> [`docs/app-store/juno-app-review-notes.md`](../app-store/juno-app-review-notes.md).
+> Everything below predates the JUNO synastry-led repositioning: it still
+> uses swipe / dating-clone framing ("Talk, Don't Swipe", "no swipe
+> paywall", "dating with depth") that must **not** ship to any store.
+> Do not copy from this file — defer entirely to `juno-metadata.md`.
+> Kept only as a record of the earlier conversation-first draft.
 
-# JUNO — Play Store Listing
+# JUNO — Play Store Listing (historical draft)
 
 Realigns the live listing with the post-MVP direction: **conversation-first, anti-paywall-to-talk, profile depth (intent + values + lifestyle + prompts + voice + icebreakers)** with astrology as backbone. Replaces the older synastry-only framing.
 

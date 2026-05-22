@@ -129,8 +129,22 @@ function renderShot(target, shot, number) {
   <image href="${iconDataUri}" x="${margin}" y="${isPad ? 78 : 86}" width="${logoSize}" height="${logoSize}"/>
   <text x="${margin + logoSize + 24}" y="${isPad ? 126 : 132}" fill="${IVORY}" font-family="Inter, Arial, sans-serif" font-size="${isPad ? 42 : 38}" font-weight="800" letter-spacing="0.06em">JUNO</text>
   <text x="${width - margin}" y="${isPad ? 128 : 132}" text-anchor="end" fill="${shot.accent}" font-family="Inter, Arial, sans-serif" font-size="${isPad ? 30 : 28}" font-weight="700">${String(number).padStart(2, "0")}</text>
-  ${headline(shot.title, margin, titleY, width - margin * 2, isPad ? 84 : 78)}
-  ${paragraph(shot.subtitle, margin, titleY + (isPad ? 195 : 185), width - margin * 2, isPad ? 40 : 38, "#cdd0d9")}
+  ${(() => {
+    // The subtitle must clear the headline whatever its line count, so the
+    // 3-line headline of shot 5 does not collide with the paragraph.
+    const headlineFont = isPad ? 84 : 78;
+    const headlineLines = wrap(
+      shot.title,
+      Math.max(8, Math.floor((width - margin * 2) / (headlineFont * 0.55)))
+    ).length;
+    // headline() uses lineHeight 1.08; clear it plus a fixed gap.
+    const subtitleY =
+      titleY +
+      headlineFont * 1.08 * (headlineLines - 1) +
+      (isPad ? 110 : 105);
+    return `${headline(shot.title, margin, titleY, width - margin * 2, headlineFont)}
+  ${paragraph(shot.subtitle, margin, subtitleY, width - margin * 2, isPad ? 40 : 38, "#cdd0d9")}`;
+  })()}
   ${phoneFrame(phoneX, phoneY, phoneW, phoneH, shot)}
   <text x="${width / 2}" y="${height - (isPad ? 82 : 92)}" text-anchor="middle" fill="#8b8f9c" font-family="Inter, Arial, sans-serif" font-size="${isPad ? 28 : 24}">Explore connection through synastry</text>
 </svg>`;
