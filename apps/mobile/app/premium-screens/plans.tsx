@@ -31,8 +31,8 @@ const MANAGE_SUBSCRIPTIONS_URL =
   Platform.OS === 'ios'
     ? 'https://apps.apple.com/account/subscriptions'
     : 'https://play.google.com/store/account/subscriptions';
-const LEGAL_TERMS_URL = 'https://astrodatingapp.com/terms';
-const LEGAL_PRIVACY_URL = 'https://astrodatingapp.com/privacy';
+const LEGAL_TERMS_URL = 'https://www.junosynastry.com/terms';
+const LEGAL_PRIVACY_URL = 'https://www.junosynastry.com/privacy';
 
 type BillingCycle = 'monthly' | 'annual';
 type TierKind = 'celestial' | 'cosmic';

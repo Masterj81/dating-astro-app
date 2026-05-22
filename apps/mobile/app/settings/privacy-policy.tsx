@@ -75,7 +75,7 @@ export default function PrivacyPolicyScreen() {
       content:
         'If you have any questions or concerns about this Privacy Policy or our data practices, please contact us:\n\n' +
         '\u2022 Email: privacy@astrodatingapp.com\n\n' +
-        '\u2022 Website: https://astrodatingapp.com/contact\n\n' +
+        '\u2022 Website: https://www.junosynastry.com/contact\n\n' +
         'We will respond to your inquiry within 30 days.\n\n' +
         'This policy may be updated from time to time. We will notify you of any material changes through the app or by email.',
     },

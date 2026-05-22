@@ -315,7 +315,7 @@
     "s8": "8. Limitação de Responsabilidade",
     "s8_text": "Na extensão máxima permitida por lei:\n\n• O JUNO não será responsável por quaisquer danos indiretos, incidentais, especiais, consequenciais ou punitivos.\n\n• Nossa responsabilidade total não excederá o valor que você pagou ao JUNO nos 12 meses anteriores à reclamação.\n\n• Isso inclui danos por perda de lucros, dados ou outras perdas intangíveis.\n\n• Algumas jurisdições não permitem limitações de responsabilidade, portanto esses limites podem não se aplicar a você.",
     "s9": "9. Fale Conosco",
-    "s9_text": "Se você tiver alguma dúvida sobre estes Termos de Serviço, entre em contato conosco:\n\n• Email: legal@astrodatingapp.com\n• Website: https://astrodatingapp.com/contact\n\nPodemos atualizar estes Termos periodicamente. O uso continuado do aplicativo após as alterações constitui aceitação dos novos Termos. Notificaremos você sobre alterações significativas por meio do aplicativo."
+    "s9_text": "Se você tiver alguma dúvida sobre estes Termos de Serviço, entre em contato conosco:\n\n• Email: legal@astrodatingapp.com\n• Website: https://www.junosynastry.com/contact\n\nPodemos atualizar estes Termos periodicamente. O uso continuado do aplicativo após as alterações constitui aceitação dos novos Termos. Notificaremos você sobre alterações significativas por meio do aplicativo."
   },
   "help": {
     "title": "Central de Ajuda",
@@ -329,11 +329,11 @@
     "catSafety": "Segurança",
     "catAstrology": "Astrologia",
     "q_createAccount": "Como crio uma conta?",
-    "a_createAccount": "Baixe o JUNO no Google Play ou visite astrodatingapp.com. Cadastre-se com seu e-mail, Google ou Facebook (o login com Apple está disponível no iOS e na web). Você precisará informar sua data, hora e local de nascimento para gerar seu mapa natal.",
+    "a_createAccount": "Baixe o JUNO no Google Play ou visite www.junosynastry.com. Cadastre-se com seu e-mail, Google ou Facebook (o login com Apple está disponível no iOS e na web). Você precisará informar sua data, hora e local de nascimento para gerar seu mapa natal.",
     "q_changeBirthTime": "Posso alterar meu horário de nascimento após o cadastro?",
     "a_changeBirthTime": "Sim. Vá em Perfil > Editar Perfil > Dados de Nascimento. Observe que alterar seu horário de nascimento recalculará todo o seu mapa natal e poderá alterar suas pontuações de compatibilidade com outros usuários.",
     "q_deleteAccount": "Como excluo minha conta?",
-    "a_deleteAccount": "Você pode excluir sua conta em Configurações > Conta > Excluir Conta no aplicativo, ou acessando astrodatingapp.com/account/delete. Seus dados serão permanentemente removidos em até 30 dias.",
+    "a_deleteAccount": "Você pode excluir sua conta em Configurações > Conta > Excluir Conta no aplicativo, ou acessando www.junosynastry.com/account/delete. Seus dados serão permanentemente removidos em até 30 dias.",
     "q_compatibility": "Como a compatibilidade é calculada?",
     "a_compatibility": "Usamos sinastria real — a prática astrológica de comparar dois mapas astrais. Analisamos os aspectos entre seus planetas e os da outra pessoa (conjunções, trígonos, quadraturas, etc.) nas casas-chave de relacionamento para gerar uma pontuação geral de compatibilidade.",
     "q_fewMatches": "Por que não vejo muitos matches?",
@@ -361,7 +361,7 @@
     "q_webApp": "Posso usar o JUNO no computador?",
     "a_webApp": "Sim! Visite app.astrodatingapp.com para acessar o aplicativo web completo. Você pode navegar perfis, conversar, ver seu mapa natal e gerenciar sua assinatura pelo navegador.",
     "q_installPwa": "Posso instalar o aplicativo web no meu celular?",
-    "a_installPwa": "Sim. Visite astrodatingapp.com no navegador do celular e toque em 'Adicionar à tela inicial'. O aplicativo aparecerá como um ícone na sua tela inicial e abrirá em tela cheia.",
+    "a_installPwa": "Sim. Visite www.junosynastry.com no navegador do celular e toque em 'Adicionar à tela inicial'. O aplicativo aparecerá como um ícone na sua tela inicial e abrirá em tela cheia.",
     "q_webSync": "Meus dados são sincronizados entre o app e a web?",
     "a_webSync": "Sim. Seu perfil, matches, mensagens e assinatura são sincronizados em tempo real. Você pode alternar entre o app móvel e a web sem problemas."
   },

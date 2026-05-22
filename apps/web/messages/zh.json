@@ -315,7 +315,7 @@
     "s8": "8. 责任限制",
     "s8_text": "在法律允许的最大范围内：\n\n• JUNO 不对任何间接的、附带的、特殊的、后果性的或惩罚性的损害承担责任。\n\n• 我们的总责任不超过您在索赔前 12 个月内向 JUNO 支付的金额。\n\n• 这包括利润损失、数据损失或其他无形损失的赔偿。\n\n• 某些司法管辖区不允许限制责任，因此这些限制可能不适用于您。",
     "s9": "9. 联系我们",
-    "s9_text": "如果您对本服务条款有任何疑问，请联系我们：\n\n• 电子邮件：legal@astrodatingapp.com\n• 网站：https://astrodatingapp.com/contact\n\n我们可能会不时更新本条款。在变更后继续使用本应用即表示接受新条款。我们将通过本应用通知您重大变更。"
+    "s9_text": "如果您对本服务条款有任何疑问，请联系我们：\n\n• 电子邮件：legal@astrodatingapp.com\n• 网站：https://www.junosynastry.com/contact\n\n我们可能会不时更新本条款。在变更后继续使用本应用即表示接受新条款。我们将通过本应用通知您重大变更。"
   },
   "help": {
     "title": "帮助中心",
@@ -329,11 +329,11 @@
     "catSafety": "安全",
     "catAstrology": "占星",
     "q_createAccount": "如何创建账户？",
-    "a_createAccount": "从Google Play下载JUNO或访问astrodatingapp.com。使用邮箱、Google或Facebook注册（Apple登录在iOS和网页上可用）。您需要输入出生日期、时间和地点来生成您的星盘。",
+    "a_createAccount": "从Google Play下载JUNO或访问www.junosynastry.com。使用邮箱、Google或Facebook注册（Apple登录在iOS和网页上可用）。您需要输入出生日期、时间和地点来生成您的星盘。",
     "q_changeBirthTime": "注册后可以更改出生时间吗？",
     "a_changeBirthTime": "可以。前往「个人资料」>「编辑资料」>「出生详情」。请注意，更改出生时间将重新计算您的整个本命星盘，并可能改变您与其他用户的兼容度评分。",
     "q_deleteAccount": "如何删除账户？",
-    "a_deleteAccount": "您可以在应用内通过「设置」>「账户」>「删除账户」来删除账户，或访问 astrodatingapp.com/account/delete。您的数据将在 30 天内被永久删除。",
+    "a_deleteAccount": "您可以在应用内通过「设置」>「账户」>「删除账户」来删除账户，或访问 www.junosynastry.com/account/delete。您的数据将在 30 天内被永久删除。",
     "q_compatibility": "兼容度是如何计算的？",
     "a_compatibility": "我们使用真实的合盘分析——一种比较两张星盘的占星实践。我们分析您和对方行星之间的相位（合相、三分相、四分相等），跨越关键的关系宫位来生成整体兼容度评分。",
     "q_fewMatches": "为什么我看到的匹配对象不多？",
@@ -361,7 +361,7 @@
     "q_webApp": "可以在电脑上使用JUNO吗？",
     "a_webApp": "可以！访问app.astrodatingapp.com使用完整的网页应用。您可以浏览资料、聊天、查看星盘和管理订阅——全部在浏览器中完成。",
     "q_installPwa": "可以在手机上安装网页应用吗？",
-    "a_installPwa": "可以。在手机浏览器中访问astrodatingapp.com，然后点击「添加到主屏幕」。应用将作为图标出现在主屏幕上，并以全屏模式打开。",
+    "a_installPwa": "可以。在手机浏览器中访问www.junosynastry.com，然后点击「添加到主屏幕」。应用将作为图标出现在主屏幕上，并以全屏模式打开。",
     "q_webSync": "应用和网页之间的数据会同步吗？",
     "a_webSync": "是的。您的资料、匹配、消息和订阅都会实时同步。您可以在移动应用和网页应用之间无缝切换。"
   },

@@ -161,19 +161,42 @@ Thank you for the review. To clarify: JUNO is a synastry-led relationship discov
 - **`applicationId` unchanged** (`com.astrodatingapp.mobile`) — the Play
   listing is an **update**, never a new app.
 
+## Web domain
+
+| Surface | Value | Notes |
+|---|---|---|
+| Canonical public website | `https://www.junosynastry.com` | The JUNO brand domain. Used as the App Store / Play Store **Marketing URL**, **Support URL** (`/contact`) and **Privacy Policy URL** (`/privacy`). Apex `junosynastry.com` must 301-redirect to `www`. |
+| Legacy public website | `astrodatingapp.com` | Kept live as a **301 transition redirect** to `www.junosynastry.com`. No longer the canonical domain in any store/marketing surface. |
+| Web-app subdomain (PWA) | `app.astrodatingapp.com` | **Operational identifier — unchanged.** This is the host users load the PWA from; the OAuth redirect allowlist, Supabase edge-function CORS allowlist and middleware `APP_HOSTS` are all keyed to it. Moving it requires DNS + provider-config changes and is tracked as a separate manual action. |
+
+App Store Connect URLs to use at submission:
+
+- **Marketing URL:** `https://www.junosynastry.com`
+- **Support URL:** `https://www.junosynastry.com/contact`
+- **Privacy Policy URL:** `https://www.junosynastry.com/privacy`
+
 ## Technical identifiers — unchanged on purpose
 
 | Identifier | Value |
 |---|---|
 | iOS bundle identifier | `com.astrodating.app` |
+| iOS widget bundle id | `com.astrodating.app.widget` |
 | iOS app group | `group.com.astrodating.app` |
 | Android `applicationId` | `com.astrodatingapp.mobile` |
 | Expo `slug` / EAS `projectId` | `astro-dating` / `4b9ba994-…` |
 | URL scheme | `astrodating` |
-| Universal-link domain | `astrodatingapp.com` |
+| Universal-link / deep-link domain | `astrodatingapp.com` |
 | Sentry project | `astro-dating` |
 
-The display name (`JUNO`) is independent of all of these.
+The display name (`JUNO`) and the canonical web domain
+(`www.junosynastry.com`) are independent of all of these. The
+**deep-link domain stays `astrodatingapp.com`**: the Android
+`intentFilters` `autoVerify` against it requires
+`/.well-known/assetlinks.json` on that host, and iOS associated domains
+(if enabled) require `/.well-known/apple-app-site-association`. Repointing
+the deep links to `junosynastry.com` is only safe once those
+well-known files are served from the new domain — until then, changing
+the host would silently break every existing universal/app link.
 
 ## Residual risks
 

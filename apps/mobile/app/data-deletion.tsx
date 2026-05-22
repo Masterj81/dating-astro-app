@@ -96,7 +96,7 @@ export default function DataDeletionScreen() {
             <Text style={styles.sectionText}>
               For questions about data deletion:{'\n\n'}
               Email: privacy@astrodatingapp.com{'\n'}
-              Website: https://www.astrodatingapp.com
+              Website: https://www.junosynastry.com
             </Text>
           </View>
         </View>

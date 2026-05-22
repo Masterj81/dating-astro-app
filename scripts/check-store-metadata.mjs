@@ -37,6 +37,13 @@
 //      defensive framing is correct, but it belongs ONLY in the App
 //      Review docs of tier 3 — never in the public marketing hero.
 //
+//   5. CANONICAL WEB DOMAIN (SITE.url, robots.txt sitemap, OG card footer,
+//      landing-page JSON-LD). The public/store-facing canonical domain
+//      must be www.junosynastry.com and must NOT name astrodatingapp.com
+//      as canonical. The legacy domain still survives operationally
+//      (app.* PWA subdomain, @ mailboxes, the deep-link host, the
+//      documented technical-identifier rows) — those are NOT scanned here.
+//
 // JUNO is an honest romantic / relationship product: "relationship",
 // "romantic", "love", "synastry", "birth-chart context", "connection",
 // "conversation", "guided intro" are ALL allowed.
@@ -350,6 +357,81 @@ for (const locale of WEB_MESSAGE_LOCALES) {
   }
 }
 
+// --- Tier 5: canonical web domain ------------------------------------------
+// The public, store-facing canonical domain is www.junosynastry.com. These
+// surfaces drive SEO canonicals, the sitemap, the OG share card and the
+// App Store / Play Store marketing+support URLs. They must point at
+// junosynastry.com and must NOT name astrodatingapp.com as the canonical
+// domain.
+//
+// astrodatingapp.com legitimately survives elsewhere (operational, NOT
+// scanned here): the app.astrodatingapp.com PWA subdomain, @astrodatingapp.com
+// mailboxes, the Android intentFilters deep-link host, and the documented
+// "Technical identifiers" / "Universal-link domain" rows in juno-metadata.md.
+const CANONICAL_DOMAIN = "junosynastry.com";
+const CANONICAL_CHECKS = [
+  {
+    file: "apps/web/src/lib/constants.ts",
+    // The SITE.url default literal must be the junosynastry canonical.
+    mustMatch: /url:\s*process\.env\.NEXT_PUBLIC_SITE_URL\s*\|\|\s*"https:\/\/www\.junosynastry\.com"/,
+    mustMatchDesc: 'SITE.url default must be "https://www.junosynastry.com"',
+  },
+  {
+    file: "apps/web/public/robots.txt",
+    mustMatch: /^Sitemap:\s*https:\/\/www\.junosynastry\.com\/sitemap\.xml$/m,
+    mustMatchDesc: "robots.txt Sitemap must use www.junosynastry.com",
+  },
+  {
+    file: "apps/web/public/og-template.html",
+    // The OG card footer domain wordmark.
+    mustInclude: "junosynastry.com",
+    forbidInclude: "astrodatingapp.com",
+    forbidDesc: "OG card must not show the legacy domain",
+  },
+];
+for (const cc of CANONICAL_CHECKS) {
+  const full = path.join(ROOT, cc.file);
+  if (!fs.existsSync(full)) {
+    fail(cc.file, "(file)", "—", "file is missing");
+    continue;
+  }
+  const text = fs.readFileSync(full, "utf8");
+  if (cc.mustMatch && !cc.mustMatch.test(text)) {
+    fail(cc.file, "(canonical)", CANONICAL_DOMAIN, cc.mustMatchDesc);
+  }
+  if (cc.mustInclude && !text.includes(cc.mustInclude)) {
+    fail(cc.file, "(canonical)", cc.mustInclude, "required canonical domain is missing");
+  }
+  if (cc.forbidInclude && text.includes(cc.forbidInclude)) {
+    fail(cc.file, "(canonical)", cc.forbidInclude, cc.forbidDesc);
+  }
+}
+
+// The marketing landing page JSON-LD must advertise the junosynastry canonical.
+const landingPage = path.join(ROOT, "apps/web/src/app/[locale]/(marketing)/page.tsx");
+if (fs.existsSync(landingPage)) {
+  const text = fs.readFileSync(landingPage, "utf8");
+  const ld = text.match(/const JSON_LD\s*=\s*\{[\s\S]*?\n\};/);
+  if (ld) {
+    if (!ld[0].includes(`"url": "https://www.junosynastry.com"`)) {
+      fail(
+        "apps/web/src/app/[locale]/(marketing)/page.tsx",
+        "JSON_LD.url",
+        CANONICAL_DOMAIN,
+        'WebApplication JSON-LD url must be "https://www.junosynastry.com"'
+      );
+    }
+    if (/astrodatingapp\.com/.test(ld[0])) {
+      fail(
+        "apps/web/src/app/[locale]/(marketing)/page.tsx",
+        "JSON_LD",
+        "astrodatingapp.com",
+        "JSON-LD must not name the legacy domain as canonical"
+      );
+    }
+  }
+}
+
 // --- Asset existence -------------------------------------------------------
 for (const asset of REQUIRED_ASSETS) {
   if (!fs.existsSync(path.join(ROOT, asset))) {
@@ -376,6 +458,7 @@ console.log(
   "Store metadata guard passed — JUNO branding intact across config, " +
     "marketing assets, transactional emails, public web marketing copy " +
     "and App Review docs; no swipe/match dating-clone language; the hero " +
-    "sells positively; brand/store raster assets present."
+    "sells positively; the canonical web domain is www.junosynastry.com; " +
+    "brand/store raster assets present."
 );
 process.exit(0);

@@ -450,7 +450,7 @@ export default function SettingsScreen() {
 
           <TouchableOpacity
             style={styles.settingsRow}
-            onPress={() => openLink('https://astrodatingapp.com/help')}
+            onPress={() => openLink('https://www.junosynastry.com/help')}
           >
             <View style={styles.rowLeft}>
               <Text style={styles.rowIcon}>❓</Text>

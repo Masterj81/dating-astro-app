@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /*/app/
 
-Sitemap: https://astrodatingapp.com/sitemap.xml
+Sitemap: https://www.junosynastry.com/sitemap.xml

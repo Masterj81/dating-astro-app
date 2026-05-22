@@ -315,7 +315,7 @@
     "s8": "8. Haftungsbeschränkung",
     "s8_text": "Im maximal gesetzlich zulässigen Umfang:\n\n• JUNO haftet nicht für indirekte, zufällige, besondere, Folge- oder Strafschäden.\n\n• Unsere Gesamthaftung übersteigt nicht den Betrag, den Sie in den 12 Monaten vor dem Anspruch an JUNO gezahlt haben.\n\n• Dies schließt Schäden durch entgangene Gewinne, Datenverlust oder andere immaterielle Verluste ein.\n\n• Einige Rechtsordnungen lassen Haftungsbeschränkungen nicht zu, sodass diese Grenzen möglicherweise nicht für Sie gelten.",
     "s9": "9. Kontaktieren Sie uns",
-    "s9_text": "Wenn Sie Fragen zu diesen Nutzungsbedingungen haben, kontaktieren Sie uns bitte:\n\n• E-Mail: legal@astrodatingapp.com\n• Website: https://astrodatingapp.com/contact\n\nWir können diese Bedingungen von Zeit zu Zeit aktualisieren. Die fortgesetzte Nutzung der App nach Änderungen gilt als Annahme der neuen Bedingungen. Wir werden Sie über wesentliche Änderungen über die App benachrichtigen."
+    "s9_text": "Wenn Sie Fragen zu diesen Nutzungsbedingungen haben, kontaktieren Sie uns bitte:\n\n• E-Mail: legal@astrodatingapp.com\n• Website: https://www.junosynastry.com/contact\n\nWir können diese Bedingungen von Zeit zu Zeit aktualisieren. Die fortgesetzte Nutzung der App nach Änderungen gilt als Annahme der neuen Bedingungen. Wir werden Sie über wesentliche Änderungen über die App benachrichtigen."
   },
   "help": {
     "title": "Hilfecenter",
@@ -329,11 +329,11 @@
     "catSafety": "Sicherheit",
     "catAstrology": "Astrologie",
     "q_createAccount": "Wie erstelle ich ein Konto?",
-    "a_createAccount": "Lade JUNO aus dem Google Play Store herunter oder besuche astrodatingapp.com. Registriere dich mit deiner E-Mail, Google oder Facebook (Apple-Anmeldung ist auf iOS und im Web verfügbar). Du musst dein Geburtsdatum, deine Geburtszeit und deinen Geburtsort eingeben, um dein Geburtshoroskop zu erstellen.",
+    "a_createAccount": "Lade JUNO aus dem Google Play Store herunter oder besuche www.junosynastry.com. Registriere dich mit deiner E-Mail, Google oder Facebook (Apple-Anmeldung ist auf iOS und im Web verfügbar). Du musst dein Geburtsdatum, deine Geburtszeit und deinen Geburtsort eingeben, um dein Geburtshoroskop zu erstellen.",
     "q_changeBirthTime": "Kann ich meine Geburtszeit nach der Anmeldung ändern?",
     "a_changeBirthTime": "Ja. Gehen Sie zu Profil > Profil bearbeiten > Geburtsdaten. Beachten Sie, dass eine Änderung Ihrer Geburtszeit Ihr gesamtes Geburtshoroskop neu berechnet und Ihre Kompatibilitätswerte mit anderen Nutzern verändern kann.",
     "q_deleteAccount": "Wie lösche ich mein Konto?",
-    "a_deleteAccount": "Sie können Ihr Konto unter Einstellungen > Konto > Konto löschen in der App löschen oder astrodatingapp.com/account/delete besuchen. Ihre Daten werden innerhalb von 30 Tagen dauerhaft entfernt.",
+    "a_deleteAccount": "Sie können Ihr Konto unter Einstellungen > Konto > Konto löschen in der App löschen oder www.junosynastry.com/account/delete besuchen. Ihre Daten werden innerhalb von 30 Tagen dauerhaft entfernt.",
     "q_compatibility": "Wie wird die Kompatibilität berechnet?",
     "a_compatibility": "Wir verwenden echte Synastrie — die astrologische Praxis des Vergleichs zweier Geburtshoroskope. Wir analysieren die Aspekte zwischen Ihren Planeten und denen der anderen Person (Konjunktionen, Trigone, Quadrate usw.) über wichtige Beziehungshäuser hinweg, um einen Gesamtkompatibilitätswert zu erstellen.",
     "q_fewMatches": "Warum sehe ich nur wenige Matches?",
@@ -361,7 +361,7 @@
     "q_webApp": "Kann ich JUNO am Computer nutzen?",
     "a_webApp": "Ja! Besuche app.astrodatingapp.com, um die vollständige Web-App zu nutzen. Du kannst Profile durchsuchen, mit Matches chatten, dein Geburtshoroskop ansehen und dein Abo verwalten — alles im Browser.",
     "q_installPwa": "Kann ich die Web-App auf meinem Handy installieren?",
-    "a_installPwa": "Ja. Besuche astrodatingapp.com in deinem mobilen Browser und tippe auf 'Zum Startbildschirm hinzufügen'. Die App erscheint als Symbol auf deinem Startbildschirm und öffnet sich im Vollbildmodus.",
+    "a_installPwa": "Ja. Besuche www.junosynastry.com in deinem mobilen Browser und tippe auf 'Zum Startbildschirm hinzufügen'. Die App erscheint als Symbol auf deinem Startbildschirm und öffnet sich im Vollbildmodus.",
     "q_webSync": "Werden meine Daten zwischen App und Web synchronisiert?",
     "a_webSync": "Ja. Dein Profil, Matches, Nachrichten und Abo werden in Echtzeit synchronisiert. Du kannst nahtlos zwischen der mobilen App und der Web-App wechseln."
   },

@@ -98,7 +98,7 @@ export default function TermsOfServiceScreen() {
       content:
         'If you have any questions about these Terms of Service, please contact us:\n\n' +
         '\u2022 Email: legal@astrodatingapp.com\n\n' +
-        '\u2022 Website: https://astrodatingapp.com/contact\n\n' +
+        '\u2022 Website: https://www.junosynastry.com/contact\n\n' +
         'We may update these Terms from time to time. Continued use of the app after changes constitutes acceptance of the new Terms. We will notify you of material changes through the app.',
     },
   ];

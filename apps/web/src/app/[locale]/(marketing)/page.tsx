@@ -37,9 +37,9 @@ const JSON_LD = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
   "name": "JUNO",
-  "description": "Dating app with depth, using astrology, values, and conversation prompts as a shared language.",
-  "applicationCategory": "DatingApplication",
-  "url": "https://astrodatingapp.com",
+  "description": "Synastry-led relationship discovery — explore romantic connection through birth-chart context, synastry insights, and guided conversation prompts.",
+  "applicationCategory": "LifestyleApplication",
+  "url": "https://www.junosynastry.com",
   "operatingSystem": "iOS, Android",
   "offers": {
     "@type": "Offer",
