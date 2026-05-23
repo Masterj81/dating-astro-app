@@ -165,7 +165,7 @@ The Discover screen shows one relationship profile at a time. A horizontal gestu
 How to review:
 1. Open JUNO and sign in with the demo account in the App Review credentials fields.
 2. Complete the birth-chart onboarding (date, time, and place of birth).
-3. Open a relationship / chart profile — note the birth-chart context, voice intro, and stated intentions.
+3. Open a relationship / chart profile — note the birth-chart context, voice intro, and stated intentions. Users choose what they're open to: Love, Friendship, Business — and only the kinds they've opted into surface to others.
 4. Open the synastry / connection insight — the compatibility context between two charts.
 5. Review the guided intro / prompt shaped by the two charts.
 6. Start an intentional conversation, or reflect on the connection insight.

@@ -84,7 +84,7 @@ Alternates:
 ```
 Tired of swipe culture? Tired of paying just to send the first message?
 
-JUNO is dating with depth. Match on what actually matters — your values, your lifestyle, your relationship intent — with astrology as the backbone, not a gimmick. Then start a real conversation. The first message is always free.
+JUNO is dating with depth. Match on what actually matters — your values, your lifestyle, what you're open to (love, friendship, business) — with astrology as the backbone, not a gimmick. Then start a real conversation. The first message is always free.
 
 ━━━━━━━━━━━━━━━━━━━━
 ✨ WHAT MAKES IT DIFFERENT
@@ -102,8 +102,8 @@ We compute full synastry — Sun, Moon, Rising and the major aspects — so you 
 ❤️ MATCH ON VALUES & LIFESTYLE
 Pick from 12 personal values (family, growth, adventure, authenticity, kindness…) and 36 lifestyle tags across food, sport, and music. See what you have in common at a glance.
 
-🎯 TELL PEOPLE WHAT YOU ACTUALLY WANT
-Set your relationship intent — serious, exploring, casual, friends, or unsure — so you stop wasting each other's time.
+🎯 TELL PEOPLE WHAT YOU'RE OPEN TO
+Choose what you're open to: Love, Friendship, Business. Pick one, two, or all three — others see only what you've turned on. No more wasted time on mismatched intentions.
 
 ━━━━━━━━━━━━━━━━━━━━
 🔮 HOW IT WORKS
@@ -208,8 +208,8 @@ On calcule la synastrie complète — Soleil, Lune, Ascendant — pour voir comm
 ❤️ MATCH SUR TES VALEURS ET TON LIFESTYLE
 Choisis parmi 12 valeurs personnelles (famille, croissance, aventure, authenticité, gentillesse…) et 36 tags lifestyle (cuisine, sport, musique). Vois d'un coup d'œil ce que vous avez en commun.
 
-🎯 DIS CE QUE TU CHERCHES VRAIMENT
-Indique ton intention — sérieux, exploration, casual, amitiés ou pas sûr·e — pour arrêter de perdre du temps mutuellement.
+🎯 DIS CE À QUOI TU ES OUVERT·E
+Choisis ce à quoi tu es ouvert·e : Amour, Amitié, Business. Une, deux ou les trois — les autres ne voient que ce que tu as activé. Plus de temps perdu sur des intentions qui ne collent pas.
 
 ━━━━━━━━━━━━━━━━━━━━
 🔮 COMMENT ÇA MARCHE

@@ -686,11 +686,10 @@ export function AccountProfileWorkspace({
   const handleMvpSave = async () => {
     if (!profile?.id) return;
 
-    if (!mvpForm.intent) {
-      setError(t("relationshipIntentRequired"));
-      return;
-    }
-
+    // Legacy `relationship_intent` (mvpForm.intent) is no longer surfaced
+    // as a required question; we still round-trip whatever the profile
+    // already has so legacy data is preserved. The macro
+    // `connection_intentions` is the new source of truth.
     if (mvpForm.connectionIntentions.length === 0) {
       setError(t("profileIntentionsEmptyWarning"));
       return;
@@ -710,6 +709,10 @@ export function AccountProfileWorkspace({
       const sanitizedConnectionIntentions = sanitizeConnectionIntentions(mvpForm.connectionIntentions);
 
       const payload = {
+        // Round-trip legacy relationship_intent so existing profiles keep
+        // their stored value. The picker is no longer in the UI — see
+        // AccountProfileMvpSections — but we still write back whatever
+        // mvpForm.intent currently holds (possibly null for new profiles).
         relationship_intent: mvpForm.intent,
         connection_intentions: sanitizedConnectionIntentions,
         looking_for_text: mvpForm.lookingForText.trim() || null,
@@ -1447,7 +1450,7 @@ export function AccountProfileWorkspace({
                 <button
                   type="button"
                   onClick={handleMvpSave}
-                  disabled={savingMvp || !mvpForm.intent || mvpForm.connectionIntentions.length === 0}
+                  disabled={savingMvp || mvpForm.connectionIntentions.length === 0}
                   className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {savingMvp ? t("loading") : t("profileMvpSave")}

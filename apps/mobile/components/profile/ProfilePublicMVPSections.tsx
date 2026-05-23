@@ -13,7 +13,10 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { AppTheme } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
-  findIntent,
+  // findIntent — no longer used here: the legacy `relationship_intent`
+  // pill has been removed from the public card in favor of the macro
+  // `Open to` chip cluster rendered by the parent (discover.tsx,
+  // profile/[id].tsx). The prop is still accepted for back-compat.
   findLifestyleTag,
   findPrompt,
   findValue,
@@ -43,7 +46,8 @@ type Props = {
 export default function ProfilePublicMVPSections(props: Props) {
   const { t } = useLanguage();
 
-  const intent = findIntent(props.relationshipIntent);
+  // props.relationshipIntent is still accepted for back-compat but the
+  // legacy pill is no longer rendered here — see import comment above.
   const values = sanitizePersonalValues(props.personalValues);
   const tags = sanitizeLifestyleTags(props.interests);
   const lookingFor = (props.lookingForText || '').trim();
@@ -55,20 +59,12 @@ export default function ProfilePublicMVPSections(props: Props) {
 
   // Render nothing if everything is empty — keeps the card lean for legacy
   // profiles that haven't yet filled in any MVP field.
-  if (!intent && !values.length && !tags.length && !lookingFor && !prompts.length && !icebreaker) {
+  if (!values.length && !tags.length && !lookingFor && !prompts.length && !icebreaker) {
     return null;
   }
 
   return (
     <View style={s.root}>
-      {/* Intent badge — single small pill */}
-      {intent && (
-        <View style={s.intentPill}>
-          <Text style={s.intentEmoji}>{intent.emoji}</Text>
-          <Text style={s.intentText}>{t(intent.labelKey)}</Text>
-        </View>
-      )}
-
       {/* Looking for — short blockquote */}
       {!!lookingFor && (
         <View style={s.block}>

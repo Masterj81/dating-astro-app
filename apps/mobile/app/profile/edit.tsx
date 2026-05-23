@@ -271,11 +271,10 @@ export default function EditProfileScreen() {
       return;
     }
 
-    if (!intent) {
-      Alert.alert(t('error'), t('relationshipIntentRequired') || 'Pick an intent to continue');
-      return;
-    }
-
+    // Legacy `relationship_intent` is no longer surfaced as a required
+    // question. We still load/sanitize/persist whatever the profile already
+    // has (round-trip) so existing data is preserved; just don't block save
+    // on it. The macro `connection_intentions` is the new source of truth.
     if (connectionIntentions.length === 0) {
       Alert.alert(
         t('error'),
@@ -331,20 +330,24 @@ export default function EditProfileScreen() {
   };
 
   const completeness = useMemo(() => {
+    // Legacy `intent` (relationship_intent) is intentionally NOT counted —
+    // it has been removed from the edit surface in favor of the macro
+    // `connection_intentions` chips. Existing values still round-trip but
+    // are no longer treated as a "completeness" signal.
     const fields = [
       !!name.trim(),
       !!bio.trim(),
       photos.length > 0,
       !!gender,
       !!occupation.trim(),
-      !!intent,
+      connectionIntentions.length > 0,
       personalValues.length > 0,
       lifestyleTags.length > 0,
       prompts.some(p => p.response.trim().length > 0),
     ];
     const filled = fields.filter(Boolean).length;
     return Math.round((filled / fields.length) * 100);
-  }, [name, bio, photos.length, gender, occupation, intent, personalValues.length, lifestyleTags.length, prompts]);
+  }, [name, bio, photos.length, gender, occupation, connectionIntentions.length, personalValues.length, lifestyleTags.length, prompts]);
 
   const handleBack = () => {
     if (isDirty) {
@@ -583,12 +586,12 @@ export default function EditProfileScreen() {
         </TouchableOpacity>
         <Text style={styles.title}>{t('editProfile') || 'Edit Profile'}</Text>
         <TouchableOpacity
-          style={[styles.saveButton, (saving || (!isDirty && !!intent)) && styles.saveButtonDisabled]}
+          style={[styles.saveButton, (saving || !isDirty) && styles.saveButtonDisabled]}
           onPress={handleSave}
-          disabled={saving || (!isDirty && !!intent)}
+          disabled={saving || !isDirty}
           accessibilityRole="button"
           accessibilityLabel={t('save') || 'Save'}
-          accessibilityState={{ disabled: saving || (!isDirty && !!intent) }}
+          accessibilityState={{ disabled: saving || !isDirty }}
         >
           {saving ? (
             <ActivityIndicator size="small" color="#fff" />

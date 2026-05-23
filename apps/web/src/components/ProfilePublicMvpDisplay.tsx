@@ -14,7 +14,11 @@
 
 import { useTranslations } from "next-intl";
 import {
-  findIntent,
+  // findIntent — no longer used here: the legacy `relationship_intent`
+  // badge has been removed from the public profile in favor of the macro
+  // `Open to` chip cluster (rendered by ProfileOverview / DiscoverOverview).
+  // The prop + sanitization are kept so we don't break callers, but the
+  // legacy "Serious / Casual / Friendship" pill no longer surfaces.
   findLifestyleTag,
   findPrompt,
   findValue,
@@ -45,7 +49,8 @@ type Props = {
 export function ProfilePublicMvpDisplay(props: Props) {
   const t = useTranslations("webApp");
 
-  const intent = findIntent(props.relationshipIntent);
+  // props.relationshipIntent is still accepted for back-compat but the
+  // legacy pill is no longer rendered here — see import comment above.
   const values = sanitizePersonalValues(props.personalValues);
   const tags = sanitizeLifestyleTags(props.interests);
   const lookingFor = (props.lookingForText || "").trim();
@@ -59,7 +64,6 @@ export function ProfilePublicMvpDisplay(props: Props) {
   // Render nothing if every MVP field is empty — keeps the page lean for
   // legacy profiles that haven't filled in any of the new sections.
   if (
-    !intent &&
     !values.length &&
     !tags.length &&
     !lookingFor &&
@@ -71,14 +75,6 @@ export function ProfilePublicMvpDisplay(props: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Intent badge */}
-      {intent && (
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-3 py-1 text-sm font-semibold text-accent">
-          <span>{intent.emoji}</span>
-          <span>{t(intent.labelKey)}</span>
-        </div>
-      )}
-
       {/* Looking-for text */}
       {!!lookingFor && (
         <div className="rounded-[1.25rem] border border-border bg-bg/70 p-4">

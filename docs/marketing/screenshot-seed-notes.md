@@ -175,6 +175,11 @@ WHERE id = 'd4105f3e-03f5-488d-948e-1f413ae34c5e';
 Constraint cross-checks (see
 [supabase/migrations/20260430000001_add_profile_mvp_fields.sql](../../supabase/migrations/20260430000001_add_profile_mvp_fields.sql)):
 - `relationship_intent` ∈ `{serious, exploring, casual, friends, unsure}` ✓
+  *(Legacy field — column still exists and is round-tripped, but the UX
+  no longer surfaces it as an edit question. The macro `connection_intentions`
+  array (love / friendship / business) is the user-visible source of truth.
+  Seeding `relationship_intent` here is harmless — the DB accepts it — but
+  it no longer renders on Discover cards or public profiles.)*
 - `personal_values` cardinality ≤ 5 ✓ (3)
 - `interests` cardinality ≤ 12 ✓ (4)
 - `looking_for_text` ≤ 200 ✓

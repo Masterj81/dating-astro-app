@@ -25,7 +25,9 @@ import {
   PERSONAL_VALUES,
   PROMPTS,
   PROMPT_CATEGORIES,
-  RELATIONSHIP_INTENTS,
+  // RELATIONSHIP_INTENTS — legacy macro hidden from this edit surface (see
+  // "Legacy 'What I'm here for'" comment below). Sanitizer + shared catalog
+  // still export it so legacy data round-trips cleanly through the workspace.
   findPrompt,
   type ConnectionIntention,
   type PromptDef,
@@ -153,46 +155,14 @@ export function AccountProfileMvpSections(props: Props) {
         ) : null}
       </section>
 
-      {/* ── Relationship intent (required) ─────────────────────────────── */}
-      <section className="rounded-[1.5rem] border border-border bg-bg/70 p-5">
-        <div className="flex items-baseline justify-between gap-3">
-          <h3 className="text-xl font-semibold text-white">
-            {t("relationshipIntent")} <span className="text-accent">*</span>
-          </h3>
-        </div>
-        <p className="mt-2 text-sm leading-7 text-text-muted">
-          {t("relationshipIntentHint")}
-        </p>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {RELATIONSHIP_INTENTS.map((intent) => {
-            const active = props.intent === intent.key;
-            return (
-              <button
-                key={intent.key}
-                type="button"
-                onClick={() => props.onIntentChange(intent.key)}
-                className={`rounded-2xl border px-4 py-3 text-left transition-colors ${
-                  active
-                    ? "border-accent bg-accent/15"
-                    : "border-border hover:bg-card-hover"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">{intent.emoji}</span>
-                  <span
-                    className={`text-sm font-semibold ${active ? "text-accent" : "text-white"}`}
-                  >
-                    {t(intent.labelKey)}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-text-muted">
-                  {t(intent.descriptionKey)}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+      {/* ── Legacy "What I'm here for" (relationship_intent) ──────────
+          Hidden from the edit surface as of the Three Intentions cleanup.
+          The macro `Open to` chips above are now the single source of UX
+          truth. The field is still loaded into mvpForm.intent and written
+          back unchanged on save (see AccountProfileWorkspace.handleMvpSave),
+          so legacy profiles keep their stored value. Intentionally NOT
+          deleted — preserves back-compat and keeps RELATIONSHIP_INTENTS
+          available for downstream legacy reads / sanitizers. */}
 
       {/* ── Looking-for text ───────────────────────────────────────────── */}
       <section className="rounded-[1.5rem] border border-border bg-bg/70 p-5">

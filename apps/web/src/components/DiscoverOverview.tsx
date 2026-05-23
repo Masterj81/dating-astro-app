@@ -15,7 +15,10 @@ import { LuminaryGlyph } from "@/components/ZodiacGlyph";
 import {
   CONNECTION_INTENTIONS,
   DEFAULT_CONNECTION_INTENTIONS,
-  findIntent,
+  // findIntent — the legacy `relationship_intent` pill is no longer
+  // rendered on the discover card or the side queue (it conflicted with
+  // the macro `Open to` chip cluster). The field still ships in the RPC
+  // payload, we just don't paint it here.
   findLifestyleTag,
   sanitizeConnectionIntentions,
   sanitizeLifestyleTags,
@@ -464,24 +467,20 @@ export function DiscoverOverview() {
               </div>
 
               {/* MVP teasers — compact preview of the new profile fields.
-                  Full version lives on /app/profile/[id] (ProfileOverview). */}
+                  Full version lives on /app/profile/[id] (ProfileOverview).
+                  The legacy relationship_intent pill was removed here: the
+                  macro `Open to` chip cluster above already conveys the
+                  same intent at a coarser, less contradictory level. */}
               {(() => {
-                const cardIntent = findIntent(currentProfile.relationship_intent);
                 const cardTags = sanitizeLifestyleTags(currentProfile.interests);
                 const cardIcebreaker = (currentProfile.icebreaker_question || "").trim();
                 const viewerSet = new Set(viewerInterests);
                 const visibleTags = cardTags.slice(0, 5);
                 const hiddenCount = cardTags.length - visibleTags.length;
                 const sharedCount = cardTags.filter((k) => viewerSet.has(k)).length;
-                if (!cardIntent && !cardTags.length && !cardIcebreaker) return null;
+                if (!cardTags.length && !cardIcebreaker) return null;
                 return (
                   <div className="mt-5 space-y-3">
-                    {cardIntent ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold text-accent">
-                        <span>{cardIntent.emoji}</span>
-                        <span>{t(cardIntent.labelKey)}</span>
-                      </span>
-                    ) : null}
                     {visibleTags.length > 0 ? (
                       <div>
                         {sharedCount > 0 ? (
@@ -724,7 +723,8 @@ export function DiscoverOverview() {
           {queue.length > 0 ? (
             queue.map((profile) => {
               const targetIndex = profiles.findIndex((p) => p.id === profile.id);
-              const queueIntent = findIntent(profile.relationship_intent);
+              // Legacy `relationship_intent` pill removed from the queue
+              // tile in favor of the macro `Open to` chips on the card.
               const queueTags = sanitizeLifestyleTags(profile.interests).slice(0, 2);
               return (
                 <button
@@ -744,14 +744,8 @@ export function DiscoverOverview() {
                       <div className="mt-1 text-sm text-text-muted">
                         {profile.sun_sign ? translateSign(profile.sun_sign, locale) : "?"}
                       </div>
-                      {(queueIntent || queueTags.length > 0) ? (
+                      {queueTags.length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          {queueIntent ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent">
-                              <span>{queueIntent.emoji}</span>
-                              <span>{t(queueIntent.labelKey)}</span>
-                            </span>
-                          ) : null}
                           {queueTags.map((key) => {
                             const tag = findLifestyleTag(key);
                             if (!tag) return null;

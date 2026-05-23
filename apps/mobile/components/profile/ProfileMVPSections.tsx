@@ -33,7 +33,9 @@ import {
   PERSONAL_VALUES,
   PROMPT_CATEGORIES,
   PROMPTS,
-  RELATIONSHIP_INTENTS,
+  // RELATIONSHIP_INTENTS — legacy macro is hidden from this edit surface
+  // (see "Legacy 'What I'm here for'" comment below). Sanitizer + shared
+  // catalog still export it so legacy data round-trips cleanly.
   type ConnectionIntention,
   type LifestyleCategory,
   type PromptDef,
@@ -180,38 +182,15 @@ export default function ProfileMVPSections(props: Props) {
         ) : null}
       </View>
 
-      {/* ── Relationship intent (required) ─────────────────────────── */}
-      <View style={s.section}>
-        <View style={s.sectionHeaderRow}>
-          <Text style={s.sectionTitle}>{t('relationshipIntent') || 'What I\'m here for'}</Text>
-          <Text style={s.requiredBadge}>*</Text>
-        </View>
-        <Text style={s.hint}>
-          {t('relationshipIntentHint') || 'What you\'re looking for right now (required)'}
-        </Text>
-        <View style={s.intentGrid}>
-          {RELATIONSHIP_INTENTS.map(intent => {
-            const active = props.intent === intent.key;
-            return (
-              <TouchableOpacity
-                key={intent.key}
-                style={[s.intentCard, active && s.intentCardActive]}
-                onPress={() => props.onIntentChange(intent.key)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-              >
-                <Text style={s.intentEmoji}>{intent.emoji}</Text>
-                <Text style={[s.intentLabel, active && s.intentLabelActive]}>
-                  {t(intent.labelKey)}
-                </Text>
-                <Text style={s.intentDesc} numberOfLines={2}>
-                  {t(intent.descriptionKey)}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
+      {/* ── Legacy "What I'm here for" (relationship_intent) ────────
+          Hidden from the edit surface as of the Three Intentions cleanup.
+          The macro `Open to` chips above are now the single source of UX
+          truth. The field is still loaded, passed through onSave, and
+          persisted as-is for legacy profiles — see edit.tsx. To re-enable
+          the picker for a debug build, restore the JSX from git history.
+          Intentionally NOT deleted to preserve back-compat and to keep
+          RELATIONSHIP_INTENTS available for other surfaces (sanitizers,
+          downstream legacy reads). */}
 
       {/* ── Looking for text ──────────────────────────────────────── */}
       <View style={s.section}>
