@@ -20,10 +20,13 @@ import VoiceIntroRecorder from '../../components/VoiceIntroRecorder';
 import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
+  DEFAULT_CONNECTION_INTENTIONS,
   isRelationshipIntent,
+  sanitizeConnectionIntentions,
   sanitizeLifestyleTags,
   sanitizePersonalValues,
   sanitizePromptResponses,
+  type ConnectionIntention,
   type PromptResponse,
   type RelationshipIntent,
 } from '../../data/profile-fields';
@@ -62,6 +65,9 @@ export default function EditProfileScreen() {
   const [personalValues, setPersonalValues] = useState<string[]>([]);
   const [lifestyleTags, setLifestyleTags] = useState<string[]>([]);
   const [intent, setIntent] = useState<RelationshipIntent | null>(null);
+  const [connectionIntentions, setConnectionIntentions] = useState<ConnectionIntention[]>(
+    [...DEFAULT_CONNECTION_INTENTIONS],
+  );
   const [lookingForText, setLookingForText] = useState('');
   const [prompts, setPrompts] = useState<PromptResponse[]>([]);
   const [icebreaker, setIcebreaker] = useState('');
@@ -107,6 +113,7 @@ export default function EditProfileScreen() {
       setPersonalValues(sanitizePersonalValues(data.personal_values));
       setLifestyleTags(sanitizeLifestyleTags(data.interests));
       setIntent(isRelationshipIntent(data.relationship_intent) ? data.relationship_intent : null);
+      setConnectionIntentions(sanitizeConnectionIntentions(data.connection_intentions));
       setLookingForText(data.looking_for_text || '');
       setPrompts(sanitizePromptResponses(data.prompts));
       setIcebreaker(data.icebreaker_question || '');
@@ -269,6 +276,15 @@ export default function EditProfileScreen() {
       return;
     }
 
+    if (connectionIntentions.length === 0) {
+      Alert.alert(
+        t('error'),
+        t('profileIntentionsEmptyWarning') ||
+          'Choose at least one so people can find you.',
+      );
+      return;
+    }
+
     setSaving(true);
 
     // Re-sanitize MVP fields right before persist so any stale client state
@@ -278,6 +294,7 @@ export default function EditProfileScreen() {
     );
     const sanitizedValues = sanitizePersonalValues(personalValues);
     const sanitizedTags = sanitizeLifestyleTags(lifestyleTags);
+    const sanitizedConnectionIntentions = sanitizeConnectionIntentions(connectionIntentions);
 
     const { error } = await supabase
       .from('profiles')
@@ -290,6 +307,7 @@ export default function EditProfileScreen() {
         personal_values: sanitizedValues,
         interests: sanitizedTags,
         relationship_intent: intent,
+        connection_intentions: sanitizedConnectionIntentions,
         looking_for_text: lookingForText.trim() || null,
         prompts: sanitizedPrompts,
         icebreaker_question: icebreaker.trim() || null,
@@ -516,6 +534,8 @@ export default function EditProfileScreen() {
             onLifestyleTagsChange={(v) => { setLifestyleTags(v); setIsDirty(true); }}
             intent={intent}
             onIntentChange={(v) => { setIntent(v); setIsDirty(true); }}
+            connectionIntentions={connectionIntentions}
+            onConnectionIntentionsChange={(v) => { setConnectionIntentions(v); setIsDirty(true); }}
             lookingForText={lookingForText}
             onLookingForTextChange={(v) => { setLookingForText(v); setIsDirty(true); }}
             prompts={prompts}

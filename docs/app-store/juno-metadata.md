@@ -6,9 +6,38 @@ helps people explore a romantic connection with more context: birth-chart
 context, synastry insights, relationship profiles, guided intros,
 voice/profile context, and intentional conversation.
 
-> **Positioning in one line:** JUNO helps you explore romantic connection
-> through birth-chart context, synastry insights, guided intros, and
-> intentional conversation — it is not a swipe-first dating clone.
+> **Positioning in one line:** JUNO helps you explore connection —
+> love, friendship, working chemistry — through birth-chart context and
+> synastry between two charts, with guided intros and intentional
+> conversation. It is not a swipe-first dating clone.
+
+## Three intentions
+
+JUNO 2.0 widens from romantic-only to three macro intentions: **love**
+(default, the romantic flavor — unchanged), **friendship**, and
+**business / working chemistry**. The same synastry engine reads the
+chart context for each; only the labels and prose around each zone
+change with the active reading frame.
+
+Public copy may name the intent **Business**; the insight copy itself
+says **"working chemistry"** — never "business partner", "perfect
+cofounder", "guaranteed compatibility", "investment decision", or any
+financial / legal / professional advice. JUNO makes no predictions and
+guarantees no outcomes — romantic, social, or professional.
+
+## Future: Working Chemistry Report
+
+A one-time purchase deep-dive report (≈$49) is under consideration for a
+later release: a fuller chart-context read tuned to the working-chemistry
+frame (communication rhythm, decision style, trust signals, pace,
+creative friction). **It is not shipped in this submission.** No
+App Store Connect / RevenueCat SKU is created yet, no public price is
+shown, and no "coming soon" copy is visible in the app. Mention here is
+documentation-only so the team has a single record.
+
+When implemented, the surface will live in the existing Premium
+indices. Same Apple-safe constraints apply: no outcome promises, no
+financial / legal advice, no "cofounder finder" framing.
 
 ## Honest framing — read first
 
@@ -82,15 +111,23 @@ Synastry-led relationship discovery — chart context before the conversation.
 ## Full description (App Store & Play Store, ≤4000 chars)
 
 ```
-JUNO is a synastry-led relationship discovery app for romantic connection. It helps you explore a real connection with more context: birth-chart context, synastry insights, relationship profiles, guided intros, voice and profile context, and intentional conversation.
+JUNO is a synastry-led app for meaningful connections. Love, friendship, working chemistry — see the synastry between two charts before the conversation starts. Birth-chart context, guided intros, voice-led profiles.
 
-JUNO is built around one idea: see the connection before the conversation. You start with context — your birth chart, your values, your intentions — and the synastry between two charts.
+Romantic connection remains central and the default. JUNO also opens up to friendship and working chemistry — the kinds of connection where communication rhythm, trust, and pace actually matter.
+
+WHAT YOU ARE OPEN TO
+
+• Love — romantic connection with depth.
+• Friendship — meaningful friendship and real social connection.
+• Business — working chemistry, communication rhythm, trust, and pace.
+
+You can choose one, two, or all three. You can change this anytime. People only see what you have turned on.
 
 HOW JUNO WORKS
 
-• Build a relationship profile — your birth chart, voice intro, values, and relationship intentions. A profile with real context, not just photos.
-• Browse relationship profiles — one profile at a time, with intention. Move between profiles with a gesture or the on-screen arrows.
-• See the synastry first — read the compatibility context and relationship dynamics between two birth charts before any conversation begins.
+• Build a profile — your birth chart, voice intro, values, and what you are open to. A profile with real context, not just photos.
+• Browse profiles — one profile at a time, with intention. Move between profiles with a gesture or the on-screen arrows.
+• See the synastry first — read the compatibility context between two birth charts before any conversation begins, through the lens of love, friendship, or working chemistry.
 • Open with a guided intro — start with a prompt shaped by your charts, not a cold message.
 • Have an intentional conversation — talk with context, at your own pace.
 
@@ -100,15 +137,15 @@ JUNO is not built around a swipe-to-like / swipe-to-pass card game. There is no 
 
 SYNASTRY, NOT FORTUNE-TELLING
 
-JUNO uses astrology as a symbolic framework for compatibility context and reflection — a shared language for understanding connection. It is not a generic horoscope feed, and it makes no predictions or guarantees about any relationship.
+JUNO uses astrology as a symbolic framework for reflection — a shared language for understanding connection. It is not a generic horoscope feed. JUNO makes no predictions and guarantees no outcomes — romantic, social, or professional. The "Business" intention is about communication rhythm and pace, not deal flow, investment decisions, or any kind of professional advice.
 
 REAL CONTEXT, REAL INTENTION
 
-Voice intros and prompt-led profiles give you a sense of a person before the first message. Relationship intentions are stated openly. JUNO is for people who want romantic connection with depth.
+Voice intros and prompt-led profiles give you a sense of a person before the first message. Intentions are stated openly. JUNO is for people who want connection with depth.
 
 PREMIUM
 
-JUNO offers optional premium tiers with deeper synastry, richer birth-chart context, and more guided connection tools. The core experience is free.
+JUNO offers optional premium tiers with deeper synastry and richer birth-chart context. The core experience is free.
 
 See the connection before the conversation.
 ```

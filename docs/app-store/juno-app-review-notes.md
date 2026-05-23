@@ -20,6 +20,22 @@ not hide that. We do **not** claim "JUNO is not a dating app". The
 accurate, defensible statement is: *JUNO is not a swipe-first dating
 clone — it is a synastry-led relationship discovery experience.*
 
+## Three intentions
+
+JUNO is a synastry-led app for meaningful connections — romantic, social,
+and collaborative. The romantic intention remains central and the default.
+Users opt into one or more of: **love**, **friendship**,
+**business / working chemistry**. The same synastry engine reads the chart
+context for each — only the labels and prose around each zone change with
+the active reading frame.
+
+Astrology is used as a symbolic framework for reflection. JUNO makes no
+predictions and guarantees no outcomes — not romantic, not social, not
+professional. We do not promise that two charts will produce a partner, a
+friend, or a cofounder. The "Business" intention is about communication
+rhythm, trust, pace, and collaboration style — not deal flow, investment
+decisions, or any kind of professional advice.
+
 ---
 
 ## 1. App Review Notes

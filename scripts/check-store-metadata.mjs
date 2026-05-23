@@ -407,6 +407,108 @@ for (const cc of CANONICAL_CHECKS) {
   }
 }
 
+// --- Tier 6: connection-intentions safety scan ------------------------------
+// JUNO 2.0 introduces three macro intentions (love / friendship / business).
+// "Business" reads serious / premium (working chemistry, communication
+// rhythm, trust, pace, collaboration style) — NEVER hustle / cofounder
+// finder. The insight copy itself uses "working chemistry"; the intent
+// name is allowed to be "Business" but no surface may promise outcomes.
+//
+// Scope: same locale files as Tier 4 (web + mobile) PLUS only the keys
+// added in 20260601000001 — connectionIntention_*, synastryZone_*, prompt_*.
+// We deliberately do NOT scan docs/app-store/* because the Apple App Review
+// notes have legitimate use for defensive terms ("not a swipe-first dating
+// clone", etc.) inside their prohibited-term lists.
+const INTENTION_BANNED = [
+  { term: "perfect cofounder",                       reason: "magic-outcome claim" },
+  { term: "find your cofounder",                     reason: "magic-outcome claim" },
+  { term: "find your perfect business partner",      reason: "magic-outcome claim" },
+  { term: "business partner",                        reason: "use 'working chemistry' instead — implies success promise" },
+  { term: "compatible cofounder",                    reason: "compatibility guarantee" },
+  { term: "guaranteed compatibility",                reason: "compatibility guarantee" },
+  { term: "guaranteed outcome",                      reason: "outcome guarantee" },
+  { term: "soulmate guarantee",                      reason: "outcome guarantee" },
+  { term: "100% match",                              reason: "compatibility guarantee" },
+  { term: "your tribe",                              reason: "magic-outcome friendship claim" },
+  { term: "find your people",                        reason: "magic-outcome claim" },
+  { term: "make friends fast",                       reason: "magic-outcome claim" },
+  { term: "power couple",                            reason: "magic-outcome claim" },
+  { term: "linkedin",                                reason: "wrong category / competitor" },
+  { term: "investment decision",                     reason: "out-of-scope financial advice" },
+  { term: "financial advice",                        reason: "out-of-scope advice" },
+  { term: "legal advice",                            reason: "out-of-scope advice" },
+];
+
+// Prefixes for keys this tier scans. Any locale key starting with one of
+// these strings will be inspected.
+const INTENTION_KEY_PREFIXES = [
+  "connectionIntention_",
+  "synastryZone_",
+  "synastryFrame_",
+  "synastryFrameToggleLabel",
+  "synastryFrameCaption",
+  "onboardingIntentions",
+  "profileIntentions",
+  "discoverFilterIntention_",
+  "discoverChipOpenTo",
+  "prompt_cat_friendship",
+  "prompt_cat_collaboration",
+  "prompt_friend_",
+  "prompt_collab_",
+];
+
+function isIntentionKey(keyPath) {
+  // Strip web namespace prefix if present so the prefix check works for
+  // both web (webApp.foo) and mobile (foo) shapes.
+  const tail = keyPath.includes(".") ? keyPath.split(".").slice(-1)[0] : keyPath;
+  return INTENTION_KEY_PREFIXES.some((p) => tail.startsWith(p));
+}
+
+// Web locales (nested next-intl namespaces; the "webApp" namespace carries
+// the new keys).
+for (const locale of WEB_MESSAGE_LOCALES) {
+  const rel = `apps/web/messages/${locale}.json`;
+  const full = path.join(ROOT, rel);
+  if (!fs.existsSync(full)) continue;
+  let json;
+  try {
+    json = JSON.parse(fs.readFileSync(full, "utf8"));
+  } catch {
+    continue;
+  }
+  const strings = [];
+  collectStrings(json, "", strings);
+  for (const { path: keyPath, value } of strings) {
+    if (!isIntentionKey(keyPath)) continue;
+    const lower = value.toLowerCase();
+    for (const { term, reason } of INTENTION_BANNED) {
+      if (lower.includes(term)) fail(rel, keyPath, term, reason);
+    }
+  }
+}
+
+// Mobile locales (flat dict).
+const MOBILE_LOCALES = ["en", "fr", "es", "pt", "de", "ja", "zh", "ar"];
+for (const locale of MOBILE_LOCALES) {
+  const rel = `apps/mobile/locales/${locale}.json`;
+  const full = path.join(ROOT, rel);
+  if (!fs.existsSync(full)) continue;
+  let json;
+  try {
+    json = JSON.parse(fs.readFileSync(full, "utf8"));
+  } catch {
+    continue;
+  }
+  for (const [keyPath, value] of Object.entries(json)) {
+    if (typeof value !== "string") continue;
+    if (!isIntentionKey(keyPath)) continue;
+    const lower = value.toLowerCase();
+    for (const { term, reason } of INTENTION_BANNED) {
+      if (lower.includes(term)) fail(rel, keyPath, term, reason);
+    }
+  }
+}
+
 // The marketing landing page JSON-LD must advertise the junosynastry canonical.
 const landingPage = path.join(ROOT, "apps/web/src/app/[locale]/(marketing)/page.tsx");
 if (fs.existsSync(landingPage)) {

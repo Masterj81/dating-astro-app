@@ -24,6 +24,13 @@ import { AppTheme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { buttonPress, errorNotification } from '../../services/haptics';
 import {
+  CONNECTION_INTENTIONS,
+  DEFAULT_CONNECTION_INTENTIONS,
+  MAX_CONNECTION_INTENTIONS,
+  sanitizeConnectionIntentions,
+  type ConnectionIntention,
+} from '../../data/profile-fields';
+import {
   saveOnboardingDraft,
   loadOnboardingDraft,
   clearOnboardingDraft,
@@ -93,7 +100,7 @@ const mapShowMeToLookingFor = (showMe: ShowMeOption) => {
 
 const pickerMode = undefined; // Let each platform use its default picker mode
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
 
 // Zodiac sign emoji helper
 const getZodiacEmoji = (sign: string): string => {
@@ -394,6 +401,11 @@ export default function BirthInfoScreen() {
   const [birthCity, setBirthCity] = useState('');
   const [gender, setGender] = useState('');
   const [showMe, setShowMe] = useState<ShowMeOption>('everyone');
+  // Connection intentions (macro). Defaults to ['love'] so users can simply
+  // tap Continue and keep the romantic-first JUNO they signed up for.
+  const [connectionIntentions, setConnectionIntentions] = useState<ConnectionIntention[]>(
+    [...DEFAULT_CONNECTION_INTENTIONS],
+  );
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [calculatingPhase, setCalculatingPhase] = useState('');
@@ -502,6 +514,9 @@ export default function BirthInfoScreen() {
           }
           if (data.gender) {
             setGender(data.gender);
+          }
+          if (data.connection_intentions !== undefined) {
+            setConnectionIntentions(sanitizeConnectionIntentions(data.connection_intentions));
           }
         }
 
@@ -616,6 +631,37 @@ export default function BirthInfoScreen() {
     animateStepTransition();
   };
 
+  // Step 3 validation: gender (required) + preference → advance to intentions (step 4)
+  const handleStep3Next = () => {
+    if (!gender) {
+      setGenderError(t('selectGenderError'));
+      errorNotification();
+      return;
+    }
+    setGenderError('');
+    buttonPress();
+    setStep(4);
+    animateStepTransition();
+  };
+
+  // Toggle a connection intention on/off (step 4). Allowed to bottom out at
+  // zero — the Continue button is disabled until at least one is selected,
+  // and the Skip CTA defaults to ['love'].
+  const toggleConnectionIntention = (key: ConnectionIntention) => {
+    const has = connectionIntentions.includes(key);
+    if (has) {
+      setConnectionIntentions(connectionIntentions.filter(k => k !== key));
+    } else if (connectionIntentions.length < MAX_CONNECTION_INTENTIONS) {
+      setConnectionIntentions([...connectionIntentions, key]);
+    }
+  };
+
+  // Skip the intentions step — fall back to the default ['love'] set.
+  const handleSkipIntentions = () => {
+    setConnectionIntentions([...DEFAULT_CONNECTION_INTENTIONS]);
+    handleSubmit();
+  };
+
   const handleBack = () => {
     if (step > 1) {
       setStep(step - 1);
@@ -630,9 +676,13 @@ export default function BirthInfoScreen() {
       return;
     }
 
+    // Gender is captured in step 3 — re-check here defensively in case the
+    // user somehow lands on submit without it (e.g. legacy draft).
     if (!gender) {
       setGenderError(t('selectGenderError'));
       errorNotification();
+      setStep(3);
+      animateStepTransition();
       return;
     }
     setGenderError('');
@@ -688,6 +738,8 @@ export default function BirthInfoScreen() {
         coordinates: cityCoords,
       };
 
+      const sanitizedConnectionIntentions = sanitizeConnectionIntentions(connectionIntentions);
+
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -703,6 +755,7 @@ export default function BirthInfoScreen() {
           rising_sign: chart.rising.sign,
           birth_chart: birthChartData,
           age: age,
+          connection_intentions: sanitizedConnectionIntentions,
           onboarding_completed: true,
           updated_at: new Date().toISOString(),
         })
@@ -781,6 +834,12 @@ export default function BirthInfoScreen() {
       icon: '\u2728',
       title: t('stepThreeTitle') || 'One Last Thing',
       subtitle: t('stepThreeSubtitle') || 'Help us find the right people for you',
+    },
+    4: {
+      icon: '\u2728',
+      title: t('onboardingIntentionsTitle') || 'What are you open to?',
+      subtitle: t('onboardingIntentionsSubtitle') ||
+        'Pick at least one. You can change this anytime.',
     },
   };
 
@@ -1118,8 +1177,82 @@ export default function BirthInfoScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.button, { flex: 1 }]}
+                      onPress={handleStep3Next}
+                      activeOpacity={0.8}
+                      testID="onboarding-step3-continue"
+                    >
+                      <LinearGradient
+                        colors={[...AppTheme.gradients.cta]}
+                        style={styles.buttonGradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                      >
+                        <Text style={styles.buttonText}>{t('continue') || 'Continue'}</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+
+              {/* ========= STEP 4: Connection intentions ========= */}
+              {step === 4 && (
+                <>
+                  <SectionHeader
+                    icon={'✨'}
+                    title={t('onboardingIntentionsTitle') || 'What are you open to?'}
+                    subtitle={t('onboardingIntentionsSubtitle') ||
+                      'Pick at least one. You can change this anytime.'}
+                  />
+
+                  <View style={styles.inputContainer}>
+                    <View style={styles.intentionsList}>
+                      {CONNECTION_INTENTIONS.map((intent) => {
+                        const active = connectionIntentions.includes(intent.key);
+                        return (
+                          <TouchableOpacity
+                            key={intent.key}
+                            style={[
+                              styles.intentionOption,
+                              active && styles.intentionOptionActive,
+                            ]}
+                            onPress={() => toggleConnectionIntention(intent.key)}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: active }}
+                          >
+                            <Text
+                              style={[
+                                styles.intentionOptionLabel,
+                                active && styles.intentionOptionLabelActive,
+                              ]}
+                            >
+                              {t(intent.labelKey)}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.intentionOptionDesc,
+                                active && styles.intentionOptionDescActive,
+                              ]}
+                            >
+                              {t(intent.descriptionKey)}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                    <Text style={styles.intentionsFootnote}>
+                      {t('onboardingIntentionsFootnote') ||
+                        'Synastry is a lens, not a promise. JUNO does not guarantee outcomes.'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.buttonRow}>
+                    <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
+                      <Text style={styles.backBtnText}>{t('back') || 'Back'}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.button, { flex: 1 }]}
                       onPress={handleSubmit}
-                      disabled={loading}
+                      disabled={loading || connectionIntentions.length === 0}
                       activeOpacity={0.8}
                       testID="onboarding-submit-button"
                     >
@@ -1135,11 +1268,25 @@ export default function BirthInfoScreen() {
                             <Text style={styles.loadingText}>{calculatingPhase}</Text>
                           </View>
                         ) : (
-                          <Text style={styles.buttonText}>{t('calculateMyChart')}</Text>
+                          <Text style={styles.buttonText}>
+                            {t('onboardingIntentionsContinue') || t('calculateMyChart')}
+                          </Text>
                         )}
                       </LinearGradient>
                     </TouchableOpacity>
                   </View>
+
+                  <TouchableOpacity
+                    style={styles.skipLink}
+                    onPress={handleSkipIntentions}
+                    disabled={loading}
+                    testID="onboarding-intentions-skip"
+                  >
+                    <Text style={styles.skipLinkText}>
+                      {t('onboardingIntentionsSkip') ||
+                        "Skip — I'll set this later (defaults to Love)"}
+                    </Text>
+                  </TouchableOpacity>
                 </>
               )}
             </Animated.View>
@@ -1452,5 +1599,45 @@ const styles = StyleSheet.create({
     color: AppTheme.colors.textMuted,
     fontSize: 14,
     textDecorationLine: 'underline',
+  },
+  intentionsList: {
+    gap: 12,
+  },
+  intentionOption: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  intentionOptionActive: {
+    backgroundColor: 'rgba(233, 69, 96, 0.14)',
+    borderColor: 'rgba(233, 69, 96, 0.55)',
+  },
+  intentionOptionLabel: {
+    color: '#d3d0da',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  intentionOptionLabelActive: {
+    color: '#fff4f6',
+  },
+  intentionOptionDesc: {
+    color: AppTheme.colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  intentionOptionDescActive: {
+    color: '#e6dde0',
+  },
+  intentionsFootnote: {
+    marginTop: 14,
+    fontSize: 12,
+    color: AppTheme.colors.textMuted,
+    fontStyle: 'italic',
+    lineHeight: 17,
+    textAlign: 'center',
   },
 });

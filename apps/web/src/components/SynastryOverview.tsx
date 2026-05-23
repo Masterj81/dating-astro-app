@@ -22,6 +22,12 @@ import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account"
 import { CompatibilityDotsArc } from "@/components/CompatibilityDotsArc";
 import { SynastryOverviewSkeleton } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
+import {
+  CONNECTION_INTENTIONS,
+  DEFAULT_CONNECTION_INTENTIONS,
+  sanitizeConnectionIntentions,
+  type ConnectionIntention,
+} from "@astro/shared/profile";
 
 // Picker entry. Mirrors the get_synastry_candidate_profiles RPC return
 // shape — same preference filtering as Discover, minus the swipes
@@ -38,6 +44,9 @@ type CandidateProfile = {
   image_url: string | null;
   images: string[] | null;
   is_verified: boolean | null;
+  // Surfaced by get_synastry_candidate_profiles since migration
+  // 20260601000001. Used to pick the initial reading-frame on selection.
+  connection_intentions?: string[] | null;
 };
 
 type SynastryProfile = {
@@ -104,11 +113,31 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
   const [loading, setLoading] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Self + target macro intentions. Used only to pick the initial
+  // reading-frame; the user can override via the segmented control. The
+  // synastry math itself is UNCHANGED — only labels / prose change.
+  const [selfIntentions, setSelfIntentions] = useState<ConnectionIntention[]>(
+    [...DEFAULT_CONNECTION_INTENTIONS],
+  );
+  const [readingFrame, setReadingFrame] = useState<ConnectionIntention>("love");
 
   const activeCandidate = useMemo(
     () => candidates.find((candidate) => candidate.id === selectedProfileId) || null,
     [candidates, selectedProfileId]
   );
+
+  // Default reading-frame = intersection of self + target intentions; when
+  // multiple, prefer love → friendship → business. If the intersection is
+  // empty, fall back to 'love' so the surface still reads coherently. The
+  // user can override via the toggle.
+  useEffect(() => {
+    const targetIntentions = sanitizeConnectionIntentions(activeCandidate?.connection_intentions);
+    const priority: ConnectionIntention[] = ["love", "friendship", "business"];
+    const overlap = priority.filter(
+      (k) => selfIntentions.includes(k) && targetIntentions.includes(k),
+    );
+    setReadingFrame(overlap[0] ?? "love");
+  }, [activeCandidate, selfIntentions]);
 
   useEffect(() => {
     const load = async () => {
@@ -147,6 +176,9 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
         }
 
         const ownData = Array.isArray(ownRows) ? ownRows[0] : null;
+        if (ownData) {
+          setSelfIntentions(sanitizeConnectionIntentions(ownData.connection_intentions));
+        }
         let nextCandidates = (candidateRows as CandidateProfile[]) || [];
         setSelfProfile(
           ownData
@@ -596,6 +628,35 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
             <h2 className="text-xl font-semibold text-white">
               {t("synastryV2DimensionsTitle")}
             </h2>
+
+            {/* Reading-frame toggle — Love / Friendship / Business. Score
+                math UNCHANGED; only the labels and prose change with the
+                active frame. */}
+            <div className="mt-3 flex flex-wrap items-center gap-2" role="tablist" aria-label={t("synastryFrameToggleLabel")}>
+              {CONNECTION_INTENTIONS.map((opt) => {
+                const active = readingFrame === opt.key;
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setReadingFrame(opt.key)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      active
+                        ? "border-accent bg-accent/15 text-accent"
+                        : "border-border bg-bg/70 text-white hover:bg-card-hover"
+                    }`}
+                  >
+                    {t(`synastryFrame_${opt.key}`)}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-xs italic text-text-dim">
+              {t("synastryFrameCaption")}
+            </p>
+
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               {zoneScores.map((zone) => (
                 <article
@@ -612,10 +673,10 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
                     </div>
                     <div className="min-w-0 flex-1">
                       <h3 className="text-base font-semibold text-white sm:text-lg">
-                        {t(`synastryV2Dimension_${zone.key}`)}
+                        {t(`synastryZone_${zone.key}_${readingFrame}`)}
                       </h3>
                       <p className="mt-2 text-sm leading-7 text-text-muted">
-                        {t(`synastryV2DimensionBody_${zone.key}`)}
+                        {t(`synastryZone_${zone.key}_${readingFrame}_desc`)}
                       </p>
                     </div>
                   </div>

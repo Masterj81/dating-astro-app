@@ -5,6 +5,7 @@
 // — apps resolve their own labels, this package only exposes the keys).
 
 import type {
+  ConnectionIntention,
   IntentDef,
   LifestyleCategory,
   LifestyleTagDef,
@@ -12,6 +13,29 @@ import type {
   PromptDef,
   ValueDef,
 } from './types';
+
+// ── Connection intentions (macro) ───────────────────────────────────────────
+// The kind of connection a user is open to. Default is ['love'] so existing
+// profiles keep the romantic-first experience exactly as it was. Users can
+// opt in to 'friendship' and/or 'business'; at least one must remain.
+// Vocabulary mirrored in the DB CHECK constraint
+// `profiles_connection_intentions_check` (migration 20260601000001).
+
+export type ConnectionIntentionDef = {
+  key: ConnectionIntention;
+  labelKey: string;
+  descriptionKey: string;
+};
+
+export const CONNECTION_INTENTIONS: readonly ConnectionIntentionDef[] = [
+  { key: 'love',       labelKey: 'connectionIntention_love',       descriptionKey: 'connectionIntention_love_desc' },
+  { key: 'friendship', labelKey: 'connectionIntention_friendship', descriptionKey: 'connectionIntention_friendship_desc' },
+  { key: 'business',   labelKey: 'connectionIntention_business',   descriptionKey: 'connectionIntention_business_desc' },
+] as const;
+
+export const DEFAULT_CONNECTION_INTENTIONS: readonly ConnectionIntention[] = ['love'] as const;
+
+export const MAX_CONNECTION_INTENTIONS = 3;
 
 // ── Prompts ─────────────────────────────────────────────────────────────────
 // 30 prompts grouped by theme. Users pick 3.
@@ -56,14 +80,34 @@ export const PROMPTS: readonly PromptDef[] = [
   { key: 'what_i_admire',        category: 'values',     labelKey: 'prompt_what_i_admire' },
   { key: 'making_world_better',  category: 'values',     labelKey: 'prompt_making_world_better' },
   { key: 'where_in_5y',          category: 'values',     labelKey: 'prompt_where_in_5y' },
+
+  // Friendship — surfaces for users who opt in to the 'friendship' intention
+  { key: 'friend_show_up',         category: 'friendship',    labelKey: 'prompt_friend_show_up' },
+  { key: 'friend_real_with',       category: 'friendship',    labelKey: 'prompt_friend_real_with' },
+  { key: 'friend_loyalty_means',   category: 'friendship',    labelKey: 'prompt_friend_loyalty_means' },
+  { key: 'friend_recharge_together', category: 'friendship',  labelKey: 'prompt_friend_recharge_together' },
+  { key: 'friend_disagree_well',   category: 'friendship',    labelKey: 'prompt_friend_disagree_well' },
+  { key: 'friend_seen_when',       category: 'friendship',    labelKey: 'prompt_friend_seen_when' },
+
+  // Collaboration — surfaces for users who opt in to the 'business' intention
+  // (working chemistry — communication rhythm, trust, pace, collaboration
+  // style). No outcome claims, no "cofounder finder" framing.
+  { key: 'collab_pace',            category: 'collaboration', labelKey: 'prompt_collab_pace' },
+  { key: 'collab_disagree_well',   category: 'collaboration', labelKey: 'prompt_collab_disagree_well' },
+  { key: 'collab_trust_signal',    category: 'collaboration', labelKey: 'prompt_collab_trust_signal' },
+  { key: 'collab_decision_style',  category: 'collaboration', labelKey: 'prompt_collab_decision_style' },
+  { key: 'collab_energy_match',    category: 'collaboration', labelKey: 'prompt_collab_energy_match' },
+  { key: 'collab_what_i_bring',    category: 'collaboration', labelKey: 'prompt_collab_what_i_bring' },
 ] as const;
 
 export const PROMPT_CATEGORIES: readonly { id: PromptCategory; labelKey: string }[] = [
-  { id: 'humor',      labelKey: 'prompt_cat_humor' },
-  { id: 'vulnerable', labelKey: 'prompt_cat_vulnerable' },
-  { id: 'astro',      labelKey: 'prompt_cat_astro' },
-  { id: 'fun',        labelKey: 'prompt_cat_fun' },
-  { id: 'values',     labelKey: 'prompt_cat_values' },
+  { id: 'humor',         labelKey: 'prompt_cat_humor' },
+  { id: 'vulnerable',    labelKey: 'prompt_cat_vulnerable' },
+  { id: 'astro',         labelKey: 'prompt_cat_astro' },
+  { id: 'fun',           labelKey: 'prompt_cat_fun' },
+  { id: 'values',        labelKey: 'prompt_cat_values' },
+  { id: 'friendship',    labelKey: 'prompt_cat_friendship' },
+  { id: 'collaboration', labelKey: 'prompt_cat_collaboration' },
 ] as const;
 
 export const MAX_PROMPTS = 3;

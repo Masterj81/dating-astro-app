@@ -18,7 +18,13 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { sanitizeLifestyleTags } from '../../data/profile-fields';
+import {
+  CONNECTION_INTENTIONS,
+  DEFAULT_CONNECTION_INTENTIONS,
+  sanitizeConnectionIntentions,
+  sanitizeLifestyleTags,
+  type ConnectionIntention,
+} from '../../data/profile-fields';
 import ReAnimated, {
   cancelAnimation,
   useAnimatedStyle,
@@ -84,7 +90,16 @@ type Profile = {
   looking_for_text?: string | null;
   prompts?: unknown;
   icebreaker_question?: string | null;
+  // Macro connection intentions surfaced by the extended
+  // get_discoverable_profiles RPC (migration 20260601000001). Optional /
+  // nullable for legacy rows.
+  connection_intentions?: string[] | null;
 };
+
+// Filter values the segmented control above the card accepts. 'all' bypasses
+// the RPC filter (default behavior). The other three map straight to the
+// connection_intentions vocabulary.
+type DiscoverIntentionFilter = 'all' | ConnectionIntention;
 
 export default function DiscoverScreen() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -114,6 +129,10 @@ export default function DiscoverScreen() {
   // public card. Fetched once on mount via get_my_full_profile (the same
   // RPC the edit screen uses). Empty array on failure / no tags.
   const [viewerInterests, setViewerInterests] = useState<string[]>([]);
+  // Macro intention filter for the deck. 'all' is the default and matches
+  // the historical behavior of the discover RPC. Other values trim the deck
+  // to profiles whose connection_intentions overlap the selected value.
+  const [intentionFilter, setIntentionFilter] = useState<DiscoverIntentionFilter>('all');
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -144,8 +163,8 @@ export default function DiscoverScreen() {
 
   useEffect(() => {
     loadProfiles();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
-  }, [user, reduceMotion]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount + filter change
+  }, [user, reduceMotion, intentionFilter]);
 
   // Fetch the viewer's own lifestyle tags so the card can highlight
   // shared tags on profiles they discover. Read-only one-shot -- failure
@@ -211,8 +230,21 @@ export default function DiscoverScreen() {
           return [];
         }
 
-        const { data: rpcData, error: rpcError } = await supabase
-          .rpc('get_discoverable_profiles', { p_user_id: user.id, p_limit: 50 });
+        // Pass the macro intention filter through as p_intentions when
+        // a specific filter is selected. The RPC accepts NULL (no filter)
+        // and falls back to historical behavior in that case, so we never
+        // send an empty array.
+        const intentionsArg =
+          intentionFilter === 'all' ? null : [intentionFilter];
+
+        const { data: rpcData, error: rpcError } = await supabase.rpc(
+          'get_discoverable_profiles',
+          {
+            p_user_id: user.id,
+            p_limit: 50,
+            p_intentions: intentionsArg,
+          },
+        );
 
         if (rpcError) {
           throw rpcError;
@@ -595,6 +627,13 @@ export default function DiscoverScreen() {
     );
   }
 
+  const filterOptions: { key: DiscoverIntentionFilter; labelKey: string }[] = [
+    { key: 'all',        labelKey: 'discoverFilterIntention_all' },
+    { key: 'love',       labelKey: 'discoverFilterIntention_love' },
+    { key: 'friendship', labelKey: 'discoverFilterIntention_friendship' },
+    { key: 'business',   labelKey: 'discoverFilterIntention_business' },
+  ];
+
   return (
     <WebTabWrapper>
     <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
@@ -607,6 +646,40 @@ export default function DiscoverScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Macro intention filter — segmented control. 'All' is the default
+          and keeps the original deck behavior. */}
+      <View style={styles.intentionFilterRow} accessibilityRole="tablist">
+        {filterOptions.map((opt) => {
+          const active = intentionFilter === opt.key;
+          return (
+            <TouchableOpacity
+              key={opt.key}
+              style={[
+                styles.intentionFilterPill,
+                active && styles.intentionFilterPillActive,
+              ]}
+              onPress={() => {
+                if (intentionFilter !== opt.key) {
+                  buttonPress();
+                  setIntentionFilter(opt.key);
+                }
+              }}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+            >
+              <Text
+                style={[
+                  styles.intentionFilterPillText,
+                  active && styles.intentionFilterPillTextActive,
+                ]}
+              >
+                {t(opt.labelKey)}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
       <Animated.View style={{ transform: [{ scale: cardScale }], opacity: cardOpacity }}>
         <View {...panResponder.panHandlers}>
@@ -720,6 +793,33 @@ export default function DiscoverScreen() {
                 </Text>
                 {currentProfile.is_verified && <VerifiedBadge size="small" />}
               </View>
+
+              {/* Macro connection intentions chip cluster — rendered only
+                  when the profile signals more than the default 'love' so
+                  Love-only profiles keep the existing look intact. */}
+              {(() => {
+                const intentions = sanitizeConnectionIntentions(currentProfile.connection_intentions);
+                const isDefaultOnly =
+                  intentions.length === DEFAULT_CONNECTION_INTENTIONS.length &&
+                  intentions.every((k) => DEFAULT_CONNECTION_INTENTIONS.includes(k));
+                if (isDefaultOnly) return null;
+                return (
+                  <View style={styles.intentionChipCluster}>
+                    <Text style={styles.intentionChipPrefix}>
+                      {t('discoverChipOpenTo') || 'Open to:'}
+                    </Text>
+                    {intentions.map((key) => {
+                      const def = CONNECTION_INTENTIONS.find((i) => i.key === key);
+                      if (!def) return null;
+                      return (
+                        <View key={key} style={styles.intentionChip}>
+                          <Text style={styles.intentionChipText}>{t(def.labelKey)}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                );
+              })()}
 
               {/* Chart context -- the birth-chart signal the viewer reviews
                   before deciding to start a conversation. */}
@@ -1309,6 +1409,68 @@ const styles = StyleSheet.create({
   compatibilityCtaText: {
     color: '#FFFFFF',
     fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+
+  // Macro intention filter (segmented control at the top of Discover).
+  intentionFilterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  intentionFilterPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  intentionFilterPillActive: {
+    backgroundColor: 'rgba(233, 69, 96, 0.18)',
+    borderColor: 'rgba(233, 69, 96, 0.55)',
+  },
+  intentionFilterPillText: {
+    color: 'rgba(255,255,255,0.78)',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  intentionFilterPillTextActive: {
+    color: '#fff4f6',
+  },
+
+  // Connection intentions chip cluster (only renders when profile signals
+  // more than the default 'love' set).
+  intentionChipCluster: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+    marginBottom: 8,
+  },
+  intentionChipPrefix: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  intentionChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  intentionChipText: {
+    color: '#fff',
+    fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.3,
   },

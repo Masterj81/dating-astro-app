@@ -3,7 +3,10 @@
 // trip the DB CHECK constraints with an opaque Postgres error.
 
 import {
+  CONNECTION_INTENTIONS,
+  DEFAULT_CONNECTION_INTENTIONS,
   LIFESTYLE_TAGS,
+  MAX_CONNECTION_INTENTIONS,
   MAX_LIFESTYLE_TAGS,
   MAX_PROMPT_RESPONSE_LENGTH,
   MAX_PROMPTS,
@@ -13,6 +16,7 @@ import {
   RELATIONSHIP_INTENTS,
 } from './catalog';
 import type {
+  ConnectionIntention,
   IntentDef,
   LifestyleTagDef,
   PromptDef,
@@ -20,6 +24,9 @@ import type {
   RelationshipIntent,
   ValueDef,
 } from './types';
+
+const CONNECTION_INTENTION_KEYS: readonly ConnectionIntention[] =
+  CONNECTION_INTENTIONS.map(c => c.key);
 
 // ── Lookup helpers ──────────────────────────────────────────────────────────
 
@@ -74,3 +81,24 @@ export const sanitizeLifestyleTags = (raw: unknown): string[] => {
     .filter((v, i, a) => a.indexOf(v) === i)
     .slice(0, MAX_LIFESTYLE_TAGS);
 };
+
+// Connection intentions — keep only valid keys, dedupe, clamp to the cap,
+// and default to ['love'] when the input is empty/invalid. Returning the
+// default (rather than []) here is deliberate: every read path expects at
+// least one intent so callers can render the chip cluster and the synastry
+// frame without an "open to nothing" edge case.
+export const sanitizeConnectionIntentions = (raw: unknown): ConnectionIntention[] => {
+  if (!Array.isArray(raw)) return [...DEFAULT_CONNECTION_INTENTIONS];
+  const cleaned = raw
+    .filter((v): v is ConnectionIntention =>
+      typeof v === 'string' && (CONNECTION_INTENTION_KEYS as readonly string[]).includes(v),
+    )
+    .filter((v, i, a) => a.indexOf(v) === i)
+    .slice(0, MAX_CONNECTION_INTENTIONS);
+  return cleaned.length > 0 ? cleaned : [...DEFAULT_CONNECTION_INTENTIONS];
+};
+
+// Type guard for stored connection_intention strings — useful for narrowing
+// unknown Supabase values to the strict union without an unsafe cast.
+export const isConnectionIntention = (v: unknown): v is ConnectionIntention =>
+  typeof v === 'string' && (CONNECTION_INTENTION_KEYS as readonly string[]).includes(v);

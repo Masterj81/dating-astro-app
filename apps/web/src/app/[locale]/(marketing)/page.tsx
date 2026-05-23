@@ -37,7 +37,7 @@ const JSON_LD = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
   "name": "JUNO",
-  "description": "Synastry-led relationship discovery — explore romantic connection through birth-chart context, synastry insights, and guided conversation prompts.",
+  "description": "Love, friendship, working chemistry — see the synastry between two charts before the conversation starts. Birth-chart context, guided intros, voice-led profiles.",
   "applicationCategory": "LifestyleApplication",
   "url": "https://www.junosynastry.com",
   "operatingSystem": "iOS, Android",

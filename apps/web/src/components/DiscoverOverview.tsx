@@ -13,9 +13,13 @@ import { FullCardSkeleton } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { LuminaryGlyph } from "@/components/ZodiacGlyph";
 import {
+  CONNECTION_INTENTIONS,
+  DEFAULT_CONNECTION_INTENTIONS,
   findIntent,
   findLifestyleTag,
+  sanitizeConnectionIntentions,
   sanitizeLifestyleTags,
+  type ConnectionIntention,
 } from "@astro/shared/profile";
 
 type DiscoverProfile = {
@@ -36,7 +40,12 @@ type DiscoverProfile = {
   looking_for_text?: string | null;
   prompts?: unknown;
   icebreaker_question?: string | null;
+  // Macro connection intentions surfaced by get_discoverable_profiles since
+  // migration 20260601000001. Optional/nullable for legacy rows.
+  connection_intentions?: string[] | null;
 };
+
+type DiscoverIntentionFilter = "all" | ConnectionIntention;
 
 export function DiscoverOverview() {
   const t = useTranslations("webApp");
@@ -53,6 +62,9 @@ export function DiscoverOverview() {
   // CTAs swap destinations.
   const [tier, setTier] = useState<WebTier>("free");
   const [viewerInterests, setViewerInterests] = useState<string[]>([]);
+  // Macro intention filter for the deck. 'all' bypasses the RPC's
+  // p_intentions filter and matches historical behavior.
+  const [intentionFilter, setIntentionFilter] = useState<DiscoverIntentionFilter>("all");
   const [loading, setLoading] = useState(true);
   // Conversation-first: the only mutating action from this screen is
   // starting a conversation. Skip is purely client-side navigation.
@@ -108,6 +120,7 @@ export function DiscoverOverview() {
         supabase.rpc("get_discoverable_profiles", {
           p_user_id: session.user.id,
           p_limit: 50,
+          p_intentions: intentionFilter === "all" ? null : [intentionFilter],
         }),
         supabase.rpc("get_my_full_profile"),
         getCurrentTier(session.user.id),
@@ -145,7 +158,8 @@ export function DiscoverOverview() {
 
   useEffect(() => {
     loadProfiles();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when filter changes
+  }, [intentionFilter]);
 
   // Skip: pure client-side navigation. Nothing is persisted; no signal is
   // sent to the backend. The user simply moves to the next card.
@@ -311,8 +325,39 @@ export function DiscoverOverview() {
     ? "/app/plans"
     : `/app/premium/celestial/synastry?profileId=${encodeURIComponent(currentProfile.id)}`;
 
+  const intentionFilterOptions: { key: DiscoverIntentionFilter; labelKey: string }[] = [
+    { key: "all",        labelKey: "discoverFilterIntention_all" },
+    { key: "love",       labelKey: "discoverFilterIntention_love" },
+    { key: "friendship", labelKey: "discoverFilterIntention_friendship" },
+    { key: "business",   labelKey: "discoverFilterIntention_business" },
+  ];
+
   return (
     <div className="space-y-6">
+      {/* Macro intention filter — segmented control. 'All' is the default
+          and keeps the historical deck behavior. */}
+      <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label={t("discoverChipOpenTo")}>
+        {intentionFilterOptions.map((opt) => {
+          const active = intentionFilter === opt.key;
+          return (
+            <button
+              key={opt.key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setIntentionFilter(opt.key)}
+              className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+                active
+                  ? "border-accent bg-accent/15 text-accent"
+                  : "border-border bg-bg/70 text-white hover:bg-card-hover"
+              }`}
+            >
+              {t(opt.labelKey)}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
       <section className="overflow-hidden rounded-[2rem] border border-border bg-card/90 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
         <div className="grid lg:grid-cols-[0.95fr_1.05fr]">
@@ -347,6 +392,35 @@ export function DiscoverOverview() {
                 {"\u2022"}{" "}
                 {currentProfile.rising_sign ? translateSign(currentProfile.rising_sign, locale) : "?"}
               </p>
+              {(() => {
+                // Macro intentions chip cluster \u2014 only rendered when the
+                // profile signals more than the default 'love' set so
+                // Love-only profiles keep the existing visual unchanged.
+                const intentions = sanitizeConnectionIntentions(currentProfile.connection_intentions);
+                const isDefaultOnly =
+                  intentions.length === DEFAULT_CONNECTION_INTENTIONS.length &&
+                  intentions.every((k) => DEFAULT_CONNECTION_INTENTIONS.includes(k));
+                if (isDefaultOnly) return null;
+                return (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-widest text-white/70">
+                      {t("discoverChipOpenTo")}
+                    </span>
+                    {intentions.map((key) => {
+                      const def = CONNECTION_INTENTIONS.find((i) => i.key === key);
+                      if (!def) return null;
+                      return (
+                        <span
+                          key={key}
+                          className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white"
+                        >
+                          {t(def.labelKey)}
+                        </span>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

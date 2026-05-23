@@ -12,8 +12,10 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
+  CONNECTION_INTENTIONS,
   LIFESTYLE_CATEGORIES,
   LIFESTYLE_TAGS,
+  MAX_CONNECTION_INTENTIONS,
   MAX_ICEBREAKER_LENGTH,
   MAX_LIFESTYLE_TAGS,
   MAX_LOOKING_FOR_TEXT_LENGTH,
@@ -25,6 +27,7 @@ import {
   PROMPT_CATEGORIES,
   RELATIONSHIP_INTENTS,
   findPrompt,
+  type ConnectionIntention,
   type PromptDef,
   type PromptResponse,
   type RelationshipIntent,
@@ -37,6 +40,11 @@ type Props = {
   onLifestyleTagsChange: (next: string[]) => void;
   intent: RelationshipIntent | null;
   onIntentChange: (next: RelationshipIntent) => void;
+  // Macro connection intentions (love / friendship / business). At least
+  // one must remain selected; the parent (AccountProfileWorkspace) enforces
+  // this on save and the empty-state warning surfaces inline.
+  connectionIntentions: ConnectionIntention[];
+  onConnectionIntentionsChange: (next: ConnectionIntention[]) => void;
   lookingForText: string;
   onLookingForTextChange: (next: string) => void;
   prompts: PromptResponse[];
@@ -93,8 +101,58 @@ export function AccountProfileMvpSections(props: Props) {
     props.onPromptsChange(props.prompts.filter((_, i) => i !== idx));
   };
 
+  // ── Connection intentions ──
+  const toggleConnectionIntention = (key: ConnectionIntention) => {
+    const has = props.connectionIntentions.includes(key);
+    if (has) {
+      props.onConnectionIntentionsChange(props.connectionIntentions.filter((k) => k !== key));
+    } else if (props.connectionIntentions.length < MAX_CONNECTION_INTENTIONS) {
+      props.onConnectionIntentionsChange([...props.connectionIntentions, key]);
+    }
+  };
+  const intentionsEmpty = props.connectionIntentions.length === 0;
+
   return (
     <div className="space-y-6">
+      {/* ── Connection intentions (macro) ─────────────────────────────── */}
+      <section className="rounded-[1.5rem] border border-border bg-bg/70 p-5">
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="text-xl font-semibold text-white">
+            {t("profileIntentionsTitle")} <span className="text-accent">*</span>
+          </h3>
+        </div>
+        <p className="mt-2 text-sm leading-7 text-text-muted">
+          {t("profileIntentionsHelper")}
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {CONNECTION_INTENTIONS.map((intent) => {
+            const active = props.connectionIntentions.includes(intent.key);
+            const disabled = !active && props.connectionIntentions.length >= MAX_CONNECTION_INTENTIONS;
+            return (
+              <button
+                key={intent.key}
+                type="button"
+                onClick={() => toggleConnectionIntention(intent.key)}
+                disabled={disabled}
+                className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                  active
+                    ? "border-accent bg-accent/15 text-accent"
+                    : "border-border bg-bg/70 text-white hover:bg-card-hover"
+                }`}
+                aria-pressed={active}
+              >
+                {t(intent.labelKey)}
+              </button>
+            );
+          })}
+        </div>
+        {intentionsEmpty ? (
+          <p className="mt-3 text-sm italic text-accent">
+            {t("profileIntentionsEmptyWarning")}
+          </p>
+        ) : null}
+      </section>
+
       {/* ── Relationship intent (required) ─────────────────────────────── */}
       <section className="rounded-[1.5rem] border border-border bg-bg/70 p-5">
         <div className="flex items-baseline justify-between gap-3">

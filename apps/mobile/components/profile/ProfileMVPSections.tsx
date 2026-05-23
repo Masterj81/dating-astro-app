@@ -20,8 +20,10 @@ import {
 import { AppTheme } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
+  CONNECTION_INTENTIONS,
   LIFESTYLE_CATEGORIES,
   LIFESTYLE_TAGS,
+  MAX_CONNECTION_INTENTIONS,
   MAX_ICEBREAKER_LENGTH,
   MAX_LIFESTYLE_TAGS,
   MAX_LOOKING_FOR_TEXT_LENGTH,
@@ -32,6 +34,7 @@ import {
   PROMPT_CATEGORIES,
   PROMPTS,
   RELATIONSHIP_INTENTS,
+  type ConnectionIntention,
   type LifestyleCategory,
   type PromptDef,
   type PromptResponse,
@@ -52,11 +55,30 @@ type Props = {
   onPromptsChange: (prompts: PromptResponse[]) => void;
   icebreaker: string;
   onIcebreakerChange: (text: string) => void;
+  // Macro connection intentions (love / friendship / business). At least
+  // one must remain selected; the parent enforces this on save.
+  connectionIntentions: ConnectionIntention[];
+  onConnectionIntentionsChange: (next: ConnectionIntention[]) => void;
 };
 
 export default function ProfileMVPSections(props: Props) {
   const { t } = useLanguage();
   const [pickerSlot, setPickerSlot] = useState<number | null>(null);
+
+  // ── Connection intentions (macro) ────────────────────────────────────────
+  // Toggle a single key on/off, but never let the set go fully empty — the
+  // empty-state warning surfaces if the user tries.
+  const toggleConnectionIntention = (key: ConnectionIntention) => {
+    const has = props.connectionIntentions.includes(key);
+    if (has) {
+      // Allow removing down to zero; the empty-state warning + save guard
+      // re-prompt the user. Don't silently keep a value selected.
+      const next = props.connectionIntentions.filter(k => k !== key);
+      props.onConnectionIntentionsChange(next);
+    } else if (props.connectionIntentions.length < MAX_CONNECTION_INTENTIONS) {
+      props.onConnectionIntentionsChange([...props.connectionIntentions, key]);
+    }
+  };
 
   // ── Values ───────────────────────────────────────────────────────────────
   const toggleValue = (key: string) => {
@@ -115,8 +137,49 @@ export default function ProfileMVPSections(props: Props) {
   };
 
   // ── Render ───────────────────────────────────────────────────────────────
+  const intentionsEmpty = props.connectionIntentions.length === 0;
+  const intentionsAtCap = props.connectionIntentions.length >= MAX_CONNECTION_INTENTIONS;
+
   return (
     <View style={s.container}>
+      {/* ── Connection intentions (macro) ──────────────────────────── */}
+      <View style={s.section}>
+        <View style={s.sectionHeaderRow}>
+          <Text style={s.sectionTitle}>{t('profileIntentionsTitle') || 'Open to'}</Text>
+          <Text style={s.requiredBadge}>*</Text>
+        </View>
+        <Text style={s.hint}>
+          {t('profileIntentionsHelper') ||
+            "Tap to choose one, two, or all three. Others see only what you've turned on."}
+        </Text>
+        <View style={s.chipsRow}>
+          {CONNECTION_INTENTIONS.map(intent => {
+            const active = props.connectionIntentions.includes(intent.key);
+            const disabled = !active && intentionsAtCap;
+            return (
+              <TouchableOpacity
+                key={intent.key}
+                style={[s.chip, active && s.chipActive, disabled && s.chipDisabled]}
+                onPress={() => toggleConnectionIntention(intent.key)}
+                disabled={disabled}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active, disabled }}
+              >
+                <Text style={[s.chipText, active && s.chipTextActive]}>
+                  {t(intent.labelKey)}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        {intentionsEmpty ? (
+          <Text style={s.warningText}>
+            {t('profileIntentionsEmptyWarning') ||
+              'Choose at least one so people can find you.'}
+          </Text>
+        ) : null}
+      </View>
+
       {/* ── Relationship intent (required) ─────────────────────────── */}
       <View style={s.section}>
         <View style={s.sectionHeaderRow}>
@@ -394,6 +457,12 @@ const s = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     marginLeft: 6,
+  },
+  warningText: {
+    marginTop: 10,
+    fontSize: 13,
+    color: AppTheme.colors.coral,
+    fontStyle: 'italic',
   },
 
   // Inputs

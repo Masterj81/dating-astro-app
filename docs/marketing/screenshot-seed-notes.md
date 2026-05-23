@@ -24,6 +24,39 @@ context, with **no swipe cards**.
 4. Start with guided intros and voice context
 5. Understand relationship dynamics, not generic profiles
 
+## JUNO 2.0 — extended shot plan (3 intentions)
+
+Two additional shots support the three-intentions expansion (Love /
+Friendship / Business — working chemistry). Both are **planned** — they
+will be captured against the JUNO synastry surfaces alongside the 5-shot
+sequence above. The synthetic set committed in
+`apps/mobile/store-assets/app-store/` remains submissible for this
+resubmission as-is.
+
+| # | Screen | Caption (overlay copy) | What it shows |
+|---|---|---|---|
+| 6 | Profile edit / Onboarding step 4 — "Open to" multi-select | **Choose the connection you're open to** | The Love / Friendship / Business multi-select pills — at least one is required, default is Love. Frames JUNO as romantic-first and intentional. |
+| 7 | Synastry — reading-frame toggled to Business / Working chemistry | **Read the chemistry before the conversation** | The same synastry zones, re-labeled (Pressure response, Decision rhythm, Creative friction, Trust and pace). Score math unchanged. No outcome promises. |
+
+### Acceptable caption variants
+
+- "Love, friendship, and working chemistry"
+- "Read the chemistry before the conversation"
+- "Choose the connection you're open to"
+
+### Forbidden in #6 / #7 captions and frames
+
+Never write or render: `business partner guaranteed`, `perfect cofounder`,
+`find your cofounder`, `your tribe`, `guaranteed compatibility`,
+`100% match`, `make friends fast`, `power couple`, `LinkedIn`,
+`investment decision`, `financial advice`, `legal advice`,
+`compatible cofounder`, `match`. These are also enforced by
+`scripts/check-store-metadata.mjs` Tier 6 against every locale value
+under the `connectionIntention_*`, `synastryZone_*`, `synastryFrame_*`,
+`onboardingIntentions*`, `profileIntentions*`, `discoverFilterIntention_*`,
+`discoverChipOpenTo`, `prompt_cat_friendship`, `prompt_cat_collaboration`,
+`prompt_friend_*`, and `prompt_collab_*` keys.
+
 ## Design direction
 
 - Premium, mature, romantic, intentional. Dark ground; warm gold +

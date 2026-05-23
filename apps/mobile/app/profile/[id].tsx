@@ -27,7 +27,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { sanitizeLifestyleTags } from '@astro/shared/profile';
+import {
+  CONNECTION_INTENTIONS,
+  DEFAULT_CONNECTION_INTENTIONS,
+  sanitizeConnectionIntentions,
+  sanitizeLifestyleTags,
+} from '@astro/shared/profile';
 import ProfilePublicMVPSections from '../../components/profile/ProfilePublicMVPSections';
 import {
   LuminaryGlyph,
@@ -58,6 +63,7 @@ type Profile = {
   prompts: unknown;
   icebreaker_question: string | null;
   is_verified: boolean | null;
+  connection_intentions: string[] | null;
 };
 
 export default function ProfileDetailScreen() {
@@ -77,7 +83,7 @@ export default function ProfileDetailScreen() {
           supabase
             .from('discoverable_profiles')
             .select(
-              'id, name, age, bio, sun_sign, moon_sign, rising_sign, image_url, images, current_city, relationship_intent, personal_values, interests, looking_for_text, prompts, icebreaker_question, is_verified',
+              'id, name, age, bio, sun_sign, moon_sign, rising_sign, image_url, images, current_city, relationship_intent, personal_values, interests, looking_for_text, prompts, icebreaker_question, is_verified, connection_intentions',
             )
             .eq('id', id)
             .maybeSingle(),
@@ -203,6 +209,32 @@ export default function ProfileDetailScreen() {
 
           {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
 
+          {/* Macro connection intentions chip cluster — rendered only when
+              the profile signals more than the default 'love' set. */}
+          {(() => {
+            const intentions = sanitizeConnectionIntentions(profile.connection_intentions);
+            const isDefaultOnly =
+              intentions.length === DEFAULT_CONNECTION_INTENTIONS.length &&
+              intentions.every((k) => DEFAULT_CONNECTION_INTENTIONS.includes(k));
+            if (isDefaultOnly) return null;
+            return (
+              <View style={styles.intentionChipCluster}>
+                <Text style={styles.intentionChipPrefix}>
+                  {t('discoverChipOpenTo') || 'Open to:'}
+                </Text>
+                {intentions.map((key) => {
+                  const def = CONNECTION_INTENTIONS.find((i) => i.key === key);
+                  if (!def) return null;
+                  return (
+                    <View key={key} style={styles.intentionChip}>
+                      <Text style={styles.intentionChipText}>{t(def.labelKey)}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            );
+          })()}
+
           <View style={styles.mvpWrap}>
             <ProfilePublicMVPSections
               relationshipIntent={profile.relationship_intent}
@@ -304,6 +336,37 @@ const styles = StyleSheet.create({
   },
 
   mvpWrap: { marginTop: 4 },
+
+  intentionChipCluster: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  intentionChipPrefix: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  intentionChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  intentionChipText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
 
   actions: { gap: 12, marginTop: 8 },
   primaryButton: {

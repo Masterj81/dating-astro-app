@@ -13,10 +13,13 @@ import { AccountDeletionFlow } from "@/components/AccountDeletionFlow";
 import { AccountProfileMvpSections } from "@/components/AccountProfileMvpSections";
 import { LuminaryGlyph } from "@/components/ZodiacGlyph";
 import {
+  DEFAULT_CONNECTION_INTENTIONS,
   isRelationshipIntent,
+  sanitizeConnectionIntentions,
   sanitizeLifestyleTags,
   sanitizePersonalValues,
   sanitizePromptResponses,
+  type ConnectionIntention,
   type PromptResponse,
   type RelationshipIntent,
 } from "@astro/shared/profile";
@@ -51,10 +54,16 @@ type AccountProfile = {
   looking_for_text?: string | null;
   prompts?: unknown;
   icebreaker_question?: string | null;
+  // Macro connection intentions (love / friendship / business). Added by
+  // migration 20260601000001.
+  connection_intentions?: string[] | null;
 };
 
 type MvpFormState = {
   intent: RelationshipIntent | null;
+  // Macro intentions — love / friendship / business. At least one is
+  // required at save time; the empty-state warning surfaces if not.
+  connectionIntentions: ConnectionIntention[];
   lookingForText: string;
   values: string[];
   lifestyleTags: string[];
@@ -265,6 +274,7 @@ async function ensureWebProfileExists(session: Session) {
     looking_for_text: null,
     prompts: null,
     icebreaker_question: null,
+    connection_intentions: [...DEFAULT_CONNECTION_INTENTIONS],
   } satisfies AccountProfile;
 }
 
@@ -345,6 +355,7 @@ export function AccountProfileWorkspace({
   });
   const [mvpForm, setMvpForm] = useState<MvpFormState>({
     intent: null,
+    connectionIntentions: [...DEFAULT_CONNECTION_INTENTIONS],
     lookingForText: "",
     values: [],
     lifestyleTags: [],
@@ -425,6 +436,7 @@ export function AccountProfileWorkspace({
         intent: isRelationshipIntent(nextProfile.relationship_intent)
           ? nextProfile.relationship_intent
           : null,
+        connectionIntentions: sanitizeConnectionIntentions(nextProfile.connection_intentions),
         lookingForText: nextProfile.looking_for_text || "",
         values: sanitizePersonalValues(nextProfile.personal_values),
         lifestyleTags: sanitizeLifestyleTags(nextProfile.interests),
@@ -679,6 +691,11 @@ export function AccountProfileWorkspace({
       return;
     }
 
+    if (mvpForm.connectionIntentions.length === 0) {
+      setError(t("profileIntentionsEmptyWarning"));
+      return;
+    }
+
     try {
       setSavingMvp(true);
       resetMessages();
@@ -690,9 +707,11 @@ export function AccountProfileWorkspace({
       );
       const sanitizedValues = sanitizePersonalValues(mvpForm.values);
       const sanitizedTags = sanitizeLifestyleTags(mvpForm.lifestyleTags);
+      const sanitizedConnectionIntentions = sanitizeConnectionIntentions(mvpForm.connectionIntentions);
 
       const payload = {
         relationship_intent: mvpForm.intent,
+        connection_intentions: sanitizedConnectionIntentions,
         looking_for_text: mvpForm.lookingForText.trim() || null,
         personal_values: sanitizedValues,
         interests: sanitizedTags,
@@ -1409,6 +1428,10 @@ export function AccountProfileWorkspace({
                 }
                 intent={mvpForm.intent}
                 onIntentChange={(v) => setMvpForm((s) => ({ ...s, intent: v }))}
+                connectionIntentions={mvpForm.connectionIntentions}
+                onConnectionIntentionsChange={(v) =>
+                  setMvpForm((s) => ({ ...s, connectionIntentions: v }))
+                }
                 lookingForText={mvpForm.lookingForText}
                 onLookingForTextChange={(v) =>
                   setMvpForm((s) => ({ ...s, lookingForText: v }))
@@ -1424,7 +1447,7 @@ export function AccountProfileWorkspace({
                 <button
                   type="button"
                   onClick={handleMvpSave}
-                  disabled={savingMvp || !mvpForm.intent}
+                  disabled={savingMvp || !mvpForm.intent || mvpForm.connectionIntentions.length === 0}
                   className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {savingMvp ? t("loading") : t("profileMvpSave")}

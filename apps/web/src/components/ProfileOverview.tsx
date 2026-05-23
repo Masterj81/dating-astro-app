@@ -10,7 +10,12 @@ import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-util
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { ProfilePublicMvpDisplay } from "@/components/ProfilePublicMvpDisplay";
 import { LuminaryGlyph } from "@/components/ZodiacGlyph";
-import { sanitizeLifestyleTags } from "@astro/shared/profile";
+import {
+  CONNECTION_INTENTIONS,
+  DEFAULT_CONNECTION_INTENTIONS,
+  sanitizeConnectionIntentions,
+  sanitizeLifestyleTags,
+} from "@astro/shared/profile";
 
 type ProfileOverviewProps = {
   profileId: string;
@@ -34,6 +39,7 @@ type DiscoverProfile = {
   looking_for_text?: string | null;
   prompts?: unknown;
   icebreaker_question?: string | null;
+  connection_intentions?: string[] | null;
 };
 
 export function ProfileOverview({ profileId }: ProfileOverviewProps) {
@@ -62,7 +68,7 @@ export function ProfileOverview({ profileId }: ProfileOverviewProps) {
           supabase
             .from("discoverable_profiles")
             .select(
-              "id, name, age, sun_sign, moon_sign, rising_sign, bio, image_url, images, relationship_intent, personal_values, interests, looking_for_text, prompts, icebreaker_question"
+              "id, name, age, sun_sign, moon_sign, rising_sign, bio, image_url, images, relationship_intent, personal_values, interests, looking_for_text, prompts, icebreaker_question, connection_intentions"
             )
             .eq("id", profileId)
             .maybeSingle(),
@@ -251,6 +257,36 @@ export function ProfileOverview({ profileId }: ProfileOverviewProps) {
             </p>
           </div>
         </div>
+
+        {/* Macro connection intentions chip cluster — only renders when the
+            profile signals more than the default 'love' set, so Love-only
+            profiles keep the existing layout untouched. */}
+        {(() => {
+          const intentions = sanitizeConnectionIntentions(profile.connection_intentions);
+          const isDefaultOnly =
+            intentions.length === DEFAULT_CONNECTION_INTENTIONS.length &&
+            intentions.every((k) => DEFAULT_CONNECTION_INTENTIONS.includes(k));
+          if (isDefaultOnly) return null;
+          return (
+            <div className="mt-6 flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-text-dim">
+                {t("discoverChipOpenTo")}
+              </span>
+              {intentions.map((key) => {
+                const def = CONNECTION_INTENTIONS.find((i) => i.key === key);
+                if (!def) return null;
+                return (
+                  <span
+                    key={key}
+                    className="inline-flex items-center rounded-full border border-border bg-bg/70 px-2.5 py-1 text-[11px] font-semibold text-white"
+                  >
+                    {t(def.labelKey)}
+                  </span>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {/* MVP profile sections — sanitization happens inside the component
             so we pass the raw view payload. The icebreaker CTA reuses the

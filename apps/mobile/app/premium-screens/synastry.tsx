@@ -36,6 +36,12 @@ import {
   type ZoneScore,
 } from '../../lib/synastry';
 import { supabase } from '../../services/supabase';
+import {
+  CONNECTION_INTENTIONS,
+  DEFAULT_CONNECTION_INTENTIONS,
+  sanitizeConnectionIntentions,
+  type ConnectionIntention,
+} from '../../data/profile-fields';
 
 // Synastry V2 — Conversation map, not prediction.
 //
@@ -72,6 +78,9 @@ type CandidateProfile = {
   rising_sign: string | null;
   image_url: string | null;
   images: string[] | null;
+  // Surfaced by get_synastry_candidate_profiles since migration
+  // 20260601000001. Used to pick the initial reading-frame on selection.
+  connection_intentions?: string[] | null;
 };
 
 type SynastryProfile = SynastryPlacements & {
@@ -111,6 +120,16 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
   const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(initialTargetId);
   const [error, setError] = useState<string | null>(null);
+  // Self + selected target's macro intentions. Used purely to pick the
+  // initial reading-frame; the user can override via the segmented control.
+  // The synastry math itself is UNCHANGED — only the labels / prose change.
+  const [selfIntentions, setSelfIntentions] = useState<ConnectionIntention[]>(
+    [...DEFAULT_CONNECTION_INTENTIONS],
+  );
+  const [targetIntentions, setTargetIntentions] = useState<ConnectionIntention[]>(
+    [...DEFAULT_CONNECTION_INTENTIONS],
+  );
+  const [readingFrame, setReadingFrame] = useState<ConnectionIntention>('love');
   const { user } = useAuth();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
@@ -215,6 +234,8 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
         return;
       }
 
+      setSelfIntentions(sanitizeConnectionIntentions(ownData.connection_intentions));
+
       // Build self profile + pull planet placements out of birth_chart JSONB
       // so the dimension cards can score against real positions instead of
       // silently falling back to Sun x Sun for every zone.
@@ -303,6 +324,10 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
 
       if (!selected) {
         setMatchProfile(null);
+        setTargetIntentions([...DEFAULT_CONNECTION_INTENTIONS]);
+      } else {
+        const selectedCandidate = nextCandidates.find((c) => c.id === selected);
+        setTargetIntentions(sanitizeConnectionIntentions(selectedCandidate?.connection_intentions));
       }
     } catch (err) {
       console.error('Error loading synastry profiles:', err);
@@ -321,14 +346,33 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
     async (id: string) => {
       if (id === selectedId) return;
       setSelectedId(id);
+      // Pick up the target's macro intentions from the candidate list when
+      // available so the reading-frame defaults sensibly. The synastry
+      // math itself is UNCHANGED — only the labels / prose change.
+      const candidate = candidates.find((c) => c.id === id);
+      setTargetIntentions(sanitizeConnectionIntentions(candidate?.connection_intentions));
       try {
         await loadTargetChart(id);
       } catch (err) {
         console.error('Failed to load synastry chart for selected profile:', err);
       }
     },
-    [selectedId, loadTargetChart],
+    [candidates, selectedId, loadTargetChart],
   );
+
+  // Default reading-frame = intersection of self + target intentions; when
+  // multiple, prefer 'love' → 'friendship' → 'business'. If the intersection
+  // is empty (different macro intents), fall back to 'love' so the surface
+  // still reads coherently. Whenever self/target intentions change, reset
+  // the frame to this default — the user can still override via the toggle.
+  useEffect(() => {
+    const priority: ConnectionIntention[] = ['love', 'friendship', 'business'];
+    const overlap = priority.filter(
+      (k) => selfIntentions.includes(k) && targetIntentions.includes(k),
+    );
+    const next = overlap[0] ?? 'love';
+    setReadingFrame(next);
+  }, [selfIntentions, targetIntentions, selectedId]);
 
   const topInset = insets?.top ?? 0;
   const bottomInset = insets?.bottom ?? 0;
@@ -616,15 +660,53 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
                   Sun-fallback note when a placement was missing. */}
               {zoneScores.length > 0 ? (
                 <View style={styles.sectionCard}>
-                  <Text style={styles.sectionEyebrow}>
-                    {t('synastryV2DimensionsTitle') || 'Compatibility dimensions'}
+                  <View style={styles.frameHeaderRow}>
+                    <Text style={styles.sectionEyebrow}>
+                      {t('synastryV2DimensionsTitle') || 'Compatibility dimensions'}
+                    </Text>
+                  </View>
+
+                  {/* Reading-frame toggle — Love / Friendship / Business.
+                      Score math is UNCHANGED; only the labels and prose
+                      around each zone change. */}
+                  <View style={styles.frameToggleRow} accessibilityRole="tablist">
+                    {CONNECTION_INTENTIONS.map((opt) => {
+                      const active = readingFrame === opt.key;
+                      return (
+                        <TouchableOpacity
+                          key={opt.key}
+                          style={[
+                            styles.frameTogglePill,
+                            active && styles.frameTogglePillActive,
+                          ]}
+                          onPress={() => setReadingFrame(opt.key)}
+                          accessibilityRole="tab"
+                          accessibilityState={{ selected: active }}
+                        >
+                          <Text
+                            style={[
+                              styles.frameTogglePillText,
+                              active && styles.frameTogglePillTextActive,
+                            ]}
+                          >
+                            {t(`synastryFrame_${opt.key}`)}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <Text style={styles.frameCaption}>
+                    {t('synastryFrameCaption') ||
+                      'Reading the same charts through a different lens.'}
                   </Text>
+
                   <View style={styles.zoneList}>
                     {zoneScores.map((zone) => (
                       <View key={zone.key} style={styles.zoneCard}>
                         <View style={styles.zoneHeaderRow}>
                           <Text style={styles.zoneName}>
-                            {t(`synastryV2Dimension_${zone.key}`)}
+                            {t(`synastryZone_${zone.key}_${readingFrame}`) ||
+                              t(`synastryV2Dimension_${zone.key}`)}
                           </Text>
                           <Text style={styles.zoneScore}>{zone.score}</Text>
                         </View>
@@ -637,7 +719,8 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
                           {t(`synastryScoreTitle_${zone.band}`)}
                         </Text>
                         <Text style={styles.zoneBody}>
-                          {t(`synastryV2DimensionBody_${zone.key}`)}
+                          {t(`synastryZone_${zone.key}_${readingFrame}_desc`) ||
+                            t(`synastryV2DimensionBody_${zone.key}`)}
                         </Text>
                         <Text style={styles.zoneCue}>
                           {t(`synastryV2Cue_${zone.key}`)}
@@ -1164,6 +1247,48 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#FECACA',
     lineHeight: 19,
+  },
+
+  // Reading-frame toggle row (Love / Friendship / Business). Score math is
+  // unchanged; only the labels and prose change with the active frame.
+  frameHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  frameToggleRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 6,
+    flexWrap: 'wrap',
+  },
+  frameTogglePill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  frameTogglePillActive: {
+    backgroundColor: 'rgba(233, 69, 96, 0.18)',
+    borderColor: 'rgba(233, 69, 96, 0.55)',
+  },
+  frameTogglePillText: {
+    color: 'rgba(255,255,255,0.78)',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  frameTogglePillTextActive: {
+    color: '#fff4f6',
+  },
+  frameCaption: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.55)',
+    fontStyle: 'italic',
+    marginBottom: 12,
   },
 });
 
