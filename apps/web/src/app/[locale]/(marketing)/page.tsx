@@ -59,6 +59,9 @@ export default function LandingPage({
   const cta = useTranslations("cta");
   const social = useTranslations("socialProof");
   const proof = useTranslations("marketingProof");
+  const intents = useTranslations("intentionsSection");
+  const frames = useTranslations("frameSection");
+  const work = useTranslations("workingChemistrySection");
 
   return (
     <>
@@ -145,6 +148,164 @@ export default function LandingPage({
             </li>
           ))}
         </ul>
+      </section>
+
+      {/* Three intentions — Love / Friendship / Business.
+          Sells JUNO positively: same synastry engine, three different
+          connection contexts. No outcome promises. */}
+      <section id="intentions" className="bg-bg-secondary py-24">
+        <div className="mx-auto max-w-6xl px-4">
+          <p className="mb-3 text-center text-xs font-medium uppercase tracking-[0.24em] text-accent sm:text-sm sm:tracking-[0.3em]">
+            {intents("badge")}
+          </p>
+          <h2 className="mb-3 text-center text-3xl font-bold text-white sm:text-4xl">
+            {intents("title")}
+          </h2>
+          <p className="mx-auto mb-12 max-w-2xl text-center text-text-muted">
+            {intents("subtitle")}
+          </p>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <GlassCard className="p-6">
+              <div className="mb-4 flex justify-center">
+                <IntentPill label={intents("loveTitle")} tone="longTerm" />
+              </div>
+              <h3 className="text-center text-lg font-semibold text-white">
+                {intents("loveTitle")}
+              </h3>
+              <p className="mt-2 text-center text-sm leading-relaxed text-text-muted">
+                {intents("loveDesc")}
+              </p>
+            </GlassCard>
+
+            <GlassCard className="p-6">
+              <div className="mb-4 flex justify-center">
+                <IntentPill label={intents("friendshipTitle")} tone="friendship" />
+              </div>
+              <h3 className="text-center text-lg font-semibold text-white">
+                {intents("friendshipTitle")}
+              </h3>
+              <p className="mt-2 text-center text-sm leading-relaxed text-text-muted">
+                {intents("friendshipDesc")}
+              </p>
+            </GlassCard>
+
+            <GlassCard className="p-6">
+              <div className="mb-4 flex justify-center">
+                <IntentPill label={intents("businessTitle")} tone="casual" />
+              </div>
+              <h3 className="text-center text-lg font-semibold text-white">
+                {intents("businessTitle")}
+              </h3>
+              <p className="mt-2 text-center text-sm leading-relaxed text-text-muted">
+                {intents("businessDesc")}
+              </p>
+            </GlassCard>
+          </div>
+
+          <p className="mx-auto mt-10 max-w-2xl text-center text-xs text-text-dim sm:text-sm">
+            {intents("footnote")}
+          </p>
+        </div>
+      </section>
+
+      {/* Same chart, different lens — explains the reading-frame model:
+          one synastry engine, three reading frames. Reinforces the
+          intentions section. */}
+      <section id="frames" className="bg-bg py-24">
+        <div className="mx-auto max-w-6xl px-4">
+          <p className="mb-3 text-center text-xs font-medium uppercase tracking-[0.24em] text-purple sm:text-sm sm:tracking-[0.3em]">
+            {frames("badge")}
+          </p>
+          <h2 className="mb-3 text-center text-3xl font-bold text-white sm:text-4xl">
+            {frames("title")}
+          </h2>
+          <p className="mx-auto mb-12 max-w-2xl text-center text-text-muted">
+            {frames("subtitle")}
+          </p>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <GlassCard className="p-6">
+              <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-accent/85">
+                {intents("loveTitle")}
+              </p>
+              <h3 className="text-lg font-semibold text-white">
+                {frames("loveLensTitle")}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-text-muted">
+                {frames("loveLensDesc")}
+              </p>
+            </GlassCard>
+
+            <GlassCard className="p-6">
+              <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-purple/85">
+                {intents("friendshipTitle")}
+              </p>
+              <h3 className="text-lg font-semibold text-white">
+                {frames("friendshipLensTitle")}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-text-muted">
+                {frames("friendshipLensDesc")}
+              </p>
+            </GlassCard>
+
+            <GlassCard className="p-6">
+              <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-text-dim">
+                {intents("businessTitle")}
+              </p>
+              <h3 className="text-lg font-semibold text-white">
+                {frames("businessLensTitle")}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-text-muted">
+                {frames("businessLensDesc")}
+              </p>
+            </GlassCard>
+          </div>
+
+          <p className="mx-auto mt-10 max-w-2xl text-center text-xs text-text-dim sm:text-sm">
+            {frames("footnote")}
+          </p>
+        </div>
+      </section>
+
+      {/* Working chemistry — what the business frame actually surfaces.
+          Carefully framed as "reflection, not advice"; no success promises,
+          no legal/financial/hiring claims. */}
+      <section id="working-chemistry" className="bg-gradient-to-b from-bg to-bg-secondary py-24">
+        <div className="mx-auto max-w-5xl px-4">
+          <p className="mb-3 text-center text-xs font-medium uppercase tracking-[0.24em] text-accent sm:text-sm sm:tracking-[0.3em]">
+            {work("badge")}
+          </p>
+          <h2 className="mb-3 text-center text-3xl font-bold text-white sm:text-4xl">
+            {work("title")}
+          </h2>
+          <p className="mx-auto mb-12 max-w-2xl text-center text-text-muted">
+            {work("subtitle")}
+          </p>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { titleKey: "pillarCommunicationTitle", descKey: "pillarCommunicationDesc" },
+              { titleKey: "pillarTrustTitle",         descKey: "pillarTrustDesc" },
+              { titleKey: "pillarDecisionTitle",      descKey: "pillarDecisionDesc" },
+              { titleKey: "pillarFrictionTitle",      descKey: "pillarFrictionDesc" },
+              { titleKey: "pillarStyleTitle",         descKey: "pillarStyleDesc" },
+            ].map((p) => (
+              <GlassCard key={p.titleKey} className="p-6">
+                <h3 className="text-base font-semibold text-white sm:text-lg">
+                  {work(p.titleKey)}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-text-muted">
+                  {work(p.descKey)}
+                </p>
+              </GlassCard>
+            ))}
+          </div>
+
+          <p className="mx-auto mt-10 max-w-2xl text-center text-xs text-text-dim sm:text-sm">
+            {work("footnote")}
+          </p>
+        </div>
       </section>
 
       {/* Features — product-first (Phase 2). The astrology-only feature

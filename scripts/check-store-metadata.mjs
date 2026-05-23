@@ -193,6 +193,10 @@ const WEB_MARKETING_SECTIONS = [
   "howItWorks",
   "marketingProof",
   "socialProof",
+  "intentionsSection",
+  "frameSection",
+  "workingChemistrySection",
+  "cta",
 ];
 const HERO_BANNED = [
   {
@@ -423,12 +427,16 @@ const INTENTION_BANNED = [
   { term: "perfect cofounder",                       reason: "magic-outcome claim" },
   { term: "find your cofounder",                     reason: "magic-outcome claim" },
   { term: "find your perfect business partner",      reason: "magic-outcome claim" },
+  { term: "perfect business partner",                reason: "magic-outcome claim" },
   { term: "business partner",                        reason: "use 'working chemistry' instead — implies success promise" },
   { term: "compatible cofounder",                    reason: "compatibility guarantee" },
   { term: "guaranteed compatibility",                reason: "compatibility guarantee" },
+  { term: "guaranteed business chemistry",           reason: "outcome guarantee" },
   { term: "guaranteed outcome",                      reason: "outcome guarantee" },
   { term: "soulmate guarantee",                      reason: "outcome guarantee" },
+  { term: "soulmate",                                reason: "magic-outcome claim" },
   { term: "100% match",                              reason: "compatibility guarantee" },
+  { term: "100% compatibility",                      reason: "compatibility guarantee" },
   { term: "your tribe",                              reason: "magic-outcome friendship claim" },
   { term: "find your people",                        reason: "magic-outcome claim" },
   { term: "make friends fast",                       reason: "magic-outcome claim" },
@@ -437,6 +445,8 @@ const INTENTION_BANNED = [
   { term: "investment decision",                     reason: "out-of-scope financial advice" },
   { term: "financial advice",                        reason: "out-of-scope advice" },
   { term: "legal advice",                            reason: "out-of-scope advice" },
+  { term: "hiring advice",                           reason: "out-of-scope advice" },
+  { term: "employment advice",                       reason: "out-of-scope advice" },
 ];
 
 // Prefixes for keys this tier scans. Any locale key starting with one of
@@ -530,6 +540,77 @@ if (fs.existsSync(landingPage)) {
         "astrodatingapp.com",
         "JSON-LD must not name the legacy domain as canonical"
       );
+    }
+  }
+}
+
+// --- Tier 7: legal copy positive markers -----------------------------------
+// The privacy + terms locales (EN at minimum) and the mobile hardcoded legal
+// screens must carry the working-chemistry / no-advice disclaimer. This is
+// a positive marker check — we don't substring-scan the prose itself,
+// because legal copy legitimately quotes "legal, financial, investment,
+// hiring, employment" inside the disclaimer that says JUNO does NOT provide
+// any of those.
+const LEGAL_MARKERS = [
+  {
+    file: "apps/web/messages/en.json",
+    where: "privacy.s7b_business",
+    must: ["legal, financial, investment, hiring, employment"],
+  },
+  {
+    file: "apps/web/messages/en.json",
+    where: "terms.s7_text",
+    must: ["working chemistry", "NOT legal, financial, investment"],
+  },
+  {
+    file: "privacy-policy.html",
+    where: "(file)",
+    must: [
+      "Synastry, Working Chemistry &amp; the Limits of This Service",
+      "not legal, financial, investment, hiring, employment",
+    ],
+  },
+  {
+    file: "apps/mobile/app/settings/terms-of-service.tsx",
+    where: "(file)",
+    must: [
+      "Working Chemistry",
+      "NOT legal, financial, investment, hiring, employment",
+    ],
+  },
+  {
+    file: "apps/mobile/app/settings/privacy-policy.tsx",
+    where: "(file)",
+    must: [
+      "Working Chemistry",
+      "NOT legal, financial, investment, hiring, employment",
+    ],
+  },
+];
+for (const m of LEGAL_MARKERS) {
+  const full = path.join(ROOT, m.file);
+  if (!fs.existsSync(full)) {
+    fail(m.file, "(file)", "—", "legal file is missing");
+    continue;
+  }
+  if (m.file.endsWith(".json")) {
+    const json = JSON.parse(fs.readFileSync(full, "utf8"));
+    const val = m.where.split(".").reduce((o, k) => (o == null ? o : o[k]), json);
+    if (typeof val !== "string") {
+      fail(m.file, m.where, "—", "required legal key is missing");
+      continue;
+    }
+    for (const needle of m.must) {
+      if (!val.includes(needle)) {
+        fail(m.file, m.where, needle, "required legal disclaimer marker is missing");
+      }
+    }
+  } else {
+    const text = fs.readFileSync(full, "utf8");
+    for (const needle of m.must) {
+      if (!text.includes(needle)) {
+        fail(m.file, m.where, needle, "required legal disclaimer marker is missing");
+      }
     }
   }
 }

@@ -16,22 +16,31 @@ export default function PrivacyPolicyScreen() {
         'When you use JUNO, we collect the following information:\n\n' +
         '\u2022 Account Information: Your name, email address, date of birth, and password.\n\n' +
         '\u2022 Birth Data: Your birth date, birth time, and birth city, used to calculate your natal chart (Sun, Moon, and Rising signs).\n\n' +
-        '\u2022 Profile Information: Photos, bio, occupation, and other details you choose to share on your profile.\n\n' +
+        '\u2022 Profile Information: Photos, bio, occupation, values, lifestyle tags, prompt answers, voice intro, guided icebreaker, and other details you choose to share on your profile.\n\n' +
+        '\u2022 Connection Intentions: The macro intentions you opt into \u2014 Love, Friendship, Business (working chemistry), or any combination. Defaults to Love.\n\n' +
         '\u2022 Location Data: Your approximate location to show you nearby profiles and calculate distance.\n\n' +
-        '\u2022 Usage Data: How you interact with the app, including profile browsing, conversations, messages, and feature usage.\n\n' +
+        '\u2022 Usage Data: How you interact with the app, including profile browsing activity, conversations started, synastry views, messages, and feature usage.\n\n' +
         '\u2022 Device Information: Device type, operating system, app version, and unique device identifiers.',
     },
     {
       title: t('dataUsage') || 'How We Use Your Information',
       content:
         'We use the information we collect to:\n\n' +
-        '\u2022 Calculate your astrological natal chart and compatibility scores with other users.\n\n' +
-        '\u2022 Show you compatible profiles based on your preferences and astrological compatibility.\n\n' +
-        '\u2022 Enable messaging and connection features between users.\n\n' +
+        '\u2022 Calculate your astrological natal chart and the synastry insight between your chart and the charts of other consenting users.\n\n' +
+        '\u2022 Show you profiles that fit your discovery preferences and the connection intentions you opted into (Love, Friendship, Business).\n\n' +
+        '\u2022 Enable messaging and conversation features between users.\n\n' +
         '\u2022 Generate personalized horoscopes and astrological insights.\n\n' +
-        '\u2022 Send you notifications about connections, messages, and app updates.\n\n' +
+        '\u2022 Send you notifications about new conversations, messages, and app updates.\n\n' +
         '\u2022 Improve our synastry logic and app experience.\n\n' +
         '\u2022 Ensure safety and prevent fraud or abuse on the platform.',
+    },
+    {
+      title: 'Synastry, Working Chemistry & the Limits of This Service',
+      content:
+        'JUNO surfaces astrological synastry insight in three reading frames \u2014 Love, Friendship, and Business (working chemistry). All three frames use the same synastry engine; only the labels and prose change to fit the context.\n\n' +
+        '\u2022 Synastry is a language for reflection, not a prediction. JUNO does not guarantee romantic, friendship, or working-chemistry outcomes.\n\n' +
+        '\u2022 The Business / Working Chemistry frame is a starting point for honest conversation about communication rhythm, trust, pace, decision style, and creative friction. It is NOT legal, financial, investment, hiring, employment, or other professional advice, and must not be relied on as such.\n\n' +
+        '\u2022 You are solely responsible for any decisions you make about people you meet through JUNO \u2014 in any frame.',
     },
     {
       title: t('dataSharing') || 'How We Share Your Information',

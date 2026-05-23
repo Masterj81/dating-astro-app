@@ -75,12 +75,15 @@ export default function TermsOfServiceScreen() {
         '\u2022 Termination does not entitle you to a refund for any unused portion of a paid subscription.',
     },
     {
-      title: t('disclaimers') || 'Disclaimers',
+      title: t('disclaimers') || 'Disclaimers \u2014 Synastry, Astrology & Working Chemistry',
       content:
         '\u2022 JUNO is provided "as is" and "as available" without warranties of any kind.\n\n' +
         '\u2022 We do not guarantee that the app will be uninterrupted, error-free, or secure.\n\n' +
-        '\u2022 Astrological compatibility scores and horoscopes are for entertainment purposes only and should not be relied upon for making life decisions.\n\n' +
-        '\u2022 We are not responsible for the behavior of other users. Always exercise caution when meeting someone in person.\n\n' +
+        '\u2022 JUNO offers three reading frames for the same synastry engine: Love, Friendship, and Business (working chemistry). Synastry is a language for reflection, not a prediction. JUNO does not guarantee romantic, friendship, or working-chemistry outcomes.\n\n' +
+        '\u2022 Astrological synastry insight, compatibility context, and horoscopes are for reflection and connection purposes only and should not be relied upon for making life decisions.\n\n' +
+        '\u2022 The Business / Working Chemistry frame is a starting point for honest conversation about communication rhythm, trust, pace, decision style, and creative friction. It is NOT legal, financial, investment, hiring, employment, or other professional advice. It is not a substitute for due diligence, references, contracts, or qualified advisors, and must not be relied on as such.\n\n' +
+        '\u2022 You are solely responsible for any decisions you make about people you meet through JUNO \u2014 in any frame. Always exercise caution when meeting someone in person and when entering into any personal, financial, or working arrangement.\n\n' +
+        '\u2022 We are not responsible for the behavior of other users.\n\n' +
         '\u2022 We do not perform background checks on users.\n\n' +
         '\u2022 We are not responsible for any content posted by users.',
     },

@@ -35,12 +35,16 @@
 <div class="container">
 
 <h1>Privacy Policy</h1>
-<p class="effective">Effective date: February 4, 2026 &mdash; Last updated: February 4, 2026</p>
+<p class="effective">Effective date: February 4, 2026 &mdash; Last updated: May 23, 2026</p>
 
 <p>
-  JUNO ("we", "us", "our") operates the JUNO mobile application (the "App").
+  JUNO ("we", "us", "our") operates the JUNO mobile and web application (the "App").
   This Privacy Policy explains what personal data we collect, how we use it, who we share it with, and what rights you have regarding your data.
   By creating an account you agree to the practices described below.
+</p>
+
+<p>
+  JUNO is a synastry-led connection app. You tell us what kind of connection you are open to &mdash; Love, Friendship, Business (working chemistry), or any combination &mdash; and we use your birth chart and the charts of other consenting users to surface reflection-grade insight about how two people may relate. Synastry is a language for reflection, not a prediction; JUNO does not guarantee romantic, friendship, or working-chemistry outcomes.
 </p>
 
 <!-- ───────────────────────── 1 ───────────────────────── -->
@@ -51,10 +55,12 @@
   <thead><tr><th>Category</th><th>Examples</th></tr></thead>
   <tbody>
     <tr><td>Account &amp; identity</td><td>Name, email address, password, social-login tokens (Google, Apple, Facebook)</td></tr>
-    <tr><td>Profile</td><td>Photos (up to 6), bio, age, gender, occupation, interests, relationship intentions ("looking for")</td></tr>
+    <tr><td>Profile</td><td>Photos (up to 6), bio, age, gender, occupation, interests, relationship intent and "looking for" text, prompt answers, voice intro, guided icebreaker question</td></tr>
+    <tr><td>Connection intentions</td><td>The macro intentions you opt into &mdash; Love, Friendship, and/or Business (working chemistry); defaults to Love</td></tr>
     <tr><td>Astrology &amp; birth data</td><td>Date of birth, time of birth, birth city, birth coordinates, sun / moon / rising signs, full natal chart</td></tr>
-    <tr><td>Discovery preferences</td><td>Age range, maximum distance, gender preference, zodiac-sign filters, element filters, compatibility threshold</td></tr>
-    <tr><td>Messages</td><td>Text messages exchanged with other users</td></tr>
+    <tr><td>Discovery preferences</td><td>Age range, maximum distance, gender preference, zodiac-sign filters, element filters, connection-intention filter</td></tr>
+    <tr><td>Messages</td><td>Text messages exchanged in your conversations with other users</td></tr>
+    <tr><td>Safety actions</td><td>Reports you file, users you block, content moderation outcomes</td></tr>
     <tr><td>Support requests</td><td>Any content you send when contacting our support team</td></tr>
   </tbody>
 </table>
@@ -65,7 +71,7 @@
   <tbody>
     <tr><td>Device &amp; technical</td><td>Device model, operating system, unique device identifiers, IP address, app version</td></tr>
     <tr><td>Location</td><td>City, latitude, and longitude (used to show approximate distance to other users; exact coordinates are never shown to others)</td></tr>
-    <tr><td>Usage &amp; activity</td><td>Swipe actions (like, super-like, pass), matches, feature usage, last-active timestamp, onboarding completion status</td></tr>
+    <tr><td>Usage &amp; activity</td><td>Profile browsing activity, conversations started, synastry views, prompt and voice-intro engagement, feature usage, last-active timestamp, onboarding completion status</td></tr>
     <tr><td>Crash &amp; performance</td><td>Error stack traces, session data, and performance metrics collected via Sentry (disabled in development builds)</td></tr>
     <tr><td>Push-notification token</td><td>Expo push token and device type, used solely to deliver notifications you have opted into</td></tr>
   </tbody>
@@ -80,10 +86,10 @@
 <!-- ───────────────────────── 2 ───────────────────────── -->
 <h2>2. How We Use Your Data</h2>
 <ul>
-  <li><strong>Provide the service</strong> — Create your account, display your profile, calculate your birth chart, compute compatibility scores, enable matching and messaging.</li>
-  <li><strong>Personalization</strong> — Show you profiles that match your discovery preferences and astrological compatibility.</li>
+  <li><strong>Provide the service</strong> — Create your account, display your profile, calculate your birth chart, compute synastry insight between you and other consenting users, enable conversations and messaging.</li>
+  <li><strong>Personalization</strong> — Show you profiles that match your discovery preferences, your connection intentions (Love / Friendship / Business), and astrological synastry context.</li>
   <li><strong>Safety &amp; integrity</strong> — Detect and prevent fraud, enforce our Terms of Service, and process user-block and report actions.</li>
-  <li><strong>Communication</strong> — Send push notifications for new matches, messages, and important service updates.</li>
+  <li><strong>Communication</strong> — Send push notifications for new conversations, messages, and important service updates.</li>
   <li><strong>Subscriptions</strong> — Process and manage premium subscriptions and in-app purchases through RevenueCat; track feature entitlements and trial usage.</li>
   <li><strong>Improvement &amp; analytics</strong> — Understand usage patterns, diagnose crashes (via Sentry), and improve the App.</li>
   <li><strong>Legal compliance</strong> — Respond to lawful requests from authorities and enforce our legal rights.</li>
@@ -100,7 +106,7 @@
   <li>Relationship intentions and partner preferences</li>
 </ul>
 <p>
-  This data is provided voluntarily and is used only to deliver the core features of the App (birth-chart calculation, compatibility matching, distance-based discovery).
+  This data is provided voluntarily and is used only to deliver the core features of the App (birth-chart calculation, synastry insight between consenting users, distance-based discovery).
   We do not sell sensitive data or use it for advertising.
 </p>
 
@@ -109,16 +115,16 @@
 
 <h3>4.1 With Other Users</h3>
 <p>
-  Your profile information (name, age, photos, bio, occupation, interests, zodiac signs, compatibility score) is visible to other users during discovery and after matching.
+  Your profile information (name, age, photos, bio, occupation, interests, zodiac signs, connection intentions you opted into, synastry context) is visible to other users during discovery and inside conversations you join.
   Your exact location is never displayed; only an approximate distance is shown.
-  Message content is visible only to you and the recipient.
+  Message content is visible only to you and the other participant in that conversation.
 </p>
 
 <h3>4.2 With Service Providers</h3>
 <table>
   <thead><tr><th>Provider</th><th>Purpose</th><th>Data Shared</th></tr></thead>
   <tbody>
-    <tr><td>Supabase</td><td>Database hosting, authentication, file storage</td><td>All account, profile, match, and message data</td></tr>
+    <tr><td>Supabase</td><td>Database hosting, authentication, file storage</td><td>All account, profile, conversation, and message data</td></tr>
     <tr><td>Sentry</td><td>Crash reporting &amp; performance monitoring</td><td>Error traces, device info, user ID (anonymized in production)</td></tr>
     <tr><td>RevenueCat</td><td>Subscription &amp; in-app purchase management</td><td>User ID, entitlement status, subscription tier</td></tr>
     <tr><td>Expo</td><td>Push notification delivery</td><td>Push token, device type</td></tr>
@@ -142,7 +148,7 @@
 <ul>
   <li><strong>Active accounts</strong> — We retain your data for as long as your account is active and as needed to provide the service.</li>
   <li><strong>Deleted accounts</strong> — When you delete your account, we delete or anonymize your personal data within 30 days, except where retention is required by law or necessary to resolve disputes.</li>
-  <li><strong>Messages</strong> — Messages are deleted when both participants have deleted their accounts or the match is removed.</li>
+  <li><strong>Messages</strong> — Messages are deleted when both participants have deleted their accounts or the conversation is removed.</li>
   <li><strong>Crash reports</strong> — Sentry data is retained for up to 90 days.</li>
   <li><strong>Legal holds</strong> — Data may be retained longer if needed for ongoing legal proceedings or regulatory obligations.</li>
 </ul>
@@ -200,7 +206,7 @@
   If you are in the European Economic Area or the United Kingdom, our legal bases for processing are:
 </p>
 <ul>
-  <li><strong>Contractual necessity</strong> — Processing needed to provide the service you signed up for (account management, matching, messaging).</li>
+  <li><strong>Contractual necessity</strong> — Processing needed to provide the service you signed up for (account management, synastry-led discovery, messaging).</li>
   <li><strong>Consent</strong> — For optional features such as push notifications and processing of sensitive data (birth information, location).</li>
   <li><strong>Legitimate interests</strong> — Safety, fraud prevention, service improvement, and crash reporting.</li>
   <li><strong>Legal obligation</strong> — Compliance with applicable laws.</li>
@@ -228,15 +234,29 @@
 </p>
 
 <!-- ───────────────────────── 11 ──────────────────────── -->
-<h2>11. Changes to This Policy</h2>
+<h2>11. Synastry, Working Chemistry &amp; the Limits of This Service</h2>
+<p>
+  JUNO surfaces astrological synastry insight in three reading frames &mdash; Love, Friendship, and Business (working chemistry).
+  All three frames use the same synastry engine; only the labels and prose change to fit the context.
+  Synastry is a reflection language, not a prediction.
+  JUNO does not guarantee romantic, friendship, or working-chemistry outcomes, and our insight is not a substitute for the user's own judgement.
+</p>
+<p>
+  In particular, the Business / Working Chemistry frame is a starting point for honest conversation about communication rhythm, trust, pace, decision style, and creative friction.
+  It is <strong>not legal, financial, investment, hiring, employment, or other professional advice</strong>, and must not be relied on as such.
+  Users are solely responsible for any decisions they make about people they meet through JUNO &mdash; in any frame.
+</p>
+
+<!-- ───────────────────────── 12 ──────────────────────── -->
+<h2>12. Changes to This Policy</h2>
 <p>
   We may update this Privacy Policy from time to time. When we make material changes, we will notify you through the App or by email before the changes take effect.
   The "Last updated" date at the top of this page indicates when the policy was most recently revised.
   Continued use of the App after the effective date constitutes acceptance of the updated policy.
 </p>
 
-<!-- ───────────────────────── 12 ──────────────────────── -->
-<h2>12. Contact Us</h2>
+<!-- ───────────────────────── 13 ──────────────────────── -->
+<h2>13. Contact Us</h2>
 <div class="contact-box">
   <p>If you have questions about this Privacy Policy or wish to exercise your data rights, contact us at:</p>
   <p>

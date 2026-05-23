@@ -164,6 +164,14 @@ export default function PrivacyPage() {
         <p className="mt-2 text-sm text-text-muted">{t("s7_gdpr_note")}</p>
       </Section>
 
+      {/* 7b — Synastry, working chemistry & limits */}
+      <Section title={t("s7b")}>
+        <p className="mb-2 text-sm text-text-muted">{t("s7b_intro")}</p>
+        <p className="mb-2 text-sm text-text-muted">{t("s7b_reflection")}</p>
+        <p className="mb-2 text-sm text-text-muted">{t("s7b_business")}</p>
+        <p className="text-sm text-text-muted">{t("s7b_responsibility")}</p>
+      </Section>
+
       {/* 8-12 */}
       <Section title={t("s8")}>
         <p className="text-sm text-text-muted">{t("s8_text")}</p>
