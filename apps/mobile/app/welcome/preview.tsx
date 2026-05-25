@@ -160,8 +160,11 @@ export default function WelcomePreview() {
           : undefined;
 
         // Geocode city. Fallback to (0, 0) so the sun/moon are still correct.
+        // We also capture the IANA timezone so the chart is anchored to the
+        // birth location, not the device timezone.
         let lat = 0;
         let lng = 0;
+        let iana: string | null = null;
         const cityStr = String(draft.birthCity || '').trim();
         if (cityStr.length >= 2) {
           try {
@@ -169,13 +172,14 @@ export default function WelcomePreview() {
             if (geo && typeof geo.latitude === 'number' && typeof geo.longitude === 'number') {
               lat = geo.latitude;
               lng = geo.longitude;
+              iana = geo.iana;
             }
           } catch {
             // network / geocode failure — keep (0, 0); sun/moon stay accurate.
           }
         }
 
-        const local = calculateNatalChart(date, time ?? null, lat, lng);
+        const local = calculateNatalChart(date, time ?? null, lat, lng, iana);
         if (cancelled) return;
 
         const sun = String(local.sun?.sign || '').toLowerCase();

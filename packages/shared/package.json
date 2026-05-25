@@ -5,21 +5,27 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./profile": "./src/profile/index.ts"
+    "./profile": "./src/profile/index.ts",
+    "./astrology": "./src/astrology/index.ts"
   },
   "scripts": {
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"No tests yet\""
+    "test": "vitest run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.93.3",
-    "astronomy-engine": "^2.1.19"
+    "astronomy-engine": "^2.1.19",
+    "luxon": "^3.7.2",
+    "tz-lookup": "^6.1.25"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
+    "@types/luxon": "^3.7.1",
+    "@types/tz-lookup": "^6.1.2",
     "eslint": "^9.0.0",
     "typescript": "~5.9.2",
-    "typescript-eslint": "^8.0.0"
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^2.1.0"
   }
 }

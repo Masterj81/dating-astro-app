@@ -716,14 +716,20 @@ export default function BirthInfoScreen() {
       const geoResult = await geocodeCity(birthCity || 'Montreal');
       const cityCoords = { latitude: geoResult.latitude, longitude: geoResult.longitude };
 
+      // Pass the IANA timezone explicitly so the chart is anchored to the
+      // birth location's tz — not the device's local timezone (legacy bug).
       const chart = calculateNatalChart(
         parsedDate,
         birthTime,
         cityCoords.latitude,
-        cityCoords.longitude
+        cityCoords.longitude,
+        geoResult.iana,
       );
 
-      // Transform local chart to match BirthChart format for synastry
+      // Transform local chart to match BirthChart format for synastry.
+      // Stash the resolved IANA timezone + confidence on the JSONB so the
+      // app benefits immediately, even before the additive `birth_timezone`
+      // column migration is applied in production.
       const birthChartData = {
         sun: chart.sun,
         moon: chart.moon,
@@ -736,6 +742,9 @@ export default function BirthInfoScreen() {
           saturn: chart.saturn,
         },
         coordinates: cityCoords,
+        timezone: chart.timezone ?? geoResult.iana,
+        confidence: chart.confidence,
+        chartVersion: 1,
       };
 
       const sanitizedConnectionIntentions = sanitizeConnectionIntentions(connectionIntentions);

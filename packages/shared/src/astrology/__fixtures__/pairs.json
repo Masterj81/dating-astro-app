@@ -1,0 +1,236 @@
+{
+  "$schema": "Astrology fixture pairs for Phase 1 regression tests.",
+  "$description": "Each pair exercises a specific timezone edge case. Expected sun signs and approximate moon longitudes are sanity values, not authoritative reference values — they exist to catch regressions of the device-tz / longitude-over-15 bug.",
+  "pairs": [
+    {
+      "id": "01-nyc-summer-dst",
+      "label": "New York summer DST",
+      "personA": {
+        "date": "1990-07-04",
+        "time": "14:30",
+        "latitude": 40.7128,
+        "longitude": -74.006,
+        "timezone": "America/New_York"
+      },
+      "personB": {
+        "date": "1988-08-15",
+        "time": "09:15",
+        "latitude": 40.7128,
+        "longitude": -74.006,
+        "timezone": "America/New_York"
+      },
+      "expectations": {
+        "personA": { "sun": "Cancer", "expectedConfidence": "high" },
+        "personB": { "sun": "Leo", "expectedConfidence": "high" }
+      }
+    },
+    {
+      "id": "02-london-summer",
+      "label": "London BST (summer)",
+      "personA": {
+        "date": "1992-06-21",
+        "time": "12:00",
+        "latitude": 51.5074,
+        "longitude": -0.1278,
+        "timezone": "Europe/London"
+      },
+      "personB": {
+        "date": "1991-05-10",
+        "time": "23:45",
+        "latitude": 51.5074,
+        "longitude": -0.1278,
+        "timezone": "Europe/London"
+      },
+      "expectations": {
+        "personA": { "sun": "Cancer", "expectedConfidence": "high" },
+        "personB": { "sun": "Taurus", "expectedConfidence": "high" }
+      }
+    },
+    {
+      "id": "03-london-winter",
+      "label": "London GMT (winter)",
+      "personA": {
+        "date": "1989-12-22",
+        "time": "03:00",
+        "latitude": 51.5074,
+        "longitude": -0.1278,
+        "timezone": "Europe/London"
+      },
+      "personB": {
+        "date": "1990-01-15",
+        "time": "18:30",
+        "latitude": 51.5074,
+        "longitude": -0.1278,
+        "timezone": "Europe/London"
+      },
+      "expectations": {
+        "personA": { "sun": "Capricorn", "expectedConfidence": "high" },
+        "personB": { "sun": "Capricorn", "expectedConfidence": "high" }
+      }
+    },
+    {
+      "id": "04-india-half-hour",
+      "label": "Mumbai (+05:30)",
+      "personA": {
+        "date": "1993-10-02",
+        "time": "06:45",
+        "latitude": 19.076,
+        "longitude": 72.8777,
+        "timezone": "Asia/Kolkata"
+      },
+      "personB": {
+        "date": "1995-03-18",
+        "time": "22:10",
+        "latitude": 19.076,
+        "longitude": 72.8777,
+        "timezone": "Asia/Kolkata"
+      },
+      "expectations": {
+        "personA": { "sun": "Libra", "expectedConfidence": "high" },
+        "personB": { "sun": "Pisces", "expectedConfidence": "high" }
+      }
+    },
+    {
+      "id": "05-nepal-quarter-hour",
+      "label": "Kathmandu (+05:45)",
+      "personA": {
+        "date": "1994-04-13",
+        "time": "11:11",
+        "latitude": 27.7172,
+        "longitude": 85.324,
+        "timezone": "Asia/Kathmandu"
+      },
+      "personB": {
+        "date": "1996-11-20",
+        "time": "07:30",
+        "latitude": 27.7172,
+        "longitude": 85.324,
+        "timezone": "Asia/Kathmandu"
+      },
+      "expectations": {
+        "personA": { "sun": "Aries", "expectedConfidence": "high" },
+        "personB": { "sun": "Scorpio", "expectedConfidence": "high" }
+      }
+    },
+    {
+      "id": "06-cairo-dst-edge",
+      "label": "Cairo (DST changes historically)",
+      "personA": {
+        "date": "1985-08-12",
+        "time": "15:00",
+        "latitude": 30.0444,
+        "longitude": 31.2357,
+        "timezone": "Africa/Cairo"
+      },
+      "personB": {
+        "date": "2010-02-01",
+        "time": "04:20",
+        "latitude": 30.0444,
+        "longitude": 31.2357,
+        "timezone": "Africa/Cairo"
+      },
+      "expectations": {
+        "personA": { "sun": "Leo", "expectedConfidence": "high" },
+        "personB": { "sun": "Aquarius", "expectedConfidence": "high" }
+      }
+    },
+    {
+      "id": "07-casablanca-dst-edge",
+      "label": "Casablanca (Ramadan DST quirks)",
+      "personA": {
+        "date": "2017-05-15",
+        "time": "13:00",
+        "latitude": 33.5731,
+        "longitude": -7.5898,
+        "timezone": "Africa/Casablanca"
+      },
+      "personB": {
+        "date": "2017-06-18",
+        "time": "13:00",
+        "latitude": 33.5731,
+        "longitude": -7.5898,
+        "timezone": "Africa/Casablanca"
+      },
+      "expectations": {
+        "personA": { "sun": "Taurus", "expectedConfidence": "high" },
+        "personB": { "sun": "Gemini", "expectedConfidence": "high" }
+      }
+    },
+    {
+      "id": "08-reykjavik-high-lat",
+      "label": "Reykjavik (~64°N, no DST)",
+      "personA": {
+        "date": "1991-06-21",
+        "time": "00:30",
+        "latitude": 64.1466,
+        "longitude": -21.9426,
+        "timezone": "Atlantic/Reykjavik"
+      },
+      "personB": {
+        "date": "1995-12-21",
+        "time": "12:00",
+        "latitude": 64.1466,
+        "longitude": -21.9426,
+        "timezone": "Atlantic/Reykjavik"
+      },
+      "expectations": {
+        "personA": { "sun": "Gemini", "expectedConfidence": "high" },
+        "personB": { "sun": "Sagittarius", "expectedConfidence": "high" }
+      }
+    },
+    {
+      "id": "09-time-unknown",
+      "label": "Birth time unknown — Paris",
+      "personA": {
+        "date": "1990-03-21",
+        "time": null,
+        "latitude": 48.8566,
+        "longitude": 2.3522,
+        "timezone": "Europe/Paris"
+      },
+      "personB": {
+        "date": "1992-09-15",
+        "time": "10:00",
+        "latitude": 48.8566,
+        "longitude": 2.3522,
+        "timezone": "Europe/Paris"
+      },
+      "expectations": {
+        "personA": {
+          "sun": "Aries",
+          "expectedConfidence": "low",
+          "expectRising": false,
+          "expectedWarnings": ["missing_birth_time", "houses_unavailable_without_birth_time"]
+        },
+        "personB": { "sun": "Virgo", "expectedConfidence": "high" }
+      }
+    },
+    {
+      "id": "10-tz-not-provided-lookup",
+      "label": "No timezone in input — fall back to tz-lookup (Tokyo coords)",
+      "personA": {
+        "date": "1987-11-05",
+        "time": "16:20",
+        "latitude": 35.6762,
+        "longitude": 139.6503,
+        "timezone": null
+      },
+      "personB": {
+        "date": "1989-04-08",
+        "time": "08:00",
+        "latitude": 35.6762,
+        "longitude": 139.6503,
+        "timezone": "Asia/Tokyo"
+      },
+      "expectations": {
+        "personA": {
+          "sun": "Scorpio",
+          "expectedConfidence": "medium",
+          "expectedTimezone": "Asia/Tokyo",
+          "expectedWarnings": ["missing_birth_timezone"]
+        },
+        "personB": { "sun": "Aries", "expectedConfidence": "high" }
+      }
+    }
+  ]
+}

@@ -1,9 +1,16 @@
-// Pure synastry scoring helpers for the mobile Synastry V2 screen.
+// Sign-element synastry helpers for the mobile Synastry V2 screen.
 //
-// Ported from apps/web/src/lib/synastry.ts. Cross-app imports are not
-// supported by the mobile bundler so the math lives here too. Any tweak
-// to the element matrix, score bands, or zone formulas must happen on
-// both sides to keep web + mobile in sync.
+// Mirrors apps/web/src/lib/synastry.ts; cross-app imports aren't supported
+// by the mobile bundler so the element-matrix math is duplicated here.
+// Any tweak to the element matrix, score bands, or zone formulas must
+// happen on both sides to keep web + mobile in sync.
+//
+// The canonical full chart + synastry engine (timezone-correct, with
+// confidence and the three intentions: love / friendship / business)
+// lives in `@astro/shared/astrology` and is delegated to from
+// `apps/mobile/services/astrology.ts`. Use that for anything that needs
+// UTC instants, DST handling, or aspect-level analysis. This file stays
+// focused on the lightweight sign-only "first pass" view.
 
 export type SynastrySign = string | null | undefined;
 

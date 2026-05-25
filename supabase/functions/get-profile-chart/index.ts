@@ -28,6 +28,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import * as Astronomy from 'https://esm.sh/astronomy-engine@2.1.19'
+// Phase 1 timezone correctness — see supabase/functions/calculate-chart for
+// the rationale. We never use the Deno worker's local clock as ground truth.
+import { DateTime, IANAZone } from 'https://esm.sh/luxon@3.7.2'
+import tzlookup from 'https://esm.sh/tz-lookup@6.1.25'
 
 // ---------------------------------------------------------------------------
 // Astrology helpers (kept inline — TODO: factor with calculate-chart later).
@@ -69,6 +73,41 @@ function calculateAscendant(time: any, latitude: number, longitude: number): num
   const x = Math.sin(eps) * Math.tan(latRad) + Math.cos(eps) * Math.sin(lstRad)
   let asc = (Math.atan2(y, x) * 180) / Math.PI
   return ((asc % 360) + 360) % 360
+}
+
+function resolveIanaTimezone(
+  lat: number | null | undefined,
+  lng: number | null | undefined,
+  caller: string | null | undefined,
+): { iana: string; source: 'input' | 'lookup' | 'fallback' } {
+  if (caller && typeof caller === 'string' && IANAZone.isValidZone(caller)) {
+    return { iana: caller, source: 'input' }
+  }
+  if (typeof lat === 'number' && typeof lng === 'number' && Number.isFinite(lat) && Number.isFinite(lng)) {
+    try {
+      const iana = tzlookup(lat, lng)
+      if (iana && IANAZone.isValidZone(iana)) return { iana, source: 'lookup' }
+    } catch {
+      // Fall through to UTC fallback.
+    }
+  }
+  return { iana: 'UTC', source: 'fallback' }
+}
+
+function buildUtcInstant(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  iana: string,
+): Date {
+  const dt = DateTime.fromObject(
+    { year, month, day, hour, minute, second: 0, millisecond: 0 },
+    { zone: iana },
+  )
+  if (!dt.isValid) return new Date(Date.UTC(year, month - 1, day, hour, minute, 0, 0))
+  return dt.toUTC().toJSDate()
 }
 
 function calculatePlanetPositions(time: any) {
@@ -238,7 +277,8 @@ serve(async (req) => {
   const [year, month, day] = String(target.birth_date).split('-').map(Number)
   let hour = 12
   let minute = 0
-  if (target.birth_time) {
+  const hasBirthTime = typeof target.birth_time === 'string' && String(target.birth_time).length > 0
+  if (hasBirthTime) {
     const [h, m] = String(target.birth_time).split(':')
     hour = Number.parseInt(h) || 12
     minute = Number.parseInt(m) || 0
@@ -247,12 +287,25 @@ serve(async (req) => {
   const lat = typeof target.birth_latitude === 'number' ? target.birth_latitude : 51.5074
   const lng = typeof target.birth_longitude === 'number' ? target.birth_longitude : 0
 
-  const date = new Date(Date.UTC(year, (month || 1) - 1, day || 1, hour, minute, 0, 0))
-  const time = Astronomy.MakeTime(date)
+  // Phase 1 fix: resolve the IANA timezone from coords (or trust the value
+  // we stored on birth_chart.timezone if present) and build the UTC instant
+  // through Luxon. The legacy `new Date(Date.UTC(y, m, d, h, min))` treated
+  // a local birth time AS IF it were UTC — off by the user's whole tz offset.
+  const storedTz =
+    typeof target.birth_chart === 'object' && target.birth_chart != null
+      ? (target.birth_chart as Record<string, unknown>).timezone
+      : null
+  const tz = resolveIanaTimezone(
+    lat,
+    lng,
+    typeof storedTz === 'string' ? storedTz : null,
+  )
+  const utcDate = buildUtcInstant(year, (month || 1), day || 1, hour, minute, tz.iana)
+  const time = Astronomy.MakeTime(utcDate)
 
   const sunLong = getGeocentricLongitude('Sun', time)
   const moonLong = getGeocentricLongitude('Moon', time)
-  const ascLong = calculateAscendant(time, lat, lng)
+  const ascLong = hasBirthTime ? calculateAscendant(time, lat, lng) : null
   const planets = calculatePlanetPositions(time)
 
   // 6. Coarsen coordinates to 0.5° (~55 km) before returning.
@@ -262,9 +315,12 @@ serve(async (req) => {
   const chart = {
     sun: { longitude: sunLong, sign: getZodiacSign(sunLong), degree: getDegreeInSign(sunLong) },
     moon: { longitude: moonLong, sign: getZodiacSign(moonLong), degree: getDegreeInSign(moonLong) },
-    rising: { longitude: ascLong, sign: getZodiacSign(ascLong), degree: getDegreeInSign(ascLong) },
+    rising: ascLong != null
+      ? { longitude: ascLong, sign: getZodiacSign(ascLong), degree: getDegreeInSign(ascLong) }
+      : null,
     planets,
     coordinates: { latitude: coarseLat, longitude: coarseLng },
+    confidence: !hasBirthTime || tz.source === 'fallback' ? 'low' : tz.source === 'lookup' ? 'medium' : 'high',
   }
 
   return new Response(

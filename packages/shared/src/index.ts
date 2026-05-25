@@ -14,5 +14,8 @@ export * from './profile';
 // Export utilities (to be migrated from apps/mobile/utils)
 // export * from './utils';
 
-// Export astrology calculations (to be migrated)
-// export * from './astrology';
+// Astrology engine lives at the explicit subpath to avoid ambiguous re-exports
+// with the legacy top-level `Aspect` shape in src/types/index.ts:
+//   import { computeNatalChart, computeSynastry } from '@astro/shared/astrology';
+// (Don't re-export from here — the names collide intentionally; the astrology
+// module owns the canonical Aspect/BirthChart types.)

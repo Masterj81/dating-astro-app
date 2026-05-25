@@ -1,9 +1,14 @@
-// Pure synastry scoring helpers. No React, no i18n, no Supabase.
+// Pure sign-element synastry helpers. No React, no i18n, no Supabase.
 //
-// Single source of truth for the element matrix, normalization,
-// score bands, and the dimensional + factor breakdowns used by
-// SynastryOverview. Moved here so the component renders the math
-// instead of redefining it.
+// Scope: lightweight Sun×Sun / Moon×Moon / Venus×Mars element-matrix math
+// used by SynastryOverview when only signs (not full longitudes) are
+// available — e.g. when the target chart hasn't been computed yet.
+//
+// The canonical full natal + synastry engine (with timezone correctness,
+// confidence, and frame-specific scoring across love / friendship /
+// business) lives in `@astro/shared/astrology`. Anything that needs UTC
+// instants, DST handling, or Three-Intentions scoring MUST go through the
+// shared engine — do not duplicate the math here.
 
 export type SynastrySign = string | null | undefined;
 

@@ -1,6 +1,11 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import * as Astronomy from 'https://esm.sh/astronomy-engine@2.1.19'
+// Phase 1 timezone correctness: we resolve the IANA tz from lat/lng and
+// build the UTC instant via Luxon. The Deno runtime's local clock is never
+// used as a source of truth.
+import { DateTime, IANAZone } from 'https://esm.sh/luxon@3.7.2'
+import tzlookup from 'https://esm.sh/tz-lookup@6.1.25'
 
 // --- Zodiac helpers (inline for Deno edge function) ---
 
@@ -126,6 +131,52 @@ const CITY_CACHE: Record<string, { lat: number; lng: number }> = {
   'casablanca': { lat: 33.5731, lng: -7.5898 },
   'algiers': { lat: 36.7538, lng: 3.0588 },
   'tunis': { lat: 36.8065, lng: 10.1815 },
+}
+
+// --- Timezone resolution ---------------------------------------------------
+// Phase 1 bug fix: never use `new Date(y, m, d, h, m)` as the birth instant.
+// That call interprets (h, m) in the runtime's local timezone, which on a
+// Supabase edge worker is UTC — wrong for any user not born in UTC. We
+// resolve the birth-place IANA zone via tz-lookup polygons (or trust the
+// caller's `birthTimezone` if supplied) and build the UTC instant via Luxon.
+
+function resolveIanaTimezone(
+  lat: number | null | undefined,
+  lng: number | null | undefined,
+  caller: string | null | undefined,
+): { iana: string; source: 'input' | 'lookup' | 'fallback' } {
+  if (caller && typeof caller === 'string' && IANAZone.isValidZone(caller)) {
+    return { iana: caller, source: 'input' }
+  }
+  if (typeof lat === 'number' && typeof lng === 'number' && Number.isFinite(lat) && Number.isFinite(lng)) {
+    try {
+      const iana = tzlookup(lat, lng)
+      if (iana && IANAZone.isValidZone(iana)) return { iana, source: 'lookup' }
+    } catch {
+      // Fall through to UTC fallback.
+    }
+  }
+  return { iana: 'UTC', source: 'fallback' }
+}
+
+function buildUtcInstant(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  iana: string,
+): Date {
+  const dt = DateTime.fromObject(
+    { year, month, day, hour, minute, second: 0, millisecond: 0 },
+    { zone: iana },
+  )
+  if (!dt.isValid) {
+    // DST spring-forward gap or otherwise invalid combination — fall back
+    // to UTC so we never throw and block onboarding.
+    return new Date(Date.UTC(year, month - 1, day, hour, minute, 0, 0))
+  }
+  return dt.toUTC().toJSDate()
 }
 
 async function geocodeCity(city: string): Promise<{ lat: number; lng: number } | null> {
@@ -388,7 +439,19 @@ function validateInputs(action: string, params: Record<string, any>): string | n
   }
 
   if (action === 'calculate_chart') {
-    const { birthTime, birthCity, latitude, longitude } = params
+    const { birthTime, birthCity, birthTimezone, latitude, longitude } = params
+
+    if (birthTimezone !== undefined && birthTimezone !== null && birthTimezone !== '') {
+      if (typeof birthTimezone !== 'string' || birthTimezone.length > 64) {
+        return 'birthTimezone must be a string of at most 64 characters'
+      }
+      // IANAZone.isValidZone is cheap — reject obvious junk early. The
+      // resolveIanaTimezone() helper revalidates downstream so the worst
+      // case is "fallback" instead of a crash.
+      if (!IANAZone.isValidZone(birthTimezone)) {
+        return 'birthTimezone must be a valid IANA timezone id (e.g. America/New_York)'
+      }
+    }
 
     if (birthTime !== undefined && birthTime !== null && birthTime !== '') {
       if (typeof birthTime !== 'string' || !TIME_REGEX.test(birthTime)) {
@@ -551,17 +614,21 @@ serve(async (req) => {
 
     switch (action) {
       case 'calculate_chart': {
-        const { birthDate, birthTime, birthCity, latitude, longitude } = params
+        const { birthDate, birthTime, birthCity, birthTimezone, latitude, longitude } = params
+        const warnings: string[] = []
 
         // Parse birth date and time
         const [year, month, day] = birthDate.split('-').map(Number)
         let hour = 12
         let minute = 0
+        const hasBirthTime = typeof birthTime === 'string' && birthTime.trim().length > 0
 
-        if (birthTime) {
+        if (hasBirthTime) {
           const timeParts = birthTime.split(':')
           hour = parseInt(timeParts[0]) || 12
           minute = parseInt(timeParts[1]) || 0
+        } else {
+          warnings.push('missing_birth_time', 'houses_unavailable_without_birth_time')
         }
 
         // Get coordinates
@@ -584,15 +651,38 @@ serve(async (req) => {
           }
         }
 
-        // Create astronomy-engine time
-        const date = new Date(year, month - 1, day, hour, minute, 0, 0)
-        const time = Astronomy.MakeTime(date)
+        // Resolve the birth IANA timezone (input > lookup > fallback). The
+        // UTC instant is built via Luxon — never via `new Date(y,m,d,h,m)`,
+        // which would silently use the Deno worker's local timezone.
+        const tz = resolveIanaTimezone(lat, lng, birthTimezone ?? null)
+        if (tz.source === 'fallback') warnings.push('timezone_fallback_used')
+        if (!birthTimezone && tz.source === 'lookup') warnings.push('missing_birth_timezone')
+
+        const utcDate = buildUtcInstant(year, month, day, hour, minute, tz.iana)
+        const time = Astronomy.MakeTime(utcDate)
 
         // Calculate positions using astronomy-engine
         const sunLong = getGeocentricLongitude('Sun', time)
         const moonLong = getGeocentricLongitude('Moon', time)
-        const ascendantLong = calculateAscendant(time, lat, lng)
         const planets = calculatePlanetPositions(time)
+        const risingObj = hasBirthTime
+          ? (() => {
+              const ascendantLong = calculateAscendant(time, lat, lng)
+              return {
+                longitude: ascendantLong,
+                sign: getZodiacSign(ascendantLong),
+                degree: getDegreeInSign(ascendantLong),
+              }
+            })()
+          : null
+
+        // Confidence: low without birth time OR with tz fallback;
+        // medium when we had to look up the zone; high otherwise.
+        const confidence = !hasBirthTime || tz.source === 'fallback'
+          ? 'low'
+          : tz.source === 'lookup'
+            ? 'medium'
+            : 'high'
 
         result = {
           sun: {
@@ -605,14 +695,14 @@ serve(async (req) => {
             sign: getZodiacSign(moonLong),
             degree: getDegreeInSign(moonLong)
           },
-          rising: {
-            longitude: ascendantLong,
-            sign: getZodiacSign(ascendantLong),
-            degree: getDegreeInSign(ascendantLong)
-          },
+          rising: risingObj,
           planets,
           coordinates: { latitude: lat, longitude: lng },
-          julianDay: time.ut + 2451545.0
+          julianDay: time.ut + 2451545.0,
+          timezone: tz.iana,
+          confidence,
+          warnings,
+          chartVersion: 1,
         }
         break
       }
