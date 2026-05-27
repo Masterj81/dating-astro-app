@@ -5,6 +5,7 @@ import { DownloadButtons } from "@/components/DownloadButtons";
 import { MarketingPricingSection } from "@/components/MarketingPricingSection";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { PhoneMockupPlaceholder } from "@/components/PhoneMockupPlaceholder";
+import { HeroSynastryTriptych } from "@/components/HeroSynastryTriptych";
 import { CompatibilityDotsArc } from "@/components/CompatibilityDotsArc";
 import { ValuePillCloud } from "@/components/ValuePillCloud";
 import { IntentPill } from "@/components/IntentPill";
@@ -74,25 +75,30 @@ export default function LandingPage({
         <StarField />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_40%,rgba(232,93,117,0.12),transparent)]" aria-hidden="true" />
 
-        <div className="relative mx-auto grid max-w-6xl gap-10 overflow-hidden px-4 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-16">
-          {/* Left column: copy + CTAs */}
-          <div className="min-w-0 text-center lg:text-left">
+        {/* Hero — single-column composition. Copy block centered on top,
+            then the three-frame triptych below as the visual focal point.
+            The triptych sells JUNO's "same chart, different lens" stance
+            before the user reads anything; the copy reinforces what they
+            just saw. */}
+        <div className="relative mx-auto flex max-w-6xl flex-col items-center gap-10 overflow-hidden px-4 sm:gap-14">
+          {/* Copy block — centered for the vertical hero composition */}
+          <div className="mx-auto w-full max-w-3xl text-center">
             <p className="mb-3 text-xs font-medium uppercase tracking-[0.24em] text-accent sm:text-sm sm:tracking-[0.3em]">
               {hero("badge")}
             </p>
             <h1 className="mb-5 text-3xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
               {hero("tagline")}
             </h1>
-            <p className="mx-auto mb-8 max-w-xl text-base leading-relaxed text-text-muted sm:text-lg lg:mx-0">
+            <p className="mx-auto mb-8 max-w-2xl text-base leading-relaxed text-text-muted sm:text-lg">
               {hero("description")}
             </p>
-            <div className="mx-auto flex w-full max-w-sm justify-center sm:max-w-none lg:mx-0 lg:justify-start">
+            <div className="mx-auto flex w-full max-w-sm justify-center sm:max-w-none">
               <DownloadButtons />
             </div>
 
             {/* Trust strip — qualitative proofs only, no invented stats */}
             <ul
-              className="mx-auto mt-10 flex max-w-full flex-wrap items-center justify-center gap-2 lg:mx-0 lg:justify-start"
+              className="mx-auto mt-8 flex max-w-full flex-wrap items-center justify-center gap-2"
               aria-label="What sets JUNO apart"
             >
               {PROOF_KEYS.map((key, i) => (
@@ -109,15 +115,15 @@ export default function LandingPage({
             </ul>
 
             {/* Inline install prompt — auto-shows on iOS / Android Chrome only */}
-            <div className="mx-auto mt-6 max-w-md lg:mx-0">
+            <div className="mx-auto mt-6 max-w-md">
               <InstallPrompt />
             </div>
           </div>
 
-          {/* Right column: phone mockup */}
-          <div className="min-w-0 overflow-hidden px-1">
-            <PhoneMockupPlaceholder />
-          </div>
+          {/* Three-frame triptych — the actual product surface visualized
+              under all three reading frames. Mobile collapses to just the
+              center (Love) phone; md+ shows all three with perspective. */}
+          <HeroSynastryTriptych />
         </div>
       </section>
 
