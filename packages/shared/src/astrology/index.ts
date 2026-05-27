@@ -14,4 +14,5 @@ export * from './chart';
 export * from './aspects';
 export * from './scoring';
 export * from './synastry';
+export * from './exploration';
 export * from './version';

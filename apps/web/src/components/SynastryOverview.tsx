@@ -28,6 +28,7 @@ import {
   sanitizeConnectionIntentions,
   type ConnectionIntention,
 } from "@astro/shared/profile";
+import { buildExplorationQuestions } from "@astro/shared/astrology";
 
 // Picker entry. Mirrors the get_synastry_candidate_profiles RPC return
 // shape — same preference filtering as Discover, minus the swipes
@@ -719,6 +720,41 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
                 </article>
               ))}
             </div>
+          </div>
+        ) : null}
+
+        {/* Questions for the two of you — ten deterministic conversation
+            prompts picked from the existing zone + total scores. Sits
+            between "How to talk" and "Watch for" so the read flows from
+            insight → conversation → tension. No score, no completion
+            state — it's a reading surface that becomes conversation. */}
+        {(zoneScores.length > 0 || totalScore != null) ? (
+          <div className="rounded-[2rem] border border-border bg-card/90 p-6">
+            <h2 className="text-xl font-semibold text-white">
+              {t("exploration_title")}
+            </h2>
+            <p className="mt-2 text-sm leading-7 text-text-muted">
+              {t("exploration_subtitle")}
+            </p>
+            <ol className="mt-5 space-y-3">
+              {buildExplorationQuestions({
+                zoneScores: zoneScores.map((z) => ({ key: z.key, score: z.score })),
+                totalScore,
+                readingFrame,
+              }).map((q) => (
+                <li key={q.id} className="flex gap-3">
+                  <span className="w-6 shrink-0 text-right text-sm font-semibold tracking-wide text-accent">
+                    {q.order}
+                  </span>
+                  <span className="text-sm leading-7 text-white">
+                    {t(q.translationKey)}
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-5 text-xs italic leading-relaxed text-text-dim">
+              {t("exploration_disclaimer")}
+            </p>
           </div>
         ) : null}
 

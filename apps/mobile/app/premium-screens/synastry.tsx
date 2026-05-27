@@ -17,6 +17,7 @@ import PremiumGate from '../../components/PremiumGate';
 import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { buildExplorationQuestions } from '@astro/shared/astrology';
 import {
   calculateSunCompatibility,
   calculateZoneScores,
@@ -763,6 +764,40 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
                 </View>
               ) : null}
 
+              {/* Block 4b — Questions for the two of you. Ten deterministic
+                  conversation prompts picked from the existing zone + total
+                  scores. Lives between "How to talk" and "Watch for" so the
+                  read flows from insight → conversation → tension. */}
+              {(zoneScores.length > 0 || totalScore != null) ? (
+                <View style={styles.sectionCard}>
+                  <Text style={styles.sectionEyebrow}>
+                    {t('exploration_title') || 'Questions for the two of you'}
+                  </Text>
+                  <Text style={styles.sectionBodyMuted}>
+                    {t('exploration_subtitle') ||
+                      'A few prompts to turn the chart context into a real conversation.'}
+                  </Text>
+                  <View style={styles.explorationList}>
+                    {buildExplorationQuestions({
+                      zoneScores: zoneScores.map((z) => ({ key: z.key, score: z.score })),
+                      totalScore,
+                      readingFrame,
+                    }).map((q) => (
+                      <View key={q.id} style={styles.explorationRow}>
+                        <Text style={styles.explorationNumber}>{q.order}</Text>
+                        <Text style={styles.explorationQuestion}>
+                          {t(q.translationKey) || q.translationKey}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                  <Text style={styles.explorationDisclaimer}>
+                    {t('exploration_disclaimer') ||
+                      'Use these gently. They are conversation starters, not instructions.'}
+                  </Text>
+                </View>
+              ) : null}
+
               {/* Block 5 — Watch for. Only on mixed / growth / different bands. */}
               {watchVisible ? (
                 <View style={styles.watchCard}>
@@ -1189,6 +1224,42 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
     color: AppTheme.colors.textPrimary,
     lineHeight: 22,
+  },
+  // "Questions for the two of you" — sober numbered list. No score, no
+  // checkbox, no completion state. The point is a calm reading surface that
+  // becomes conversation, not a quiz.
+  explorationList: {
+    gap: 12,
+    marginTop: 4,
+  },
+  explorationRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingTop: 4,
+    paddingBottom: 4,
+  },
+  explorationNumber: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: AppTheme.colors.coral,
+    width: 22,
+    textAlign: 'right',
+    lineHeight: 22,
+    letterSpacing: 0.5,
+  },
+  explorationQuestion: {
+    flex: 1,
+    fontSize: 14.5,
+    color: AppTheme.colors.textPrimary,
+    lineHeight: 22,
+  },
+  explorationDisclaimer: {
+    marginTop: 14,
+    fontSize: 11.5,
+    color: AppTheme.colors.textMuted,
+    fontStyle: 'italic',
+    lineHeight: 17,
   },
   watchCard: {
     marginHorizontal: 20,

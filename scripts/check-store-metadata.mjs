@@ -544,6 +544,71 @@ if (fs.existsSync(landingPage)) {
   }
 }
 
+// --- Tier 8: exploration prompts safety scan -------------------------------
+// The "Questions for the two of you" section adds 30 conversation-prompt
+// keys (exploration_*) to the synastry surface. The prompts are written as
+// open-ended invitations to discuss, never as diagnoses or predictions, so
+// the section reads as Juno-core (synastry as reflection) rather than as
+// pop-psych assessment. This tier scans every locale's exploration_* keys
+// for the bands that would shift the section into something it must not
+// be — predictive, clinical, or outcome-promising — independent of the
+// broader INTENTION_BANNED list so adding a new exploration term can never
+// silently widen the banned set for unrelated keys.
+const EXPLORATION_BANNED = [
+  { term: "soulmate", reason: "magic-outcome claim" },
+  { term: "perfect match", reason: "magic-outcome claim" },
+  { term: "meant to be", reason: "destiny / fortune-telling claim" },
+  { term: "destiny", reason: "destiny / fortune-telling claim" },
+  { term: "prediction", reason: "fortune-telling claim" },
+  { term: "predict", reason: "fortune-telling claim" },
+  { term: "guarantee", reason: "outcome guarantee" },
+  { term: "100% match", reason: "compatibility guarantee" },
+  { term: "100% compatibility", reason: "compatibility guarantee" },
+  { term: "therapy", reason: "clinical framing — the prompts are not therapy" },
+  { term: "therapist", reason: "clinical framing" },
+  { term: "diagnose", reason: "clinical framing" },
+  { term: "diagnosis", reason: "clinical framing" },
+  { term: "treatment", reason: "clinical framing" },
+  { term: "clinical advice", reason: "clinical framing" },
+  { term: "should break up", reason: "directive relationship advice" },
+  { term: "must break up", reason: "directive relationship advice" },
+  { term: "guaranteed outcome", reason: "outcome guarantee" },
+];
+
+function scanExplorationLocale(rel, getEntries) {
+  const full = path.join(ROOT, rel);
+  if (!fs.existsSync(full)) return;
+  let entries;
+  try {
+    entries = getEntries(JSON.parse(fs.readFileSync(full, "utf8")));
+  } catch {
+    return;
+  }
+  for (const [key, value] of entries) {
+    if (typeof value !== "string") continue;
+    if (!key.startsWith("exploration_")) continue;
+    const lower = value.toLowerCase();
+    for (const { term, reason } of EXPLORATION_BANNED) {
+      if (lower.includes(term)) fail(rel, key, term, reason);
+    }
+  }
+}
+
+// Web locales — exploration_* keys live inside the webApp namespace.
+for (const locale of WEB_MESSAGE_LOCALES) {
+  scanExplorationLocale(`apps/web/messages/${locale}.json`, (json) => {
+    const ns = json.webApp || {};
+    return Object.entries(ns);
+  });
+}
+
+// Mobile locales — flat dict.
+for (const locale of MOBILE_LOCALES) {
+  scanExplorationLocale(`apps/mobile/locales/${locale}.json`, (json) =>
+    Object.entries(json),
+  );
+}
+
 // --- Tier 7: legal copy positive markers -----------------------------------
 // The privacy + terms locales (EN at minimum) and the mobile hardcoded legal
 // screens must carry the working-chemistry / no-advice disclaimer. This is
