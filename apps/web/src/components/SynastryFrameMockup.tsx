@@ -123,8 +123,11 @@ export function SynastryFrameMockup({
     maxWidthClassName ??
     (isPrimary ? "w-[244px] sm:w-[264px]" : "w-[180px] sm:w-[196px]");
 
+  // Language-neutral aria-label: frameLabel is already translated by the
+  // parent triptych; we avoid hardcoding the word "frame" in English so
+  // screen readers in non-EN locales don't hear a bilingual sentence.
   const accessibleLabel =
-    ariaLabel ?? `JUNO Synastry — ${frameLabel} frame, score ${Math.round(score)}`;
+    ariaLabel ?? `JUNO Synastry — ${frameLabel}, ${Math.round(score)}/100`;
 
   // Inline transform so the parent triptych can rotate the side phones
   // without needing extra wrapper classes. preserve-3d on the parent +
