@@ -15,7 +15,11 @@ export type ZodiacSign =
   | 'Aquarius'
   | 'Pisces';
 
-export type PlanetKey =
+/**
+ * Personal + social planets. Always present on a computed chart AND on every
+ * historical `birth_chart` JSON ever persisted — safe to read unconditionally.
+ */
+export type InnerPlanetKey =
   | 'sun'
   | 'moon'
   | 'mercury'
@@ -23,6 +27,17 @@ export type PlanetKey =
   | 'mars'
   | 'jupiter'
   | 'saturn';
+
+/**
+ * Outer (generational) planets, added in chart model v2. Always present on a
+ * freshly computed chart, but **nullable on NatalChart** because charts
+ * hydrated from pre-v2 stored JSON don't carry them. We never backfill them
+ * with a default position — a missing outer planet stays `null` until the
+ * chart is recomputed from birth data.
+ */
+export type OuterPlanetKey = 'uranus' | 'neptune' | 'pluto';
+
+export type PlanetKey = InnerPlanetKey | OuterPlanetKey;
 
 export type AngleKey = 'rising' | 'mc';
 
@@ -74,6 +89,14 @@ export interface NatalChart {
   mars: Placement;
   jupiter: Placement;
   saturn: Placement;
+  /**
+   * Outer planets (chart model v2). Null only when this chart was hydrated
+   * from a legacy stored JSON that predates them — never null on a chart
+   * freshly computed by `computeNatalChart`.
+   */
+  uranus: Placement | null;
+  neptune: Placement | null;
+  pluto: Placement | null;
   /** Ascendant. Only meaningful when birth time is known. */
   rising: Placement | null;
   /** Midheaven. Only meaningful when birth time is known. */
@@ -99,12 +122,27 @@ export type AspectName =
 
 export type AspectKind = 'harmonious' | 'challenging' | 'intense';
 
+/**
+ * A detected aspect between two ecliptic longitudes.
+ *
+ * NOTE ON APPLYING/SEPARATING: we deliberately do NOT report whether an
+ * aspect is applying or separating. That distinction requires the two bodies'
+ * instantaneous ecliptic velocities at a *shared* instant; natal-to-natal
+ * synastry compares charts frozen at two different birth instants, so there
+ * is no shared instant to differentiate at. astronomy-engine could give us
+ * velocities for a transit engine later — until then we don't simulate the
+ * flag.
+ */
 export interface Aspect {
   name: AspectName;
   /** Canonical aspect angle (0, 60, 90, 120, 180). */
   angle: number;
-  /** Absolute orb, in degrees. */
+  /** Exact angular separation between the two longitudes, 0–180. */
+  separation: number;
+  /** Absolute orb (|separation − angle|), in degrees. */
   orb: number;
+  /** Maximum orb that was allowed for this body pair (orb policy output). */
+  maxOrb: number;
   kind: AspectKind;
 }
 
@@ -139,6 +177,14 @@ export interface SynastryResult {
   confidence: Confidence;
   warnings: ChartWarning[];
   frames: Record<FrameKey, FrameScore>;
+  /**
+   * Interpretive-only aspects involving the outer planets (Uranus, Neptune,
+   * Pluto) against the other chart's personal planets and angles. These have
+   * `contribution: 0` and NEVER feed the frame scores — they exist so the UI
+   * can narrate generational themes without destabilizing the scoring model.
+   * Empty when either chart predates outer planets (legacy stored JSON).
+   */
+  interpretiveAspects: SynastryAspect[];
   /** Scoring model version used (see ./version.ts). */
   modelVersion: number;
 }

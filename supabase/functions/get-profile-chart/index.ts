@@ -111,7 +111,8 @@ function buildUtcInstant(
 }
 
 function calculatePlanetPositions(time: any) {
-  const planets = ['Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn']
+  // Chart model v2: outer planets included (additive keys — safe for all readers).
+  const planets = ['Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto']
   const out: Record<string, { longitude: number; sign: string; degree: number }> = {}
   for (const body of planets) {
     const lon = getGeocentricLongitude(body, time)

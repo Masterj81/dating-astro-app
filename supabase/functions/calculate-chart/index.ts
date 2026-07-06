@@ -217,7 +217,10 @@ async function geocodeCity(city: string): Promise<{ lat: number; lng: number } |
 
 // --- Planet positions ---
 
-const PLANET_BODIES = ['Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn']
+// Chart model v2: outer planets included. astronomy-engine models Pluto with
+// its own high-accuracy series — same GeoVector call as the others. Purely
+// additive keys in `planets`; every existing reader ignores unknown keys.
+const PLANET_BODIES = ['Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto']
 
 function calculatePlanetPositions(time: any): Record<string, { longitude: number; sign: string; degree: number }> {
   const planets: Record<string, { longitude: number; sign: string; degree: number }> = {}
@@ -702,7 +705,9 @@ serve(async (req) => {
           timezone: tz.iana,
           confidence,
           warnings,
-          chartVersion: 1,
+          // v2 = outer planets present in `planets`. Readers must keep
+          // tolerating v1 rows (no uranus/neptune/pluto keys) forever.
+          chartVersion: 2,
         }
         break
       }

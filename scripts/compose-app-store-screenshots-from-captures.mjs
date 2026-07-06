@@ -43,8 +43,8 @@ const shots = [
   {
     source: "premium-cosmic.png",
     output: "02-chart-context.png",
-    title: "See chart context before the conversation",
-    subtitle: "Review birth-chart context — Sun, Moon and Rising — on every relationship profile.",
+    title: "Turn your chart into daily guidance",
+    subtitle: "Explore horoscopes, transit reflections and planning windows in one calm workspace.",
     accent: BLUE,
   },
   {
@@ -57,15 +57,15 @@ const shots = [
   {
     source: "chat.png",
     output: "04-guided-intro.png",
-    title: "Start with guided intros and voice context",
-    subtitle: "Open with a prompt shaped by your charts, and a voice intro before the first message.",
+    title: "Start with a guided opener",
+    subtitle: "Begin with a prompt shaped by your charts, then let the conversation feel natural.",
     accent: BLUE,
   },
   {
     source: "premium-celestial.png",
     output: "05-relationship-dynamics.png",
-    title: "Understand relationship dynamics, not generic profiles",
-    subtitle: "A relationship-dynamics breakdown framed by the synastry insight.",
+    title: "Unlock your full astrology toolkit",
+    subtitle: "Open your full natal chart, advanced synastry and daily horoscope in one place.",
     accent: GOLD,
   },
 ];
@@ -101,6 +101,8 @@ for (const [index, shot] of shots.entries()) {
 }
 
 function frameSvg(shot, number) {
+  const titleLines = wrap(shot.title, Math.floor(1168 / (76 * 0.56)));
+  const subtitleY = 455 + Math.max(0, titleLines.length - 2) * 82;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}">
   <defs>
@@ -127,7 +129,7 @@ function frameSvg(shot, number) {
   <text x="1244" y="132" text-anchor="end" fill="${shot.accent}" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="800">${String(number).padStart(2, "0")}</text>
 
   ${textBlock(shot.title, 76, 245, 1168, 76, IVORY, 1.08, 900)}
-  ${textBlock(shot.subtitle, 76, 455, 1080, 37, "#cdd0d9", 1.24, 500)}
+  ${textBlock(shot.subtitle, 76, subtitleY, 1080, 37, "#cdd0d9", 1.24, 500)}
 
   <g filter="url(#shadow)">
     <rect x="260" y="875" width="800" height="1748" rx="94" fill="#0a0a12" stroke="#2c2a3e" stroke-width="5"/>

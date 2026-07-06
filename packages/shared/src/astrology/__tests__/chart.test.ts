@@ -153,6 +153,136 @@ describe('longitudeToPlacement', () => {
   });
 });
 
+describe('outer planets — Uranus / Neptune / Pluto', () => {
+  // Anchors computed with astronomy-engine and cross-checked against public
+  // ephemerides (J2000 epoch + Apollo 11 landing). Tolerance ±0.1° absorbs
+  // the engine's own precision plus the 2-decimal rounding in placements.
+  it('matches J2000 anchor longitudes (2000-01-01 12:00 UTC)', () => {
+    const chart = computeNatalChart({
+      date: '2000-01-01',
+      time: '12:00',
+      timezone: 'UTC',
+      latitude: 0,
+      longitude: 0,
+    });
+    expect(chart.utcInstant).toBe('2000-01-01T12:00:00.000Z');
+    expect(chart.uranus).not.toBeNull();
+    expect(chart.neptune).not.toBeNull();
+    expect(chart.pluto).not.toBeNull();
+    expect(chart.uranus!.longitude).toBeCloseTo(314.81, 1);
+    expect(chart.neptune!.longitude).toBeCloseTo(303.19, 1);
+    expect(chart.pluto!.longitude).toBeCloseTo(251.45, 1);
+    expect(chart.uranus!.sign).toBe('Aquarius');
+    expect(chart.neptune!.sign).toBe('Aquarius');
+    expect(chart.pluto!.sign).toBe('Sagittarius');
+  });
+
+  it('matches the Apollo 11 anchor (1969-07-20 20:17 UTC)', () => {
+    const chart = computeNatalChart({
+      date: '1969-07-20',
+      time: '20:17',
+      timezone: 'UTC',
+      latitude: 0,
+      longitude: 0,
+    });
+    expect(chart.uranus!.longitude).toBeCloseTo(180.69, 1);
+    expect(chart.neptune!.longitude).toBeCloseTo(236.02, 1);
+    expect(chart.pluto!.longitude).toBeCloseTo(173.01, 1);
+    expect(chart.uranus!.sign).toBe('Libra');
+    expect(chart.neptune!.sign).toBe('Scorpio');
+    expect(chart.pluto!.sign).toBe('Virgo');
+  });
+
+  it('is still computed when birth time is unknown (planets need no time-of-day)', () => {
+    const chart = computeNatalChart({
+      date: '1990-03-21',
+      time: null,
+      timezone: 'Europe/Paris',
+      latitude: 48.8566,
+      longitude: 2.3522,
+    });
+    expect(chart.uranus).not.toBeNull();
+    expect(chart.neptune).not.toBeNull();
+    expect(chart.pluto).not.toBeNull();
+    // Angles stay excluded, exactly as before.
+    expect(chart.rising).toBeNull();
+    expect(chart.mc).toBeNull();
+    expect(chart.houses).toBeNull();
+    expect(chart.confidence).toBe('low');
+  });
+
+  it('is deterministic', () => {
+    const input: BirthInput = {
+      date: '1985-08-12',
+      time: '15:00',
+      timezone: 'Africa/Cairo',
+      latitude: 30.0444,
+      longitude: 31.2357,
+    };
+    const a = computeNatalChart(input);
+    const b = computeNatalChart(input);
+    expect(a.uranus?.longitude).toBe(b.uranus?.longitude);
+    expect(a.neptune?.longitude).toBe(b.neptune?.longitude);
+    expect(a.pluto?.longitude).toBe(b.pluto?.longitude);
+  });
+});
+
+describe('all longitudes stay in [0, 360)', () => {
+  const PLACEMENT_KEYS = [
+    'sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn',
+    'uranus', 'neptune', 'pluto', 'rising', 'mc',
+  ] as const;
+
+  const SPREAD_INPUTS: BirthInput[] = [
+    { date: '1955-02-01', time: '03:15', timezone: 'Asia/Tokyo', latitude: 35.68, longitude: 139.65 },
+    { date: '1972-11-30', time: '23:59', timezone: 'Pacific/Auckland', latitude: -36.85, longitude: 174.76 },
+    { date: '1988-06-15', time: '00:00', timezone: 'America/Sao_Paulo', latitude: -23.55, longitude: -46.63 },
+    { date: '2003-12-25', time: '18:45', timezone: 'Europe/Moscow', latitude: 55.76, longitude: 37.62 },
+    { date: '2015-04-08', time: null, timezone: 'Australia/Adelaide', latitude: -34.93, longitude: 138.6 },
+  ];
+
+  for (const input of SPREAD_INPUTS) {
+    it(`${input.date} ${input.time ?? '(no time)'} ${input.timezone}`, () => {
+      const chart = computeNatalChart(input);
+      for (const key of PLACEMENT_KEYS) {
+        const placement = chart[key];
+        if (placement == null) continue; // angles without birth time
+        expect(placement.longitude).toBeGreaterThanOrEqual(0);
+        expect(placement.longitude).toBeLessThan(360);
+        expect(placement.degree).toBeGreaterThanOrEqual(0);
+        expect(placement.degree).toBeLessThan(30);
+      }
+      if (chart.houses) {
+        for (const cusp of chart.houses) {
+          expect(cusp).toBeGreaterThanOrEqual(0);
+          expect(cusp).toBeLessThan(360);
+        }
+      }
+    });
+  }
+});
+
+describe('equal houses preserved', () => {
+  it('12 cusps, each exactly 30° from the previous, anchored on the Ascendant', () => {
+    const chart = computeNatalChart({
+      date: '1990-07-04',
+      time: '14:30',
+      timezone: 'America/New_York',
+      latitude: 40.7128,
+      longitude: -74.006,
+    });
+    expect(chart.houses).not.toBeNull();
+    expect(chart.houses!.length).toBe(12);
+    // First cusp = Ascendant longitude (pre-rounding, so within 0.01°).
+    const asc = chart.rising!.longitude;
+    expect(Math.abs(chart.houses![0] - asc)).toBeLessThan(0.011);
+    for (let i = 1; i < 12; i++) {
+      const step = (chart.houses![i] - chart.houses![i - 1] + 360) % 360;
+      expect(step).toBeCloseTo(30, 6);
+    }
+  });
+});
+
 describe('Moon position regression — Nepal +5:45 case', () => {
   // Anchor: same local birth in Kathmandu vs naively interpreted at UTC.
   // The old bug (device-tz Date) would shift the Moon by several degrees;

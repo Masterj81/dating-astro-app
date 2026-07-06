@@ -88,9 +88,10 @@ export const FRAME_WEIGHTS: Record<FrameKey, readonly WeightedPair[]> = {
 } as const;
 
 function getLongitude(chart: NatalChart, key: PlacementKey): number | null {
-  if (key === 'rising') return chart.rising?.longitude ?? null;
-  if (key === 'mc') return chart.mc?.longitude ?? null;
-  return chart[key].longitude;
+  // Angles are null without a birth time; outer planets are null on charts
+  // hydrated from legacy stored JSON (pre-v2). Both cases: skip, never fake.
+  const placement = chart[key];
+  return placement?.longitude ?? null;
 }
 
 interface FrameComputation {
@@ -116,7 +117,7 @@ function computeFrame(
     if (long1 == null || long2 == null) continue;
 
     totalWeight += pair.weight;
-    const aspect = detectAspect(long1, long2);
+    const aspect = detectAspect(long1, long2, pair.bodyA, pair.bodyB);
     if (!aspect) continue;
 
     const coef = aspectCoefficient(aspect);
@@ -136,6 +137,68 @@ function computeFrame(
   const rawScore = Math.round(50 + ratio * 40);
   aspects.sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution));
   return { rawScore, aspects };
+}
+
+/**
+ * Outer planet (Uranus/Neptune/Pluto) contacts are interpretive-only: they
+ * are exposed on the result for narration but carry `contribution: 0` and
+ * never touch the frame scores. Adding them to FRAME_WEIGHTS would shift
+ * every historical score for generational placements users can't act on —
+ * if we ever want them weighted, that's an explicit, tested, versioned
+ * change (bump SCORING_MODEL_VERSION).
+ *
+ * We pair each outer planet against the other person's personal planets and
+ * angles. Outer×outer and outer×Jupiter/Saturn contacts are excluded: people
+ * born within a few years of each other all share them, so they say nothing
+ * about *this* pair.
+ */
+const OUTER_PLANETS: readonly PlacementKey[] = ['uranus', 'neptune', 'pluto'];
+const INTERPRETIVE_TARGETS: readonly PlacementKey[] = [
+  'sun',
+  'moon',
+  'mercury',
+  'venus',
+  'mars',
+  'rising',
+  'mc',
+];
+
+function computeInterpretiveAspects(
+  chart1: NatalChart,
+  chart2: NatalChart,
+): SynastryAspect[] {
+  const out: SynastryAspect[] = [];
+  // Convention matches the frames: bodyA lives on chart1, bodyB on chart2.
+  const directions: Array<[NatalChart, NatalChart, boolean]> = [
+    [chart1, chart2, false],
+    [chart2, chart1, true],
+  ];
+  for (const [outerChart, targetChart, swapped] of directions) {
+    for (const outer of OUTER_PLANETS) {
+      const outerLong = getLongitude(outerChart, outer);
+      if (outerLong == null) continue;
+      for (const target of INTERPRETIVE_TARGETS) {
+        const targetLong = getLongitude(targetChart, target);
+        if (targetLong == null) continue;
+        const aspect = detectAspect(outerLong, targetLong, outer, target);
+        if (!aspect) continue;
+        out.push({
+          ...aspect,
+          bodyA: swapped ? target : outer,
+          bodyB: swapped ? outer : target,
+          contribution: 0,
+        });
+      }
+    }
+  }
+  // Tightest first; name tie-breaks keep the order fully deterministic.
+  out.sort(
+    (a, b) =>
+      a.orb - b.orb ||
+      a.bodyA.localeCompare(b.bodyA) ||
+      a.bodyB.localeCompare(b.bodyB),
+  );
+  return out;
 }
 
 /**
@@ -168,6 +231,7 @@ export function computeSynastry(
     confidence,
     warnings: Array.from(warningSet),
     frames,
+    interpretiveAspects: computeInterpretiveAspects(chart1, chart2),
     modelVersion: SCORING_MODEL_VERSION,
   };
 }

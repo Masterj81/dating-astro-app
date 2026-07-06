@@ -740,11 +740,16 @@ export default function BirthInfoScreen() {
           mars: chart.mars,
           jupiter: chart.jupiter,
           saturn: chart.saturn,
+          // Chart model v2: outer planets. Older rows without these keys
+          // stay readable — hydrateStoredChart treats them as null.
+          uranus: chart.uranus,
+          neptune: chart.neptune,
+          pluto: chart.pluto,
         },
         coordinates: cityCoords,
         timezone: chart.timezone ?? geoResult.iana,
         confidence: chart.confidence,
-        chartVersion: 1,
+        chartVersion: 2,
       };
 
       const sanitizedConnectionIntentions = sanitizeConnectionIntentions(connectionIntentions);

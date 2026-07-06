@@ -8,9 +8,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { computeNatalChart } from '../chart';
-import { computeSynastry } from '../synastry';
+import { FRAME_WEIGHTS, computeSynastry } from '../synastry';
 import { SCORING_MODEL_VERSION } from '../version';
-import type { BirthInput, FrameKey } from '../types';
+import type { BirthInput, FrameKey, NatalChart } from '../types';
 import fixtures from '../__fixtures__/pairs.json' assert { type: 'json' };
 
 interface FixturePerson {
@@ -121,6 +121,101 @@ describe('warnings propagation', () => {
     expect(result.warnings).toContain('missing_birth_timezone');
     expect(result.confidence).toBe('low');
   });
+});
+
+describe('outer planets — interpretive only, never in the score', () => {
+  const OUTER = ['uranus', 'neptune', 'pluto'] as const;
+
+  it('FRAME_WEIGHTS never reference an outer planet (guard against silent score drift)', () => {
+    for (const frame of FRAMES) {
+      for (const pair of FRAME_WEIGHTS[frame]) {
+        expect(OUTER).not.toContain(pair.bodyA);
+        expect(OUTER).not.toContain(pair.bodyB);
+      }
+    }
+  });
+
+  it('frame scores are IDENTICAL with and without outer planets', () => {
+    const a = computeNatalChart(toInput(PAIRS[0].personA));
+    const b = computeNatalChart(toInput(PAIRS[0].personB));
+    const stripped = (c: NatalChart): NatalChart => ({
+      ...c,
+      uranus: null,
+      neptune: null,
+      pluto: null,
+    });
+    const withOuter = computeSynastry(a, b);
+    const withoutOuter = computeSynastry(stripped(a), stripped(b));
+    for (const frame of FRAMES) {
+      expect(withOuter.frames[frame].score).toBe(withoutOuter.frames[frame].score);
+      expect(withOuter.frames[frame].band).toBe(withoutOuter.frames[frame].band);
+    }
+    // Stripping the outer planets only empties the interpretive layer.
+    expect(withoutOuter.interpretiveAspects).toEqual([]);
+  });
+
+  it('interpretive aspects involve exactly one outer planet each and contribute 0', () => {
+    const a = computeNatalChart(toInput(PAIRS[0].personA));
+    const b = computeNatalChart(toInput(PAIRS[0].personB));
+    const result = computeSynastry(a, b);
+    for (const aspect of result.interpretiveAspects) {
+      const outerCount = [aspect.bodyA, aspect.bodyB].filter((k) =>
+        (OUTER as readonly string[]).includes(k),
+      ).length;
+      expect(outerCount).toBe(1);
+      expect(aspect.contribution).toBe(0);
+      expect(aspect.orb).toBeLessThanOrEqual(aspect.maxOrb);
+    }
+  });
+
+  it('interpretive aspects are order-invariant modulo direction', () => {
+    const a = computeNatalChart(toInput(PAIRS[0].personA));
+    const b = computeNatalChart(toInput(PAIRS[0].personB));
+    const signature = (bodyX: string, bodyY: string, name: string, orb: number) =>
+      [[bodyX, bodyY].sort().join('×'), name, orb].join('|');
+    const forward = computeSynastry(a, b).interpretiveAspects
+      .map((x) => signature(x.bodyA, x.bodyB, x.name, x.orb))
+      .sort();
+    const reverse = computeSynastry(b, a).interpretiveAspects
+      .map((x) => signature(x.bodyA, x.bodyB, x.name, x.orb))
+      .sort();
+    expect(reverse).toEqual(forward);
+  });
+
+  it('interpretive list is deterministic and sorted tightest-first', () => {
+    const a = computeNatalChart(toInput(PAIRS[0].personA));
+    const b = computeNatalChart(toInput(PAIRS[0].personB));
+    const r1 = computeSynastry(a, b);
+    const r2 = computeSynastry(a, b);
+    expect(r1.interpretiveAspects).toEqual(r2.interpretiveAspects);
+    for (let i = 1; i < r1.interpretiveAspects.length; i++) {
+      expect(r1.interpretiveAspects[i].orb).toBeGreaterThanOrEqual(
+        r1.interpretiveAspects[i - 1].orb,
+      );
+    }
+  });
+});
+
+describe('score stability across fixtures (model v2)', () => {
+  // The v1→v2 orb change (trine 8→7, sextile 6→5, luminary +1) can move a
+  // frame score by a few points, never wildly: every contribution is bounded
+  // by its pair weight, and pairs only enter/leave near the orb edges where
+  // orbTightness — and therefore the contribution — is already small.
+  // Guard the global shape rather than pinning exact numbers.
+  for (const pair of PAIRS) {
+    it(`${pair.id} — scores stay in a sane band and repeatable`, () => {
+      const a = computeNatalChart(toInput(pair.personA));
+      const b = computeNatalChart(toInput(pair.personB));
+      const r1 = computeSynastry(a, b);
+      const r2 = computeSynastry(a, b);
+      for (const frame of FRAMES) {
+        expect(r1.frames[frame].score).toBe(r2.frames[frame].score);
+        // The formula is 50 ± 40·ratio with |ratio| ≤ 1, then capped.
+        expect(r1.frames[frame].score).toBeGreaterThanOrEqual(10);
+        expect(r1.frames[frame].score).toBeLessThanOrEqual(100);
+      }
+    });
+  }
 });
 
 describe('order-invariance regression', () => {
