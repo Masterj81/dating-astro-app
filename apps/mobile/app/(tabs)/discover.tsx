@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useNavigation } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ErrorState, LoadingState, EmptyState } from '../../components/ScreenStates';
 import ProfilePublicMVPSections from '../../components/profile/ProfilePublicMVPSections';
 import WebTabWrapper from '../../components/WebTabWrapper';
@@ -102,6 +103,7 @@ type Profile = {
 type DiscoverIntentionFilter = 'all' | ConnectionIntention;
 
 export default function DiscoverScreen() {
+  const insets = useSafeAreaInsets();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -649,7 +651,7 @@ export default function DiscoverScreen() {
 
       {/* Macro intention filter — segmented control. 'All' is the default
           and keeps the original deck behavior. */}
-      <View style={styles.intentionFilterRow} accessibilityRole="tablist">
+      <View style={[styles.intentionFilterRow, { paddingTop: insets.top + 8 }]} accessibilityRole="tablist">
         {filterOptions.map((opt) => {
           const active = intentionFilter === opt.key;
           return (
@@ -964,7 +966,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingTop: 8,
     paddingBottom: 0,
     ...(Platform.OS === 'web' && {
       minHeight: '100vh',
@@ -1419,7 +1420,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     paddingHorizontal: 16,
-    paddingTop: 8,
     paddingBottom: 4,
   },
   intentionFilterPill: {
