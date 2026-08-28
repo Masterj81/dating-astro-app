@@ -380,7 +380,7 @@
     "catAstrology": "Astrology",
     "catWebApp": "Web App & PWA",
     "q_createAccount": "How do I create an account?",
-    "a_createAccount": "Download JUNO on Google Play or open the web app at app.astrodatingapp.com. Sign up with email, Google, or Facebook, then add your birth date, time, and city so JUNO can calculate your natal chart and compatibility insights.",
+    "a_createAccount": "Download JUNO on Google Play or open the web app at app.junosynastry.com. Sign up with email, Google, or Facebook, then add your birth date, time, and city so JUNO can calculate your natal chart and compatibility insights.",
     "q_changeBirthTime": "Can I change my birth time after signing up?",
     "a_changeBirthTime": "Yes. Go to Profile > Edit Profile > Birth Details. Changing your birth time recalculates your natal chart, so your rising sign, house placements, and compatibility scores may change.",
     "q_deleteAccount": "How do I delete my account?",
@@ -410,9 +410,9 @@
     "q_personalizedHoroscopes": "Are the horoscopes personalized?",
     "a_personalizedHoroscopes": "Yes. Premium horoscope features use your chart details rather than only your sun sign. They are designed as reflective guidance and entertainment, not as predictions or guarantees.",
     "q_webApp": "Can I use JUNO on my computer?",
-    "a_webApp": "Yes. Visit app.astrodatingapp.com to use JUNO in your browser. You can discover profiles, chat, edit your profile, view astrology features, and manage web billing.",
+    "a_webApp": "Yes. Visit app.junosynastry.com to use JUNO in your browser. You can discover profiles, chat, edit your profile, view astrology features, and manage web billing.",
     "q_installPwa": "Can I install the web app on my phone?",
-    "a_installPwa": "Yes. On iPhone, open app.astrodatingapp.com in Safari, tap Share, then Add to Home Screen. On Android, use Google Play for the native app or the browser install prompt when available.",
+    "a_installPwa": "Yes. On iPhone, open app.junosynastry.com in Safari, tap Share, then Add to Home Screen. On Android, use Google Play for the native app or the browser install prompt when available.",
     "q_webSync": "Is my data synced between the app and the web?",
     "a_webSync": "Yes. Your profile, connections, messages, and subscription status are synced between mobile and web when you use the same account."
   },
@@ -2221,5 +2221,20 @@
     "step3": "Go to Settings > Invite Friends and enter code <strong>{code}</strong>",
     "step4": "Both you and your friend get 1 month premium free!",
     "footer": "JUNO -- Astrology as a language, not a fortune"
+  },
+  "unsubscribe": {
+    "unsubscribedTitle": "You're unsubscribed",
+    "unsubscribedBody": "You won't receive JUNO onboarding or lifecycle emails anymore.",
+    "resubscribedTitle": "You're resubscribed",
+    "resubscribedBody": "You'll receive JUNO onboarding and lifecycle emails again.",
+    "invalidTitle": "This link could not be verified",
+    "invalidBody": "It may have been altered in transit, or it may no longer match an account. Contact us and we'll sort it out — you don't need to sign in.",
+    "errorTitle": "Something went wrong",
+    "errorBody": "We couldn't update your email preference just now. Try the link again, or contact us and we'll do it by hand.",
+    "goneTitle": "Nothing left to unsubscribe",
+    "goneBody": "We couldn't find an account for this link. It may already have been deleted — either way, you won't receive anything further.",
+    "stillDelivered": "Account and security messages are always delivered.",
+    "openApp": "Open JUNO",
+    "contactSupport": "Contact support"
   }
 }

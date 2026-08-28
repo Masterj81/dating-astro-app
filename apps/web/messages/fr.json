@@ -380,7 +380,7 @@
     "catSafety": "Sécurité",
     "catAstrology": "Astrologie",
     "q_createAccount": "Comment créer un compte ?",
-    "a_createAccount": "Téléchargez JUNO sur Google Play ou ouvrez l'application web sur app.astrodatingapp.com. Inscrivez-vous avec votre courriel, Google ou Facebook, puis ajoutez votre date, heure et ville de naissance pour calculer votre thème natal et vos indications de compatibilité.",
+    "a_createAccount": "Téléchargez JUNO sur Google Play ou ouvrez l'application web sur app.junosynastry.com. Inscrivez-vous avec votre courriel, Google ou Facebook, puis ajoutez votre date, heure et ville de naissance pour calculer votre thème natal et vos indications de compatibilité.",
     "q_changeBirthTime": "Puis-je modifier mon heure de naissance après l'inscription ?",
     "a_changeBirthTime": "Oui. Allez dans Profil > Modifier le profil > Données de naissance. Modifier votre heure de naissance recalcule votre thème natal, donc votre ascendant, vos maisons et vos scores de compatibilité peuvent changer.",
     "q_deleteAccount": "Comment supprimer mon compte ?",
@@ -410,9 +410,9 @@
     "q_promoCode": "Comment utiliser un code promo ?",
     "a_promoCode": "Sur Android, entrez votre code promo sur l'écran des forfaits avant de sélectionner un plan. Sur le web, entrez le code pendant le paiement. Un code promo peut appliquer une réduction ou un accès bonus selon la campagne.",
     "q_webApp": "Puis-je utiliser JUNO sur mon ordinateur ?",
-    "a_webApp": "Oui. Visitez app.astrodatingapp.com pour utiliser JUNO dans votre navigateur. Vous pouvez découvrir des profils, discuter, modifier votre profil, consulter les fonctionnalités astrologiques et gérer la facturation web.",
+    "a_webApp": "Oui. Visitez app.junosynastry.com pour utiliser JUNO dans votre navigateur. Vous pouvez découvrir des profils, discuter, modifier votre profil, consulter les fonctionnalités astrologiques et gérer la facturation web.",
     "q_installPwa": "Puis-je installer l'application web sur mon téléphone ?",
-    "a_installPwa": "Oui. Sur iPhone, ouvrez app.astrodatingapp.com dans Safari, touchez Partager, puis Ajouter à l'écran d'accueil. Sur Android, utilisez Google Play pour l'application native ou l'invite d'installation du navigateur lorsqu'elle est disponible.",
+    "a_installPwa": "Oui. Sur iPhone, ouvrez app.junosynastry.com dans Safari, touchez Partager, puis Ajouter à l'écran d'accueil. Sur Android, utilisez Google Play pour l'application native ou l'invite d'installation du navigateur lorsqu'elle est disponible.",
     "q_webSync": "Mes données sont-elles synchronisées entre l'application et le web ?",
     "a_webSync": "Oui. Votre profil, vos connexions, vos messages et votre statut d'abonnement sont synchronisés entre mobile et web lorsque vous utilisez le même compte."
   },
@@ -2221,5 +2221,20 @@
     "step3": "Va dans Paramètres > Inviter des amis et entre le code <strong>{code}</strong>",
     "step4": "Toi et ton ami obtenez chacun 1 mois de premium gratuit !",
     "footer": "JUNO — L'astrologie comme langage, pas comme oracle"
+  },
+  "unsubscribe": {
+    "unsubscribedTitle": "Vous êtes désabonné",
+    "unsubscribedBody": "Vous ne recevrez plus les e-mails d'accueil et de suivi de JUNO.",
+    "resubscribedTitle": "Vous êtes réabonné",
+    "resubscribedBody": "Vous recevrez à nouveau les e-mails d'accueil et de suivi de JUNO.",
+    "invalidTitle": "Ce lien n'a pas pu être vérifié",
+    "invalidBody": "Il a peut-être été modifié en chemin, ou il ne correspond plus à un compte. Écrivez-nous et nous nous en occupons — sans avoir à vous connecter.",
+    "errorTitle": "Une erreur est survenue",
+    "errorBody": "Nous n'avons pas pu mettre à jour votre préférence pour le moment. Réessayez le lien, ou écrivez-nous et nous le ferons à la main.",
+    "goneTitle": "Rien à désabonner",
+    "goneBody": "Nous n'avons trouvé aucun compte pour ce lien. Il a peut-être déjà été supprimé — dans tous les cas, vous ne recevrez plus rien.",
+    "stillDelivered": "Les messages liés au compte et à la sécurité sont toujours envoyés.",
+    "openApp": "Ouvrir JUNO",
+    "contactSupport": "Contacter le support"
   }
 }

@@ -364,7 +364,7 @@
     "q_promoCode": "如何使用促销代码？",
     "a_promoCode": "在Android上，进入套餐页面并在选择套餐前输入促销代码。在网页上，在结账页面输入代码。促销代码根据活动提供折扣或额外月份。",
     "q_webApp": "可以在电脑上使用JUNO吗？",
-    "a_webApp": "可以！访问app.astrodatingapp.com使用完整的网页应用。您可以浏览资料、聊天、查看星盘和管理订阅——全部在浏览器中完成。",
+    "a_webApp": "可以！访问app.junosynastry.com使用完整的网页应用。您可以浏览资料、聊天、查看星盘和管理订阅——全部在浏览器中完成。",
     "q_installPwa": "可以在手机上安装网页应用吗？",
     "a_installPwa": "可以。在手机浏览器中访问www.junosynastry.com，然后点击「添加到主屏幕」。应用将作为图标出现在主屏幕上，并以全屏模式打开。",
     "q_webSync": "应用和网页之间的数据会同步吗？",
@@ -2221,5 +2221,20 @@
     "pillarStyleTitle": "协作风格",
     "pillarStyleDesc": "共同工作的形状——谁推动势能、谁承担关怀,以及工作如何前行。",
     "footnote": "关于合作默契的洞见是对话的起点。它不构成法律、财务、招聘或投资建议。"
+  },
+  "unsubscribe": {
+    "unsubscribedTitle": "已退订",
+    "unsubscribedBody": "您将不再收到 JUNO 的引导邮件和周期邮件。",
+    "resubscribedTitle": "已重新订阅",
+    "resubscribedBody": "您将重新收到 JUNO 的引导邮件和周期邮件。",
+    "invalidTitle": "无法验证此链接",
+    "invalidBody": "链接可能在传输中被更改，或已不再对应任何账户。联系我们即可处理，无需登录。",
+    "errorTitle": "出了点问题",
+    "errorBody": "暂时无法更新您的邮件偏好。请重试该链接，或联系我们，我们将手动处理。",
+    "goneTitle": "没有可退订的内容",
+    "goneBody": "未找到与此链接对应的账户。它可能已被删除；无论如何，您都不会再收到邮件。",
+    "stillDelivered": "账户和安全邮件将始终送达。",
+    "openApp": "打开 JUNO",
+    "contactSupport": "联系支持"
   }
 }
