@@ -29,6 +29,7 @@ npm run test                # turbo run test --continue (see note below)
 npm run build:web           # next build
 npm run build:mobile:android / build:mobile:ios   # eas build
 npm run validate:locales    # web + mobile locale parity (8 locales must stay in sync)
+npm run validate:email-templates   # renders the lifecycle emails and asserts CTAs, tracking, unsubscribe, banned copy
 ```
 
 Single-workspace work: `cd apps/web; npm run typecheck` (or `--workspace=@astro/web` from root). CI (`.github/workflows/ci.yml`) runs lint → typecheck → test on push/PR to `main`/`master`.
@@ -61,6 +62,9 @@ Scenarios are numbered YAML flows in `.maestro/` (signup, login, discover/match,
 - Migrations in `supabase/migrations/` are strictly ordered by timestamp prefix — add new ones, never edit shipped ones.
 - Security model (see `supabase/SECURITY.md`): the `anon` role has **no SELECT** on business tables. Client-facing reads go through a small, audited set of `SECURITY DEFINER` RPCs each guarded by `auth.uid()`. Other users' natal/synastry data is only ever returned by the `get-profile-chart` edge function (sanitized; never raw birth fields). When adding an RPC, the default is **not** to expose it to `authenticated`.
 - Edge functions in `supabase/functions/` cover payments webhooks (Stripe, RevenueCat), notifications, account deletion lifecycle, scheduled emails/horoscopes.
+- **Lifecycle email:** copy and rendering live in `supabase/functions/send-email/templates.ts`, which imports nothing so the templates can be rendered and asserted outside Deno (`npm run validate:email-templates`); `index.ts` holds only auth, DB reads, token signing and the Resend call. Templates carry a `category` — `transactional` is never suppressible, `lifecycle` is opt-out via the `unsubscribe` function (HMAC token, RFC 8058 one-click) and the `notification_preferences.lifecycleEmails` key. CTA links must stay on the `/app` path prefix: `/en/app` would not match the Android App Link intent filter. Do not gate lifecycle mail on `notification_preferences.promotions` — it defaults to `false`.
+- **`profiles.preferred_language`** records the locale an account reads in (one of the 8, or NULL = unknown → senders fall back to English). Written best-effort by `apps/web/src/components/PreferredLanguageSync.tsx` and `apps/mobile/services/preferredLanguage.ts`; both swallow failures because a preference must never interrupt a sign-in. The locale list is declared in seven places — `npm run validate:locale-contract` fails the build if they drift.
+- **Edge functions cannot serve HTML.** Supabase downgrades any `text/html` response to `text/plain` and applies `nosniff` + a sandbox CSP, so a page rendered in a function reaches the reader as raw markup. `unsubscribe` therefore 303-redirects humans to `apps/web/src/app/[locale]/unsubscribe/page.tsx` carrying only a `status`, never a token; the `POST` one-click path must keep answering JSON or Gmail/Yahoo report the unsubscribe as failed. `cancel-account-deletion` still serves HTML and has the same defect.
 - **Conversation-first messaging:** the legacy `matches` table has been fully retired (phases A–E, completed 2026-05) in favour of a `conversations` model — `conversations.user_a/user_b`, `messages.conversation_id`. The `matches` table and the `messages.match_id` column no longer exist; all messaging goes through `conversation_id`. `docs/legacy-matches-retirement-plan.md` is the historical record. Do not reintroduce `match_id` or `matches` references.
 
 ## Reference docs
@@ -68,4 +72,7 @@ Scenarios are numbered YAML flows in `.maestro/` (signup, login, discover/match,
 - `docs/legacy-matches-retirement-plan.md` — phased `matches` → `conversations` retirement (completed 2026-05; historical record)
 - `supabase/SECURITY.md` — RLS posture, accepted lint exceptions, why each `SECURITY DEFINER` RPC exists
 - `docs/E2E.md` — Maestro setup and the mobile E2E suite
+- `docs/retention-day2-audit-2026-08.md` — **current** Day 1 / Day 2 retention audit: reconstructed funnel, drop-off points, empty states, email/push lifecycle spec, premium & free-preview review, analytics plan, P0–P3 backlog
+- `docs/retention-audit-2026-08.md` — earlier post-signup drop-off audit (24 Aug 2026), superseded by the above; historical record
+- `docs/premium-free-preview.md` — how the server-authoritative free daily preview works and how to extend it to another feature
 - `docs/api-reference.md`, `docs/growth-plan.md`

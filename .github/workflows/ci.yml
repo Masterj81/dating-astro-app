@@ -28,6 +28,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate locales
+        run: npm run validate:locales
+
+      - name: Validate premium gating contract
+        run: npm run validate:premium-gating
+
+      - name: Validate lifecycle email templates
+        run: npm run validate:email-templates
+
+      - name: Validate mobile retention guards
+        run: npm run validate:retention-guards
+
       - name: Lint
         run: npm run lint
 
