@@ -13,7 +13,13 @@ import { useLanguage } from '../contexts/LanguageContext';
 import PremiumGlyph from './ui/PremiumGlyph';
 import { AppTheme } from '../constants/theme';
 import { usePremium, SubscriptionTier } from '../contexts/PremiumContext';
-import { FeatureKey, FEATURE_TIERS } from '../services/premiumUsage';
+import {
+  FeatureKey,
+  FEATURE_TIERS,
+  SERVER_ENFORCED_FEATURES,
+  enforcePremiumFeature,
+  type PremiumGateReason,
+} from '../services/premiumUsage';
 
 type PremiumGateProps = {
   feature: FeatureKey;
@@ -26,6 +32,9 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
   const { t } = useLanguage();
   const [accessState, setAccessState] = useState<'checking' | 'granted' | 'denied'>('checking');
   const [trialConsumed, setTrialConsumed] = useState(false);
+  // Why access was refused, so the paywall can say something true instead of
+  // always claiming the free preview was used.
+  const [denialReason, setDenialReason] = useState<PremiumGateReason>('free_preview_exhausted');
 
   useEffect(() => {
     let isMounted = true;
@@ -37,14 +46,60 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
         return;
       }
 
-      // 2. Immediate check for subscription
+      // 2. Server-enforced features: the server decides everything in one
+      //    atomic call — entitlement, free daily preview and quota. We do NOT
+      //    short-circuit on the local entitlement here, because that is what
+      //    used to let the client spend a preview the server then refused.
+      const serverFeatureKey = SERVER_ENFORCED_FEATURES[feature];
+      if (serverFeatureKey) {
+        try {
+          const decision = await enforcePremiumFeature(serverFeatureKey);
+          if (!isMounted) return;
+
+          if (decision.allowed) {
+            setAccessState('granted');
+            setTrialConsumed(decision.isFreePreview);
+            return;
+          }
+
+          // Never paywall someone who is actually paying. A network failure,
+          // or a subscription the store has confirmed but the billing webhook
+          // has not yet written, both surface here — fall back to the
+          // entitlement the device already verified, which is the same
+          // optimistic policy PremiumContext applies to the tier itself.
+          if (
+            (decision.reason === 'error' || decision.reason === 'insufficient_tier') &&
+            canAccessFeature(feature)
+          ) {
+            setAccessState('granted');
+            setTrialConsumed(false);
+            return;
+          }
+
+          setDenialReason(decision.reason);
+          setAccessState('denied');
+        } catch (error) {
+          console.error('PremiumGate server check failed:', error);
+          if (!isMounted) return;
+          if (canAccessFeature(feature)) {
+            setAccessState('granted');
+          } else {
+            setDenialReason('error');
+            setAccessState('denied');
+          }
+        }
+        return;
+      }
+
+      // 3. Legacy client-side path for features that have not been migrated
+      //    to server enforcement yet.
       const hasAccess = canAccessFeature(feature);
       if (hasAccess) {
         if (isMounted) setAccessState('granted');
         return;
       }
 
-      // 3. Attempt trial consumption
+      // 4. Attempt trial consumption
       try {
         const result = await consumeTrial(feature);
         if (!isMounted) return;
@@ -53,11 +108,15 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
           setAccessState('granted');
           setTrialConsumed(true);
         } else {
+          setDenialReason('free_preview_exhausted');
           setAccessState('denied');
         }
       } catch (error) {
         console.error('PremiumGate check failed:', error);
-        if (isMounted) setAccessState('denied');
+        if (isMounted) {
+          setDenialReason('free_preview_exhausted');
+          setAccessState('denied');
+        }
       }
     };
 
@@ -129,6 +188,31 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
   if (accessState === 'denied') {
     const requiredTier = FEATURE_TIERS[feature];
 
+    // Say what actually happened. Claiming "you used your free preview" to
+    // someone who was never offered one is how a paywall loses trust.
+    const deniedCopy = (() => {
+      switch (denialReason) {
+        case 'quota_exceeded':
+          return {
+            title: t('dailyLimitReached') || 'Daily limit reached',
+            body: t('dailyLimitBody') || 'Come back tomorrow or upgrade for unlimited access.',
+          };
+        case 'free_preview_exhausted':
+          return {
+            title: t('trialExhausted') || 'Free Preview Used',
+            body:
+              t('trialExhaustedDesc') ||
+              "You've used your free daily preview. Subscribe for unlimited access.",
+          };
+        default:
+          return {
+            title: t('premiumFeature') || 'Premium Feature',
+            body:
+              t('premiumRequired') || 'Access natal charts, synastry, horoscopes and more',
+          };
+      }
+    })();
+
     return (
       <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
         <View style={styles.deniedContainer}>
@@ -146,15 +230,10 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
           </View>
 
           {/* Title */}
-          <Text style={styles.title}>
-            {t('trialExhausted') || 'Free Preview Used'}
-          </Text>
+          <Text style={styles.title}>{deniedCopy.title}</Text>
 
           {/* Description */}
-          <Text style={styles.description}>
-            {t('trialExhaustedDesc') ||
-              "You've used your free daily preview. Subscribe for unlimited access."}
-          </Text>
+          <Text style={styles.description}>{deniedCopy.body}</Text>
 
           {/* Feature name */}
           <View style={styles.featureCard}>

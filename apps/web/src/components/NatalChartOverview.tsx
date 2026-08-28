@@ -289,7 +289,13 @@ export function NatalChartOverview() {
     );
   }
 
-  if (!serverGate.allowed && serverGate.reason === "quota_exceeded") {
+  // A spent free preview is a daily limit from the reader's point of view:
+  // come back tomorrow, or subscribe.
+  if (
+    !serverGate.allowed &&
+    (serverGate.reason === "quota_exceeded" ||
+      serverGate.reason === "free_preview_exhausted")
+  ) {
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-8">
         <h2 className="text-2xl font-semibold text-white">{t("dailyLimitReached")}</h2>
@@ -300,7 +306,12 @@ export function NatalChartOverview() {
     );
   }
 
-  if (state.tier === "free") {
+  // Free accounts get the daily preview the paywall promises, and the server
+  // is what decides that (`enforce_premium_feature` → reason 'free_preview').
+  // Only fall through to the locked card once the server has actually said no,
+  // otherwise this client-side tier check would silently override the grant —
+  // the same class of bug that broke the preview on mobile.
+  if (state.tier === "free" && !serverGate.allowed) {
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-8">
         <div className="max-w-3xl rounded-[1.75rem] border border-[rgba(232,93,117,0.22)] bg-[rgba(232,93,117,0.10)] p-6">
