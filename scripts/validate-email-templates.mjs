@@ -74,6 +74,24 @@ const BANNED = [
 // Load
 // ---------------------------------------------------------------------------
 
+// Native TypeScript type stripping is what lets this script import the edge
+// function's templates and assert on real rendered output instead of grepping
+// source. It is on by default from Node 22.18 and absent on 20, where the
+// import fails with a bare "Unknown file extension" that says nothing about
+// the actual cause. CI was pinned to 20 and hit exactly that.
+const MIN_NODE = [22, 18];
+const [major, minor] = process.versions.node.split('.').map(Number);
+if (major < MIN_NODE[0] || (major === MIN_NODE[0] && minor < MIN_NODE[1])) {
+  console.error(
+    `Node ${process.versions.node} cannot strip TypeScript types.\n` +
+      `This script imports supabase/functions/send-email/templates.ts directly,\n` +
+      `which needs Node >= ${MIN_NODE.join('.')}. Upgrade the runtime rather than\n` +
+      `weakening the check — grepping the source instead is what let the\n` +
+      `missing-CTA defect ship in the first place.`,
+  );
+  process.exit(2);
+}
+
 let mod;
 try {
   mod = await import(pathToFileURL(TEMPLATES_TS).href);
