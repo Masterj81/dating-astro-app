@@ -496,6 +496,7 @@ const PROD_ORIGINS = [
   'https://www.astrodatingapp.com',
   'https://astrodatingapp.com',
   'https://app.astrodatingapp.com',
+  'https://app.junosynastry.com',
 ]
 const DEV_ORIGINS = [
   ...PROD_ORIGINS,

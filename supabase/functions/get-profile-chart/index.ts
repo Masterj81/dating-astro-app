@@ -131,13 +131,14 @@ function calculatePlanetPositions(time: any) {
 
 // CORS origins. Pattern aligned with calculate-chart / create-checkout-session
 // / claim-referral so any new web subdomain is whitelisted in one place.
-// `https://app.astrodatingapp.com` MUST be included — the authenticated web
+// `https://app.astrodatingapp.com` and `https://app.junosynastry.com` MUST be included — the authenticated web
 // app runs there and was previously rejected, surfacing as
 // "Failed to send a request to the Edge Function" on the synastry page.
 const PROD_ORIGINS = [
   'https://www.astrodatingapp.com',
   'https://astrodatingapp.com',
   'https://app.astrodatingapp.com',
+  'https://app.junosynastry.com',
 ]
 const DEV_ORIGINS = [
   ...PROD_ORIGINS,

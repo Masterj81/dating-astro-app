@@ -10,7 +10,7 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const resendApiKey = Deno.env.get('RESEND_API_KEY') || '';
 const fromEmail =
-  Deno.env.get('EMAIL_FROM') || 'AstroDating <noreply@astrodatingapp.com>';
+  Deno.env.get('EMAIL_FROM') || 'JUNO <noreply@junosynastry.com>';
 const RESEND_API_URL = 'https://api.resend.com/emails';
 
 type Tier = 'premium' | 'premium_plus';
@@ -655,7 +655,7 @@ function getPlanLabel(priceId?: string | null): string {
     return 'Cosmic Yearly';
   }
 
-  return 'AstroDating Premium';
+  return 'JUNO Premium';
 }
 
 function renderPaymentEmailShell({
@@ -787,11 +787,11 @@ async function sendPaymentConfirmationEmail(
 
   const html = renderPaymentEmailShell({
     eyebrow: 'Payment confirmed',
-    title: 'Your AstroDating payment went through',
+    title: 'Your JUNO payment went through',
     intro: `Hi ${firstName}, your subscription is active and your payment has been confirmed.`,
     summaryRows,
     footer:
-      'You can manage your subscription anytime from billing settings. If anything looks wrong, reply to this email and the AstroDating team will review it.',
+      'You can manage your subscription anytime from billing settings. If anything looks wrong, reply to this email and the JUNO team will review it.',
   });
 
   const resendResponse = await fetch(RESEND_API_URL, {

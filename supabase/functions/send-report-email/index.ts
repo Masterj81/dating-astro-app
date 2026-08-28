@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const RESEND_API_URL = "https://api.resend.com/emails";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const FROM_EMAIL =
-  Deno.env.get("EMAIL_FROM") || "AstroDating <noreply@astrodatingapp.com>";
+  Deno.env.get("EMAIL_FROM") || "JUNO <noreply@junosynastry.com>";
 const SUPPORT_EMAIL = "support@astrodatingapp.com";
 
 Deno.serve(async (req) => {
@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     const reportedLabel = reported?.name || reported?.email || report.reported_id;
 
     const text = [
-      "A new AstroDating profile report was submitted.",
+      "A new JUNO profile report was submitted.",
       "",
       `Report ID: ${report.id}`,
       `Created at: ${report.created_at}`,

@@ -4,7 +4,9 @@ import { routing } from "./i18n/routing";
 
 const intlMiddleware = createMiddleware(routing);
 
-const APP_HOSTS = new Set(["app.astrodatingapp.com"]);
+const CANONICAL_APP_HOST = "app.junosynastry.com";
+const LEGACY_APP_HOST = "app.astrodatingapp.com";
+const APP_HOSTS = new Set([LEGACY_APP_HOST, CANONICAL_APP_HOST]);
 const MARKETING_SEGMENTS = new Set([
   "contact",
   "help",
@@ -17,6 +19,13 @@ const MARKETING_SEGMENTS = new Set([
 export default function middleware(request: NextRequest) {
   const host = request.headers.get("host")?.toLowerCase() ?? "";
   const pathname = request.nextUrl.pathname;
+
+  if (host === LEGACY_APP_HOST) {
+    const url = request.nextUrl.clone();
+    url.hostname = CANONICAL_APP_HOST;
+    url.protocol = "https:";
+    return NextResponse.redirect(url, 308);
+  }
 
   if (APP_HOSTS.has(host)) {
     if (pathname === "/") {
