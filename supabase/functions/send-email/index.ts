@@ -1,4 +1,30 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  isSuppressed,
+  TEMPLATES,
+  type TemplateContext,
+} from "./templates.ts";
+
+// JUNO lifecycle + transactional email.
+//
+// P0-1 of docs/retention-day2-audit-2026-08.md. Before this patch every
+// template rendered without a single <a href>: the copy read "Open JUNO to
+// explore your full chart" as plain text, so no email could ever bring anybody
+// back. The footer promised email preferences that were read from the database
+// and then ignored, and the day-5 template announced the imminent expiry of a
+// promotional period that does not exist anywhere in the backend.
+//
+// What this file now guarantees:
+//   * every template carries a real, tracked CTA to app.junosynastry.com;
+//   * every message ships a text/plain alternative alongside the HTML;
+//   * lifecycle mail is genuinely suppressible — checked here before Resend is
+//     ever called, and one-click unsubscribable per RFC 8058;
+//   * transactional mail is never suppressible, because losing it would lock
+//     people out of their own account.
+//
+// Copy and rendering live in ./templates.ts, which imports nothing, so the
+// templates can be rendered and asserted on outside Deno. See
+// scripts/validate-email-templates.mjs.
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
@@ -7,7 +33,56 @@ const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const RESEND_API_URL = "https://api.resend.com/emails";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const FROM_EMAIL =
-  Deno.env.get("EMAIL_FROM") || "AstroDating <noreply@astrodatingapp.com>";
+  Deno.env.get("EMAIL_FROM") || "JUNO <noreply@junosynastry.com>";
+
+// ---------------------------------------------------------------------------
+// Unsubscribe tokens
+// ---------------------------------------------------------------------------
+// Same construction as supabase/functions/cancel-account-deletion: an HMAC over
+// `userId:category`, base64url payload + "." + signature. Verified by the
+// companion `unsubscribe` function.
+//
+// Deliberately NEVER expires. An unsubscribe link that has gone stale is a
+// compliance failure, not a security improvement. The token grants exactly one
+// capability — flipping one boolean on one profile — so replay is harmless.
+//
+// The secret falls back to a value derived from the service-role key so the
+// feature works on first deploy with nothing to provision. Set
+// UNSUBSCRIBE_TOKEN_SECRET to rotate it independently.
+const UNSUBSCRIBE_TOKEN_SECRET =
+  Deno.env.get("UNSUBSCRIBE_TOKEN_SECRET") ||
+  (supabaseServiceKey ? `juno-unsubscribe-v1:${supabaseServiceKey}` : "");
+
+function b64UrlEncode(s: string): string {
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function hmac(value: string, secret: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(value));
+  const bytes = new Uint8Array(sig);
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function buildUnsubscribeUrl(
+  userId: string,
+  category: string,
+): Promise<string | null> {
+  if (!UNSUBSCRIBE_TOKEN_SECRET || !supabaseUrl) return null;
+  const payload = `${userId}:${category}`;
+  const sig = await hmac(payload, UNSUBSCRIBE_TOKEN_SECRET);
+  const token = `${b64UrlEncode(payload)}.${sig}`;
+  return `${supabaseUrl}/functions/v1/unsubscribe?token=${encodeURIComponent(token)}`;
+}
 
 function escapeHtml(str: string): string {
   return str
@@ -17,190 +92,6 @@ function escapeHtml(str: string): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
-
-function renderEmailShell({
-  eyebrow,
-  title,
-  intro,
-  accentLabel,
-  accentBody,
-  footer,
-}: {
-  eyebrow: string;
-  title: string;
-  intro: string;
-  accentLabel: string;
-  accentBody: string;
-  footer: string;
-}) {
-  return `<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  </head>
-  <body style="margin:0;padding:0;background:#0b1020;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:radial-gradient(circle at top left,#2d1638 0%,#0b1020 46%,#070b16 100%);padding:32px 14px;">
-      <tr>
-        <td align="center">
-          <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#12182a;border:1px solid #2a3247;border-radius:28px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.35);">
-            <tr>
-              <td style="padding:28px 32px 18px;background:linear-gradient(135deg,rgba(244,114,182,0.18),rgba(167,139,250,0.08));border-bottom:1px solid #2a3247;">
-                <div style="display:inline-block;padding:9px 14px;border-radius:999px;border:1px solid #4b556f;color:#f8d4df;font-size:11px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;">
-                  ${eyebrow}
-                </div>
-                <h1 style="margin:18px 0 10px;color:#ffffff;font-size:30px;line-height:1.15;letter-spacing:-0.03em;">
-                  ${title}
-                </h1>
-                <p style="margin:0;color:#d4d9e7;font-size:16px;line-height:1.7;">
-                  ${intro}
-                </p>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:28px 32px;">
-                <div style="margin-bottom:22px;padding:18px 20px;border-radius:22px;background:linear-gradient(135deg,rgba(236,72,153,0.22),rgba(99,102,241,0.14));border:1px solid rgba(255,255,255,0.08);color:#ffffff;">
-                  <div style="font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.72);margin-bottom:8px;">
-                    ${accentLabel}
-                  </div>
-                  ${accentBody}
-                </div>
-                <div style="color:#b7bfd3;font-size:14px;line-height:1.75;">
-                  ${footer}
-                </div>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-</html>`;
-}
-
-function welcomeEmail(name: string): { subject: string; html: string } {
-  return {
-    subject: "Welcome to AstroDating ✨",
-    html: renderEmailShell({
-      eyebrow: "AstroDating",
-      title: `Welcome, ${name}!`,
-      intro:
-        "Your account is verified and your birth chart is ready. The stars have aligned. Time to discover your cosmic connections.",
-      accentLabel: "First steps",
-      accentBody: `
-        <p style="margin:0 0 10px;font-size:16px;line-height:1.65;">
-          <strong style="color:#ffffff;">Complete your profile</strong> with photos and a bio so the right people can actually recognize your energy.
-        </p>
-        <p style="margin:0 0 10px;font-size:16px;line-height:1.65;">
-          <strong style="color:#ffffff;">Start discovering</strong> profiles ranked by astrological compatibility, not generic swiping noise.
-        </p>
-        <p style="margin:0;font-size:16px;line-height:1.65;">
-          <strong style="color:#ffffff;">Say hello</strong> when you match and turn chemistry into a real conversation.
-        </p>
-      `,
-      footer:
-        "You're receiving this because you created an AstroDating account. If this wasn't you, contact us at privacy@astrodatingapp.com.",
-    }),
-  };
-}
-
-function onboardingDay1Email(name: string, sunSign: string): { subject: string; html: string } {
-  const sign = sunSign || "your sign";
-  return {
-    subject: `Your ${sign} birth chart is ready 🪐`,
-    html: renderEmailShell({
-      eyebrow: "Your natal chart",
-      title: `${name}, your chart is waiting`,
-      intro:
-        `Your full natal chart has been calculated. Discover your Sun, Moon, and Rising signs — and what they reveal about your personality, emotions, and how others see you.`,
-      accentLabel: "What you'll discover",
-      accentBody: `
-        <p style="margin:0 0 10px;font-size:16px;line-height:1.65;">
-          <strong style="color:#ffffff;">☀️ Sun in ${sign}</strong> — your core identity and life force.
-        </p>
-        <p style="margin:0 0 10px;font-size:16px;line-height:1.65;">
-          <strong style="color:#ffffff;">🌙 Moon sign</strong> — your emotional world and inner needs.
-        </p>
-        <p style="margin:0;font-size:16px;line-height:1.65;">
-          <strong style="color:#ffffff;">⬆️ Rising sign</strong> — how the world perceives you.
-        </p>
-      `,
-      footer:
-        'Open AstroDating to explore your full chart. You can manage email preferences in Settings > Notifications.',
-    }),
-  };
-}
-
-function onboardingDay3Email(name: string): { subject: string; html: string } {
-  return {
-    subject: `${name}, someone might be cosmically compatible with you 💫`,
-    html: renderEmailShell({
-      eyebrow: "Cosmic compatibility",
-      title: "Your matches are waiting",
-      intro:
-        "We use real synastry — comparing planetary positions between two birth charts — to find people who are genuinely compatible with you. Not just sun signs, but the full picture.",
-      accentLabel: "How it works",
-      accentBody: `
-        <p style="margin:0 0 10px;font-size:16px;line-height:1.65;">
-          <strong style="color:#ffffff;">Real synastry</strong> — we analyze conjunctions, trines, squares, and oppositions across your charts.
-        </p>
-        <p style="margin:0 0 10px;font-size:16px;line-height:1.65;">
-          <strong style="color:#ffffff;">Compatibility scores</strong> — see a percentage based on planetary aspects and house overlays.
-        </p>
-        <p style="margin:0;font-size:16px;line-height:1.65;">
-          <strong style="color:#ffffff;">Start swiping</strong> — profiles are ranked by cosmic compatibility, not random chance.
-        </p>
-      `,
-      footer:
-        'Open AstroDating to discover your most compatible matches. You can manage email preferences in Settings > Notifications.',
-    }),
-  };
-}
-
-function onboardingDay5Email(name: string): { subject: string; html: string } {
-  return {
-    subject: `${name}, your free trial ends in 2 days ⏳`,
-    html: renderEmailShell({
-      eyebrow: "Trial reminder",
-      title: "2 days left in your trial",
-      intro:
-        "Your 7-day free trial is almost over. Make the most of it — explore all the premium features before they lock.",
-      accentLabel: "What you'll lose access to",
-      accentBody: `
-        <p style="margin:0 0 10px;font-size:16px;line-height:1.65;">
-          <strong style="color:#ffffff;">Full natal chart</strong> — planets, houses, and aspects.
-        </p>
-        <p style="margin:0 0 10px;font-size:16px;line-height:1.65;">
-          <strong style="color:#ffffff;">Advanced synastry</strong> — deep compatibility analysis with your matches.
-        </p>
-        <p style="margin:0 0 10px;font-size:16px;line-height:1.65;">
-          <strong style="color:#ffffff;">Daily horoscope</strong> — personalized cosmic guidance every morning.
-        </p>
-        <p style="margin:0;font-size:16px;line-height:1.65;">
-          <strong style="color:#ffffff;">Unlimited likes</strong> — connect without limits.
-        </p>
-      `,
-      footer:
-        'Open AstroDating to keep your premium access. Cancel anytime if it\'s not for you — no hard feelings. You can manage email preferences in Settings > Notifications.',
-    }),
-  };
-}
-
-const TEMPLATES: Record<
-  string,
-  (params: Record<string, unknown>) => { subject: string; html: string }
-> = {
-  welcome: (params) => welcomeEmail(String(params.name ?? "")),
-  onboarding_day1: (params) =>
-    onboardingDay1Email(
-      String(params.name ?? ""),
-      String(params.sunSign ?? ""),
-    ),
-  onboarding_day3: (params) =>
-    onboardingDay3Email(String(params.name ?? "")),
-  onboarding_day5: (params) =>
-    onboardingDay5Email(String(params.name ?? "")),
-};
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
@@ -253,8 +144,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    const buildEmail = TEMPLATES[template];
-    if (!buildEmail) {
+    const entry = TEMPLATES[template];
+    if (!entry) {
       return new Response(
         JSON.stringify({ error: `Unknown template: ${template}` }),
         { status: 400, headers: { "Content-Type": "application/json" } },
@@ -263,9 +154,14 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // sun_sign / moon_sign are read here rather than trusted from `params`:
+    // the scheduling trigger only carries sunSign, snapshotted at onboarding
+    // time. The profile is the fresher source, and it is the only place the
+    // Moon exists at all — which is what lets the D+1 email say something the
+    // reader has not already seen on screen.
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("email, name, notification_preferences")
+      .select("email, name, notification_preferences, sun_sign, moon_sign")
       .eq("id", userId)
       .single();
 
@@ -276,14 +172,43 @@ Deno.serve(async (req) => {
       );
     }
 
-    // HTML-escape user-provided params to prevent XSS in emails
+    // Honour the opt-out BEFORE calling Resend. The previous version selected
+    // notification_preferences and never looked at it, while the footer told
+    // the reader they could manage their preferences.
+    if (isSuppressed(profile.notification_preferences, entry.category)) {
+      return new Response(
+        JSON.stringify({ skipped: true, reason: "unsubscribed" }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    const unsubscribeUrl = await buildUnsubscribeUrl(userId, "lifecycle");
+
+    // HTML-escape anything that reaches a template. Signs additionally pass
+    // through a lookup table in templates.ts, so they can never carry markup.
     const safeParams: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(params ?? {})) {
       safeParams[key] = typeof value === "string" ? escapeHtml(value) : value;
     }
     const safeName = profile.name ? escapeHtml(String(profile.name)) : "";
 
-    const { subject, html } = buildEmail({ name: safeName, ...safeParams });
+    const ctx: TemplateContext = {
+      name: safeName,
+      sunSign: String(profile.sun_sign ?? safeParams.sunSign ?? ""),
+      moonSign: String(profile.moon_sign ?? ""),
+      unsubscribeUrl,
+    };
+
+    const { subject, html, text } = entry.build(ctx);
+
+    // RFC 8058 one-click unsubscribe. Gmail and Yahoo require this of bulk
+    // senders; without it, lifecycle mail is materially likelier to land in
+    // spam however good the copy is. Transactional mail must NOT carry these.
+    const headers: Record<string, string> = {};
+    if (entry.category === "lifecycle" && unsubscribeUrl) {
+      headers["List-Unsubscribe"] = `<${unsubscribeUrl}>`;
+      headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
+    }
 
     const resendRes = await fetch(RESEND_API_URL, {
       method: "POST",
@@ -296,6 +221,8 @@ Deno.serve(async (req) => {
         to: [profile.email],
         subject,
         html,
+        text,
+        ...(Object.keys(headers).length > 0 ? { headers } : {}),
       }),
     });
 
