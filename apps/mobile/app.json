@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.astrodating.app",
+      "bundleIdentifier": "com.njoubert.juno",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -54,28 +54,33 @@
           "data": [
             {
               "scheme": "https",
-              "host": "astrodatingapp.com",
+              "host": "app.junosynastry.com",
               "pathPrefix": "/app"
             },
             {
               "scheme": "https",
-              "host": "astrodatingapp.com",
+              "host": "app.junosynastry.com",
               "pathPrefix": "/invite"
             },
             {
               "scheme": "https",
-              "host": "astrodatingapp.com",
+              "host": "app.junosynastry.com",
               "pathPrefix": "/download"
             },
             {
               "scheme": "https",
-              "host": "www.astrodatingapp.com",
+              "host": "www.junosynastry.com",
               "pathPrefix": "/app"
             },
             {
               "scheme": "https",
-              "host": "www.astrodatingapp.com",
+              "host": "www.junosynastry.com",
               "pathPrefix": "/invite"
+            },
+            {
+              "scheme": "https",
+              "host": "www.junosynastry.com",
+              "pathPrefix": "/download"
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]

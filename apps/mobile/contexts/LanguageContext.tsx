@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import i18n, { initializeLanguage, getCurrentLanguage, setLanguage as setI18nLanguage } from '../services/i18n';
+import i18n, { initializeLanguage, getCurrentLanguage, setLanguage as setI18nLanguage, t as translate } from '../services/i18n';
+import { syncPreferredLanguage } from '../services/preferredLanguage';
 
 type TranslateFunction = (key: string, options?: Record<string, string | number>) => string;
 
@@ -41,6 +42,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     setLanguageState(lang);
     // Increment version to force all consumers to re-render
     setVersion(v => v + 1);
+    // Tell the server, so lifecycle email can eventually be written in this
+    // language. Deliberately not awaited: the UI must switch instantly, and a
+    // preference write is never worth blocking on. Silent on failure.
+    void syncPreferredLanguage(lang);
   }, []);
 
   // Memoize context value to prevent unnecessary re-renders of all consumers
@@ -60,10 +65,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 export const useLanguage = () => {
   const context = useContext(LanguageContext);
 
-  // Create t function that always reads current i18n.locale
+  // Delegate to the shared translate helper: it always reads the current
+  // i18n.locale and sanitizes i18n-js's '[missing "..." translation]' output
+  // to '' so `t(key) || fallback` guards work (see services/i18n.ts).
   const t: TranslateFunction = (key: string, options?: Record<string, string | number>) => {
-    // Always read directly from i18n to get current locale translations
-    return i18n.t(key, options);
+    return translate(key, options);
   };
 
   return {

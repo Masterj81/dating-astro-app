@@ -172,7 +172,7 @@ export function AuthCard({ mode }: AuthCardProps) {
     setOauthLoading(provider);
 
     try {
-      const origin = typeof window !== "undefined" ? window.location.origin : "https://app.astrodatingapp.com";
+      const origin = typeof window !== "undefined" ? window.location.origin : "https://app.junosynastry.com";
       const persistedNext = persistAuthNext(requestedNext);
       const { error: oauthError } = await getSupabaseBrowser().auth.signInWithOAuth({
         provider,

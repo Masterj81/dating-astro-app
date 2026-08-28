@@ -18,7 +18,6 @@ import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { rpcWithTimeout } from '../../utils/rpcWithTimeout';
 
 type PlanetPosition = {
   planet: string;
@@ -85,13 +84,10 @@ const getModality = (sign: string): string => {
   return 'unknown';
 };
 
-type ServerGate = { allowed: boolean; reason: string | null };
-
 function NatalChartScreenContent() {
   const [chartData, setChartData] = useState<NatalChartData | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedSection, setExpandedSection] = useState<string | null>('sun');
-  const [serverGate, setServerGate] = useState<ServerGate>({ allowed: true, reason: null });
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const insets = useSafeAreaInsets();
@@ -142,28 +138,12 @@ function NatalChartScreenContent() {
     }
     setLoading(true);
     try {
-      // Server-side tier + quota enforcement. The RPC returns allowed=FALSE
-      // with a reason code if the caller is unauthorized, below the required
-      // tier, or over the daily quota. It also atomically bumps usage.
-      // P2-7: wrap in timeout+retry so a stalled network shows an error
-      // rather than an infinite spinner.
-      const { data: gateRow, error: gateError } = await rpcWithTimeout(() =>
-        supabase
-          .rpc('enforce_premium_feature', { p_feature_key: 'natal_chart' })
-          .maybeSingle<{ allowed: boolean; reason: string | null }>()
-      );
-
-      if (gateError || !gateRow || gateRow.allowed !== true) {
-        setServerGate({
-          allowed: false,
-          reason: gateRow?.reason ?? 'error',
-        });
-        setChartData(null);
-        setLoading(false);
-        return;
-      }
-
-      setServerGate({ allowed: true, reason: 'ok' });
+      // Access is decided ONCE, by PremiumGate, through
+      // `enforce_premium_feature('natal_chart')`. That call is atomic: it
+      // grants and records in the same statement. Re-running it here is what
+      // used to consume a second unit of a one-per-day allowance and show the
+      // paywall on the very preview the user had just been granted.
+      // This screen only mounts once the gate has said yes.
 
       // Phase 3-B: own profile (with sensitive birth fields) via RPC.
       const { data: rows, error } = await supabase.rpc('get_my_full_profile');
@@ -357,26 +337,6 @@ function NatalChartScreenContent() {
           <ActivityIndicator size="large" color={AppTheme.colors.coral} />
           <Text style={{ color: AppTheme.colors.textMuted, marginTop: 12, fontSize: 14 }}>
             {t('loadingChart') || 'Mapping your cosmic blueprint...'}
-          </Text>
-        </View>
-      </LinearGradient>
-    );
-  }
-
-  if (!serverGate.allowed) {
-    const isQuota = serverGate.reason === 'quota_exceeded';
-    return (
-      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container} testID="natal-chart-server-gate-denied">
-        <View style={styles.loadingContainer}>
-          <Text style={{ color: AppTheme.colors.textPrimary, fontSize: 18, fontWeight: '600', textAlign: 'center', paddingHorizontal: 24 }}>
-            {isQuota
-              ? (t('dailyLimitReached') || 'Daily limit reached')
-              : (t('natalChartLockedTitle') || 'Premium feature')}
-          </Text>
-          <Text style={{ color: AppTheme.colors.textMuted, marginTop: 12, fontSize: 14, textAlign: 'center', paddingHorizontal: 32 }}>
-            {isQuota
-              ? (t('dailyLimitBody') || 'Come back tomorrow or upgrade for unlimited access.')
-              : (t('natalChartLockedBody') || 'Upgrade to unlock your full natal chart.')}
           </Text>
         </View>
       </LinearGradient>

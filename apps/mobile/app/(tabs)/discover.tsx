@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useNavigation } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ErrorState, LoadingState, EmptyState } from '../../components/ScreenStates';
 import ProfilePublicMVPSections from '../../components/profile/ProfilePublicMVPSections';
 import WebTabWrapper from '../../components/WebTabWrapper';
@@ -102,6 +103,7 @@ type Profile = {
 type DiscoverIntentionFilter = 'all' | ConnectionIntention;
 
 export default function DiscoverScreen() {
+  const insets = useSafeAreaInsets();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -536,13 +538,39 @@ export default function DiscoverScreen() {
   }
 
   if (profiles.length === 0) {
+    // P0-4 of docs/retention-day2-audit-2026-08.md — the filter trap.
+    //
+    // This early return renders ABOVE the intention pills, so when a filter
+    // empties the deck the pills are off-screen and the only control left is
+    // "Refresh", which re-runs the same query with the same filter. Every seed
+    // profile carries connection_intentions = ['love'], so tapping Friendship
+    // or Business is a guaranteed empty deck with no way back short of killing
+    // the app.
+    //
+    // Offer the way out instead: when a filter is active, the action clears it
+    // rather than retrying a query we know returns nothing.
+    const filtered = intentionFilter !== 'all';
+
     return (
       <WebTabWrapper>
         <EmptyState
-          title={t('noMoreProfiles')}
-          subtitle={t('checkBackLater')}
-          actionLabel={t('refresh')}
-          onAction={handleRefresh}
+          title={
+            filtered
+              ? t('discoverNoneForIntention') || 'Nobody with this intention yet'
+              : t('noMoreProfiles')
+          }
+          subtitle={
+            filtered
+              ? t('discoverTryAllIntentions') ||
+                'Clear the filter to see everyone who is open to connecting.'
+              : t('checkBackLater')
+          }
+          actionLabel={
+            filtered
+              ? t('discoverShowAllIntentions') || 'Show all intentions'
+              : t('refresh')
+          }
+          onAction={filtered ? () => setIntentionFilter('all') : handleRefresh}
           testID="discover-empty"
         />
       </WebTabWrapper>
@@ -649,7 +677,7 @@ export default function DiscoverScreen() {
 
       {/* Macro intention filter — segmented control. 'All' is the default
           and keeps the original deck behavior. */}
-      <View style={styles.intentionFilterRow} accessibilityRole="tablist">
+      <View style={[styles.intentionFilterRow, { paddingTop: insets.top + 8 }]} accessibilityRole="tablist">
         {filterOptions.map((opt) => {
           const active = intentionFilter === opt.key;
           return (
@@ -964,7 +992,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingTop: 8,
     paddingBottom: 0,
     ...(Platform.OS === 'web' && {
       minHeight: '100vh',
@@ -1419,7 +1446,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     paddingHorizontal: 16,
-    paddingTop: 8,
     paddingBottom: 4,
   },
   intentionFilterPill: {

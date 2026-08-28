@@ -46,6 +46,12 @@ const PLANET_BODIES: Record<Exclude<PlanetKey, 'sun' | 'moon'>, Astronomy.Body> 
   mars: Astronomy.Body.Mars,
   jupiter: Astronomy.Body.Jupiter,
   saturn: Astronomy.Body.Saturn,
+  // Outer planets (chart model v2). astronomy-engine models Pluto with its
+  // own high-accuracy series (valid 1700–2200), same GeoVector call as the
+  // rest — no extra dependency, no API.
+  uranus: Astronomy.Body.Uranus,
+  neptune: Astronomy.Body.Neptune,
+  pluto: Astronomy.Body.Pluto,
 };
 
 function normalize360(x: number): number {
@@ -143,6 +149,9 @@ export function computeNatalChart(input: BirthInput): NatalChart {
   const mars = longitudeToPlacement(geocentricLongitude(PLANET_BODIES.mars, time));
   const jupiter = longitudeToPlacement(geocentricLongitude(PLANET_BODIES.jupiter, time));
   const saturn = longitudeToPlacement(geocentricLongitude(PLANET_BODIES.saturn, time));
+  const uranus = longitudeToPlacement(geocentricLongitude(PLANET_BODIES.uranus, time));
+  const neptune = longitudeToPlacement(geocentricLongitude(PLANET_BODIES.neptune, time));
+  const pluto = longitudeToPlacement(geocentricLongitude(PLANET_BODIES.pluto, time));
 
   let rising: Placement | null = null;
   let mc: Placement | null = null;
@@ -162,6 +171,9 @@ export function computeNatalChart(input: BirthInput): NatalChart {
     mars,
     jupiter,
     saturn,
+    uranus,
+    neptune,
+    pluto,
     rising,
     mc,
     houses,

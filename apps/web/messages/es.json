@@ -364,7 +364,7 @@
     "q_promoCode": "¿Cómo uso un código promocional?",
     "a_promoCode": "En Android, ve a la pantalla de planes e ingresa tu código antes de seleccionar un plan. En la web, ingresa el código en la página de pago. Los códigos ofrecen descuentos o meses adicionales según la campaña.",
     "q_webApp": "¿Puedo usar JUNO en mi computadora?",
-    "a_webApp": "¡Sí! Visita app.astrodatingapp.com para acceder a la aplicación web completa. Puedes explorar perfiles, chatear, ver tu carta natal y gestionar tu suscripción desde tu navegador.",
+    "a_webApp": "¡Sí! Visita app.junosynastry.com para acceder a la aplicación web completa. Puedes explorar perfiles, chatear, ver tu carta natal y gestionar tu suscripción desde tu navegador.",
     "q_installPwa": "¿Puedo instalar la aplicación web en mi teléfono?",
     "a_installPwa": "Sí. Visita www.junosynastry.com en tu navegador móvil, luego toca 'Agregar a pantalla de inicio'. La aplicación aparecerá como un ícono en tu pantalla y se abrirá en pantalla completa.",
     "q_webSync": "¿Se sincronizan mis datos entre la app y la web?",
@@ -2221,5 +2221,20 @@
     "pillarStyleTitle": "Estilo de colaboración",
     "pillarStyleDesc": "La forma del trabajo conjunto — quién carga el impulso, quién carga el cuidado, y cómo avanza el trabajo.",
     "footnote": "El conocimiento sobre química profesional es un punto de partida para la conversación. No constituye asesoramiento legal, financiero, de contratación ni de inversión."
+  },
+  "unsubscribe": {
+    "unsubscribedTitle": "Te has dado de baja",
+    "unsubscribedBody": "Ya no recibirás los correos de bienvenida y seguimiento de JUNO.",
+    "resubscribedTitle": "Te has vuelto a suscribir",
+    "resubscribedBody": "Volverás a recibir los correos de bienvenida y seguimiento de JUNO.",
+    "invalidTitle": "No hemos podido verificar este enlace",
+    "invalidBody": "Puede que se haya alterado por el camino o que ya no corresponda a ninguna cuenta. Escríbenos y lo resolvemos: no hace falta iniciar sesión.",
+    "errorTitle": "Algo ha salido mal",
+    "errorBody": "No hemos podido actualizar tu preferencia ahora mismo. Vuelve a intentarlo o escríbenos y lo haremos a mano.",
+    "goneTitle": "No hay nada que dar de baja",
+    "goneBody": "No hemos encontrado ninguna cuenta para este enlace. Puede que ya se haya eliminado; en cualquier caso, no recibirás nada más.",
+    "stillDelivered": "Los mensajes de cuenta y seguridad siempre se envían.",
+    "openApp": "Abrir JUNO",
+    "contactSupport": "Contactar con soporte"
   }
 }

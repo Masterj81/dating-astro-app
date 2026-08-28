@@ -1,48 +1,74 @@
 // Aspect detection.
 //
-// We use a fixed orb table per major aspect. This matches the legacy mobile +
-// edge orbs (kept identical so Phase 1 doesn't change displayed scores beyond
-// the timezone bug fix). Phase 2 (Swiss Ephemeris) can move to moiety-based
-// orbs derived from each body's orb table — leaving the door open here.
+// Detection works on the exact angular separation between two ecliptic
+// longitudes. Orb widths come from the centralized policy in ./orbs.ts
+// (base table + luminary bonus + outer-outer tightening) — never hardcode
+// orb numbers here or anywhere else.
+//
+// Applying/separating is intentionally NOT reported: natal-to-natal synastry
+// has no shared instant at which to evaluate the bodies' relative velocity,
+// so the flag cannot be computed honestly from two static charts. See the
+// note on the `Aspect` type in ./types.ts.
 
+import { resolveMaxOrb } from './orbs';
 import type { Aspect, AspectKind, AspectName, PlacementKey } from './types';
 
 interface AspectDefinition {
   name: AspectName;
   angle: number;
-  orb: number;
   kind: AspectKind;
 }
 
+/**
+ * The five major (Ptolemaic) aspects. Orbs are resolved per body pair via
+ * ./orbs.ts, so this table only carries the geometry + interpretive kind.
+ */
 export const ASPECT_DEFINITIONS: readonly AspectDefinition[] = [
-  { name: 'conjunction', angle: 0, orb: 8, kind: 'intense' },
-  { name: 'sextile', angle: 60, orb: 6, kind: 'harmonious' },
-  { name: 'square', angle: 90, orb: 7, kind: 'challenging' },
-  { name: 'trine', angle: 120, orb: 8, kind: 'harmonious' },
-  { name: 'opposition', angle: 180, orb: 8, kind: 'challenging' },
+  { name: 'conjunction', angle: 0, kind: 'intense' },
+  { name: 'sextile', angle: 60, kind: 'harmonious' },
+  { name: 'square', angle: 90, kind: 'challenging' },
+  { name: 'trine', angle: 120, kind: 'harmonious' },
+  { name: 'opposition', angle: 180, kind: 'challenging' },
 ] as const;
 
 /**
  * Shortest angular separation between two ecliptic longitudes, in [0, 180].
+ * Symmetric: angularSeparation(a, b) === angularSeparation(b, a).
  */
 export function angularSeparation(long1: number, long2: number): number {
   return Math.abs(((long1 - long2 + 180) % 360 + 360) % 360 - 180);
 }
 
 /**
- * Detect the tightest in-orb aspect between two longitudes.
- * Returns null when no aspect is within its orb.
+ * Detect the tightest in-orb major aspect between two longitudes.
+ * Returns null when no aspect is within its allowed orb.
+ *
+ * `bodyA` / `bodyB` are optional body identities used ONLY to resolve the
+ * orb policy (luminary bonus, outer-outer tightening). Omitting them applies
+ * the base orbs — identical to the legacy longitude-only behavior.
+ *
+ * Guarantees:
+ *   - Deterministic and pure (no clock, no randomness, no network).
+ *   - Symmetric: detectAspect(l1, l2, a, b) === detectAspect(l2, l1, b, a).
  */
-export function detectAspect(long1: number, long2: number): Aspect | null {
+export function detectAspect(
+  long1: number,
+  long2: number,
+  bodyA?: PlacementKey,
+  bodyB?: PlacementKey,
+): Aspect | null {
   const sep = angularSeparation(long1, long2);
   let best: Aspect | null = null;
   for (const def of ASPECT_DEFINITIONS) {
     const orb = Math.abs(sep - def.angle);
-    if (orb <= def.orb && (best == null || orb < best.orb)) {
+    const maxOrb = resolveMaxOrb(def.name, bodyA, bodyB);
+    if (orb <= maxOrb && (best == null || orb < best.orb)) {
       best = {
         name: def.name,
         angle: def.angle,
+        separation: Math.round(sep * 100) / 100,
         orb: Math.round(orb * 100) / 100,
+        maxOrb,
         kind: def.kind,
       };
     }

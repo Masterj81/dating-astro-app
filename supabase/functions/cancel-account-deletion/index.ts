@@ -144,7 +144,7 @@ function htmlResponse(title: string, message: string, status: number) {
   <div style="max-width:560px;margin:0 auto;background:#12182a;border:1px solid #2a3247;border-radius:16px;padding:28px;">
     <h1 style="color:#fff;">${title}</h1>
     <p>${message}</p>
-    <p><a href="${APP_BASE_URL}" style="color:#f9a8d4;">Return to AstroDating</a></p>
+    <p><a href="${APP_BASE_URL}" style="color:#f9a8d4;">Return to JUNO</a></p>
   </div>
 </body></html>`;
   return new Response(html, {

@@ -20,6 +20,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { calculateNatalChart } from '../../services/astrology';
 import { geocodeCity } from '../../services/geocoding';
 import { supabase } from '../../services/supabase';
+import { registerAndSavePushToken } from '../../services/notifications';
 import { AppTheme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { buttonPress, errorNotification } from '../../services/haptics';
@@ -740,11 +741,16 @@ export default function BirthInfoScreen() {
           mars: chart.mars,
           jupiter: chart.jupiter,
           saturn: chart.saturn,
+          // Chart model v2: outer planets. Older rows without these keys
+          // stay readable — hydrateStoredChart treats them as null.
+          uranus: chart.uranus,
+          neptune: chart.neptune,
+          pluto: chart.pluto,
         },
         coordinates: cityCoords,
         timezone: chart.timezone ?? geoResult.iana,
         confidence: chart.confidence,
-        chartVersion: 1,
+        chartVersion: 2,
       };
 
       const sanitizedConnectionIntentions = sanitizeConnectionIntentions(connectionIntentions);
@@ -808,7 +814,49 @@ export default function BirthInfoScreen() {
     }
   };
 
-  const handleRevealContinue = () => {
+  // P0-3 of docs/retention-day2-audit-2026-08.md — ask for notifications here,
+  // and nowhere else.
+  //
+  // This used to fire from the SIGNED_IN handler in app/_layout.tsx: a system
+  // dialog before onboarding, before the chart, before the reader had seen
+  // anything worth being notified about. On Android 13+ POST_NOTIFICATIONS is
+  // a runtime permission and a refusal is near-permanent — it takes a trip
+  // through OS settings to undo — so that one badly-timed prompt was killing
+  // the daily return loop for a large share of new accounts.
+  //
+  // A primer runs first. The OS dialog can only be shown once in practice, so
+  // it must not be spent on someone who was going to decline: anyone who taps
+  // "not now" keeps the permission unasked and can still be offered it later.
+  const requestNotificationsAfterReveal = async (): Promise<void> => {
+    if (Platform.OS === 'web' || !user) return;
+
+    await new Promise<void>((resolve) => {
+      showAlert(
+        t('pushPrimerTitle') || 'Want tomorrow’s reading?',
+        t('pushPrimerMessage') ||
+          'We’ll send one short note a day about what your chart is doing. No spam, and you can turn it off any time.',
+        [
+          { text: t('pushPrimerLater') || 'Not now', style: 'cancel', onPress: () => resolve() },
+          {
+            text: t('pushPrimerEnable') || 'Yes, notify me',
+            onPress: () => {
+              // Fire and resolve immediately: the OS dialog owns the screen
+              // from here, and the reader should not be held on this one.
+              void registerAndSavePushToken(user.id, true);
+              resolve();
+            },
+          },
+        ],
+      );
+    });
+  };
+
+  const handleRevealContinue = async () => {
+    try {
+      await requestNotificationsAfterReveal();
+    } catch {
+      // Never let a permission prompt block the way into the app.
+    }
     router.replace('/(tabs)/discover');
   };
 

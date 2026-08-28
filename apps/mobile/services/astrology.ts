@@ -36,6 +36,14 @@ type NatalChart = {
   mars: Placement;
   jupiter: Placement;
   saturn: Placement;
+  /**
+   * Outer planets (chart model v2). Optional so charts reconstructed from
+   * pre-v2 stored JSON still typecheck; null/undefined means "not computed",
+   * never a defaulted position.
+   */
+  uranus?: Placement | null;
+  neptune?: Placement | null;
+  pluto?: Placement | null;
   /** Optional metadata, present when the shared engine reports it. */
   confidence?: 'high' | 'medium' | 'low';
   timezone?: string;
@@ -61,6 +69,9 @@ function toSharedChart(local: NatalChart): SharedNatalChart {
     mars: local.mars as SharedNatalChart['mars'],
     jupiter: local.jupiter as SharedNatalChart['jupiter'],
     saturn: local.saturn as SharedNatalChart['saturn'],
+    uranus: (local.uranus ?? null) as SharedNatalChart['uranus'],
+    neptune: (local.neptune ?? null) as SharedNatalChart['neptune'],
+    pluto: (local.pluto ?? null) as SharedNatalChart['pluto'],
     rising: local.rising as SharedNatalChart['rising'],
     mc: null,
     houses: null,
@@ -117,6 +128,11 @@ export function calculateNatalChart(
     mars: placement(chart.mars),
     jupiter: placement(chart.jupiter),
     saturn: placement(chart.saturn),
+    // Outer planets pass through as-is: always present on a fresh compute,
+    // and we never substitute a fallback position for them.
+    uranus: chart.uranus,
+    neptune: chart.neptune,
+    pluto: chart.pluto,
     confidence: chart.confidence,
     timezone: chart.timezone,
     warnings: chart.warnings.slice(),

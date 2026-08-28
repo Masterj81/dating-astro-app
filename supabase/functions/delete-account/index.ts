@@ -26,7 +26,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "
 const DELETION_TOKEN_SECRET = Deno.env.get("DELETION_TOKEN_SECRET") || "";
 
 const EMAIL_FROM =
-  Deno.env.get("EMAIL_FROM") || "AstroDating <noreply@astrodatingapp.com>";
+  Deno.env.get("EMAIL_FROM") || "JUNO <noreply@junosynastry.com>";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 const APP_BASE_URL =
   Deno.env.get("PUBLIC_WEB_BASE_URL") || "https://www.astrodatingapp.com";
@@ -166,13 +166,13 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           from: EMAIL_FROM,
           to: [user.email],
-          subject: "Account Deletion Scheduled - AstroDating",
+          subject: "Account Deletion Scheduled - JUNO",
           html: `<!DOCTYPE html>
 <html>
   <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#0b1020;color:#e5e7eb;padding:32px;">
     <div style="max-width:560px;margin:0 auto;background:#12182a;border:1px solid #2a3247;border-radius:16px;padding:28px;">
       <h1 style="color:#fff;">Account deletion scheduled</h1>
-      <p>Your AstroDating account will be permanently deleted on
+      <p>Your JUNO account will be permanently deleted on
       <strong>${new Date(scheduledFor).toUTCString()}</strong>
       (${GRACE_WINDOW_DAYS} days from now). Your profile is already hidden.</p>
       ${

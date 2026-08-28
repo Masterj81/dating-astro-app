@@ -415,6 +415,13 @@ verify_jwt = false
 [functions.cancel-account-deletion]
 verify_jwt = false
 
+# Lifecycle-email opt-out. Must be public: the reader clicks from their inbox
+# and is by definition not authenticated. Both paths verify an HMAC token
+# instead — GET from the footer link, POST from the RFC 8058
+# List-Unsubscribe-Post header that Gmail and Yahoo call.
+[functions.unsubscribe]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

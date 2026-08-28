@@ -76,9 +76,14 @@ export const saveLanguagePreference = async (lang: string) => {
   // Already saved in setLanguage
 };
 
-// Helper function to translate with interpolation
+// Helper function to translate with interpolation.
+// i18n-js renders absent keys as the truthy string '[missing "en.key" translation]',
+// which defeats the `t(key) || fallback` guards used across the app. Return ''
+// instead so those guards fall back cleanly; existing keys are unaffected.
 export const t = (key: string, options?: Record<string, string | number>) => {
-  return i18n.t(key, options);
+  const value = i18n.t(key, options);
+  if (typeof value === 'string' && value.startsWith('[missing')) return '';
+  return value;
 };
 
 export default i18n;

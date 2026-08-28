@@ -364,7 +364,7 @@
     "q_promoCode": "Wie verwende ich einen Promo-Code?",
     "a_promoCode": "Auf Android gehe zum Pläne-Bildschirm und gib deinen Code ein, bevor du einen Plan auswählst. Im Web gib den Code auf der Checkout-Seite ein. Promo-Codes bieten je nach Kampagne Rabatte oder Bonusmonate.",
     "q_webApp": "Kann ich JUNO am Computer nutzen?",
-    "a_webApp": "Ja! Besuche app.astrodatingapp.com, um die vollständige Web-App zu nutzen. Du kannst Profile durchsuchen, mit Matches chatten, dein Geburtshoroskop ansehen und dein Abo verwalten — alles im Browser.",
+    "a_webApp": "Ja! Besuche app.junosynastry.com, um die vollständige Web-App zu nutzen. Du kannst Profile durchsuchen, mit Matches chatten, dein Geburtshoroskop ansehen und dein Abo verwalten — alles im Browser.",
     "q_installPwa": "Kann ich die Web-App auf meinem Handy installieren?",
     "a_installPwa": "Ja. Besuche www.junosynastry.com in deinem mobilen Browser und tippe auf 'Zum Startbildschirm hinzufügen'. Die App erscheint als Symbol auf deinem Startbildschirm und öffnet sich im Vollbildmodus.",
     "q_webSync": "Werden meine Daten zwischen App und Web synchronisiert?",
@@ -2221,5 +2221,20 @@
     "pillarStyleTitle": "Kollaborationsstil",
     "pillarStyleDesc": "Die Form des gemeinsamen Arbeitens — wer trägt den Schwung, wer trägt die Sorgfalt, und wie die Arbeit vorankommt.",
     "footnote": "Erkenntnisse zur beruflichen Chemie sind ein Ausgangspunkt für ein Gespräch. Sie sind keine rechtliche, finanzielle, einstellungsbezogene oder Investitionsberatung."
+  },
+  "unsubscribe": {
+    "unsubscribedTitle": "Sie haben sich abgemeldet",
+    "unsubscribedBody": "Sie erhalten keine Onboarding- und Lifecycle-E-Mails von JUNO mehr.",
+    "resubscribedTitle": "Sie sind wieder angemeldet",
+    "resubscribedBody": "Sie erhalten wieder Onboarding- und Lifecycle-E-Mails von JUNO.",
+    "invalidTitle": "Dieser Link konnte nicht überprüft werden",
+    "invalidBody": "Er wurde möglicherweise unterwegs verändert oder gehört zu keinem Konto mehr. Schreiben Sie uns — eine Anmeldung ist nicht nötig.",
+    "errorTitle": "Etwas ist schiefgelaufen",
+    "errorBody": "Wir konnten Ihre Einstellung gerade nicht aktualisieren. Versuchen Sie den Link erneut oder schreiben Sie uns, dann erledigen wir es von Hand.",
+    "goneTitle": "Nichts zum Abmelden",
+    "goneBody": "Wir konnten kein Konto zu diesem Link finden. Möglicherweise wurde es bereits gelöscht — in jedem Fall erhalten Sie nichts mehr.",
+    "stillDelivered": "Konto- und Sicherheitsnachrichten werden immer zugestellt.",
+    "openApp": "JUNO öffnen",
+    "contactSupport": "Support kontaktieren"
   }
 }

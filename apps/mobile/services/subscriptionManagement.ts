@@ -23,7 +23,7 @@ async function createStripePortalUrl(userId: string): Promise<string> {
   const returnUrl =
     Platform.OS === 'web'
       ? `${window.location.origin}/settings`
-      : 'https://app.astrodatingapp.com/settings';
+      : 'https://app.junosynastry.com/settings';
 
   const { data, error } = await supabase.functions.invoke('create-portal-session', {
     body: {
