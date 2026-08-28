@@ -103,8 +103,22 @@ function isValidExpoPushToken(token: string): boolean {
   return EXPO_TOKEN_REGEX.test(token);
 }
 
-// Register for push notifications and get token
-export async function registerForPushNotificationsAsync(): Promise<string | null> {
+// Register for push notifications and get token.
+//
+// `promptIfNeeded` decides whether a missing permission triggers the OS
+// dialog. P0-3 of docs/retention-day2-audit-2026-08.md: this used to prompt
+// from the SIGNED_IN handler, i.e. before onboarding, before the birth chart,
+// before the reader had seen anything worth being notified about. On Android
+// 13+ POST_NOTIFICATIONS is a runtime permission, so that was a system dialog
+// at the least persuasive possible moment — and a refusal is near-permanent,
+// recoverable only through OS settings. The daily return loop dies with it.
+//
+// So: sign-in registers silently when permission already exists (returning
+// users, reinstalls) and asks for nothing; the request is made once, after the
+// chart reveal, when there is something concrete to offer.
+export async function registerForPushNotificationsAsync(
+  promptIfNeeded = true,
+): Promise<string | null> {
   // Skip on web - use web push API separately
   if (Platform.OS === 'web' || !Device || !Notifications) {
     return null;
@@ -120,8 +134,11 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
-    // Request permissions if not granted
+    // Request permissions if not granted — unless the caller explicitly asked
+    // to stay silent, in which case an ungranted permission simply means "no
+    // token yet" and nothing is shown to the reader.
     if (existingStatus !== 'granted') {
+      if (!promptIfNeeded) return null;
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
@@ -266,9 +283,19 @@ export async function savePushToken(userId: string, token: string): Promise<bool
 const MAX_RETRIES = 3;
 const RETRY_DELAYS_MS = [2_000, 5_000, 15_000]; // exponential-ish back-off
 
-// Register token and persist it — call on login and app foreground
-export async function registerAndSavePushToken(userId: string): Promise<void> {
-  const token = await registerForPushNotificationsAsync();
+/**
+ * Register the device token and persist it.
+ *
+ * Call with `promptIfNeeded = false` on sign-in and on foreground: those paths
+ * must never raise a permission dialog (see registerForPushNotificationsAsync).
+ * Call with `true` exactly once, from the post-onboarding moment where the
+ * reader has just seen their chart and the offer means something.
+ */
+export async function registerAndSavePushToken(
+  userId: string,
+  promptIfNeeded = true,
+): Promise<void> {
+  const token = await registerForPushNotificationsAsync(promptIfNeeded);
   if (!token) return;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -326,7 +353,10 @@ export function startPushTokenRefresh(userId: string): () => void {
       const now = Date.now();
       if (now - lastTokenRefresh < TOKEN_REFRESH_INTERVAL_MS) return;
       lastTokenRefresh = now;
-      registerAndSavePushToken(userId);
+      // Silent: this path exists to catch a rotated token, not to ask for
+      // permission. Prompting here would re-solicit on every foreground for
+      // anyone who declined.
+      registerAndSavePushToken(userId, false);
     }
   });
   return () => subscription.remove();

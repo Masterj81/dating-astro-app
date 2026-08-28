@@ -16,7 +16,9 @@ import { getAuthCallbackRedirectUri } from '../services/authRedirect';
 import { supabase } from '../services/supabase';
 import { syncWidgetWithProfile } from '../services/widgetService';
 import { registerServiceWorker, setupInstallPrompt } from '../services/pwa';
-import { t } from '../services/i18n';
+import { t, getCurrentLanguage } from '../services/i18n';
+import { syncPreferredLanguage, resetPreferredLanguageCache } from '../services/preferredLanguage';
+import { touchLastActive, resetActivityThrottle } from '../services/activity';
 import {
   clearPreSignupDraft,
   loadOnboardingDraft,
@@ -248,6 +250,11 @@ function RootLayout() {
         setIsEmailVerified(false);
         setSession(null);
         setUser(null);
+        // Drop the cached "already written" markers so the next account syncs
+        // its own language and reports its own visit instead of inheriting
+        // this one's no-op.
+        resetPreferredLanguageCache();
+        resetActivityThrottle();
         if (!userInitiatedSignOut) {
           Alert.alert(
             t('sessionExpiredTitle'),
@@ -355,7 +362,11 @@ function RootLayout() {
 
   // Handle deep links with validation
   useEffect(() => {
-    const ALLOWED_DEEP_LINK_HOSTS = ['astrodatingapp.com', 'www.astrodatingapp.com', 'localhost'];
+    // Must stay in sync with android.intentFilters hosts in app.json.
+    // The legacy astrodatingapp.com hosts are intentionally gone: they now
+    // redirect to junosynastry.com, are no longer declared as App Links, and
+    // failing Google Play domain checks. `localhost` is for dev only.
+    const ALLOWED_DEEP_LINK_HOSTS = ['app.junosynastry.com', 'www.junosynastry.com', 'localhost'];
     const ALLOWED_DEEP_LINK_PATHS = ['/auth/', '/app/', '/invite/', '/download'];
 
     const handleUrl = (event: { url: string }) => {
@@ -448,6 +459,10 @@ function RootLayout() {
         return;
       }
       if (nextState === 'active') {
+        // A return to the foreground is a visit. Recorded before the session
+        // checks below so a stale-token bail-out doesn't lose the beacon.
+        void touchLastActive();
+
         const backgroundedAt = lastBackgroundedAt;
         lastBackgroundedAt = null;
         if (!backgroundedAt) return;
@@ -474,13 +489,35 @@ function RootLayout() {
     return () => sub.remove();
   }, []);
 
+  // Capture the language this account reads in, so lifecycle email can
+  // eventually be written in it. Runs on every sign-in rather than only on an
+  // explicit language change, so accounts that never touch the picker are
+  // still recorded. Not native-only: the web build reads the same column.
+  useEffect(() => {
+    if (!user) return;
+    void syncPreferredLanguage(getCurrentLanguage());
+  }, [user]);
+
+  // Record that this account opened the app. Without this write nothing in the
+  // product can answer "did they come back", which is the question the whole
+  // retention effort turns on — and every lifecycle email past D+1 needs it to
+  // know whether to cancel itself. Throttled inside the service.
+  useEffect(() => {
+    if (!user) return;
+    void touchLastActive();
+  }, [user]);
+
   // Register for push notifications and initialize purchases when user logs in
   useEffect(() => {
     if (!user) return;
 
     // Push notifications only on native
     if (Platform.OS !== 'web') {
-      registerAndSavePushToken(user.id);
+      // Silent on sign-in: register only if permission already exists. The
+      // request itself happens after the chart reveal (onboarding/birth-info),
+      // where the reader has just been shown something worth being notified
+      // about. See registerForPushNotificationsAsync.
+      registerAndSavePushToken(user.id, false);
       // Re-register token when app comes back to foreground (tokens can rotate)
       const stopRefresh = startPushTokenRefresh(user.id);
 
