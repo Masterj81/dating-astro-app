@@ -45,7 +45,17 @@ function expand(prefix, suffixes) {
 
 const FAMILIES = [
   // premium hub / plans / paywall preview — constants/premiumCatalog.ts
-  { label: "premium feature catalogue", keys: ["fullNatalChart", "advancedSynastry", "dailyHoroscope", "monthlyTarot", "monthlyHoroscope", "weeklyTarot", "transitReflection", "planningWindows", "dateReflection"] },
+  { label: "premium feature catalogue", keys: ["fullNatalChart", "advancedSynastry", "conversationGuide", "dailyHoroscope", "monthlyTarot", "monthlyHoroscope", "weeklyTarot", "transitReflection", "planningWindows", "dateReflection"] },
+  // conversation-guide.tsx renders headings and situation labels through
+  // `t(section.labelKey)` / `t(option.labelKey)` — variable pass-throughs the
+  // scanner cannot see. The keys come from COACH_SITUATIONS (situations.ts)
+  // and SECTION_LABEL_KEYS (select.ts) in @astro/shared/coach; enumerated here
+  // so a renamed key fails the build instead of rendering a raw slug.
+  // scripts/validate-coach-content.mjs checks the same keys across all 8 locales.
+  { label: "conversation guide", keys: [
+    ...["Start", "Clarity", "Repair", "Boundary"].map((s) => `conversationGuideSituation${s}`),
+    ...["Rhythm", "Works", "Avoid", "Line", "Reflect"].map((s) => `conversationGuideSection${s}`),
+  ] },
   // t(signKey) — daily/monthly-horoscope.tsx, natal-chart.tsx
   { label: "zodiac sign labels", keys: SIGNS },
   // daily-horoscope.tsx template literals

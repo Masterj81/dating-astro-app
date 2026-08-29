@@ -82,6 +82,11 @@ export default function PaywallModal() {
       'date-planner': t('dateReflection') || t('datePlanner') || 'Date Reflection',
       'weekly-tarot': t('weeklyTarot') || 'Weekly Tarot',
       'monthly-tarot': t('monthlyTarot') || 'Monthly Tarot',
+      // Reachable only if some future caller runs triggerPaywall() for it. The
+      // Conversation Guide screen renders its own locked card instead, because
+      // this modal cannot say "you have one free preview a day" — but the
+      // Record is total, so the name has to be real either way.
+      'conversation-guide': t('conversationGuide') || 'Conversation Guide',
     };
 
     return featureNames[feature] || feature;

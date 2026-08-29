@@ -1,0 +1,66 @@
+# 17 - Conversation Guide: the Celestial path.
+#
+# Companion to flow 16. Same screen, same seed state (this account's
+# `conversation_guide` usage is pre-consumed), but a subscribed account — which
+# must change the outcome completely:
+#
+#   1. A locked situation renders immediately, entitlement beating the spent
+#      preview. A paying reader must never wait on a network call for content
+#      that is already in the bundle, so the card is on screen while
+#      `enforce_premium_feature` records in the background.
+#   2. `coach-preview-banner` must NOT appear. That banner says "free preview
+#      used"; showing it to someone who is paying would be a lie, and it is the
+#      kind nobody notices until a support ticket arrives.
+#   3. `coach-locked-card` must never appear, for any situation.
+#
+# The "a deep link must not spend anything" promise is asserted in flow 16,
+# where it is observable: a free account with an exhausted preview lands on the
+# unlock CTA rather than on content.
+
+appId: com.astrodatingapp.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- runFlow: shared/login-as-celestial-user.yaml
+
+- openLink: "astrodating://premium-screens/conversation-guide?sign=aries&situation=boundary"
+
+# 1. A locked situation, opened directly, renders for a subscriber.
+- extendedWaitUntil:
+    visible:
+      id: "coach-card"
+    timeout: 20000
+- assertVisible:
+    id: "coach-copy"
+- assertNotVisible:
+    id: "coach-locked-card"
+
+# 2. No "free preview used" banner for someone who is paying.
+- assertNotVisible:
+    id: "coach-preview-banner"
+
+# 3. The other situations are open too — one entitlement covers the screen.
+- tapOn:
+    id: "coach-situation-clarity"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: "coach-card"
+- assertVisible:
+    id: "coach-copy"
+- assertNotVisible:
+    id: "coach-locked-card"
+- assertNotVisible:
+    id: "coach-preview-banner"
+
+# And the free situation still behaves like the free situation.
+- tapOn:
+    id: "coach-situation-start"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: "coach-card"
+- assertNotVisible:
+    id: "coach-preview-banner"

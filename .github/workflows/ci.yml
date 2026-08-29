@@ -46,6 +46,14 @@ jobs:
       - name: Validate lifecycle email templates
         run: npm run validate:email-templates
 
+      # Its own step, not folded into validate:locales: this guard covers the
+      # Conversation Guide corpus (the app's largest block of user-facing
+      # English, which check-store-metadata deliberately does not scan) AND the
+      # two structural promises of its screen — no PremiumGate wrapper, and no
+      # preview spent at mount. A failure here should name itself in the UI.
+      - name: Validate Conversation Guide content and gating
+        run: npm run validate:coach-content
+
       - name: Validate mobile retention guards
         run: npm run validate:retention-guards
 

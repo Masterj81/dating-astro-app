@@ -134,6 +134,11 @@ export default function PremiumCardGlyph({
     case 'monthlyTarot':
     case 'weeklyTarot':
       return wrap(<Tarot size={size} color={color} />);
+    // Conversation Guide — the compatibility glyph reads as "two sides
+    // talking", which is closer than the generic premium mark the `default`
+    // branch would otherwise give it (already used by three other cards).
+    case 'conversationGuide':
+      return wrap(<CompatibilityGlyph size={size} color={color} />);
     case 'monthlyHoroscope':
       return wrap(<Calendar size={size} color={color} />);
     // V2 rename: `planetaryTransits` is now `transitReflection`.

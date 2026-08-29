@@ -35,6 +35,10 @@ export default function PremiumLayout() {
       <Stack.Screen name="retrograde-alerts" />
       <Stack.Screen name="lucky-days" />
       <Stack.Screen name="synastry" />
+      {/* Partly free: the screen lives here for layout/theme reasons only and
+          gates nothing at mount. `premium-screens/index` is the surface that
+          redirects free accounts — this route must stay reachable by them. */}
+      <Stack.Screen name="conversation-guide" />
       <Stack.Screen name="likes" />
       <Stack.Screen name="priority-messages" />
       <Stack.Screen name="date-planner" />
