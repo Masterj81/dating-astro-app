@@ -77,6 +77,25 @@ android/
 .adb-temp/
 
 # ---------------------------------------------------------------------------
+# Untracked local working directories at the repo root.
+#
+# `eas.json` sets no `cli.requireCommit`, so eas-cli tars the WORKING TREE
+# rather than the git index whenever it is dirty (this is the same behaviour
+# documented in apps/mobile/.easignore). Untracked directories are therefore
+# uploaded even though git ignores them for commits, and BigAd/ alone is
+# ~393 MB — four times the entire previous build archive.
+#
+# EVERY PATTERN HERE IS ROOT-ANCHORED WITH A LEADING SLASH, AND MUST STAY
+# THAT WAY. A bare `app/` is a gitignore-style match on ANY directory named
+# `app` at any depth, which would silently exclude `apps/mobile/app/` — the
+# entire expo-router tree — and produce a build with no screens in it.
+/BigAd/
+/.tmp/
+/.tools/
+/.claude/
+/app/
+
+# ---------------------------------------------------------------------------
 # OS / editor noise.
 # ---------------------------------------------------------------------------
 .DS_Store
