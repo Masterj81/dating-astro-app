@@ -2113,5 +2113,9 @@
   "conversationGuideSectionWorks": "Lo que suele funcionar",
   "conversationGuideSectionAvoid": "Lo que conviene evitar",
   "conversationGuideSectionLine": "Puedes decir",
-  "conversationGuideSectionReflect": "Una pregunta para ti"
+  "conversationGuideSectionReflect": "Una pregunta para ti",
+  "risingUnknownTitle": "Ascendente no calculado",
+  "risingUnknownBody": "Tu ascendente necesita tu hora de nacimiento exacta. Preferimos omitirlo antes que adivinarlo: puedes añadirla cuando quieras.",
+  "risingUnknownCta": "Añadir hora de nacimiento",
+  "cosmicSummaryTextNoRising": "Con un Sol en {{sun}} y una Luna en {{moon}}, llevas una mezcla de energías muy tuya. Tu Sol guía tu yo consciente y tu Luna nutre tu mundo emocional."
 }

@@ -2113,5 +2113,9 @@
   "conversationGuideSectionWorks": "通常有效的做法",
   "conversationGuideSectionAvoid": "最好避免的做法",
   "conversationGuideSectionLine": "可以这样说",
-  "conversationGuideSectionReflect": "给你的一个提问"
+  "conversationGuideSectionReflect": "给你的一个提问",
+  "risingUnknownTitle": "未计算上升星座",
+  "risingUnknownBody": "上升星座需要准确的出生时间。与其猜测，我们宁可留白——你随时可以补充。",
+  "risingUnknownCta": "添加出生时间",
+  "cosmicSummaryTextNoRising": "{{sun}}的太阳与{{moon}}的月亮，构成属于你自己的能量组合。太阳引导你的意识自我，月亮滋养你的情感世界。"
 }

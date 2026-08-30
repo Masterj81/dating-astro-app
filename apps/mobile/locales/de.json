@@ -2113,5 +2113,9 @@
   "conversationGuideSectionWorks": "Was oft funktioniert",
   "conversationGuideSectionAvoid": "Was du besser vermeidest",
   "conversationGuideSectionLine": "Sag zum Beispiel",
-  "conversationGuideSectionReflect": "Eine Frage an dich"
+  "conversationGuideSectionReflect": "Eine Frage an dich",
+  "risingUnknownTitle": "Aszendent nicht berechnet",
+  "risingUnknownBody": "Dein Aszendent braucht deine genaue Geburtszeit. Wir lassen ihn lieber weg, als zu raten — du kannst sie jederzeit ergänzen.",
+  "risingUnknownCta": "Geburtszeit ergänzen",
+  "cosmicSummaryTextNoRising": "Mit Sonne in {{sun}} und Mond in {{moon}} trägst du eine ganz eigene Mischung an Energien. Deine Sonne führt dein bewusstes Ich, dein Mond nährt deine Gefühlswelt."
 }

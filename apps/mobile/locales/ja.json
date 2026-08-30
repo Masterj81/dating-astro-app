@@ -2113,5 +2113,9 @@
   "conversationGuideSectionWorks": "うまくいきやすいこと",
   "conversationGuideSectionAvoid": "避けたいこと",
   "conversationGuideSectionLine": "こう言ってみる",
-  "conversationGuideSectionReflect": "あなたへの問い"
+  "conversationGuideSectionReflect": "あなたへの問い",
+  "risingUnknownTitle": "アセンダントは未計算です",
+  "risingUnknownBody": "アセンダントには正確な出生時刻が必要です。推測するより省くほうを選んでいます。いつでも追加できます。",
+  "risingUnknownCta": "出生時刻を追加",
+  "cosmicSummaryTextNoRising": "{{sun}}の太陽と{{moon}}の月を持つあなたには、あなただけのエネルギーの混ざり方があります。太陽は意識のあり方を、月は感情の世界を育てます。"
 }

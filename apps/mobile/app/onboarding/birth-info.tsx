@@ -229,7 +229,10 @@ function ChartRevealOverlay({
   onContinue,
 }: {
   visible: boolean;
-  chart: { sun: { sign: string }; moon: { sign: string }; rising: { sign: string } } | null;
+  // `rising` is NULLABLE: the ascendant needs an exact birth minute, and
+  // step 2 openly invites skipping it. The overlay renders the placements it
+  // actually has rather than a fabricated third row.
+  chart: { sun: { sign: string }; moon: { sign: string }; rising: { sign: string } | null } | null;
   onContinue: () => void;
 }) {
   const { t } = useLanguage();
@@ -258,10 +261,19 @@ function ChartRevealOverlay({
 
   if (!visible || !chart) return null;
 
+  // Only what was actually computed. A reader who skipped the birth time gets
+  // a two-placement reveal plus an honest note, never an invented ascendant.
+  // The sign is lifted into a local so no `chart.rising.sign` dereference
+  // exists in this file at all — `validate-mobile-retention-guards.mjs` bans
+  // the shape outright rather than trying to tell a guarded one from a naked
+  // one by reading the source.
+  const risingSign = chart.rising?.sign ?? null;
   const placements = [
     { label: t('sun'), sign: chart.sun.sign, emoji: getZodiacEmoji(chart.sun.sign), anim: sunFade, desc: t('sunRevealDesc') || 'Your core identity' },
     { label: t('moon'), sign: chart.moon.sign, emoji: getZodiacEmoji(chart.moon.sign), anim: moonFade, desc: t('moonRevealDesc') || 'Your emotional world' },
-    { label: t('rising'), sign: chart.rising.sign, emoji: getZodiacEmoji(chart.rising.sign), anim: risingFade, desc: t('risingRevealDesc') || 'How others see you' },
+    ...(risingSign
+      ? [{ label: t('rising'), sign: risingSign, emoji: getZodiacEmoji(risingSign), anim: risingFade, desc: t('risingRevealDesc') || 'How others see you' }]
+      : []),
   ];
 
   return (
@@ -282,6 +294,21 @@ function ChartRevealOverlay({
             </Animated.View>
           ))}
         </View>
+
+        {/* Say what is missing and why. Silence would read as "JUNO only does
+            two placements"; the truth is that this one is unknowable without
+            the birth minute, and it can be filled in later. */}
+        {!chart.rising ? (
+          <Animated.View style={[revealStyles.risingNote, { opacity: risingFade }]}>
+            <Text style={revealStyles.risingNoteTitle}>
+              {t('risingUnknownTitle') || 'Rising sign not calculated'}
+            </Text>
+            <Text style={revealStyles.risingNoteBody}>
+              {t('risingUnknownBody') ||
+                "Your rising sign needs your exact birth time. We'd rather leave it out than guess — you can add it anytime in your profile."}
+            </Text>
+          </Animated.View>
+        ) : null}
 
         <Animated.View style={{ opacity: btnFade, width: '100%' }}>
           <TouchableOpacity style={revealStyles.button} onPress={onContinue} activeOpacity={0.8}>
@@ -376,6 +403,27 @@ const revealStyles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 2,
   },
+  risingNote: {
+    width: '100%',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(218, 181, 109, 0.28)',
+    backgroundColor: 'rgba(218, 181, 109, 0.10)',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 18,
+  },
+  risingNoteTitle: {
+    color: AppTheme.colors.gold,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  risingNoteBody: {
+    color: AppTheme.colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 4,
+  },
   button: {
     borderRadius: 16,
     overflow: 'hidden',
@@ -411,7 +459,7 @@ export default function BirthInfoScreen() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [calculatingPhase, setCalculatingPhase] = useState('');
   const [showReveal, setShowReveal] = useState(false);
-  const [revealChart, setRevealChart] = useState<{ sun: { sign: string }; moon: { sign: string }; rising: { sign: string } } | null>(null);
+  const [revealChart, setRevealChart] = useState<{ sun: { sign: string }; moon: { sign: string }; rising: { sign: string } | null } | null>(null);
   const [birthDateError, setBirthDateError] = useState('');
   const [genderError, setGenderError] = useState('');
   const { user, refreshProfile } = useAuth();
@@ -767,7 +815,9 @@ export default function BirthInfoScreen() {
           birth_longitude: cityCoords.longitude,
           sun_sign: chart.sun.sign,
           moon_sign: chart.moon.sign,
-          rising_sign: chart.rising.sign,
+          // Null when the birth time is unknown. This column used to receive
+          // a hardcoded 'Aries' for every such account.
+          rising_sign: chart.rising?.sign ?? null,
           birth_chart: birthChartData,
           age: age,
           connection_intentions: sanitizedConnectionIntentions,

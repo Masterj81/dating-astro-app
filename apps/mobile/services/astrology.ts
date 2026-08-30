@@ -30,7 +30,26 @@ type Placement = { sign: string; degree: number; longitude: number };
 type NatalChart = {
   sun: Placement;
   moon: Placement;
-  rising: Placement;
+  /**
+   * NULLABLE, and it must stay that way.
+   *
+   * The ascendant depends on the exact minute of birth. Without one it does
+   * not exist, and this file used to pretend otherwise:
+   *
+   *     rising: placement(chart.rising, { sign: 'Aries', degree: 0, longitude: 0 })
+   *
+   * Onboarding actively invites readers to skip the birth time, so every
+   * account that did was written to the database as `rising_sign = 'Aries'`
+   * and told, on its first personalised screen, something false about itself
+   * — eleven times out of twelve. See docs/retention-day2-audit-2026-08.md
+   * §3.5. `scripts/validate-mobile-retention-guards.mjs` fails the build if a
+   * default ever comes back.
+   */
+  rising: Placement | null;
+  /** Midheaven. Null for the same reason as `rising`. */
+  mc?: Placement | null;
+  /** Equal-house cusps. Null when the birth time is unknown. */
+  houses?: number[] | null;
   mercury: Placement;
   venus: Placement;
   mars: Placement;
@@ -50,9 +69,25 @@ type NatalChart = {
   warnings?: string[];
 };
 
-function placement(p: { sign: string; degree: number; longitude: number } | null, fallback?: Placement): Placement {
-  if (p) return p;
-  return fallback ?? { sign: 'Aries', degree: 0, longitude: 0 };
+/**
+ * Pass a computed placement through unchanged.
+ *
+ * This used to accept a `fallback` and default to `{ sign: 'Aries', degree: 0,
+ * longitude: 0 }`, which is how a missing ascendant became a stated fact. The
+ * substitution is gone and no replacement is coming: a placement the engine
+ * could not compute has no honest stand-in, so callers get `null` and decide
+ * what to render.
+ *
+ * Sun, Moon and the planets are never null on a freshly computed chart, so
+ * they keep a non-null type through the assertion below.
+ */
+function placement(p: { sign: string; degree: number; longitude: number } | null): Placement {
+  if (!p) {
+    // Unreachable for sun/moon/planets — computeNatalChart always produces
+    // them. Throwing beats silently inventing a position.
+    throw new Error('calculateNatalChart: expected placement was not computed');
+  }
+  return p;
 }
 
 function toSharedChart(local: NatalChart): SharedNatalChart {
@@ -72,9 +107,12 @@ function toSharedChart(local: NatalChart): SharedNatalChart {
     uranus: (local.uranus ?? null) as SharedNatalChart['uranus'],
     neptune: (local.neptune ?? null) as SharedNatalChart['neptune'],
     pluto: (local.pluto ?? null) as SharedNatalChart['pluto'],
-    rising: local.rising as SharedNatalChart['rising'],
-    mc: null,
-    houses: null,
+    // `rising` may legitimately be null here (no birth time). computeSynastry
+    // already skips null placements, so an unknown ascendant simply drops out
+    // of the scoring rather than contributing a fabricated Aries aspect.
+    rising: (local.rising ?? null) as SharedNatalChart['rising'],
+    mc: (local.mc ?? null) as SharedNatalChart['mc'],
+    houses: local.houses ?? null,
     utcInstant: '',
     timezone: local.timezone ?? 'UTC',
     confidence: local.confidence ?? 'high',
@@ -122,7 +160,12 @@ export function calculateNatalChart(
   return {
     sun: placement(chart.sun),
     moon: placement(chart.moon),
-    rising: placement(chart.rising, { sign: 'Aries', degree: 0, longitude: 0 }),
+    // Straight through. `computeNatalChart` returns null whenever the birth
+    // time is unknown, and that null is the answer — not a problem to paper
+    // over. Everything downstream must handle it.
+    rising: chart.rising,
+    mc: chart.mc,
+    houses: chart.houses,
     mercury: placement(chart.mercury),
     venus: placement(chart.venus),
     mars: placement(chart.mars),

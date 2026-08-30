@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { isRisingTrustworthy } from '@astro/shared/astrology';
 import { resolveCoachSign } from '@astro/shared/coach';
 import BlockReportMenu from '../../components/BlockReportMenu';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -437,7 +438,15 @@ export default function ChatScreen() {
                   {[
                     conversationInfo.other_user.sun_sign,
                     conversationInfo.other_user.moon_sign,
-                    conversationInfo.other_user.rising_sign,
+                    // The conversation query carries no birth_time and no
+                    // birth_chart, so this ascendant can never be proven real —
+                    // and may be the 'Aries' the old fallback invented. Dropped
+                    // rather than asserted about the person being messaged.
+                    isRisingTrustworthy({
+                      storedRisingSign: conversationInfo.other_user.rising_sign,
+                    })
+                      ? conversationInfo.other_user.rising_sign
+                      : null,
                   ]
                     .filter((s) => s && s.length > 0)
                     .join(' · ')}

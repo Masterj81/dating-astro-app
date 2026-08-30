@@ -2113,5 +2113,9 @@
   "conversationGuideSectionWorks": "What usually works",
   "conversationGuideSectionAvoid": "What to avoid",
   "conversationGuideSectionLine": "Try saying",
-  "conversationGuideSectionReflect": "A question for you"
+  "conversationGuideSectionReflect": "A question for you",
+  "risingUnknownTitle": "Rising sign not calculated",
+  "risingUnknownBody": "Your rising sign needs your exact birth time. We'd rather leave it out than guess — you can add it anytime.",
+  "risingUnknownCta": "Add birth time",
+  "cosmicSummaryTextNoRising": "As a {{sun}} Sun with {{moon}} Moon, you carry a distinctive blend of energies. Your Sun drives your conscious self, and your Moon nurtures your emotional world."
 }

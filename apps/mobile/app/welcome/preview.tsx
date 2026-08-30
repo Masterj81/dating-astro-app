@@ -184,7 +184,12 @@ export default function WelcomePreview() {
 
         const sun = String(local.sun?.sign || '').toLowerCase();
         const moon = String(local.moon?.sign || '').toLowerCase();
-        const rising = !time ? null : String(local.rising?.sign || '').toLowerCase();
+        // The engine returns null without a birth time, so `local.rising` is
+        // now the single source of truth — the `!time` guard was compensating
+        // for the Aries substitution this file never saw, and is kept only as
+        // a belt-and-braces read. An empty string would have rendered as a
+        // blank placement; null hides the row instead.
+        const rising = local.rising?.sign ? local.rising.sign.toLowerCase() : null;
 
         setChart({ sun, moon, rising });
         setStage('ready');

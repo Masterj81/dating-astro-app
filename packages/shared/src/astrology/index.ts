@@ -16,5 +16,8 @@ export * from './aspects';
 export * from './scoring';
 export * from './synastry';
 export * from './stored';
+// Whether a stored rising sign may be shown at all. Needed because fixing the
+// engine does not fix the rows the old Aries fallback already wrote.
+export * from './rising';
 export * from './exploration';
 export * from './version';
