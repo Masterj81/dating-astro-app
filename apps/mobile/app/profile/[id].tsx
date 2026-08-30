@@ -15,6 +15,7 @@
 // the MVP fields happens inside the section component.
 
 import { LinearGradient } from 'expo-linear-gradient';
+import { isRisingTrustworthy } from '@astro/shared/astrology';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -195,16 +196,24 @@ export default function ProfileDetailScreen() {
               })()}
               <Text style={styles.signText}>{profile.moon_sign || '?'}</Text>
             </View>
-            <View style={styles.signPill}>
-              <LuminaryGlyph kind="rising" size="sm" />
-              {(() => {
-                const k = normalizeZodiacSign(profile.rising_sign);
-                return k ? (
-                  <ZodiacGlyph sign={k} variant="inline" size="sm" />
-                ) : null;
-              })()}
-              <Text style={styles.signText}>{profile.rising_sign || '?'}</Text>
-            </View>
+            {/* Someone else's card. This query returns neither `birth_time`
+                nor `birth_chart`, so nothing here can show that this person's
+                ascendant was ever computable — and the old mobile fallback
+                wrote 'Aries' for every account that skipped its birth time.
+                Unprovable means hidden: a stranger's profile is the last place
+                JUNO should assert a placement it cannot back up. */}
+            {isRisingTrustworthy({ storedRisingSign: profile.rising_sign }) ? (
+              <View style={styles.signPill}>
+                <LuminaryGlyph kind="rising" size="sm" />
+                {(() => {
+                  const k = normalizeZodiacSign(profile.rising_sign);
+                  return k ? (
+                    <ZodiacGlyph sign={k} variant="inline" size="sm" />
+                  ) : null;
+                })()}
+                <Text style={styles.signText}>{profile.rising_sign}</Text>
+              </View>
+            ) : null}
           </View>
 
           {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}

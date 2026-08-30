@@ -9,6 +9,7 @@ import { routing } from "@/i18n/routing";
 import { LocaleProviders } from "@/components/LocaleProviders";
 import { IOSInstallGuideModal } from "@/components/IOSInstallGuideModal";
 import { PreferredLanguageSync } from "@/components/PreferredLanguageSync";
+import { WebActivityTracker } from "@/components/WebActivityTracker";
 import { SITE } from "@/lib/constants";
 
 export function generateStaticParams() {
@@ -102,6 +103,11 @@ export default async function LocaleLayout({
           {children}
           <IOSInstallGuideModal />
           <PreferredLanguageSync />
+          {/* Writes profiles.last_active. Global, not inside AppShell: a
+              reader who returns to the localised home page and never opens
+              /app is still a D+1 return. iOS reaches JUNO through the PWA,
+              so without this every iOS reader is invisible to retention. */}
+          <WebActivityTracker />
         </LocaleProviders>
         <Analytics />
         <SpeedInsights />

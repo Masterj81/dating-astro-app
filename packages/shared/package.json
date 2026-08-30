@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./profile": "./src/profile/index.ts",
-    "./astrology": "./src/astrology/index.ts"
+    "./astrology": "./src/astrology/index.ts",
+    "./coach": "./src/coach/index.ts"
   },
   "scripts": {
     "lint": "eslint src/",

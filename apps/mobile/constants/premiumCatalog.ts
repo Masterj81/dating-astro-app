@@ -11,9 +11,15 @@
 // by `PremiumCardGlyph` which switches on the feature `key`. The
 // previous string icons are gone so the catalog now ships only
 // semantic data — no presentation glyphs to keep in sync.
+// The Conversation Guide is listed here for subscribers, but the hub is NOT
+// its discovery surface: `app/(tabs)/premium.tsx` renders a full-screen
+// paywall for `tier === 'free'`, so a free account never sees this grid. Its
+// real entry points are the Profile tab and the chat thread header, and
+// `scripts/validate-coach-content.mjs` fails the build if those disappear.
 export const CELESTIAL_FEATURES = [
   { key: 'fullNatalChart', route: '/premium-screens/natal-chart' },
   { key: 'advancedSynastry', route: '/premium-screens/synastry' },
+  { key: 'conversationGuide', route: '/premium-screens/conversation-guide' },
   { key: 'dailyHoroscope', route: '/premium-screens/daily-horoscope' },
   { key: 'monthlyTarot', route: '/premium-screens/tarot' },
 ] as const;

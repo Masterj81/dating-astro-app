@@ -17,6 +17,8 @@
     "validate:mobile:locales": "node scripts/validate-mobile-locales.js",
     "validate:mobile:i18n-usage": "node scripts/validate-mobile-i18n-usage.mjs",
     "validate:premium-gating": "node scripts/validate-premium-gating.mjs",
+    "validate:coach-content": "node scripts/validate-coach-content.mjs",
+    "validate:web-onboarding": "node scripts/validate-web-onboarding.mjs",
     "validate:email-templates": "node scripts/validate-email-templates.mjs",
     "validate:locale-contract": "node scripts/validate-locale-contract.mjs",
     "validate:retention-guards": "node scripts/validate-mobile-retention-guards.mjs",

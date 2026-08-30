@@ -137,7 +137,14 @@ DECLARE
     'natal_chart','daily_horoscope','synastry','compatibility_details',
     'monthly_horoscope','tarot','date_planner','lucky_days',
     'retrograde_alerts','planetary_transits','priority_messages',
-    'likes_you_see_who'
+    'likes_you_see_who',
+    -- Conversation Guide. Server-enforced with free_preview_quota = 1, so the
+    -- free account must start the run with its preview already spent —
+    -- otherwise flow 16 would sometimes see the preview granted instead of
+    -- the exhausted card. Only the LOCKED situations consume this; the free
+    -- "Start a conversation" situation never touches premium_usage at all,
+    -- which is exactly what flow 16 asserts.
+    'conversation_guide'
   ];
   v_feature       TEXT;
 BEGIN

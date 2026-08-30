@@ -208,14 +208,55 @@ Maestro retries each flow up to 2 times by default; pass
 | 13   | premium | daily-horoscope    | denied (Cosmic upgrade) |
 | 14   | premium_plus | daily-horoscope | granted          |
 | 15   | premium_plus | daily-horoscope, planetary-transits, retrograde-alerts, date-planner | granted (smoke) |
+| 16   | free    | conversation-guide | **open** — free situation granted, locked one denied |
+| 17   | premium | conversation-guide | **open** — every situation granted, no preview banner |
 
-All premium flows assert one of two stable testIDs from
+Flows 06 and 11–15 assert one of two stable testIDs from
 `apps/mobile/components/PremiumGate.tsx`:
 
 - `premium-paywall-cta` — visible iff the gate denies access
 - `premium-gate-granted` — visible iff the gate renders children
 
 This avoids relying on i18n title strings or screen-specific content.
+
+### Flow 16 is the exception, on purpose
+
+The Conversation Guide does **not** use `PremiumGate`, so it has neither of
+those testIDs. It gates per *situation*, not per screen, and it must never ask
+the server at mount — deciding at mount would spend the reader's daily free
+preview before they had read a word, and would then hide the free situation
+for the rest of the day.
+
+Flow 16 therefore asserts on the screen's own anchors:
+
+| testID | Meaning |
+|---|---|
+| `coach-card` | the guidance card rendered — the reader got content |
+| `coach-copy` | the copyable line is present |
+| `coach-locked-card` | a locked situation was refused or not yet unlocked |
+| `coach-sign-<sign>` | one of the twelve sign chips |
+| `coach-situation-<key>` | one of the four situation rows |
+| `coach-preview-banner` | a free preview was spent this session |
+| `coach-unlock-cta` | a locked situation is waiting for the tap that asks |
+
+Both accounts start with their `conversation_guide` preview already consumed
+(see `.maestro/seed-matches.sql`). That is what makes the runs deterministic
+and what makes them worth running:
+
+- **Flow 16 (free)** — the screen must still open and the free situation must
+  still render for someone with nothing left to spend. If mounting consumed or
+  checked the quota, this flow lands on a locked card and fails.
+- **Flow 17 (Celestial)** — entitlement must beat the spent preview, and the
+  "free preview used" banner must stay hidden for someone who is paying.
+
+Both also assert that deep-linking to a *locked* situation shows an unlock CTA
+rather than content: the tap is what spends, never the link.
+
+The same structural promises are asserted statically, without a device, by
+`npm run validate:coach-content` — which fails the build if the screen ever
+imports `PremiumGate`, calls `enforcePremiumFeature` from an effect, calls it
+more than once, loses the replay key, or loses its last entry point outside
+the premium hub.
 
 ## Debugging tips
 

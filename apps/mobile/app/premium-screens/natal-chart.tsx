@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { resolveTrustedRisingSign } from '@astro/shared/astrology';
 import AuthBrandMark from '../../components/AuthBrandMark';
 import PremiumGate from '../../components/PremiumGate';
 import PlanetGlyph from '../../components/ui/PlanetGlyph';
@@ -110,6 +111,21 @@ function NatalChartScreenContent() {
   const signs = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
                  'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
 
+  // The ascendant we may name, or null. `birth_time` comes from
+  // get_my_full_profile and is the strongest proof in the app, so this also
+  // repairs the display for accounts the old fallback poisoned — no backfill
+  // needed. See packages/shared/src/astrology/rising.ts.
+  const trustedRisingSign = useMemo(
+    () =>
+      chartData
+        ? resolveTrustedRisingSign({
+            birthTime: chartData.birth_time,
+            storedRisingSign: chartData.rising_sign,
+          })
+        : null,
+    [chartData]
+  );
+
   // Generate planetary positions (deterministic fallbacks instead of Math.random)
   const getPlanetaryPositions = (data: NatalChartData): PlanetPosition[] => {
     return [
@@ -117,7 +133,24 @@ function NatalChartScreenContent() {
       // emoji codepoints to monochrome text glyphs (☉ / ☾ / "ASC").
       { planet: t('sun'), planetKey: 'sun', sign: data.sun_sign || 'Unknown', degree: 15, house: 1, emoji: '☉' },
       { planet: t('moon'), planetKey: 'moon', sign: data.moon_sign || 'Unknown', degree: 22, house: 4, emoji: '☽' },
-      { planet: t('rising'), planetKey: 'rising', sign: data.rising_sign || 'Unknown', degree: 8, house: 1, emoji: '↑' },
+      // Rising is included ONLY when the birth time proves it was computable.
+      // This screen loads birth_time via get_my_full_profile, so it can tell a
+      // real ascendant from one the old fallback invented — and it drops the
+      // row entirely rather than rendering a full interpretation ("With Aries
+      // Rising, you come across as confident...") about a sign nobody has.
+      ...(resolveTrustedRisingSign({
+        birthTime: data.birth_time,
+        storedRisingSign: data.rising_sign,
+      })
+        ? [{
+            planet: t('rising'),
+            planetKey: 'rising',
+            sign: data.rising_sign as string,
+            degree: 8,
+            house: 1,
+            emoji: '↑',
+          }]
+        : []),
       { planet: t('mercury') || 'Mercury', planetKey: 'mercury', sign: data.mercury_sign || signs[3], degree: 12, house: 3, emoji: '☿️' },
       { planet: t('venus') || 'Venus', planetKey: 'venus', sign: data.venus_sign || signs[6], degree: 28, house: 7, emoji: '♀️' },
       { planet: t('mars') || 'Mars', planetKey: 'mars', sign: data.mars_sign || signs[0], degree: 5, house: 10, emoji: '♂️' },
@@ -407,6 +440,30 @@ function NatalChartScreenContent() {
           is enough state, matches the previous Sun/Moon/Rising pattern. */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('planetaryPositions')}</Text>
+
+        {/* The ascendant row is absent above whenever the birth time is
+            unknown. Explain that instead of letting the reader wonder why the
+            "Big Three" screen only shows two of them. */}
+        {!positions.some((pos) => pos.planetKey === 'rising') ? (
+          <TouchableOpacity
+            style={styles.risingMissingCard}
+            onPress={() => router.push('/onboarding/birth-info')}
+            accessibilityRole="button"
+            testID="natal-rising-unknown"
+          >
+            <Text style={styles.risingMissingTitle}>
+              {t('risingUnknownTitle') || 'Rising sign not calculated'}
+            </Text>
+            <Text style={styles.risingMissingBody}>
+              {t('risingUnknownBody') ||
+                "Your rising sign needs your exact birth time. We'd rather leave it out than guess — you can add it anytime in your profile."}
+            </Text>
+            <Text style={styles.risingMissingCta}>
+              {t('risingUnknownCta') || 'Add birth time'}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+
         {positions.map((pos) => {
           const isOpen = expandedSection === pos.planetKey;
           const signKey = pos.sign.toLowerCase();
@@ -560,12 +617,23 @@ function NatalChartScreenContent() {
       <View style={styles.section}>
         <View style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>{t('cosmicSummary') || 'Your Cosmic Summary'}</Text>
+          {/* Two variants, because this sentence NAMES the ascendant. Without
+              a birth time there is no ascendant to name, and interpolating
+              either the poisoned column or the word "Unknown" into prose about
+              the reader is exactly the falsehood this patch removes. */}
           <Text style={styles.summaryText}>
-            {t('cosmicSummaryText', {
-              sun: chartData?.sun_sign || 'Unknown',
-              moon: chartData?.moon_sign || 'Unknown',
-              rising: chartData?.rising_sign || 'Unknown'
-            }) || `As a ${chartData?.sun_sign || 'Unknown'} Sun with ${chartData?.moon_sign || 'Unknown'} Moon and ${chartData?.rising_sign || 'Unknown'} Rising, you possess a unique blend of energies. Your Sun drives your conscious self, your Moon nurtures your emotional world, and your Rising shapes how you navigate life's journey.`}
+            {trustedRisingSign
+              ? t('cosmicSummaryText', {
+                  sun: chartData?.sun_sign || 'Unknown',
+                  moon: chartData?.moon_sign || 'Unknown',
+                  rising: trustedRisingSign,
+                }) ||
+                `As a ${chartData?.sun_sign || 'Unknown'} Sun with ${chartData?.moon_sign || 'Unknown'} Moon and ${trustedRisingSign} Rising, you possess a unique blend of energies. Your Sun drives your conscious self, your Moon nurtures your emotional world, and your Rising shapes how you navigate life's journey.`
+              : t('cosmicSummaryTextNoRising', {
+                  sun: chartData?.sun_sign || 'Unknown',
+                  moon: chartData?.moon_sign || 'Unknown',
+                }) ||
+                `As a ${chartData?.sun_sign || 'Unknown'} Sun with ${chartData?.moon_sign || 'Unknown'} Moon, you carry a distinctive blend of energies. Your Sun drives your conscious self, and your Moon nurtures your emotional world.`}
           </Text>
         </View>
       </View>
@@ -734,6 +802,32 @@ const styles = StyleSheet.create({
   section: {
     paddingHorizontal: 20,
     marginBottom: 16,
+  },
+  risingMissingCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: AppTheme.colors.premiumGoldBorder,
+    backgroundColor: AppTheme.colors.premiumGoldSoft,
+    padding: 16,
+    marginBottom: 12,
+  },
+  risingMissingTitle: {
+    color: AppTheme.colors.gold,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  risingMissingBody: {
+    color: AppTheme.colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 6,
+  },
+  risingMissingCta: {
+    color: AppTheme.colors.gold,
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 10,
   },
   sectionTitle: {
     fontSize: 18,

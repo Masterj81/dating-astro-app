@@ -28,7 +28,7 @@ import {
   sanitizeConnectionIntentions,
   type ConnectionIntention,
 } from "@astro/shared/profile";
-import { buildExplorationQuestions } from "@astro/shared/astrology";
+import { buildExplorationQuestions, resolveTrustedRisingSign } from "@astro/shared/astrology";
 
 // Picker entry. Mirrors the get_synastry_candidate_profiles RPC return
 // shape — same preference filtering as Discover, minus the swipes
@@ -188,7 +188,14 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
                 name: ownData.name,
                 sun_sign: ownData.sun_sign,
                 moon_sign: ownData.moon_sign,
-                rising_sign: ownData.rising_sign,
+                // Gated: the "first impressions" factor must not score two
+                // people on an ascendant neither of them has. birth_time is
+                // the strongest proof and get_my_full_profile returns it.
+                rising_sign: resolveTrustedRisingSign({
+                  birthTime: ownData.birth_time ?? null,
+                  storedRisingSign: ownData.rising_sign,
+                  birthChart: ownData.birth_chart,
+                }),
                 // birth_chart JSONB is already returned by
                 // get_my_full_profile. Pull mercury/venus/mars/saturn out
                 // so the dimensions cards score against real placements
@@ -332,7 +339,13 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
           name: response.profile.name ?? null,
           sun_sign: response.profile.sun_sign ?? null,
           moon_sign: response.profile.moon_sign ?? null,
-          rising_sign: response.profile.rising_sign ?? null,
+          // `profile.rising_sign` is the raw column; the chart the edge
+          // function just computed is what can contradict it (it returns
+          // rising: null and confidence "low" without a birth time).
+          rising_sign: resolveTrustedRisingSign({
+            storedRisingSign: response.profile.rising_sign ?? null,
+            birthChart: c,
+          }),
           venus_sign: c?.planets?.venus?.sign ?? null,
           mars_sign: c?.planets?.mars?.sign ?? null,
           mercury_sign: c?.planets?.mercury?.sign ?? null,

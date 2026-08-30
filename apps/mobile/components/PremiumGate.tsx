@@ -158,6 +158,11 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
       'date-planner': t('dateReflection') || t('datePlanner') || 'Date Reflection',
       'weekly-tarot': t('weeklyTarot') || 'Weekly Tarot',
       'monthly-tarot': t('monthlyTarot') || 'Monthly Tarot',
+      // Listed for exhaustiveness only. The Conversation Guide screen does NOT
+      // use PremiumGate — it must not decide at mount (see
+      // app/premium-screens/conversation-guide.tsx). This entry exists so the
+      // Record stays total and a future gate would have a real name.
+      'conversation-guide': t('conversationGuide') || 'Conversation Guide',
     };
 
     return featureNames[featureName] || featureName;

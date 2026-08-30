@@ -23,7 +23,12 @@ export type FeatureKey =
   | 'date-planner'
   // Tarot
   | 'weekly-tarot'
-  | 'monthly-tarot';
+  | 'monthly-tarot'
+  // Conversation Guide. Premium (Celestial) tier, but note the screen is NOT
+  // wrapped in PremiumGate: its free situation is readable by anyone and the
+  // locked ones spend the server's daily preview only on an explicit tap.
+  // See apps/mobile/app/premium-screens/conversation-guide.tsx.
+  | 'conversation-guide';
 
 // Mapping of features to their required tier
 export const FEATURE_TIERS: Record<FeatureKey, 'premium' | 'premium_plus'> = {
@@ -40,6 +45,8 @@ export const FEATURE_TIERS: Record<FeatureKey, 'premium' | 'premium_plus'> = {
   // Tarot
   'weekly-tarot': 'premium_plus',
   'monthly-tarot': 'premium',
+  // Conversation Guide
+  'conversation-guide': 'premium',
 };
 
 // Features whose access decision belongs to the server.
@@ -58,8 +65,18 @@ export const FEATURE_TIERS: Record<FeatureKey, 'premium' | 'premium_plus'> = {
 // Features absent from this map keep the legacy client-side trial path. To
 // migrate one, give it a `free_preview_quota` in `premium_feature_policy`
 // (see migration 20260823000001) and add it here.
+//
+// `conversation-guide` is server-enforced WITHOUT going through PremiumGate.
+// Its screen calls `enforcePremiumFeature` itself, on the first tap of a
+// locked situation — never at mount, because mounting must stay free (the
+// screen's free situation is the habit surface and has to survive an exhausted
+// preview). That also makes `premium_usage` the feature's only telemetry: the
+// app ships no analytics SDK, so those rows are how opens, next-day return and
+// preview→subscribe conversion get measured. See
+// docs/conversation-coach-feature-plan-2026-08.md §11.2.
 export const SERVER_ENFORCED_FEATURES: Partial<Record<FeatureKey, string>> = {
   'natal-chart': 'natal_chart',
+  'conversation-guide': 'conversation_guide',
 };
 
 // Reason codes returned by `enforce_premium_feature`, plus 'error' for a

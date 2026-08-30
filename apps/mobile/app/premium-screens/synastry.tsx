@@ -17,7 +17,7 @@ import PremiumGate from '../../components/PremiumGate';
 import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { buildExplorationQuestions } from '@astro/shared/astrology';
+import { buildExplorationQuestions, resolveTrustedRisingSign } from '@astro/shared/astrology';
 import {
   calculateSunCompatibility,
   calculateZoneScores,
@@ -192,7 +192,17 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
         name: p.name ?? null,
         sun_sign: p.sun_sign ?? null,
         moon_sign: p.moon_sign ?? null,
-        rising_sign: p.rising_sign ?? null,
+        // `p.rising_sign` is the raw column and may hold the 'Aries' the old
+        // mobile fallback wrote for an account with no birth time. The chart
+        // the edge function just computed does not lie about it — it reports
+        // `rising: null` and `confidence: 'low'` in that case — so the trust
+        // check reads the chart, not the column. Without this, the "first
+        // impressions" factor would score a stranger on an ascendant nobody
+        // ever had.
+        rising_sign: resolveTrustedRisingSign({
+          storedRisingSign: p.rising_sign ?? null,
+          birthChart: c,
+        }),
         mercury_sign: c?.planets?.mercury?.sign ?? null,
         venus_sign: c?.planets?.venus?.sign ?? null,
         mars_sign: c?.planets?.mars?.sign ?? null,
@@ -245,7 +255,13 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
         name: ownData.name ?? null,
         sun_sign: ownData.sun_sign ?? null,
         moon_sign: ownData.moon_sign ?? null,
-        rising_sign: ownData.rising_sign ?? null,
+        // Same rule for the reader's own side, using the strongest proof they
+        // have: get_my_full_profile returns birth_time.
+        rising_sign: resolveTrustedRisingSign({
+          birthTime: ownData.birth_time ?? null,
+          storedRisingSign: ownData.rising_sign ?? null,
+          birthChart: ownData.birth_chart,
+        }),
         mercury_sign: pickPlanetSign(ownData.birth_chart, 'mercury'),
         venus_sign: pickPlanetSign(ownData.birth_chart, 'venus'),
         mars_sign: pickPlanetSign(ownData.birth_chart, 'mars'),
@@ -565,12 +581,16 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
                     <Text style={styles.heroProfileName} numberOfLines={1}>
                       {me?.name || t('you') || 'You'}
                     </Text>
+                    {/* Joined from what exists. `rising_sign` is already null
+                        when unprovable (see loadSelf), and translateSign would
+                        render it as a dangling '?' — a placeholder standing in
+                        for a placement, which is the softer version of the same
+                        lie. */}
                     <Text style={styles.heroProfileSigns} numberOfLines={2}>
-                      {translateSign(me?.sun_sign)}
-                      {' · '}
-                      {translateSign(me?.moon_sign)}
-                      {' · '}
-                      {translateSign(me?.rising_sign)}
+                      {[me?.sun_sign, me?.moon_sign, me?.rising_sign]
+                        .filter((sign) => Boolean(normalizeSign(sign)))
+                        .map((sign) => translateSign(sign))
+                        .join(' · ')}
                     </Text>
                   </View>
                   <Text style={styles.heroJoiner}>{'✦'}</Text>
@@ -579,11 +599,10 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
                       {other?.name || t('match') || 'Connection'}
                     </Text>
                     <Text style={styles.heroProfileSigns} numberOfLines={2}>
-                      {translateSign(other?.sun_sign)}
-                      {' · '}
-                      {translateSign(other?.moon_sign)}
-                      {' · '}
-                      {translateSign(other?.rising_sign)}
+                      {[other?.sun_sign, other?.moon_sign, other?.rising_sign]
+                        .filter((sign) => Boolean(normalizeSign(sign)))
+                        .map((sign) => translateSign(sign))
+                        .join(' · ')}
                     </Text>
                   </View>
                 </View>

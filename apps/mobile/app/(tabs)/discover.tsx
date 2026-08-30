@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ErrorState, LoadingState, EmptyState } from '../../components/ScreenStates';
+import { isRisingTrustworthy } from '@astro/shared/astrology';
 import ProfilePublicMVPSections from '../../components/profile/ProfilePublicMVPSections';
 import WebTabWrapper from '../../components/WebTabWrapper';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -855,7 +856,20 @@ export default function DiscoverScreen() {
                 {'✧'} {t('discoverChartContext') || 'Chart context'}
               </Text>
 
-              <View style={styles.signsRow} accessibilityLabel={`Sun sign: ${currentProfile.sun_sign ?? 'unknown'}, Moon sign: ${currentProfile.moon_sign ?? 'unknown'}, Rising sign: ${currentProfile.rising_sign ?? 'unknown'}`}>
+              {/* The screen reader hears exactly what is on screen: naming a
+                  rising sign here while the pill is hidden would leak the
+                  unverified value to the one audience that cannot see it is
+                  absent. */}
+              <View
+                style={styles.signsRow}
+                accessibilityLabel={[
+                  `Sun sign: ${currentProfile.sun_sign ?? 'unknown'}`,
+                  `Moon sign: ${currentProfile.moon_sign ?? 'unknown'}`,
+                  ...(isRisingTrustworthy({ storedRisingSign: currentProfile.rising_sign })
+                    ? [`Rising sign: ${currentProfile.rising_sign}`]
+                    : []),
+                ].join(', ')}
+              >
                 <View style={styles.signPill}>
                   <Text style={styles.signEmoji}>{'☀️'}</Text>
                   <View>
@@ -870,13 +884,31 @@ export default function DiscoverScreen() {
                     <Text style={styles.signSubtext}>{t('moonSignExplainer')}</Text>
                   </View>
                 </View>
-                <View style={styles.signPill}>
-                  <Text style={styles.signEmoji}>{'⬆️'}</Text>
-                  <View>
-                    <Text style={styles.signText}>{currentProfile.rising_sign || '?'}</Text>
-                    <Text style={styles.signSubtext}>{t('risingSignExplainer')}</Text>
+                {/* Rising is shown only when it can be trusted, and on this
+                    screen it never can: `get_discoverable_profiles` returns
+                    neither `birth_time` nor `birth_chart`, so nothing here can
+                    distinguish a real Aries ascendant from one the old mobile
+                    fallback invented for an account with no birth time.
+                    `isRisingTrustworthy` therefore returns false on a bare
+                    sign, and the pill disappears rather than asserting a fact
+                    about a stranger that JUNO cannot back up.
+
+                    Accounts written by the fixed engine have
+                    `rising_sign = NULL`, so the pill would hide anyway. This
+                    also covers the poisoned rows still in the database, with
+                    no migration — see docs/rising-sign-integrity-2026-08.md.
+                    Once those rows are cleaned up and the RPC carries a trust
+                    signal, this call starts returning real ascendants again
+                    with no change here. */}
+                {isRisingTrustworthy({ storedRisingSign: currentProfile.rising_sign }) ? (
+                  <View style={styles.signPill}>
+                    <Text style={styles.signEmoji}>{'⬆️'}</Text>
+                    <View>
+                      <Text style={styles.signText}>{currentProfile.rising_sign}</Text>
+                      <Text style={styles.signSubtext}>{t('risingSignExplainer')}</Text>
+                    </View>
                   </View>
-                </View>
+                ) : null}
               </View>
 
               {currentProfile.bio ? (

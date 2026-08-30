@@ -119,6 +119,117 @@ check('unfiltered behaviour is unchanged',
 check('copy is localised, not hardcoded',
   /t\('discoverShowAllIntentions'\)/.test(emptyBlock));
 
+// --- P0-5 · the fabricated ascendant ----------------------------------------
+// §3.5 of the same audit, and the worst of the set: the first personalised
+// fact JUNO stated about an account without a birth time was false, eleven
+// times out of twelve. `services/astrology.ts` substituted
+// `{ sign: 'Aries', degree: 0, longitude: 0 }` for the ascendant the engine
+// had correctly refused to compute.
+//
+// The substitution is gone. These checks exist because putting it back is a
+// one-line change that no type and no test would notice — the shape is valid,
+// the screens render, and only the reader knows they are being lied to.
+console.log('P0-5  no fabricated ascendant');
+
+const astrologyService = read('services/astrology.ts');
+const preview = read('app/welcome/preview.tsx');
+const natalChart = read('app/premium-screens/natal-chart.tsx');
+const profileTab = read('app/(tabs)/profile.tsx');
+const synastry = read('app/premium-screens/synastry.tsx');
+
+// Strip comments before scanning code: these files explain the bug at length,
+// and the explanation must not be what trips the guard.
+const codeOf = (source) =>
+  source
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .filter((line) => !/^\s*(?:\/\/|\*)/.test(line))
+    .join('\n');
+
+const serviceCode = codeOf(astrologyService);
+
+check('the engine facade has no Aries literal at all',
+  !/['"]Aries['"]/.test(serviceCode),
+  'the old fallback was { sign: \'Aries\', degree: 0, longitude: 0 }');
+check('placement() takes no fallback argument',
+  /function placement\(p: \{[^}]*\} \| null\): Placement \{/.test(serviceCode),
+  'a second parameter is how the substitution came back last time');
+check('placement() throws instead of inventing a position',
+  /throw new Error\('calculateNatalChart: expected placement was not computed'\)/.test(serviceCode));
+check('rising is typed nullable on the mobile chart',
+  /rising: Placement \| null;/.test(serviceCode));
+check('rising passes straight through from the engine',
+  /rising: chart\.rising,/.test(serviceCode));
+check('mc and houses pass through too',
+  /mc: chart\.mc,/.test(serviceCode) && /houses: chart\.houses,/.test(serviceCode));
+
+// Generic shapes the substitution could take anywhere in the mobile tree.
+const RISING_FALLBACK_PATTERNS = [
+  [/rising[^\n]{0,60}\|\|\s*['"]Aries['"]/i, "rising || 'Aries'"],
+  [/rising[^\n]{0,60}\?\?\s*['"]Aries['"]/i, "rising ?? 'Aries'"],
+  [/rising[^\n]{0,80}sign:\s*['"]Aries['"]/i, "rising: { sign: 'Aries' }"],
+  [/rising_sign:\s*['"]Aries['"]/i, "rising_sign: 'Aries'"],
+];
+for (const [pattern, label] of RISING_FALLBACK_PATTERNS) {
+  for (const [name, source] of [
+    ['services/astrology.ts', serviceCode],
+    ['onboarding/birth-info.tsx', codeOf(birthInfo)],
+    ['welcome/preview.tsx', codeOf(preview)],
+    ['premium-screens/natal-chart.tsx', codeOf(natalChart)],
+    ['(tabs)/profile.tsx', codeOf(profileTab)],
+    ['(tabs)/discover.tsx', codeOf(discover)],
+    ['premium-screens/synastry.tsx', codeOf(synastry)],
+  ]) {
+    check(`${name}: no \`${label}\` fallback`, !pattern.test(source));
+  }
+}
+
+// Onboarding must write null, not a substitute, and must not dereference a
+// placement that may not exist.
+check('onboarding writes rising_sign null-safely',
+  /rising_sign: chart\.rising\?\.sign \?\? null,/.test(codeOf(birthInfo)));
+check('onboarding never dereferences chart.rising without a guard',
+  !/chart\.rising\.sign/.test(codeOf(birthInfo)),
+  'use chart.rising?.sign — the ascendant is nullable now');
+check('the reveal omits the rising row when there is none',
+  /const risingSign = chart\.rising\?\.sign \?\? null;/.test(codeOf(birthInfo)) &&
+    /\.\.\.\(risingSign\s*\n?\s*\?/.test(codeOf(birthInfo)),
+  'the third placement must be conditional on a real ascendant');
+
+// Display surfaces must gate on evidence, never on the bare column.
+check('own profile gates the rising card on birth_time',
+  /resolveTrustedRisingSign\(\{[\s\S]{0,160}?birthTime: profile\?\.birth_time/.test(profileTab));
+check('the natal chart gates the rising row on birth_time',
+  /resolveTrustedRisingSign\(\{[\s\S]{0,120}?birthTime: data\.birth_time/.test(natalChart));
+check('discover hides an unprovable rising pill',
+  /isRisingTrustworthy\(\{ storedRisingSign: currentProfile\.rising_sign \}\)/.test(discover));
+check('synastry refuses an unprovable ascendant on both sides',
+  (codeOf(synastry).match(/resolveTrustedRisingSign\(/g) || []).length >= 2,
+  'the "first impressions" factor must not score an invented placement');
+
+// Surfaces showing SOMEONE ELSE's chart. None of these queries return
+// birth_time or birth_chart, so none of them can prove an ascendant is real —
+// they must all hide it rather than repeat the column.
+const publicProfile = read('app/profile/[id].tsx');
+const chat = read('app/chat/[id].tsx');
+
+check("the public profile hides another user's unprovable rising",
+  /isRisingTrustworthy\(\{ storedRisingSign: profile\.rising_sign \}\)/.test(codeOf(publicProfile)));
+check('the chat header drops an unprovable rising from the sign line',
+  /isRisingTrustworthy\(\{[\s\S]{0,120}?conversationInfo\.other_user\.rising_sign/.test(codeOf(chat)));
+check('discover keeps the screen-reader label in sync with the pill',
+  /isRisingTrustworthy\([\s\S]{0,160}?\?\s*\[`Rising sign: /.test(codeOf(discover)),
+  'naming the sign in accessibilityLabel while the pill is hidden leaks it to the one audience that cannot see it is gone');
+
+// Prose that NAMES the ascendant needs a variant that does not.
+check('the natal-chart summary has a no-rising variant',
+  /cosmicSummaryTextNoRising/.test(codeOf(natalChart)));
+check('the summary picks the variant from the trust check',
+  /trustedRisingSign\s*\n?\s*\?\s*t\('cosmicSummaryText'/.test(codeOf(natalChart)));
+check('the summary never interpolates the raw column',
+  !/rising: chartData\?\.rising_sign/.test(codeOf(natalChart)),
+  "it used to render `${rising_sign || 'Unknown'} Rising` straight into a sentence about the reader");
+
 console.log(
   failures === 0
     ? `\nMobile retention guards look clean: ${checks} checks passed.`

@@ -3,6 +3,8 @@ import { router, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { resolveTrustedRisingSign } from '@astro/shared/astrology';
+import { resolveCoachSign } from '@astro/shared/coach';
 import LanguageSelector from '../../components/LanguageSelector';
 import { LoadingState } from '../../components/ScreenStates';
 import VerifiedBadge from '../../components/VerifiedBadge';
@@ -221,6 +223,21 @@ export default function ProfileScreen() {
     return formatBirthDate(dateString, getMonthName, t('notSet'));
   };
 
+  // The rising sign we are willing to show. Null unless the data proves an
+  // exact birth time existed — see packages/shared/src/astrology/rising.ts.
+  // This screen reads birth_time via get_my_full_profile, which is the
+  // strongest proof available anywhere in the app, so it also repairs the
+  // display for accounts already poisoned by the old 'Aries' fallback,
+  // without waiting for any backfill.
+  const trustedRisingSign = useMemo(
+    () =>
+      resolveTrustedRisingSign({
+        birthTime: profile?.birth_time ?? null,
+        storedRisingSign: profile?.rising_sign ?? null,
+      }),
+    [profile?.birth_time, profile?.rising_sign]
+  );
+
   const completeness = useMemo(() => {
     if (!profile) return 0;
     const fields = [
@@ -354,7 +371,9 @@ export default function ProfileScreen() {
             {[
               { emoji: '\u{2600}\u{FE0F}', label: t('sun'), value: profile?.sun_sign },
               { emoji: '\u{1F319}', label: t('moon'), value: profile?.moon_sign },
-              { emoji: '\u{2B06}\u{FE0F}', label: t('rising'), value: profile?.rising_sign }
+              // Same evidence gate as the native branch: with no birth time
+              // there is no ascendant, whatever the stored column says.
+              { emoji: '\u{2B06}\u{FE0F}', label: t('rising'), value: trustedRisingSign }
             ].map((sign, i) => (
               <div key={i} style={{
                 backgroundColor: AppTheme.colors.panel,
@@ -513,11 +532,29 @@ export default function ProfileScreen() {
               <Text style={styles.signLabel}>{t('moon')}</Text>
               <Text style={styles.signValue}>{profile?.moon_sign ? t(profile.moon_sign.toLowerCase()) : '?'}</Text>
             </View>
-            <View style={styles.signCard} accessibilityLabel={`${t('rising')}: ${profile?.rising_sign ? t(profile.rising_sign.toLowerCase()) : t('notSet')}`}>
-              <Text style={styles.signEmoji}>{'\u{2B06}\u{FE0F}'}</Text>
-              <Text style={styles.signLabel}>{t('rising')}</Text>
-              <Text style={styles.signValue}>{profile?.rising_sign ? t(profile.rising_sign.toLowerCase()) : '?'}</Text>
-            </View>
+            {/* Evidence-gated. `rising_sign` on its own proves nothing: every
+                account that skipped its birth time was written as 'Aries' by
+                the old fallback, and those rows are still in the database.
+                birth_time is the proof, and this screen can read it. */}
+            {trustedRisingSign ? (
+              <View style={styles.signCard} accessibilityLabel={`${t('rising')}: ${t(trustedRisingSign.toLowerCase())}`}>
+                <Text style={styles.signEmoji}>{'\u{2B06}\u{FE0F}'}</Text>
+                <Text style={styles.signLabel}>{t('rising')}</Text>
+                <Text style={styles.signValue}>{t(trustedRisingSign.toLowerCase())}</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.signCard, styles.signCardMuted]}
+                onPress={() => router.push('/onboarding/birth-info')}
+                accessibilityRole="button"
+                accessibilityLabel={t('risingUnknownTitle') || 'Rising sign not calculated'}
+                testID="profile-rising-unknown"
+              >
+                <Text style={styles.signEmoji}>{'\u{2B06}\u{FE0F}'}</Text>
+                <Text style={styles.signLabel}>{t('rising')}</Text>
+                <Text style={styles.signCta}>{t('risingUnknownCta') || 'Add birth time'}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -536,6 +573,41 @@ export default function ProfileScreen() {
             </Text>
             <Text style={styles.dailyNudgeSubtitle}>
               {t('checkDailyHoroscope') || 'View Daily Horoscope'}
+            </Text>
+          </View>
+          <Text style={styles.dailyNudgeArrow}>{'\u{2192}'}</Text>
+        </TouchableOpacity>
+
+        {/* Conversation Guide entry.
+            This card is the feature's discovery surface for FREE accounts:
+            the Premium tab renders a full-screen paywall below Celestial, so
+            the Cosmic Hub grid is invisible to them. Deliberately no tier
+            check here — the guide's "Start a conversation" situation is free
+            and unlimited, and opening the screen consumes nothing.
+            Deep-linked to the reader's own Sun sign when we know it; the
+            screen falls back to the picker when we don't (never a guess). */}
+        <TouchableOpacity
+          style={styles.dailyNudge}
+          onPress={() => {
+            const own = resolveCoachSign(profile?.sun_sign);
+            router.push(
+              (own
+                ? `/premium-screens/conversation-guide?sign=${own}`
+                : '/premium-screens/conversation-guide') as any
+            );
+          }}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={t('conversationGuide') || 'Conversation Guide'}
+          testID="profile-conversation-guide-entry"
+        >
+          <Text style={styles.dailyNudgeIcon}>{'\u{1F5E8}'}</Text>
+          <View style={styles.dailyNudgeContent}>
+            <Text style={styles.dailyNudgeTitle}>
+              {t('conversationGuideEntryTitle') || 'Not sure what to say?'}
+            </Text>
+            <Text style={styles.dailyNudgeSubtitle}>
+              {t('conversationGuideEntrySubtitle') || 'Ways to say it, by sign'}
             </Text>
           </View>
           <Text style={styles.dailyNudgeArrow}>{'\u{2192}'}</Text>
@@ -906,6 +978,18 @@ const styles = StyleSheet.create({
     minWidth: 100,
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
+  },
+  signCardMuted: {
+    borderStyle: 'dashed',
+    borderColor: AppTheme.colors.premiumGoldBorder,
+    backgroundColor: AppTheme.colors.premiumGoldSoft,
+  },
+  signCta: {
+    color: AppTheme.colors.gold,
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 2,
   },
   signEmoji: {
     fontSize: 24,

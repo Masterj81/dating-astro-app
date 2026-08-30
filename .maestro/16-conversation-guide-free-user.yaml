@@ -1,0 +1,93 @@
+# 16 - Conversation Guide: the free path, and the gate that must not fire early.
+#
+# This is the regression test for the ONE way this feature can fail silently:
+# a free account opening the screen and being charged for it.
+#
+# The seed (.maestro/seed-matches.sql) pre-consumes premium_usage for
+# 'conversation_guide', so this account's daily free preview is already spent
+# before the run starts. That is what makes the assertions deterministic — and
+# what makes them worth making: everything below must hold for someone with
+# nothing left to spend.
+#
+#   1. The screen OPENS. If mounting consumed or checked the quota, we would
+#      land on a locked card instead of the guide.
+#   2. "Start a conversation" renders in full, for any sign. Free means free:
+#      no gate, no quota, no server call.
+#   3. A deep link to a LOCKED situation shows an unlock CTA, not content and
+#      not a refusal — the link asks nothing on its own.
+#   4. The TAP is what asks, and the refusal is honest: preview spent, so the
+#      plans CTA appears.
+#   5. The free situation still renders afterwards. A spent preview must never
+#      take away the surface that was promised for free.
+#
+# Companion: flow 17 runs the same screen as a Celestial account, where every
+# situation opens and the preview banner must stay hidden. Run with a fresh
+# seed; see docs/E2E.md.
+
+appId: com.astrodatingapp.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- runFlow: shared/login-as-free-user.yaml
+
+# Deep-link straight in, the way the Profile card and the chat chip do.
+- openLink: "astrodating://premium-screens/conversation-guide?sign=cancer"
+
+# 1 + 2. The screen is reachable and the free situation renders in full.
+#        `coach-card` is the granted-content anchor; if the gate ran at mount,
+#        it would be absent.
+- extendedWaitUntil:
+    visible:
+      id: "coach-card"
+    timeout: 20000
+- assertVisible:
+    id: "coach-situation-start"
+- assertVisible:
+    id: "coach-copy"
+- assertNotVisible:
+    id: "coach-locked-card"
+
+# The sign picker works and does not gate anything either.
+- tapOn:
+    id: "coach-sign-capricorn"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: "coach-card"
+- assertVisible:
+    id: "coach-copy"
+
+# 3. A deep link to a locked situation must not spend anything by itself.
+#    It lands on the unlock CTA — the screen asking, not the screen charging.
+#    If a link could spend, this account would land on the refusal instead.
+- openLink: "astrodating://premium-screens/conversation-guide?sign=leo&situation=clarity"
+- extendedWaitUntil:
+    visible:
+      id: "coach-unlock-cta"
+    timeout: 20000
+- assertNotVisible:
+    id: "coach-copy"
+
+# 4. The tap is what asks. The seed already spent this account's preview, so
+#    the honest answer is the refusal with a plans CTA.
+- tapOn:
+    id: "coach-unlock-cta"
+- extendedWaitUntil:
+    visible:
+      id: "coach-upgrade-cta"
+    timeout: 20000
+- assertNotVisible:
+    id: "coach-copy"
+
+# 5. The free situation still works. An exhausted preview must never cost
+#    someone the surface they were promised for free.
+- tapOn:
+    id: "coach-situation-start"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: "coach-card"
+- assertVisible:
+    id: "coach-copy"

@@ -15,6 +15,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { isRisingTrustworthy } from '@astro/shared/astrology';
+import { resolveCoachSign } from '@astro/shared/coach';
 import BlockReportMenu from '../../components/BlockReportMenu';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../services/supabase';
@@ -436,7 +438,15 @@ export default function ChatScreen() {
                   {[
                     conversationInfo.other_user.sun_sign,
                     conversationInfo.other_user.moon_sign,
-                    conversationInfo.other_user.rising_sign,
+                    // The conversation query carries no birth_time and no
+                    // birth_chart, so this ascendant can never be proven real —
+                    // and may be the 'Aries' the old fallback invented. Dropped
+                    // rather than asserted about the person being messaged.
+                    isRisingTrustworthy({
+                      storedRisingSign: conversationInfo.other_user.rising_sign,
+                    })
+                      ? conversationInfo.other_user.rising_sign
+                      : null,
                   ]
                     .filter((s) => s && s.length > 0)
                     .join(' · ')}
@@ -472,6 +482,30 @@ export default function ChatScreen() {
               accessibilityRole="button"
             >
               <Text style={styles.headerActionText}>{t('chatCompareCharts') || 'Compare charts'}</Text>
+            </TouchableOpacity>
+            {/* Conversation Guide, at the moment of need. Free accounts get
+                "Start a conversation" for all 12 signs with no gate and no
+                quota, so this chip is shown to everyone — the Premium tab
+                paywalls free users out of the hub, and this is where the need
+                actually occurs. `resolveCoachSign` returns null rather than
+                guessing when the other profile has no usable Sun sign; the
+                screen then opens on its own picker. */}
+            <TouchableOpacity
+              style={styles.headerActionChip}
+              onPress={() => {
+                const targetSign = resolveCoachSign(conversationInfo.other_user.sun_sign);
+                router.push(
+                  (targetSign
+                    ? `/premium-screens/conversation-guide?sign=${targetSign}`
+                    : '/premium-screens/conversation-guide') as any
+                );
+              }}
+              accessibilityRole="button"
+              testID="chat-conversation-guide-chip"
+            >
+              <Text style={styles.headerActionText}>
+                {t('conversationGuideChatChip') || 'Ways to say it'}
+              </Text>
             </TouchableOpacity>
           </View>
         ) : null}
