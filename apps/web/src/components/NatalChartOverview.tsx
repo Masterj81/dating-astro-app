@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { resolveTrustedRisingSign } from "@astro/shared/astrology";
 import { translateElement, translateModality, translateSign } from "@/lib/astrology-labels";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
@@ -53,20 +54,12 @@ const PLANET_SYMBOLS: Record<PlanetKey, string> = {
   saturn: "♄",
 };
 
-const SIGNS = [
-  "Aries",
-  "Taurus",
-  "Gemini",
-  "Cancer",
-  "Leo",
-  "Virgo",
-  "Libra",
-  "Scorpio",
-  "Sagittarius",
-  "Capricorn",
-  "Aquarius",
-  "Pisces",
-];
+// The zodiac list that used to live here existed for exactly one purpose:
+// `getFallbackSign` picked from it with `seed % 12` to invent a sign for any
+// placement the profile did not have. Both are gone. Nothing in this file
+// needs a list of all twelve signs any more, and leaving one behind is an
+// invitation to reach for it the same way. Real sign labels come from
+// `translateSign`; membership tests use SIGN_ELEMENTS / SIGN_MODALITIES below.
 
 const SIGN_ELEMENTS: Record<string, "fire" | "earth" | "air" | "water"> = {
   Aries: "fire",
@@ -120,10 +113,6 @@ function formatPlanetInHouseLabel(planet: string, houseName: string, locale: str
   return `${planet} · ${houseName}`;
 }
 
-function getFallbackSign(seed: number) {
-  return SIGNS[seed % SIGNS.length];
-}
-
 function buildPlanetPositions(profile: NatalProfile, t: ReturnType<typeof useTranslations>) {
   const baseSeed =
     (profile.sun_sign?.length || 0) +
@@ -131,10 +120,18 @@ function buildPlanetPositions(profile: NatalProfile, t: ReturnType<typeof useTra
     (profile.rising_sign?.length || 0) +
     (profile.birth_date?.length || 0);
 
-  const picks = [
+  // The rising sign is the one placement that cannot exist without an exact
+  // birth time, and this screen can read `birth_time` — the strongest proof
+  // available. See packages/shared/src/astrology/rising.ts.
+  const trustedRising = resolveTrustedRisingSign({
+    birthTime: profile.birth_time,
+    storedRisingSign: profile.rising_sign,
+  });
+
+  const picks: (string | null | undefined)[] = [
     profile.sun_sign,
     profile.moon_sign,
-    profile.rising_sign,
+    trustedRising,
     profile.mercury_sign,
     profile.venus_sign,
     profile.mars_sign,
@@ -153,14 +150,37 @@ function buildPlanetPositions(profile: NatalProfile, t: ReturnType<typeof useTra
     "saturn",
   ];
 
-  return keys.map((key, index) => ({
-    key,
-    label: t(`natalPlanet_${key}`),
-    symbol: PLANET_SYMBOLS[key],
-    sign: picks[index] || getFallbackSign(baseSeed + index * 3),
-    degree: ((baseSeed + index * 7) % 29) + 1,
-    house: ((baseSeed + index * 2) % 12) + 1,
-  })) satisfies PlanetPosition[];
+  // A placement we do not have is DROPPED, never invented.
+  //
+  // This used to read `picks[index] || getFallbackSign(baseSeed + index * 3)`,
+  // where getFallbackSign was `SIGNS[seed % 12]` — a sign derived from the
+  // length of some strings. Every missing placement got a plausible, varied,
+  // entirely fictional sign, and because it varied per profile there was no
+  // pattern for anyone to notice.
+  //
+  // It was mostly dormant while the mobile bug filled `rising_sign` with
+  // 'Aries'. Migration 20260830000001 nulled those columns, which would have
+  // handed this fallback 99 accounts to invent an ascendant for. Fixing the
+  // database made this one live; hence the removal.
+  return keys
+    .map((key, index) => {
+      const sign = picks[index];
+      if (!sign) return null;
+      return {
+        key,
+        label: t(`natalPlanet_${key}`),
+        symbol: PLANET_SYMBOLS[key],
+        sign,
+        // NOTE: degree and house remain decorative, derived from a string
+        // length. They are precision theatre of the same family as the "82%
+        // overall energy" removed in the Daily Reflection V2 rewrite, and
+        // deserve the same treatment — separate change, tracked in
+        // docs/rising-sign-integrity-2026-08.md §6.
+        degree: ((baseSeed + index * 7) % 29) + 1,
+        house: ((baseSeed + index * 2) % 12) + 1,
+      };
+    })
+    .filter((position): position is PlanetPosition => position !== null);
 }
 
 type ServerGate = { allowed: boolean; reason: string | null };

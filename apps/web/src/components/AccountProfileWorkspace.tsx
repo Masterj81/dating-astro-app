@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
+import { resolveTrustedRisingSign } from "@astro/shared/astrology";
 import { translateSign } from "@/lib/astrology-labels";
 import { SITE } from "@/lib/constants";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
@@ -955,14 +956,28 @@ export function AccountProfileWorkspace({
             {profile.moon_sign ? translateSign(profile.moon_sign, locale) : "?"}
           </p>
         </div>
+        {/* The reader's OWN profile, so a missing ascendant is actionable
+            rather than just absent: say what is needed instead of "?". This
+            screen can read birth_time, which outranks the column — see
+            packages/shared/src/astrology/rising.ts. */}
         <div className="rounded-2xl border border-border bg-white/[0.04] p-3 text-center">
           <div className="flex justify-center">
             <LuminaryGlyph kind="rising" size="sm" />
           </div>
           <p className="mt-1 text-[10px] uppercase tracking-widest text-text-dim">{t("discoverRising")}</p>
-          <p className="mt-1 text-sm font-semibold text-white">
-            {profile.rising_sign ? translateSign(profile.rising_sign, locale) : "?"}
-          </p>
+          {resolveTrustedRisingSign({
+            birthTime: profile.birth_time,
+            storedRisingSign: profile.rising_sign,
+            birthChart: profile.birth_chart,
+          }) ? (
+            <p className="mt-1 text-sm font-semibold text-white">
+              {translateSign(profile.rising_sign, locale)}
+            </p>
+          ) : (
+            <p className="mt-1 text-[11px] leading-4 text-text-dim">
+              {t("revealRefineMissingTime")}
+            </p>
+          )}
         </div>
       </div>
 

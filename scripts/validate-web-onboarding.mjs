@@ -205,6 +205,84 @@ check(
   'a reader who returns to the home page and never opens /app is still a D+1 return',
 );
 
+// --- no invented placements on web -----------------------------------------
+// The mobile half of this rule lives in section P0-5 of
+// validate-mobile-retention-guards.mjs. The web needs its own because it has
+// its own display surfaces AND had its own, quieter fabricator:
+// `getFallbackSign(seed) = SIGNS[seed % 12]` in NatalChartOverview invented a
+// sign for ANY missing placement. It stayed mostly dormant while the mobile
+// bug kept `rising_sign` filled with 'Aries'; nulling those columns
+// (migration 20260830000001) would have handed it 99 accounts to invent an
+// ascendant for. A varied plausible sign is harder to notice than a constant
+// Aries, which is exactly why it needs a guard.
+console.log('no invented placements');
+
+const natalChart = read('src/components/NatalChartOverview.tsx');
+const discover = read('src/components/DiscoverOverview.tsx');
+const synastry = read('src/components/SynastryOverview.tsx');
+const workspace2 = read('src/components/AccountProfileWorkspace.tsx');
+
+const stripComments = (source) =>
+  source
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .filter((line) => !/^\s*(?:\/\/|\*)/.test(line))
+    .join('\n');
+
+check(
+  'NatalChartOverview has no getFallbackSign',
+  !/getFallbackSign/.test(stripComments(natalChart)),
+  'a missing placement must be dropped, never derived from a seed',
+);
+check(
+  'NatalChartOverview keeps no all-signs array to invent from',
+  !/const SIGNS\s*=\s*\[/.test(stripComments(natalChart)),
+);
+check(
+  'NatalChartOverview drops placements it does not have',
+  /if \(!sign\) return null;/.test(natalChart) &&
+    /\.filter\(\(position\)[^)]*=> position !== null\)/.test(natalChart),
+);
+check(
+  'NatalChartOverview gates rising on birth_time',
+  /resolveTrustedRisingSign\(\{[\s\S]{0,120}?birthTime: profile\.birth_time/.test(natalChart),
+);
+
+check(
+  'Discover hides an unprovable rising instead of showing "?"',
+  (stripComments(discover).match(/isRisingTrustworthy\(/g) || []).length >= 2,
+  'both the sign line and the placement tile must gate; "?" on a stranger\'s card is a placeholder standing in for a placement',
+);
+check(
+  'Discover no longer renders a bare rising fallback',
+  !/currentProfile\.rising_sign, locale\) : "\?"/.test(stripComments(discover)),
+);
+
+check(
+  'Synastry gates rising on both sides',
+  (stripComments(synastry).match(/resolveTrustedRisingSign\(/g) || []).length >= 2,
+  'the "first impressions" factor must not score an invented placement',
+);
+
+check(
+  'the account workspace gates its own rising card',
+  /resolveTrustedRisingSign\(\{[\s\S]{0,160}?birthTime: profile\.birth_time/.test(workspace2),
+);
+
+for (const [name, source] of [
+  ['NatalChartOverview', natalChart],
+  ['DiscoverOverview', discover],
+  ['SynastryOverview', synastry],
+  ['AccountProfileWorkspace', workspace2],
+  ['AccountSetupForm', setupForm],
+]) {
+  check(
+    `${name}: no Aries-style rising fallback`,
+    !/rising[^\n]{0,60}(\|\||\?\?)\s*["']Aries["']/i.test(stripComments(source)) &&
+      !/rising_sign:\s*["']Aries["']/i.test(stripComments(source)),
+  );
+}
+
 // --- i18n -------------------------------------------------------------------
 console.log('reveal copy across locales');
 

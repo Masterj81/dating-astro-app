@@ -22,19 +22,40 @@
 //
 // THE RULE
 // --------
-// Show a rising sign only when something in the data PROVES it was computed
-// from a real birth time. Absence of proof is treated as absence of a rising
-// sign. That is the conservative direction on purpose: hiding a real
-// ascendant costs a reader one line of their profile and is fixed by
-// re-running onboarding; showing a fabricated one is JUNO stating a falsehood
-// about someone, which is the thing this product cannot do.
+// Show a rising sign only when something PROVES it was computed from a real
+// birth time. Anything contradicted, or unprovable, is treated as absent.
+// Showing a fabricated ascendant is JUNO stating a falsehood about someone,
+// which is the thing this product cannot do.
 //
-// Callers pass whatever they can see. Different surfaces see different things:
-//   - own profile / natal chart → `birthTime` (the strongest proof)
-//   - synastry / stored charts  → `birthChart`
-//   - the discovery deck        → neither; get_discoverable_profiles returns
-//                                 only `rising_sign`, so nothing can be
-//                                 proven and the placement stays hidden.
+// WHERE THE PROOF COMES FROM (this changed on 2026-08-30)
+// -------------------------------------------------------
+// Migration `20260830000001_enforce_rising_requires_birth_time` puts a
+// BEFORE INSERT OR UPDATE trigger on `profiles` that nulls `rising_sign` (and
+// `birth_chart->rising`) whenever `birth_time` is null. The invariant now
+// holds in the database:
+//
+//     birth_time IS NULL  ⟹  rising_sign IS NULL
+//
+// whose contrapositive is what matters here:
+//
+//     rising_sign IS NOT NULL  ⟹  birth_time IS NOT NULL
+//
+// So a stored sign is, on its own, evidence that a birth time existed when it
+// was computed. Before the trigger it was not, and this module refused a bare
+// sign outright — which was right at the time, but hid every REAL ascendant on
+// the surfaces that can only see the column (`get_discoverable_profiles`
+// returns neither `birth_time` nor `birth_chart`). That cost is no longer
+// necessary, and paying it anyway would be its own small dishonesty: telling
+// 93 people we do not know their ascendant when we do.
+//
+// ⚠️ THIS RELAXATION DEPENDS ON THAT TRIGGER. If it is ever dropped or
+// disabled, a bare sign stops proving anything and rule 5 below must go back
+// to returning false. `supabase/tests/rising_requires_birth_time.test.sql`
+// exists so that dropping it fails loudly.
+//
+// Richer signals still win when a caller has them: `birthTime` and the stored
+// chart can each CONTRADICT the column, and a contradiction always hides the
+// placement.
 
 /** Warning codes that mean the ascendant could not be computed honestly. */
 const DISQUALIFYING_WARNINGS = new Set([
@@ -98,9 +119,9 @@ export function isRisingTrustworthy(input: RisingTrustInput): boolean {
   //    proof available, and the common case for a reader's own profile.
   if (typeof birthTime === 'string' && birthTime.trim().length > 0) return true;
 
-  // 4. No birth_time visible — fall back to what the stored chart admits about
-  //    itself. The engine records these honestly even in the buggy build,
-  //    because the substitution happened after the chart was computed.
+  // 4. The stored chart can CONTRADICT the column. These checks run even when
+  //    the column looks fine, because a chart that admits it could not compute
+  //    an ascendant outranks a sign sitting next to it.
   if (chart) {
     if (Array.isArray(chart.warnings)) {
       for (const warning of chart.warnings) {
@@ -113,17 +134,19 @@ export function isRisingTrustworthy(input: RisingTrustInput): boolean {
     // An explicitly null rising on a readable chart is the engine saying it
     // could not compute one.
     if ('rising' in chart && chart.rising === null) return false;
-    // A chart that states a good confidence AND carries a rising placement is
-    // the only chart-only case we accept.
-    if ((chart.confidence === 'high' || chart.confidence === 'medium') && hasChartRising) {
-      return true;
-    }
   }
 
-  // 5. Cannot prove it. This is where the discovery deck lands — the RPC
-  //    returns neither birth_time nor birth_chart — and where legacy charts
-  //    that predate the `confidence` field land. Both stay hidden.
-  return false;
+  // 5. Nothing contradicted it, and there is a sign to show.
+  //
+  //    A bare stored sign is enough BECAUSE the database enforces
+  //    `birth_time IS NULL ⟹ rising_sign IS NULL` (migration
+  //    20260830000001). Read the header before loosening or tightening this:
+  //    it is the one line that depends on a trigger existing.
+  //
+  //    A chart-only placement is accepted on the same footing — it comes from
+  //    the same protected row, or from a chart just computed by
+  //    `get-profile-chart`, which returns `rising: null` without a birth time.
+  return hasStoredSign || hasChartRising;
 }
 
 /**

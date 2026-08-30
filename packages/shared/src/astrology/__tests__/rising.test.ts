@@ -150,21 +150,51 @@ describe('isRisingTrustworthy', () => {
     ).toBe(true);
   });
 
-  it('refuses a legacy chart that never recorded its confidence', () => {
-    // Absence of proof is absence of a rising sign — a v1 row cannot tell us
-    // whether a birth time existed, so it stays hidden.
+  it('accepts a legacy chart that never recorded its confidence', () => {
+    // A v1 row cannot say whether a birth time existed. Until 2026-08-30 that
+    // was decisive and the placement stayed hidden. It no longer is: the row
+    // itself is now covered by the database trigger, so the surviving sign
+    // proves a birth time was there. Nothing in this chart contradicts it.
+    expect(
+      isRisingTrustworthy({
+        storedRisingSign: 'Scorpio',
+        birthChart: { sun: { sign: 'Leo' }, rising: { sign: 'Scorpio' }, chartVersion: 1 },
+      })
+    ).toBe(true);
+  });
+
+  it('accepts a bare sign, as on the discovery deck', () => {
+    // get_discoverable_profiles returns neither birth_time nor birth_chart —
+    // only the column. That used to mean "unprovable, therefore hidden",
+    // which cost every real ascendant on the deck.
+    //
+    // Migration 20260830000001 enforces `birth_time IS NULL ⟹ rising_sign IS
+    // NULL` at the database level, so the column now carries its own proof.
+    // If that trigger is ever dropped, THIS is the assertion that should flip
+    // back to false — and rising.ts rule 5 with it.
+    expect(isRisingTrustworthy({ storedRisingSign: 'Scorpio' })).toBe(true);
+  });
+
+  it('still refuses a bare sign the moment anything contradicts it', () => {
+    // The relaxation above only applies when nothing objects. A visible empty
+    // birth_time, a chart that admits it computed no ascendant, or a
+    // low-confidence chart each outrank the column.
+    expect(isRisingTrustworthy({ storedRisingSign: 'Aries', birthTime: null })).toBe(false);
+    expect(
+      isRisingTrustworthy({ storedRisingSign: 'Aries', birthChart: POISONED_STORED_CHART })
+    ).toBe(false);
     expect(
       isRisingTrustworthy({
         storedRisingSign: 'Aries',
-        birthChart: { sun: { sign: 'Leo' }, rising: { sign: 'Aries' }, chartVersion: 1 },
+        birthChart: { ...HONEST_CHART, rising: null },
       })
     ).toBe(false);
-  });
-
-  it('refuses when only a bare sign is available, as on the discovery deck', () => {
-    // get_discoverable_profiles returns neither birth_time nor birth_chart.
-    expect(isRisingTrustworthy({ storedRisingSign: 'Aries' })).toBe(false);
-    expect(isRisingTrustworthy({ storedRisingSign: 'Scorpio' })).toBe(false);
+    expect(
+      isRisingTrustworthy({
+        storedRisingSign: 'Aries',
+        birthChart: { ...HONEST_CHART, warnings: ['missing_birth_time'] },
+      })
+    ).toBe(false);
   });
 
   it('lets a present birth time override a pessimistic chart', () => {
@@ -180,9 +210,17 @@ describe('isRisingTrustworthy', () => {
   });
 
   it('survives garbage without throwing', () => {
+    // An unreadable birth_chart is not a contradiction — it is noise. It must
+    // not crash, and it must not veto the column, which carries its own proof.
     for (const birthChart of [null, undefined, 42, 'nope', [], { rising: 'nope' }]) {
-      expect(() => isRisingTrustworthy({ storedRisingSign: 'Aries', birthChart })).not.toThrow();
-      expect(isRisingTrustworthy({ storedRisingSign: 'Aries', birthChart })).toBe(false);
+      expect(() =>
+        isRisingTrustworthy({ storedRisingSign: 'Scorpio', birthChart })
+      ).not.toThrow();
+      expect(isRisingTrustworthy({ storedRisingSign: 'Scorpio', birthChart })).toBe(true);
+    }
+    // ...and with no sign either, there is still nothing to show.
+    for (const birthChart of [null, undefined, 42, 'nope', []]) {
+      expect(isRisingTrustworthy({ storedRisingSign: null, birthChart })).toBe(false);
     }
   });
 });

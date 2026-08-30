@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Link } from "@/i18n/navigation";
+import { isRisingTrustworthy } from "@astro/shared/astrology";
 import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
@@ -388,12 +389,23 @@ export function DiscoverOverview() {
                 {currentProfile.name || t("unknownUser")}
                 {currentProfile.age ? `, ${currentProfile.age}` : ""}
               </h2>
+              {/* Joined from the placements this profile actually has. The
+                  ascendant is absent for anyone who never gave a birth time \u2014
+                  the database enforces that since migration 20260830000001 \u2014
+                  and a trailing "?" on a stranger's card is a placeholder
+                  standing in for a placement, which is the quiet version of
+                  claiming one. */}
               <p className="mt-2 text-sm text-white/80">
-                {currentProfile.sun_sign ? translateSign(currentProfile.sun_sign, locale) : "?"}{" "}
-                {"\u2022"}{" "}
-                {currentProfile.moon_sign ? translateSign(currentProfile.moon_sign, locale) : "?"}{" "}
-                {"\u2022"}{" "}
-                {currentProfile.rising_sign ? translateSign(currentProfile.rising_sign, locale) : "?"}
+                {[
+                  currentProfile.sun_sign,
+                  currentProfile.moon_sign,
+                  isRisingTrustworthy({ storedRisingSign: currentProfile.rising_sign })
+                    ? currentProfile.rising_sign
+                    : null,
+                ]
+                  .filter((sign): sign is string => Boolean(sign))
+                  .map((sign) => translateSign(sign, locale))
+                  .join(` ${"\u2022"} `)}
               </p>
               {(() => {
                 // Macro intentions chip cluster \u2014 only rendered when the
@@ -455,15 +467,20 @@ export function DiscoverOverview() {
                     {currentProfile.moon_sign ? translateSign(currentProfile.moon_sign, locale) : "?"}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-border bg-white/[0.04] p-3 text-center">
-                  <div className="flex justify-center">
-                    <LuminaryGlyph kind="rising" size="sm" />
+                {/* Hidden rather than "?": this is someone else's card, and
+                    an empty rising means they never gave a birth time, not
+                    that we mislaid it. */}
+                {isRisingTrustworthy({ storedRisingSign: currentProfile.rising_sign }) ? (
+                  <div className="rounded-2xl border border-border bg-white/[0.04] p-3 text-center">
+                    <div className="flex justify-center">
+                      <LuminaryGlyph kind="rising" size="sm" />
+                    </div>
+                    <p className="mt-1 text-[10px] uppercase tracking-widest text-text-dim">{t("discoverRising")}</p>
+                    <p className="mt-1 text-sm font-semibold text-white">
+                      {translateSign(currentProfile.rising_sign, locale)}
+                    </p>
                   </div>
-                  <p className="mt-1 text-[10px] uppercase tracking-widest text-text-dim">{t("discoverRising")}</p>
-                  <p className="mt-1 text-sm font-semibold text-white">
-                    {currentProfile.rising_sign ? translateSign(currentProfile.rising_sign, locale) : "?"}
-                  </p>
-                </div>
+                ) : null}
               </div>
 
               {/* MVP teasers — compact preview of the new profile fields.
