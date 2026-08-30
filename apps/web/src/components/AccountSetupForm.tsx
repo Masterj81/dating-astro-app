@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { usePathname, useRouter } from "@/i18n/navigation";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { ZodiacGlyph } from "@/components/ZodiacGlyph";
+import { translateSign } from "@/lib/astrology-labels";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import type { Session } from "@supabase/supabase-js";
 
@@ -52,6 +54,54 @@ type BirthTimePartsState = {
 };
 
 type ShowMeOption = "men" | "women" | "everyone";
+
+/** What calculate-chart returns. `rising` is null when no birth time was given. */
+type ChartResponse = {
+  sun?: { sign?: string } | null;
+  moon?: { sign?: string } | null;
+  rising?: { sign?: string } | null;
+  coordinates?: { latitude?: number; longitude?: number };
+  confidence?: string;
+  warnings?: string[];
+} & Record<string, unknown>;
+
+/** What the reveal card shows. Every field is nullable on purpose. */
+type RevealState = {
+  sun: string | null;
+  moon: string | null;
+  rising: string | null;
+  missingBirthTime: boolean;
+  missingBirthCity: boolean;
+};
+
+/**
+ * The reader's own IANA zone, used ONLY as a stand-in when no birth city was
+ * given. Returns null when the browser cannot tell us, in which case
+ * calculate-chart keeps its own Greenwich fallback.
+ */
+function resolveDeviceTimezone(): string | null {
+  try {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    // The edge function rejects anything over 64 chars and validates the id.
+    return typeof zone === "string" && zone.length > 0 && zone.length <= 64 ? zone : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The session's email, or null. Never throws — a failure just skips backfill. */
+async function getSessionEmail(): Promise<string | null> {
+  try {
+    const supabase = getSupabaseBrowser();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const email = session?.user?.email;
+    return typeof email === "string" && email.length > 0 ? email : null;
+  } catch {
+    return null;
+  }
+}
 
 const ALL_PROFILE_ELEMENTS = ["fire", "earth", "air", "water"] as const;
 const ELEMENT_OPTIONS = [
@@ -176,8 +226,18 @@ async function ensureWebProfileExists(session: Session) {
     session.user.email?.split("@")[0] ||
     "User";
 
+  // `email` is not optional bookkeeping: send-email/index.ts skips any account
+  // whose profile has no email with `{ skipped: true, reason: "No email on
+  // profile" }`, silently and forever. The auth trigger
+  // (20260319_create_profiles_on_auth_signup) normally fills it, but this
+  // insert only runs when that row is missing — a trigger failure, an account
+  // predating the trigger, a deleted row — which is exactly the case where the
+  // column would otherwise stay null and the reader would never hear from JUNO
+  // again. `?? null` never clobbers an existing value: this is an INSERT, and
+  // the row provably did not exist a moment ago.
   const { error: insertError } = await supabase.from("profiles").insert({
     id: session.user.id,
+    email: session.user.email ?? null,
     name: fallbackName,
   });
 
@@ -219,7 +279,8 @@ export function AccountSetupForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  // Replaces the old `success` string: the reveal IS the success state now.
+  const [reveal, setReveal] = useState<RevealState | null>(null);
   const [form, setForm] = useState<SetupFormState>({
     name: "",
     gender: "",
@@ -351,13 +412,17 @@ export function AccountSetupForm() {
       return;
     }
 
-    const requiredFieldsPresent =
-      form.name.trim() &&
-      form.gender &&
-      form.birthDate &&
-      form.birthTime &&
-      form.birthCity.trim() &&
-      form.elementFilter.length > 0;
+    // Only three fields block the first payoff: who you are, how you show up
+    // in discovery, and the one date the chart cannot be computed without.
+    //
+    // birthTime, birthCity and elementFilter used to block too, which meant a
+    // reader could not reach a single piece of value without supplying an
+    // exact birth minute and a dating filter. Android already treats the first
+    // two as optional and encourages skipping them ("Don't worry if you're not
+    // sure"); the web asking MORE than the native app is backwards, especially
+    // as the web is the iOS channel. See docs/retention-day2-audit-2026-08.md
+    // §4 on how late this pushes the Aha moment.
+    const requiredFieldsPresent = form.name.trim() && form.gender && form.birthDate;
 
     if (!requiredFieldsPresent) {
       setError(t("fillAllFields"));
@@ -378,15 +443,31 @@ export function AccountSetupForm() {
     try {
       setSaving(true);
       setError(null);
-      setSuccess(null);
+
+      const birthTime = form.birthTime.trim();
+      const birthCity = form.birthCity.trim();
+      const hasBirthTime = birthTime.length > 0;
+      const hasBirthCity = birthCity.length > 0;
+
+      // With no birth city the edge function falls back to Greenwich, which is
+      // a worse guess than the device's own zone for almost everybody. Passing
+      // the device zone gets a materially better UTC instant — but it is still
+      // a GUESS, and calculate-chart would score a guessed zone as 'input' and
+      // report high confidence. We downgrade that below rather than let the
+      // stored chart claim a precision nobody gave us.
+      const deviceTimezone = !hasBirthCity ? resolveDeviceTimezone() : null;
 
       const supabase = getSupabaseBrowser();
       const { data, error: chartError } = await supabase.functions.invoke("calculate-chart", {
         body: {
           action: "calculate_chart",
           birthDate: form.birthDate,
-          birthTime: form.birthTime,
-          birthCity: form.birthCity.trim(),
+          // Omit rather than send "" — the function branches on
+          // `birthTime.trim().length > 0` to decide whether an ascendant can
+          // exist at all, and an empty string is the honest "unknown".
+          ...(hasBirthTime ? { birthTime } : {}),
+          ...(hasBirthCity ? { birthCity } : {}),
+          ...(deviceTimezone ? { birthTimezone: deviceTimezone } : {}),
         },
       });
 
@@ -398,33 +479,68 @@ export function AccountSetupForm() {
         throw new Error(data?.error || "Unable to calculate birth chart.");
       }
 
-      const chart = data.data as {
-        sun: { sign: string };
-        moon: { sign: string };
-        rising: { sign: string };
-        coordinates?: { latitude?: number; longitude?: number };
-      } & Record<string, unknown>;
+      const chart = data.data as ChartResponse;
 
-      const payload = {
+      // The ascendant needs an exact birth minute. calculate-chart already
+      // returns `rising: null` without one — unlike the mobile wrapper, which
+      // substitutes Aries in hard (services/astrology.ts:125) and is why one
+      // account in twelve is told a true rising sign and the rest are told
+      // Aries. Never write, never render, what we do not have.
+      const risingSign = hasBirthTime ? chart.rising?.sign ?? null : null;
+
+      // Record the uncertainty we introduced instead of hiding it. Kept in the
+      // JSONB the client owns; calculate-chart is untouched.
+      const storedChart: ChartResponse = deviceTimezone
+        ? {
+            ...chart,
+            confidence: "low",
+            warnings: [
+              ...(Array.isArray(chart.warnings) ? chart.warnings : []),
+              "timezone_guessed_from_device",
+            ],
+          }
+        : chart;
+
+      const payload: Record<string, unknown> = {
         name: form.name.trim(),
         gender: form.gender,
         birth_date: form.birthDate,
-        birth_time: form.birthTime,
-        birth_city: form.birthCity.trim(),
-        birth_chart: chart,
-        birth_latitude: chart.coordinates?.latitude ?? null,
-        birth_longitude: chart.coordinates?.longitude ?? null,
+        birth_time: hasBirthTime ? birthTime : null,
+        birth_city: hasBirthCity ? birthCity : null,
+        birth_chart: storedChart,
+        // Without a city these would be Greenwich — a fabricated birthplace in
+        // a column named birth_latitude. get-profile-chart already applies the
+        // same fallback for a null (index.ts:289), so null costs nothing
+        // downstream and stores "unknown" instead of a made-up fact.
+        birth_latitude: hasBirthCity ? chart.coordinates?.latitude ?? null : null,
+        birth_longitude: hasBirthCity ? chart.coordinates?.longitude ?? null : null,
         sun_sign: chart.sun?.sign ?? null,
         moon_sign: chart.moon?.sign ?? null,
-        rising_sign: chart.rising?.sign ?? null,
+        rising_sign: risingSign,
         age: Number.isFinite(age) ? age : null,
         looking_for: mapShowMeToLookingFor(form.showMe),
         min_age: form.minAge,
         max_age: form.maxAge,
         max_distance: form.maxDistance,
-        preferred_elements: form.elementFilter.map((value) => value.toLowerCase()),
+        // An empty selection means "no element filter", which the rest of the
+        // app expresses as all four (see mapPreferredElementsToFilter and the
+        // ensureProfile default). Writing [] instead would read as "wants
+        // nobody" to anything that filters on this column.
+        preferred_elements:
+          form.elementFilter.length > 0
+            ? form.elementFilter.map((value) => value.toLowerCase())
+            : [...ALL_PROFILE_ELEMENTS],
         onboarding_completed: true,
       };
+
+      // Backfill the email if this profile row never got one. Guarded on a
+      // truthy session email so an anonymous/edge case can never overwrite a
+      // good address with null — the failure mode is permanent silence from
+      // every lifecycle email.
+      const sessionEmail = await getSessionEmail();
+      if (sessionEmail) {
+        payload.email = sessionEmail;
+      }
 
       const { error: updateError } = await supabase
         .from("profiles")
@@ -435,8 +551,18 @@ export function AccountSetupForm() {
         throw updateError;
       }
 
-      setSuccess(t("profilePreferencesSaveSuccess"));
-      router.replace("/app");
+      // Do NOT redirect. The chart has just been computed and the reader has
+      // not seen a single thing they came for; sending them straight to /app
+      // spends the whole onboarding and shows nothing for it. Android reveals
+      // the chart here (birth-info.tsx ChartRevealOverlay) and the web should
+      // too — this is the Aha moment.
+      setReveal({
+        sun: chart.sun?.sign ?? null,
+        moon: chart.moon?.sign ?? null,
+        rising: risingSign,
+        missingBirthTime: !hasBirthTime,
+        missingBirthCity: !hasBirthCity,
+      });
     } catch (saveFailure) {
       if (saveFailure instanceof Error && saveFailure.message.includes("at least 18")) {
         setError(t("mustBe18"));
@@ -448,17 +574,26 @@ export function AccountSetupForm() {
     }
   };
 
+  // Progress reflects what actually blocks the button. birthTime, birthCity
+  // and elements still count — they genuinely improve the chart and the
+  // discovery feed — but they are marked optional so the bar stops implying
+  // that a reader at 50 % cannot continue. They can.
   const completionSteps = useMemo(() => {
     const steps = [
-      { key: "name", done: !!form.name.trim() },
-      { key: "gender", done: !!form.gender },
-      { key: "birthDate", done: !!form.birthDate },
-      { key: "birthTime", done: !!form.birthTime },
-      { key: "birthCity", done: !!form.birthCity.trim() },
-      { key: "elements", done: form.elementFilter.length > 0 },
+      { key: "name", done: !!form.name.trim(), required: true },
+      { key: "gender", done: !!form.gender, required: true },
+      { key: "birthDate", done: !!form.birthDate, required: true },
+      { key: "birthTime", done: !!form.birthTime, required: false },
+      { key: "birthCity", done: !!form.birthCity.trim(), required: false },
+      { key: "elements", done: form.elementFilter.length > 0, required: false },
     ];
     return steps;
   }, [form]);
+
+  const canSubmit = useMemo(
+    () => completionSteps.filter((step) => step.required).every((step) => step.done),
+    [completionSteps]
+  );
 
   const completionPercent = useMemo(() => {
     const done = completionSteps.filter((s) => s.done).length;
@@ -474,6 +609,94 @@ export function AccountSetupForm() {
         <p className="mt-5 text-sm font-medium text-white">{t("setupLoading")}</p>
         <p className="mt-2 text-xs text-text-dim">{t("setupLoadingBody")}</p>
       </div>
+    );
+  }
+
+  // The reveal replaces the form once the chart exists. Deliberately NOT a
+  // modal over the form: the profile is already saved at this point, so there
+  // is nothing left to go back to, and a dismissible overlay invites a reader
+  // to swipe past the one screen the whole flow was for.
+  //
+  // It renders whatever it has. A chart with only a Sun sign still produces a
+  // complete card — nothing here waits on Moon or Rising, so an incomplete
+  // chart can never block the reader from reaching /app.
+  if (reveal) {
+    const placements = [
+      { key: "sun" as const, sign: reveal.sun, desc: t("revealSunDesc") },
+      { key: "moon" as const, sign: reveal.moon, desc: t("revealMoonDesc") },
+      // Rising is present ONLY when a birth time was given. calculate-chart
+      // returns null without one; we never substitute a sign, which is the
+      // bug that tells eleven mobile accounts out of twelve they are Aries
+      // rising (docs/retention-day2-audit-2026-08.md §3.5).
+      { key: "rising" as const, sign: reveal.rising, desc: t("revealRisingDesc") },
+    ].filter((placement) => Boolean(placement.sign));
+
+    return (
+      <section
+        className="rounded-[2rem] border border-border bg-card/90 p-6 shadow-2xl shadow-black/20 backdrop-blur-md md:p-8"
+        data-testid="setup-reveal"
+      >
+        <div className="max-w-2xl">
+          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+            {t("revealLabel")}
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold text-white">{t("revealTitle")}</h2>
+          <p className="mt-3 text-sm leading-7 text-text-muted">{t("revealSubtitle")}</p>
+        </div>
+
+        <div className="mt-7 grid gap-3 sm:grid-cols-3">
+          {placements.map((placement) => (
+            <div
+              key={placement.key}
+              data-testid={`setup-reveal-${placement.key}`}
+              className="rounded-[1.5rem] border border-border bg-bg/70 p-5"
+            >
+              <div className="flex items-center gap-2 text-text-dim">
+                <ZodiacGlyph sign={placement.sign} className="text-lg leading-none" />
+                <span className="text-xs uppercase tracking-[0.18em]">
+                  {t(`natalPlanet_${placement.key}`)}
+                </span>
+              </div>
+              <p className="mt-3 text-2xl font-semibold text-white">
+                {translateSign(placement.sign, locale)}
+              </p>
+              <p className="mt-2 text-xs leading-5 text-text-muted">{placement.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Say what is missing and why, instead of quietly showing less. Two
+            separate notes: a missing time costs the rising sign outright, a
+            missing city only costs precision. */}
+        {reveal.missingBirthTime || reveal.missingBirthCity ? (
+          <div className="mt-5 rounded-[1.25rem] border border-[rgba(250,204,21,0.18)] bg-[rgba(250,204,21,0.06)] px-5 py-4">
+            <p className="text-xs font-medium text-[#fde68a]">{t("revealRefineTitle")}</p>
+            <p className="mt-1 text-[13px] leading-6 text-text-muted">
+              {reveal.missingBirthTime
+                ? t("revealRefineMissingTime")
+                : t("revealRefineMissingCity")}
+            </p>
+          </div>
+        ) : null}
+
+        <p className="mt-5 text-xs leading-6 text-text-dim">{t("revealDisclaimer")}</p>
+
+        <div className="mt-7 flex flex-wrap items-center gap-3">
+          <Link
+            href="/app"
+            data-testid="setup-reveal-open"
+            className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)]"
+          >
+            {t("revealOpenApp")}
+          </Link>
+          <Link
+            href="/app/settings"
+            className="rounded-full border border-border px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
+          >
+            {t("revealCompleteProfile")}
+          </Link>
+        </div>
+      </section>
     );
   }
 
@@ -515,13 +738,20 @@ export function AccountSetupForm() {
               style={{ width: `${completionPercent}%` }}
             />
           </div>
-          {/* Dynamic motivation text based on the current incomplete step */}
+          {/* Motivation text. Once the three required fields are in, stop
+              nagging about the optional ones — the reader can continue, and a
+              line telling them what is still "missing" next to a button that
+              works reads as a wall that is not there. */}
           <p className="mt-2 text-xs text-text-muted">
             {completionPercent === 100
               ? t("setupAllDone")
-              : completionSteps.filter((s) => !s.done).length === 1
-                ? t("setupAlmostThere")
-                : t(`setupStepMotivation_${completionSteps.find((s) => !s.done)?.key || "name"}`)}
+              : canSubmit
+                ? t("setupReadyHint")
+                : t(
+                    `setupStepMotivation_${
+                      completionSteps.find((s) => s.required && !s.done)?.key || "name"
+                    }`
+                  )}
           </p>
         </div>
       </div>
@@ -637,6 +867,9 @@ export function AccountSetupForm() {
             <div className="block">
               <span className="mb-2 block text-sm font-medium text-text-muted">
                 {t("birthTimeLabel")}
+                <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-dim">
+                  {t("setupOptionalTag")}
+                </span>
               </span>
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="block">
@@ -681,6 +914,9 @@ export function AccountSetupForm() {
           <label className="mt-4 block">
             <span className="mb-2 block text-sm font-medium text-text-muted">
               {t("birthCityLabel")}
+              <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-dim">
+                {t("setupOptionalTag")}
+              </span>
             </span>
             <input
               value={form.birthCity}
@@ -713,6 +949,11 @@ export function AccountSetupForm() {
           <h3 className="mt-3 text-xl font-semibold text-white">{t("profilePreferencesTitle")}</h3>
           <p className="mt-2 text-sm leading-7 text-text-muted">
             {t("profilePreferencesBody")}
+          </p>
+          {/* These are discovery filters, not chart inputs. They used to block
+              the submit; now they only shape the feed, so say so. */}
+          <p className="mt-2 text-xs leading-6 text-text-dim">
+            {t("setupPreferencesLater")}
           </p>
 
           <div className="mt-5">
@@ -840,12 +1081,6 @@ export function AccountSetupForm() {
         </div>
       </div>
 
-      {success ? (
-        <p role="status" className="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-          {success}
-        </p>
-      ) : null}
-
       {error ? (
         <p role="alert" className="mt-6 rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-[#ffd0d7]">
           {error}
@@ -854,7 +1089,7 @@ export function AccountSetupForm() {
 
       <div className="mt-6 flex items-center justify-between gap-4">
         <p className="text-xs text-text-dim">
-          {completionPercent < 100 ? t("setupIncompleteHint") : t("setupReadyHint")}
+          {canSubmit ? t("setupReadyHint") : t("setupIncompleteHint")}
         </p>
         <button
           type="button"

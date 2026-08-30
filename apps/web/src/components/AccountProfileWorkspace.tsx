@@ -230,8 +230,13 @@ async function ensureWebProfileExists(session: Session) {
     session.user.email?.split("@")[0] ||
     "User";
 
+  // See the identical note in AccountSetupForm.ensureProfile: a profile row
+  // created without `email` is permanently invisible to send-email, which
+  // skips it with "No email on profile". This insert only runs when the auth
+  // trigger's row is missing, so `?? null` cannot clobber an existing value.
   const { error: insertError } = await supabase.from("profiles").insert({
     id: session.user.id,
+    email: session.user.email ?? null,
     name: fallbackName,
     gender:
       typeof session.user.user_metadata?.gender === "string"
@@ -601,23 +606,34 @@ export function AccountProfileWorkspace({
       if (chartError) throw chartError;
       if (!data?.success) throw new Error(data?.error || "Unable to calculate birth chart.");
 
+      // `rising` is NULLABLE. calculate-chart returns null whenever no birth
+      // time was given (index.ts: `hasBirthTime ? {...} : null`), and this form
+      // sends birthTime as `|| undefined`. The old annotation claimed
+      // `rising: { sign: string }`, which is a type that lies about the data —
+      // the same shape of assumption that makes the mobile wrapper substitute
+      // Aries for everyone without a birth time.
       const chart = data.data as {
-        sun: { sign: string };
-        moon: { sign: string };
-        rising: { sign: string };
+        sun?: { sign?: string } | null;
+        moon?: { sign?: string } | null;
+        rising?: { sign?: string } | null;
         coordinates?: { latitude?: number; longitude?: number };
       } & Record<string, unknown>;
+
+      const hasBirthCity = Boolean(birthForm.birthCity);
 
       const payload = {
         birth_date: birthForm.birthDate,
         birth_time: birthForm.birthTime || null,
         birth_city: birthForm.birthCity || null,
         birth_chart: chart,
-        birth_latitude: chart.coordinates?.latitude ?? null,
-        birth_longitude: chart.coordinates?.longitude ?? null,
+        // Without a city the chart falls back to Greenwich; storing that as
+        // the reader's birthplace is a fabricated fact. get-profile-chart
+        // applies the same fallback for a null anyway (index.ts:289).
+        birth_latitude: hasBirthCity ? chart.coordinates?.latitude ?? null : null,
+        birth_longitude: hasBirthCity ? chart.coordinates?.longitude ?? null : null,
         sun_sign: chart.sun?.sign ?? null,
         moon_sign: chart.moon?.sign ?? null,
-        rising_sign: chart.rising?.sign ?? null,
+        rising_sign: birthForm.birthTime ? chart.rising?.sign ?? null : null,
         age: Number.isFinite(age) ? age : null,
         onboarding_completed: isSetupMode ? false : true,
       };
