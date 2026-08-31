@@ -315,9 +315,25 @@ check(
   /catch \{[\s\S]{0,160}?\}/.test(productEvents),
 );
 check(
-  'the tracker does not wait for a session',
-  !/getSession\(\)/.test(landingTracker) && !/onAuthStateChange/.test(landingTracker),
+  'the tracker records before any session exists',
+  /\/\/ recordEmailClick returns immediately[\s\S]{0,200}?void recordEmailClick\(search, pathname\);/.test(
+    landingTracker,
+  ),
   'a click that bounces at the sign-in wall is the case worth separating from no click at all',
+);
+check(
+  'the tracker re-records once the reader signs in',
+  /onAuthStateChange\([\s\S]{0,400}?recordEmailClick\(search, pathname\)/.test(landingTracker),
+  'lifecycle mail lands in a browser with no session; without this, user_id stays NULL for most real clicks and every join to profiles comes back empty',
+);
+check(
+  'repeat calls upgrade instead of duplicating',
+  /p_client_event_id: clientEventId\(template\)/.test(productEvents),
+  'idempotency belongs in the database (unique client_event_id), not in a sessionStorage boolean that blocks the attribution retry',
+);
+check(
+  'no sessionStorage boolean blocks the retry',
+  !/alreadyRecorded/.test(productEvents),
 );
 check(
   'useSearchParams is wrapped in Suspense',
