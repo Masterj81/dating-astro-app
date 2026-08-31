@@ -136,6 +136,29 @@ l'instant du **clic**, pas de la connexion — c'est ce que compare la requête
 > L'idempotence a été déplacée de `sessionStorage` vers la base. Un booléen
 > côté client bloquait la seule tentative qui pouvait sauver l'attribution.
 
+**Une première version du correctif ne suffisait pas non plus.** Un écouteur
+`onAuthStateChange` dans la page ne peut rien attribuer : au moment où
+l'identité existe, l'URL qui nommait le template est **deux navigations en
+arrière**, parce que `AppShell.tsx:45` reconstruit `next` à partir du pathname
+seul et perd la query string. Le clic en attente est donc garé dans
+`sessionStorage` — qui survit à la navigation dans l'onglet — et rejoué depuis
+n'importe quelle page dès qu'une session apparaît.
+
+### Vérifié de bout en bout en production, le 31 août 2026
+
+Le parcours réel, pas une simulation :
+
+| Étape | Observé |
+|---|---|
+| Clic **déconnecté** sur le CTA Day 5 | ligne écrite, `user_id` NULL, `client_event_id` `90279cf4…` |
+| `sessionStorage['juno.emailclick.pending']` | JSON avec le **même** id, template et UTM — le pending a survécu |
+| Redirection vers `/auth/login`, puis connexion | — |
+| Relecture de la ligne | **`identifie = true`**, même `client_event_id`, **`created_at` inchangé** à 13:57:18 |
+
+Une seule ligne, jamais deux, et l'horodatage reste celui du **clic** — ce que
+compare la requête « cliqué → actif ». C'est la preuve que la chaîne
+`email_sent → email_clicked → app_open` est réellement joignable en SQL.
+
 ### 3.2 `EmailLandingTracker`
 
 Monté globalement dans `app/[locale]/layout.tsx`, à côté de
