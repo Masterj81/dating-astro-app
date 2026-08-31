@@ -21,6 +21,26 @@ export default function AuthCallbackPage() {
   const [isRecoveryFlow, setIsRecoveryFlow] = useState(false);
 
   useEffect(() => {
+    // Where an authenticated reader goes next. Onboarding wins over the
+    // requested destination: a reader with no profile has nothing to see at
+    // /app, and until AppShell grew its own guard this was the single moment
+    // in the whole app that could send them to /app/setup.
+    const routeAfterAuth = async (userId: string, requestedNext: string) => {
+      let dest = "/app/setup";
+      try {
+        const profile = await getProfileSetupState(userId);
+        if (!isWebProfileSetupIncomplete(profile)) {
+          dest = requestedNext;
+        }
+      } catch {
+        // Fail towards setup, not into the app. AccountSetupForm bounces an
+        // already-onboarded reader back to /app, so this costs one hop when
+        // wrong; the opposite default costs them the account.
+      }
+      clearPersistedAuthNext();
+      router.replace(dest);
+    };
+
     const handleCallback = async () => {
       try {
         const supabase = getSupabaseBrowser();
@@ -116,15 +136,7 @@ export default function AuthCallbackPage() {
             return;
           }
 
-          try {
-            const profile = await getProfileSetupState(session.user.id);
-            const dest = isWebProfileSetupIncomplete(profile) ? "/app/setup" : requestedNext;
-            clearPersistedAuthNext();
-            router.replace(dest);
-          } catch {
-            clearPersistedAuthNext();
-            router.replace(requestedNext);
-          }
+          await routeAfterAuth(session.user.id, requestedNext);
           return;
         }
 
@@ -138,8 +150,11 @@ export default function AuthCallbackPage() {
             return;
           }
 
-          clearPersistedAuthNext();
-          router.replace(requestedNext);
+          // Same routing as the fast path. This branch used to jump straight
+          // to `requestedNext`, skipping the onboarding check entirely — so a
+          // session that arrived a beat late cost the reader their only
+          // redirect to /app/setup.
+          await routeAfterAuth(retrySession.user.id, requestedNext);
         } else {
           setStatus("error");
         }

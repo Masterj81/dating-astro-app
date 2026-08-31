@@ -419,6 +419,72 @@ for (const locale of LOCALES) {
   check(`${locale}: reveal copy promises nothing`, offenders.length === 0, offenders.join(', '));
 }
 
+// --- the onboarding guard ---------------------------------------------------
+// Until 2026-08-31, /app/setup had exactly ONE entry point: a single check in
+// the auth callback, run once, on one page load. AppShell checked only that a
+// session existed. A reader who missed that redirect landed on /app with no
+// profile row and had no way back — signing in again returned a valid session,
+// /app accepted it, and showed the same empty screen. auth.audit_log_entries
+// recorded the result: user_signedup, then login, login, login within three
+// minutes, ending with no profiles row. 143 of 245 confirmed accounts never
+// got one.
+//
+// Every check below is one line away from restoring that. They are structural
+// on purpose: a missing guard raises no error and shows no symptom to CI.
+console.log('the onboarding guard');
+
+const shell = read('src/components/AppShell.tsx');
+const callback = read('src/app/[locale]/auth/callback/page.tsx');
+
+check(
+  'AppShell reads the setup state',
+  /import \{[^}]*isWebProfileSetupIncomplete[^}]*\} from "@\/lib\/web-account"/.test(shell),
+  'without it the shell is blind to onboarding again',
+);
+check(
+  'AppShell sends an un-onboarded reader to setup',
+  /isWebProfileSetupIncomplete\(profile\)\) \{\s*\n\s*router\.replace\("\/app\/setup"\)/.test(shell),
+  'this is the recovery path; nothing else in /app looks at onboarding_completed',
+);
+check(
+  'the guard exempts the setup screen itself',
+  /pathname\.startsWith\("\/app\/setup"\)\) return;/.test(shell),
+  'AccountSetupForm renders inside AppShell — guarding it would loop forever',
+);
+check(
+  'the guard fails towards setup, not into the app',
+  /catch \{[\s\S]{0,400}?router\.replace\("\/app\/setup"\)/.test(shell),
+  'failing open is exactly the default that stranded 143 accounts',
+);
+// Scoped to the incomplete branch itself, not to a character window: the two
+// branches sit a few lines apart, so a loose window matches the `else` and
+// reports a failure that is not there.
+const incompleteBranch = shell.match(
+  /isWebProfileSetupIncomplete\(profile\)\) \{([\s\S]*?)\} else \{/,
+);
+check('the guard branches on the setup state', Boolean(incompleteBranch));
+check(
+  'only the completed state is memoised',
+  /\} else \{\s*\n\s*rememberOnboarded\(userId\);/.test(shell) &&
+    !/rememberOnboarded/.test(incompleteBranch?.[1] ?? 'rememberOnboarded'),
+  'caching "incomplete" would bounce a reader back into setup after they finish',
+);
+check(
+  'the callback routes both session branches the same way',
+  (callback.match(/await routeAfterAuth\(/g) || []).length === 2,
+  'the retry branch used to skip the onboarding check entirely',
+);
+check(
+  'the callback defaults to setup before it knows',
+  /const routeAfterAuth = async \([\s\S]{0,200}?let dest = "\/app\/setup";/.test(callback),
+  'a thrown profile read must not resolve to /app',
+);
+check(
+  'the callback still honours an explicit destination once onboarded',
+  /if \(!isWebProfileSetupIncomplete\(profile\)\) \{\s*\n\s*dest = requestedNext;/.test(callback),
+  'an onboarded reader following an email CTA must land where the CTA pointed',
+);
+
 // --- report -----------------------------------------------------------------
 if (failures === 0) {
   console.log(`\nWeb onboarding guards look clean: ${checks} checks passed.`);
