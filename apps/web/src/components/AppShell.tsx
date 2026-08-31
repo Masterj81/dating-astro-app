@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
+import { getProfileSetupState, isWebProfileSetupIncomplete } from "@/lib/web-account";
 import { getCurrentTier } from "@/lib/web-subscriptions";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { NavIcon, type NavIconName } from "@/components/NavIcons";
@@ -24,6 +25,28 @@ type NavLink = {
   icon: NavIconName;
   accent?: "cosmic" | "celestial" | "rose";
 };
+
+// Remembers, for this tab only, that a reader has finished onboarding, so the
+// guard below costs one query per visit instead of one per navigation. Only
+// the COMPLETED state is ever cached: "incomplete" changes the moment they
+// save the form, and a stale "incomplete" would bounce them back into setup.
+const ONBOARDED_KEY = "juno.onboarded";
+
+function isKnownOnboarded(userId: string): boolean {
+  try {
+    return sessionStorage.getItem(ONBOARDED_KEY) === userId;
+  } catch {
+    return false;
+  }
+}
+
+function rememberOnboarded(userId: string): void {
+  try {
+    sessionStorage.setItem(ONBOARDED_KEY, userId);
+  } catch {
+    /* private mode — the guard just re-queries, which is correct if slower */
+  }
+}
 
 export function AppShell({
   children,
@@ -80,6 +103,59 @@ export function AppShell({
       data.subscription.unsubscribe();
     };
   }, [nextPath, requireAuth, router]);
+
+  // ── Onboarding guard ──────────────────────────────────────────────────────
+  //
+  // WHY THIS EXISTS
+  // Until this ran, /app/setup had exactly ONE entry point: the single check
+  // in auth/callback/page.tsx, executed once, on one page load. Nothing else
+  // in the app ever looked at onboarding_completed — this component checked
+  // only that a session existed. So a reader who missed that one redirect for
+  // any reason landed on /app with no profile row, saw an app with no data,
+  // and had no way back: signing in again returned a valid session, /app
+  // accepted it, and showed the same empty screen.
+  //
+  // That is not a hypothesis. auth.audit_log_entries shows accounts firing
+  // user_signedup then login, login, login within three minutes, ending with
+  // no profiles row — people retrying a door that was already open. 143 of
+  // 245 confirmed accounts never got a profile row; 94% of Apple sign-ins and
+  // 67% of Google ones, against 30% for email/password.
+  //
+  // Making onboarding reachable from every /app page turns a single point of
+  // failure into a self-healing loop: whatever caused the miss, the next page
+  // load recovers. It also rescues the accounts already stranded — their next
+  // sign-in now leads somewhere.
+  const userId = session?.user?.id;
+  useEffect(() => {
+    if (!requireAuth || !userId) return;
+    // The setup screen itself lives inside this shell. Guarding it would loop.
+    if (pathname.startsWith("/app/setup")) return;
+    if (isKnownOnboarded(userId)) return;
+
+    let active = true;
+
+    void (async () => {
+      try {
+        const profile = await getProfileSetupState(userId);
+        if (!active) return;
+        if (isWebProfileSetupIncomplete(profile)) {
+          router.replace("/app/setup");
+        } else {
+          rememberOnboarded(userId);
+        }
+      } catch {
+        // Fail CLOSED, towards setup. AccountSetupForm sends an already
+        // onboarded reader straight back to /app, so guessing wrong here
+        // self-corrects in one hop; guessing wrong the other way is what
+        // stranded 143 accounts.
+        if (active) router.replace("/app/setup");
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [requireAuth, userId, pathname, router]);
 
   const handleSignOut = async () => {
     try {
