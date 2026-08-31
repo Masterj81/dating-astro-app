@@ -2117,5 +2117,12 @@
   "risingUnknownTitle": "未计算上升星座",
   "risingUnknownBody": "上升星座需要准确的出生时间。与其猜测，我们宁可留白——你随时可以补充。",
   "risingUnknownCta": "添加出生时间",
-  "cosmicSummaryTextNoRising": "{{sun}}的太阳与{{moon}}的月亮，构成属于你自己的能量组合。太阳引导你的意识自我，月亮滋养你的情感世界。"
+  "cosmicSummaryTextNoRising": "{{sun}}的太阳与{{moon}}的月亮，构成属于你自己的能量组合。太阳引导你的意识自我，月亮滋养你的情感世界。",
+  "natalChartHousesTitle": "十二宫位",
+  "natalChartHousesBody": "每个宫位描述人生的一个领域。落在各宫头的星座会为该领域的展开方式着色——这正是太阳星座相同的两张星盘仍可能截然不同的原因。",
+  "natalChartHousesBodyGeneral": "每个宫位描述人生的一个领域：你如何开始一件事、你建立什么、与谁结伴、在何处被看见。以下是各宫位所涵盖的范围。",
+  "natalHousesNeedBirthTime": "你的宫位取决于出生的确切时刻。没有出生时间就无法计算，因此以下是各宫位的一般含义，而非你的宫位。",
+  "natalHousesNeedBirthPlace": "你的出生时间已保存，但宫位还取决于出生地——出生地点会移动每一条宫头。补充出生城市后即可计算。",
+  "natalHousesCompleteBirthData": "补充出生信息",
+  "natalHouseCuspSign": "宫头星座：{{sign}}"
 }

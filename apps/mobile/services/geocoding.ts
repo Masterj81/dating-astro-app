@@ -144,7 +144,7 @@ async function rateLimitedFetch(url: string): Promise<Response> {
  *   4. Fallback: Montreal (lat/lng known; tz resolved through tz-lookup so
  *      this never produces a stale fixed offset)
  */
-export async function geocodeCity(city: string): Promise<GeoResult> {
+export async function geocodeCity(city: string): Promise<GeoResult | null> {
   // Normalize: lowercase, trim, remove combining diacritics introduced by NFD
   // (Unicode block U+0300..U+036F covers the Latin combining marks).
   const normalized = city
@@ -181,7 +181,15 @@ export async function geocodeCity(city: string): Promise<GeoResult> {
     // Network error — fall through.
   }
 
-  // Final fallback: Montreal. tz-lookup turns this into America/Toronto;
-  // we no longer hard-code "-5" because that's wrong half the year.
-  return buildResult(45.5017, -73.5673, city);
+  // No fallback. This used to `return buildResult(45.5017, -73.5673, city)` —
+  // Montréal — for any city the cache, the substring match and Nominatim all
+  // failed to resolve. The caller could not tell that apart from a real
+  // result, so an unrecognised birthplace produced a chart cast for a city the
+  // reader has very likely never been to, complete with an ascendant and
+  // twelve house cusps.
+  //
+  // Null is the honest answer, and `computeNatalChart` knows what to do with
+  // it: planets still compute, angles do not, and the chart carries
+  // `missing_birth_place`.
+  return null;
 }

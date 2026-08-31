@@ -94,8 +94,10 @@ export function validateIana(tz: string | null | undefined): string | null {
  * say so, instead of producing a confidently wrong offset.
  */
 export function resolveBirthTimezone(
-  latitude: number,
-  longitude: number,
+  /** Null when the birthplace is unknown — the lookup is then skipped and the
+   *  result is the explicit UTC fallback, never a substituted location. */
+  latitude: number | null,
+  longitude: number | null,
   inputTz?: string | null,
   /** A reference UTC date to compute the offset at; defaults to the J2000 epoch
    *  but callers should pass the resolved birth instant for DST accuracy.
@@ -110,7 +112,12 @@ export function resolveBirthTimezone(
       source: 'input',
     };
   }
-  if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+  if (
+    typeof latitude === 'number' &&
+    typeof longitude === 'number' &&
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude)
+  ) {
     try {
       const iana = tzlookup(latitude, longitude);
       if (iana && IANAZone.isValidZone(iana)) {

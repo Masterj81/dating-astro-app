@@ -762,8 +762,17 @@ export default function BirthInfoScreen() {
         setCalculatingPhase(phases[phaseIndex]);
       }, 1200);
 
-      const geoResult = await geocodeCity(birthCity || 'Montreal');
-      const cityCoords = { latitude: geoResult.latitude, longitude: geoResult.longitude };
+      // `geocodeCity(birthCity || 'Montreal')` is what this used to be: a
+      // reader who skipped the birth city — which onboarding invites — had
+      // their chart cast for Montréal, and with a birth time that produced a
+      // full ascendant and twelve house cusps for a place they had never
+      // named. Null coordinates instead: the planets still compute, the
+      // angles honestly do not.
+      const geoResult = birthCity ? await geocodeCity(birthCity) : null;
+      const cityCoords = {
+        latitude: geoResult?.latitude ?? null,
+        longitude: geoResult?.longitude ?? null,
+      };
 
       // Pass the IANA timezone explicitly so the chart is anchored to the
       // birth location's tz — not the device's local timezone (legacy bug).
@@ -772,7 +781,7 @@ export default function BirthInfoScreen() {
         birthTime,
         cityCoords.latitude,
         cityCoords.longitude,
-        geoResult.iana,
+        geoResult?.iana ?? null,
       );
 
       // Transform local chart to match BirthChart format for synastry.
@@ -796,7 +805,7 @@ export default function BirthInfoScreen() {
           pluto: chart.pluto,
         },
         coordinates: cityCoords,
-        timezone: chart.timezone ?? geoResult.iana,
+        timezone: chart.timezone ?? geoResult?.iana ?? null,
         confidence: chart.confidence,
         chartVersion: 2,
       };

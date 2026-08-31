@@ -2217,7 +2217,12 @@
     "revealRefineMissingCity": "Adding your birth city sharpens the timing behind your chart. You can add it in Settings.",
     "revealDisclaimer": "JUNO uses astrology as a language for reflection, not as a certainty. Nothing here is a prediction.",
     "revealOpenApp": "Open JUNO",
-    "revealCompleteProfile": "Complete my profile"
+    "revealCompleteProfile": "Complete my profile",
+    "natalChartHousesBodyGeneral": "Each house describes an area of life — how you begin things, what you build, who you partner with, where you are visible. Below is what each one covers.",
+    "natalHousesNeedBirthTime": "Your own houses depend on the exact minute you were born. Without a birth time they cannot be calculated, so what follows is what each house means in general — not yours.",
+    "natalHousesNeedBirthPlace": "Your birth time is saved, but houses also depend on where you were born — the birthplace moves every cusp. Add your birth city and we can calculate them.",
+    "natalHousesCompleteBirthData": "Complete your birth details",
+    "natalHouseCuspSign": "{sign} on the cusp"
   },
   "invite": {
     "invalidCode": "Invalid referral code",
