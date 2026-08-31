@@ -2,10 +2,11 @@
 
 import { Suspense, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { recordEmailClick } from "@/lib/product-events";
 
 // Records `email_clicked` when a page load carries a lifecycle-email
-// `?template=…`.
+// `?template=…`, and attributes it once the reader is known.
 //
 // WHY THIS EXISTS
 // The CTAs have carried `template` + three UTM params since the lifecycle
@@ -20,19 +21,48 @@ import { recordEmailClick } from "@/lib/product-events";
 // /app/plans and /app/premium/celestial/natal-chart, and any future one should
 // be covered without remembering to wire it up.
 //
-// IT DOES NOT WAIT FOR A SESSION, on purpose. A reader who clicks and bounces
-// at the sign-in wall is exactly the case worth separating from a reader who
-// never clicked, and they have no auth.uid() at that moment. The RPC accepts
-// a null user_id and is granted to anon for that reason.
+// IT FIRES TWICE, ON PURPOSE
+//   1. on mount — even with no session. A reader who clicks and bounces at the
+//      sign-in wall is exactly the case worth separating from a reader who
+//      never clicked, and they have no auth.uid() at that moment. The RPC
+//      accepts a null user_id and is granted to anon for that reason.
+//   2. on sign-in — because that first path is the DOMINANT one. Lifecycle mail
+//      opens in a mail app, which hands the link to a browser that usually has
+//      no session; identity only arrives after the login. Without this second
+//      call, `user_id` would be NULL for most real clicks and every query
+//      joining clicks to profiles would come back empty.
+//
+// The two calls carry the same `client_event_id`, so the second upgrades the
+// row in place rather than adding a duplicate (migration 20260831000002).
 
 function EmailLandingTrackerInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    const search = searchParams.toString();
+
     // recordEmailClick returns immediately unless `template` is present and
     // recognised, so this stays free on ordinary navigations.
-    void recordEmailClick(searchParams.toString(), pathname);
+    void recordEmailClick(search, pathname);
+
+    let unsubscribe: (() => void) | undefined;
+    try {
+      const supabase = getSupabaseBrowser();
+      const { data } = supabase.auth.onAuthStateChange((event) => {
+        // SIGNED_IN and the initial session restore are the two moments the
+        // reader's identity becomes available on a page that started without
+        // one. Re-record: same id, so the existing row gains its user_id.
+        if (event === "SIGNED_OUT") return;
+        void recordEmailClick(search, pathname);
+      });
+      unsubscribe = () => data.subscription.unsubscribe();
+    } catch {
+      // Supabase env vars missing (e.g. a preview build). The mount-time call
+      // above already swallowed its own failure.
+    }
+
+    return () => unsubscribe?.();
   }, [pathname, searchParams]);
 
   return null;

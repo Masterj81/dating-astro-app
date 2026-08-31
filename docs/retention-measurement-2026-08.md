@@ -101,6 +101,41 @@ volume devient un problème, la mitigation tient en une ligne :
 REVOKE EXECUTE ON FUNCTION public.record_product_event FROM anon;
 ```
 
+### 3.1 bis — Attribution tardive (migration `20260831000002`)
+
+**Trouvé en vérifiant le patch en production, pas en le concevant.** Le premier
+clic de test a produit une ligne correcte à un détail près : `user_id` était
+NULL alors que le compte existait.
+
+Le scénario est le suivant, et c'est **le chemin dominant** :
+
+```
+ouverture depuis la boîte mail → le navigateur n'a pas de session
+                               → ligne écrite, user_id NULL
+                               → le lecteur se connecte
+                               → l'identité arrive, et rien ne l'enregistre
+```
+
+Autrement dit, `user_id` serait resté NULL pour la majorité des vrais clics, et
+**toutes les requêtes qui joignent les clics aux profils** — cliqué → actif,
+cliqué → a vu son thème, cliqué → revenu à J+1 — **seraient revenues vides**.
+Le funnel aurait eu l'air mesuré tout en restant aveugle précisément à la
+jointure qui compte.
+
+Correctif : le client frappe un `client_event_id` par (template, session de
+navigateur). Le premier appel insère ; un second, déclenché par
+`onAuthStateChange` quand la session apparaît, retombe sur le même id et
+**met la ligne à jour au lieu d'en créer une seconde**.
+
+Une ligne par clic, dont le `user_id` se remplit si et quand l'identité arrive.
+Le `COALESCE` de l'`ON CONFLICT` ne fait que **combler un trou** : il ne
+réattribue jamais un clic déjà rattaché à un compte. Et `created_at` reste
+l'instant du **clic**, pas de la connexion — c'est ce que compare la requête
+« cliqué → actif ».
+
+> L'idempotence a été déplacée de `sessionStorage` vers la base. Un booléen
+> côté client bloquait la seule tentative qui pouvait sauver l'attribution.
+
 ### 3.2 `EmailLandingTracker`
 
 Monté globalement dans `app/[locale]/layout.tsx`, à côté de
@@ -175,9 +210,11 @@ LEFT JOIN clicked c ON c.template = s.template
 ORDER BY s.template;
 ```
 
-> `clics_anonymes` est le chiffre à surveiller : un taux élevé signifie que les
-> gens cliquent puis se heurtent au mur de connexion. C'est un correctif de
-> tunnel d'authentification, pas un correctif de contenu d'email.
+> `clics_anonymes` est le chiffre à surveiller, et depuis l'attribution tardive
+> (§3.1 bis) il a un sens **fort** : une ligne restée anonyme signifie que le
+> lecteur a cliqué et **ne s'est jamais connecté**, pas simplement qu'il est
+> arrivé déconnecté. Un taux élevé est donc un correctif de tunnel
+> d'authentification, jamais un correctif de contenu d'email.
 
 ### 4.3 Cliqué → actif
 
