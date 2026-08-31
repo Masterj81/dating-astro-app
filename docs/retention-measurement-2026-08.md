@@ -28,6 +28,12 @@ signup → onboarding_completed → email_sent → email_clicked → app_open
 | `value_seen` | ⚠️ partiel | `premium_usage` (surfaces gatées uniquement) |
 | `returned_day1` | ⚠️ dérivé de `last_active` | — |
 
+> **Depuis le 31 août, les sept étapes sont mesurables.** Les deux maillons
+> manquants ont été vérifiés en production le même jour, sur le parcours réel :
+> `email_clicked` (§3.1 bis) et `app_open` côté web (`a_bouge = true`,
+> `actif_apres_le_clic = true` sur le compte de test). Le compteur ne démarre
+> qu'à cette date : rien d'antérieur n'est lisible.
+
 ## 2. Les deux défauts qui rendaient le chiffre illisible
 
 ### 2.1 `email_clicked` n'existait pas
@@ -188,16 +194,60 @@ sous le préfixe `/app`, requis par le filtre d'intent Android.
 
 ## 4. Les requêtes
 
+### 4.0 Le dénominateur — à lire avant tout le reste
+
+`public.profiles` contient **192 lignes** et ce n'est pas la base d'utilisateurs.
+Trois populations synthétiques y vivent :
+
+| Domaine | Origine | Volume |
+|---|---|---|
+| `@astrodating.test` | `20260330000001_seed_profiles.sql` et `…_us.sql` | ~120 |
+| `@test.com` | `20260208_test_profiles.sql` | ~16 |
+| `@example.com` | comptes E2E de `.maestro/seed-matches.sql` | ~6 |
+
+Il reste **~50 comptes réels**. Compter la rétention sur 192 divise chaque taux
+par près de quatre **et** mélange des comptes que personne ne possède, donc qui
+ne peuvent structurellement jamais revenir. Le taux obtenu n'est pas
+pessimiste : il est dénué de sens.
+
+Toutes les requêtes ci-dessous partent donc de ce CTE. **Copie-le avec
+chacune.**
+
+```sql
+WITH comptes_reels AS (
+  SELECT u.id, u.created_at
+    FROM auth.users u
+   WHERE u.email IS NOT NULL
+     AND u.email NOT LIKE '%@astrodating.test'   -- profils de seed
+     AND u.email NOT LIKE '%@test.com'           -- profils de test
+     AND u.email NOT LIKE '%@example.com'        -- comptes E2E
+)
+SELECT COUNT(*) AS comptes_reels FROM comptes_reels;
+```
+
+> Si un jour un vrai utilisateur s'inscrit avec une adresse `@example.com`, ce
+> filtre l'exclut à tort. À ~50 comptes c'est un risque acceptable ; au-delà,
+> la vraie réponse est une colonne `is_synthetic` sur `profiles`, posée par les
+> seeds eux-mêmes plutôt que devinée depuis l'email.
+
 ### 4.1 Funnel signup → onboarding
 
 ```sql
+WITH comptes_reels AS (
+  SELECT u.id, u.created_at
+    FROM auth.users u
+   WHERE u.email IS NOT NULL
+     AND u.email NOT LIKE '%@astrodating.test'
+     AND u.email NOT LIKE '%@test.com'
+     AND u.email NOT LIKE '%@example.com'
+)
 SELECT
   date_trunc('day', u.created_at)::date                                  AS jour,
   COUNT(*)                                                               AS inscriptions,
   COUNT(*) FILTER (WHERE p.onboarding_completed)                         AS onboardes,
   ROUND(100.0 * COUNT(*) FILTER (WHERE p.onboarding_completed)
         / NULLIF(COUNT(*), 0), 1)                                        AS taux_pct
-FROM auth.users u
+FROM comptes_reels u
 LEFT JOIN public.profiles p ON p.id = u.id
 GROUP BY 1
 ORDER BY 1 DESC;
@@ -264,6 +314,14 @@ ORDER BY e.template;
 ```sql
 -- Exclut les comptes de moins de 24 h : ils n'ont pas encore EU l'occasion de
 -- revenir, et les inclure fait mécaniquement chuter le taux.
+WITH comptes_reels AS (
+  SELECT u.id, u.created_at
+    FROM auth.users u
+   WHERE u.email IS NOT NULL
+     AND u.email NOT LIKE '%@astrodating.test'
+     AND u.email NOT LIKE '%@test.com'
+     AND u.email NOT LIKE '%@example.com'
+)
 SELECT
   date_trunc('day', u.created_at)::date                            AS cohorte,
   COUNT(*)                                                         AS eligibles,
@@ -273,7 +331,7 @@ SELECT
   ROUND(100.0 * COUNT(*) FILTER (
           WHERE p.last_active > u.created_at + INTERVAL '24 hours')
         / NULLIF(COUNT(*), 0), 1)                                  AS taux_j1_pct
-FROM auth.users u
+FROM comptes_reels u
 JOIN public.profiles p ON p.id = u.id
 WHERE u.created_at < NOW() - INTERVAL '24 hours'
 GROUP BY 1
@@ -330,7 +388,15 @@ LEFT JOIN LATERAL (
 
 ```sql
 -- Remplacer la date par celle du déploiement Vercel de ce patch.
-WITH bornes AS (SELECT TIMESTAMPTZ '2026-08-31 00:00:00+00' AS patch)
+WITH comptes_reels AS (
+  SELECT u.id, u.created_at
+    FROM auth.users u
+   WHERE u.email IS NOT NULL
+     AND u.email NOT LIKE '%@astrodating.test'
+     AND u.email NOT LIKE '%@test.com'
+     AND u.email NOT LIKE '%@example.com'
+,
+bornes AS (SELECT TIMESTAMPTZ '2026-08-31 00:00:00+00' AS patch)
 SELECT
   CASE WHEN u.created_at < b.patch THEN 'avant' ELSE 'apres' END      AS fenetre,
   COUNT(*)                                                            AS eligibles,
@@ -339,7 +405,7 @@ SELECT
   ROUND(100.0 * COUNT(*) FILTER (
           WHERE p.last_active > u.created_at + INTERVAL '24 hours')
         / NULLIF(COUNT(*), 0), 1)                                     AS taux_j1_pct
-FROM auth.users u
+FROM comptes_reels u
 JOIN public.profiles p ON p.id = u.id
 CROSS JOIN bornes b
 WHERE u.created_at < NOW() - INTERVAL '24 hours'
