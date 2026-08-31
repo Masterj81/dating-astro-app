@@ -2171,7 +2171,12 @@
     "revealRefineMissingCity": "Añadir tu ciudad de nacimiento afina el cálculo de tu carta. Puedes hacerlo en Ajustes.",
     "revealDisclaimer": "JUNO usa la astrología como lenguaje de reflexión, no como certeza. Nada de esto es una predicción.",
     "revealOpenApp": "Abrir JUNO",
-    "revealCompleteProfile": "Completar mi perfil"
+    "revealCompleteProfile": "Completar mi perfil",
+    "natalChartHousesBodyGeneral": "Cada casa describe un área de la vida: cómo empiezas las cosas, qué construyes, con quién te asocias, dónde eres visible. Esto es lo que abarca cada una.",
+    "natalHousesNeedBirthTime": "Tus casas dependen del minuto exacto de tu nacimiento. Sin la hora no pueden calcularse, así que lo siguiente es el significado general de cada casa, no el tuyo.",
+    "natalHousesNeedBirthPlace": "Tu hora de nacimiento está guardada, pero las casas también dependen del lugar: el lugar de nacimiento desplaza cada cúspide. Añade tu ciudad de nacimiento y podremos calcularlas.",
+    "natalHousesCompleteBirthData": "Completar mis datos de nacimiento",
+    "natalHouseCuspSign": "{sign} en la cúspide"
   },
   "invite": {
     "invalidCode": "Código de referido inválido",

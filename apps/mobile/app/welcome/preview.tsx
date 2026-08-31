@@ -159,11 +159,13 @@ export default function WelcomePreview() {
           ? `${draft.birthHour}:${draft.birthMinute}`
           : undefined;
 
-        // Geocode city. Fallback to (0, 0) so the sun/moon are still correct.
-        // We also capture the IANA timezone so the chart is anchored to the
-        // birth location, not the device timezone.
-        let lat = 0;
-        let lng = 0;
+        // Geocode the city, or keep null. (0, 0) used to stand in for
+        // "unknown", but zero is a real coordinate — the Gulf of Guinea — and
+        // the engine happily computed an ascendant there. Null makes the
+        // engine withhold the angles instead; sun and moon stay accurate
+        // either way because they depend only on the UTC instant.
+        let lat: number | null = null;
+        let lng: number | null = null;
         let iana: string | null = null;
         const cityStr = String(draft.birthCity || '').trim();
         if (cityStr.length >= 2) {
@@ -175,7 +177,7 @@ export default function WelcomePreview() {
               iana = geo.iana;
             }
           } catch {
-            // network / geocode failure — keep (0, 0); sun/moon stay accurate.
+            // network / geocode failure — keep null; sun/moon stay accurate.
           }
         }
 

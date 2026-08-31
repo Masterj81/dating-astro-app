@@ -2117,5 +2117,12 @@
   "risingUnknownTitle": "Aszendent nicht berechnet",
   "risingUnknownBody": "Dein Aszendent braucht deine genaue Geburtszeit. Wir lassen ihn lieber weg, als zu raten — du kannst sie jederzeit ergänzen.",
   "risingUnknownCta": "Geburtszeit ergänzen",
-  "cosmicSummaryTextNoRising": "Mit Sonne in {{sun}} und Mond in {{moon}} trägst du eine ganz eigene Mischung an Energien. Deine Sonne führt dein bewusstes Ich, dein Mond nährt deine Gefühlswelt."
+  "cosmicSummaryTextNoRising": "Mit Sonne in {{sun}} und Mond in {{moon}} trägst du eine ganz eigene Mischung an Energien. Deine Sonne führt dein bewusstes Ich, dein Mond nährt deine Gefühlswelt.",
+  "natalChartHousesTitle": "Die zwölf Häuser",
+  "natalChartHousesBody": "Jedes Haus beschreibt einen Lebensbereich. Das Zeichen auf der Spitze eines Hauses färbt, wie sich dieser Bereich entfaltet — deshalb können sich zwei Horoskope mit demselben Sonnenzeichen sehr verschieden anfühlen.",
+  "natalChartHousesBodyGeneral": "Jedes Haus beschreibt einen Lebensbereich: wie man Dinge beginnt, was man aufbaut, mit wem man sich verbindet, wo man sichtbar ist. Hier steht, was jedes davon umfasst.",
+  "natalHousesNeedBirthTime": "Deine Häuser hängen von der genauen Minute deiner Geburt ab. Ohne Geburtszeit lassen sie sich nicht berechnen — was folgt, ist die allgemeine Bedeutung jedes Hauses, nicht deine.",
+  "natalHousesNeedBirthPlace": "Deine Geburtszeit ist gespeichert, aber Häuser hängen auch vom Ort ab — der Geburtsort verschiebt jede Spitze. Ergänze deinen Geburtsort, dann können wir sie berechnen.",
+  "natalHousesCompleteBirthData": "Geburtsdaten vervollständigen",
+  "natalHouseCuspSign": "{{sign}} auf der Spitze"
 }

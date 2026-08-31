@@ -46,7 +46,9 @@ export interface StoredBirthChart {
   moon: Placement;
   rising: Placement | null;
   planets: Partial<Record<Exclude<InnerPlanetKey, 'sun' | 'moon'> | OuterPlanetKey, Placement>>;
-  coordinates: { latitude: number; longitude: number };
+  /** Null when the birthplace was never given. Persisting a stand-in would
+   *  record a fabricated birthplace as if it were a fact. */
+  coordinates: { latitude: number | null; longitude: number | null };
   timezone: string;
   confidence: Confidence;
   chartVersion: number;
@@ -162,8 +164,16 @@ export function hydrateStoredChart(raw: unknown): NatalChart | null {
   const coordinates = (typeof obj.coordinates === 'object' && obj.coordinates != null
     ? obj.coordinates
     : {}) as Record<string, unknown>;
-  const latitude = typeof coordinates.latitude === 'number' ? coordinates.latitude : 0;
-  const longitude = typeof coordinates.longitude === 'number' ? coordinates.longitude : 0;
+  // Null, not 0. Zero is a real coordinate (the Gulf of Guinea) and using it
+  // as "unknown" is how a missing birthplace became a computable ascendant.
+  const latitude =
+    typeof coordinates.latitude === 'number' && Number.isFinite(coordinates.latitude)
+      ? coordinates.latitude
+      : null;
+  const longitude =
+    typeof coordinates.longitude === 'number' && Number.isFinite(coordinates.longitude)
+      ? coordinates.longitude
+      : null;
 
   return {
     sun,

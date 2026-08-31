@@ -2117,5 +2117,12 @@
   "risingUnknownTitle": "Rising sign not calculated",
   "risingUnknownBody": "Your rising sign needs your exact birth time. We'd rather leave it out than guess — you can add it anytime.",
   "risingUnknownCta": "Add birth time",
-  "cosmicSummaryTextNoRising": "As a {{sun}} Sun with {{moon}} Moon, you carry a distinctive blend of energies. Your Sun drives your conscious self, and your Moon nurtures your emotional world."
+  "cosmicSummaryTextNoRising": "As a {{sun}} Sun with {{moon}} Moon, you carry a distinctive blend of energies. Your Sun drives your conscious self, and your Moon nurtures your emotional world.",
+  "natalChartHousesTitle": "The twelve houses",
+  "natalChartHousesBody": "Each house describes a life area. The sign sitting on each house cusp colors how that area unfolds — which is why two charts with the same Sun sign can still feel very different.",
+  "natalChartHousesBodyGeneral": "Each house describes an area of life — how you begin things, what you build, who you partner with, where you are visible. Below is what each one covers.",
+  "natalHousesNeedBirthTime": "Your own houses depend on the exact minute you were born. Without a birth time they cannot be calculated, so what follows is what each house means in general — not yours.",
+  "natalHousesNeedBirthPlace": "Your birth time is saved, but houses also depend on where you were born — the birthplace moves every cusp. Add your birth city and we can calculate them.",
+  "natalHousesCompleteBirthData": "Complete your birth details",
+  "natalHouseCuspSign": "{{sign}} on the cusp"
 }

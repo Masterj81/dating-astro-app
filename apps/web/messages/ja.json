@@ -2171,7 +2171,12 @@
     "revealRefineMissingCity": "出生地を追加すると、チャートの時刻計算がより正確になります。設定から追加できます。",
     "revealDisclaimer": "JUNOは占星術を、確実さではなく、考えるための言葉として使います。ここに予測はありません。",
     "revealOpenApp": "JUNOを開く",
-    "revealCompleteProfile": "プロフィールを完成させる"
+    "revealCompleteProfile": "プロフィールを完成させる",
+    "natalChartHousesBodyGeneral": "それぞれのハウスは人生の領域を表します。物事の始め方、築くもの、誰と組むか、どこで人目に触れるか。以下は各ハウスが扱う領域です。",
+    "natalHousesNeedBirthTime": "あなた自身のハウスは、生まれた正確な時刻によって決まります。出生時刻がないと計算できないため、以下は各ハウスの一般的な意味であり、あなたのものではありません。",
+    "natalHousesNeedBirthPlace": "出生時刻は保存されています。ただしハウスは出生地にも左右され、場所が変わるとすべてのカスプが動きます。出生地を追加すれば計算できます。",
+    "natalHousesCompleteBirthData": "出生情報を追加する",
+    "natalHouseCuspSign": "カスプは{sign}"
   },
   "invite": {
     "invalidCode": "無効な紹介コード",

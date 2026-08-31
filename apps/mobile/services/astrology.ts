@@ -143,8 +143,13 @@ function toSharedChart(local: NatalChart): SharedNatalChart {
 export function calculateNatalChart(
   birthDate: Date,
   birthTime: string | null,
-  latitude: number = 45.5017,
-  longitude: number = -73.5673,
+  // These used to default to 45.5017 / -73.5673 — Montréal. A caller that
+  // omitted the birthplace silently got a chart cast for a city the reader has
+  // very likely never been to, with an ascendant and twelve house cusps to
+  // match. Null is the honest value: `computeNatalChart` then returns
+  // rising/mc/houses as null and warns `missing_birth_place`.
+  latitude: number | null,
+  longitude: number | null,
   ianaTimezone?: string | null,
 ): NatalChart {
   const isoDate = toIsoDate(birthDate);

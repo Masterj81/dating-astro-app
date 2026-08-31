@@ -635,25 +635,42 @@ serve(async (req) => {
           warnings.push('missing_birth_time', 'houses_unavailable_without_birth_time')
         }
 
-        // Get coordinates
-        let lat = latitude
-        let lng = longitude
+        // Get coordinates.
+        //
+        // This block used to end with `lat = 51.5074; lng = 0` — Greenwich —
+        // on every path where the birthplace was unknown, and then handed
+        // those numbers to `calculateAscendant`. The reader received an
+        // ascendant, a rising sign and (downstream) twelve house cusps cast
+        // for London. Plausible, varied, and fictional: the same failure as
+        // the hardcoded Aries ascendant, only harder to notice because the
+        // output was not constant.
+        //
+        // The test was `!lat || !lng`, which is a truthiness test: a genuine
+        // longitude of 0 (the prime meridian — London, Accra, eastern France)
+        // or latitude 0 (the equator) was treated as missing, so CORRECT data
+        // was replaced by invented data.
+        //
+        // Now: null means unknown, and unknown means no angles.
+        const asCoordinate = (value: unknown): number | null =>
+          typeof value === 'number' && Number.isFinite(value)
+            ? value
+            : typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value))
+              ? Number(value)
+              : null
 
-        if (!lat || !lng) {
-          if (birthCity) {
-            const coords = await geocodeCity(birthCity)
-            if (coords) {
-              lat = coords.lat
-              lng = coords.lng
-            } else {
-              lat = 51.5074
-              lng = 0
-            }
-          } else {
-            lat = 51.5074
-            lng = 0
+        let lat = asCoordinate(latitude)
+        let lng = asCoordinate(longitude)
+
+        if ((lat === null || lng === null) && birthCity) {
+          const coords = await geocodeCity(birthCity)
+          if (coords) {
+            lat = coords.lat
+            lng = coords.lng
           }
         }
+
+        const hasBirthPlace = lat !== null && lng !== null
+        if (!hasBirthPlace) warnings.push('missing_birth_place')
 
         // Resolve the birth IANA timezone (input > lookup > fallback). The
         // UTC instant is built via Luxon — never via `new Date(y,m,d,h,m)`,
@@ -669,9 +686,11 @@ serve(async (req) => {
         const sunLong = getGeocentricLongitude('Sun', time)
         const moonLong = getGeocentricLongitude('Moon', time)
         const planets = calculatePlanetPositions(time)
-        const risingObj = hasBirthTime
+        // The ascendant needs the CLOCK and the PLACE. Either one missing and
+        // it is not computable — not approximable, not defaultable.
+        const risingObj = hasBirthTime && hasBirthPlace
           ? (() => {
-              const ascendantLong = calculateAscendant(time, lat, lng)
+              const ascendantLong = calculateAscendant(time, lat as number, lng as number)
               return {
                 longitude: ascendantLong,
                 sign: getZodiacSign(ascendantLong),
@@ -680,9 +699,9 @@ serve(async (req) => {
             })()
           : null
 
-        // Confidence: low without birth time OR with tz fallback;
-        // medium when we had to look up the zone; high otherwise.
-        const confidence = !hasBirthTime || tz.source === 'fallback'
+        // Confidence: low without birth time, without a birthplace, or with a
+        // tz fallback; medium when we had to look the zone up; high otherwise.
+        const confidence = !hasBirthTime || !hasBirthPlace || tz.source === 'fallback'
           ? 'low'
           : tz.source === 'lookup'
             ? 'medium'

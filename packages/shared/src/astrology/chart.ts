@@ -153,13 +153,31 @@ export function computeNatalChart(input: BirthInput): NatalChart {
   const neptune = longitudeToPlacement(geocentricLongitude(PLANET_BODIES.neptune, time));
   const pluto = longitudeToPlacement(geocentricLongitude(PLANET_BODIES.pluto, time));
 
+  // Angles need the CLOCK and the PLACE. Birth longitude enters local sidereal
+  // time degree for degree, so an unknown birthplace displaces the ascendant —
+  // and with it all twelve equal-house cusps — by as much as the location is
+  // wrong. Guarding here rather than at the callers is deliberate: passing
+  // `null` used to coerce to 0 and quietly place the birth in the Gulf of
+  // Guinea, and every caller that forgot the check inherited that.
+  const hasBirthPlace =
+    typeof input.latitude === 'number' &&
+    Number.isFinite(input.latitude) &&
+    typeof input.longitude === 'number' &&
+    Number.isFinite(input.longitude);
+
+  if (!hasBirthPlace && !warnings.includes('missing_birth_place')) {
+    warnings.push('missing_birth_place');
+  }
+
   let rising: Placement | null = null;
   let mc: Placement | null = null;
   let houses: number[] | null = null;
-  if (normalized.hasBirthTime) {
-    const ascLong = computeAscendant(time, input.latitude, input.longitude);
+  if (normalized.hasBirthTime && hasBirthPlace) {
+    const latitude = input.latitude as number;
+    const longitude = input.longitude as number;
+    const ascLong = computeAscendant(time, latitude, longitude);
     rising = longitudeToPlacement(ascLong);
-    mc = longitudeToPlacement(computeMidheaven(time, input.longitude));
+    mc = longitudeToPlacement(computeMidheaven(time, longitude));
     houses = computeEqualHouses(ascLong);
   }
 

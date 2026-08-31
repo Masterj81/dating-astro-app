@@ -2117,5 +2117,12 @@
   "risingUnknownTitle": "アセンダントは未計算です",
   "risingUnknownBody": "アセンダントには正確な出生時刻が必要です。推測するより省くほうを選んでいます。いつでも追加できます。",
   "risingUnknownCta": "出生時刻を追加",
-  "cosmicSummaryTextNoRising": "{{sun}}の太陽と{{moon}}の月を持つあなたには、あなただけのエネルギーの混ざり方があります。太陽は意識のあり方を、月は感情の世界を育てます。"
+  "cosmicSummaryTextNoRising": "{{sun}}の太陽と{{moon}}の月を持つあなたには、あなただけのエネルギーの混ざり方があります。太陽は意識のあり方を、月は感情の世界を育てます。",
+  "natalChartHousesTitle": "12のハウス",
+  "natalChartHousesBody": "それぞれのハウスは人生の領域を表します。各ハウスのカスプに位置する星座が、その領域の現れ方を彩ります。同じ太陽星座でもチャートごとに印象が異なるのはそのためです。",
+  "natalChartHousesBodyGeneral": "それぞれのハウスは人生の領域を表します。物事の始め方、築くもの、誰と組むか、どこで人目に触れるか。以下は各ハウスが扱う領域です。",
+  "natalHousesNeedBirthTime": "あなた自身のハウスは、生まれた正確な時刻によって決まります。出生時刻がないと計算できないため、以下は各ハウスの一般的な意味であり、あなたのものではありません。",
+  "natalHousesNeedBirthPlace": "出生時刻は保存されています。ただしハウスは出生地にも左右され、場所が変わるとすべてのカスプが動きます。出生地を追加すれば計算できます。",
+  "natalHousesCompleteBirthData": "出生情報を追加する",
+  "natalHouseCuspSign": "カスプは{{sign}}"
 }

@@ -2171,7 +2171,12 @@
     "revealRefineMissingCity": "Deine Geburtsstadt schärft die Zeitrechnung hinter deinem Chart. Du kannst sie in den Einstellungen ergänzen.",
     "revealDisclaimer": "JUNO nutzt Astrologie als Sprache zum Nachdenken, nicht als Gewissheit. Nichts hier ist eine Vorhersage.",
     "revealOpenApp": "JUNO öffnen",
-    "revealCompleteProfile": "Profil vervollständigen"
+    "revealCompleteProfile": "Profil vervollständigen",
+    "natalChartHousesBodyGeneral": "Jedes Haus beschreibt einen Lebensbereich: wie man Dinge beginnt, was man aufbaut, mit wem man sich verbindet, wo man sichtbar ist. Hier steht, was jedes davon umfasst.",
+    "natalHousesNeedBirthTime": "Deine Häuser hängen von der genauen Minute deiner Geburt ab. Ohne Geburtszeit lassen sie sich nicht berechnen — was folgt, ist die allgemeine Bedeutung jedes Hauses, nicht deine.",
+    "natalHousesNeedBirthPlace": "Deine Geburtszeit ist gespeichert, aber Häuser hängen auch vom Ort ab — der Geburtsort verschiebt jede Spitze. Ergänze deinen Geburtsort, dann können wir sie berechnen.",
+    "natalHousesCompleteBirthData": "Geburtsdaten vervollständigen",
+    "natalHouseCuspSign": "{sign} auf der Spitze"
   },
   "invite": {
     "invalidCode": "Ungültiger Empfehlungscode",

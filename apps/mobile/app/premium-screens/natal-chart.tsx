@@ -11,7 +11,15 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { resolveTrustedRisingSign } from '@astro/shared/astrology';
+import {
+  houseOfLongitude,
+  hydrateStoredChart,
+  resolveBirthDataState,
+  resolveHouseCusps,
+  resolveTrustedRisingSign,
+  signsOnCusps,
+  type BirthDataState,
+} from '@astro/shared/astrology';
 import AuthBrandMark from '../../components/AuthBrandMark';
 import PremiumGate from '../../components/PremiumGate';
 import PlanetGlyph from '../../components/ui/PlanetGlyph';
@@ -24,8 +32,20 @@ type PlanetPosition = {
   planet: string;
   planetKey: string;
   sign: string;
-  degree: number;
-  house: number;
+  /**
+   * Degree in sign, read from the stored chart. Null when the chart could not
+   * supply one. It used to be a literal — 15 for the Sun, 22 for the Moon,
+   * 28 for Venus — identical for every user of the app.
+   */
+  degree: number | null;
+  /**
+   * House 1–12, computed from a real longitude against trustworthy cusps.
+   * Null whenever the birth time or the birthplace is missing. It used to be
+   * a literal too, which meant `hasHouse` was unconditionally true and one of
+   * the 96 `natalPlanetInHouse_*` interpretations rendered for everyone.
+   * See packages/shared/src/astrology/houses.ts.
+   */
+  house: number | null;
   emoji: string;
 };
 
@@ -49,14 +69,32 @@ type NatalChartData = {
   sun_sign: string;
   moon_sign: string;
   rising_sign: string;
-  mercury_sign?: string;
-  venus_sign?: string;
-  mars_sign?: string;
-  jupiter_sign?: string;
-  saturn_sign?: string;
   birth_date: string;
   birth_time: string;
   birth_city: string;
+  // `profiles` has NO mercury_sign / venus_sign / mars_sign / jupiter_sign /
+  // saturn_sign columns — they never existed. This type used to declare them
+  // as optional, `loadChartData` never set them, and `getPlanetaryPositions`
+  // read `data.mercury_sign || signs[3]`. The left side was ALWAYS undefined,
+  // so every Android user was shown the same five invented placements:
+  // Mercury in Cancer, Venus in Libra, Mars in Aries, Jupiter in Sagittarius,
+  // Saturn in Capricorn. The real placements live in `birth_chart`.
+  birth_chart: unknown;
+  birth_latitude: number | null;
+  birth_longitude: number | null;
+};
+
+// Glyphs are display chrome, not data. Module scope so the memo below does not
+// take a new dependency on every render.
+const PLANET_GLYPHS: Record<string, string> = {
+  sun: '☉',
+  moon: '☽',
+  rising: '↑',
+  mercury: '☿️',
+  venus: '♀️',
+  mars: '♂️',
+  jupiter: '♃',
+  saturn: '♄',
 };
 
 // Get element for a sign
@@ -108,8 +146,12 @@ function NatalChartScreenContent() {
     return `${planet} · ${houseLabel}`;
   };
 
-  const signs = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
-                 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+  // The zodiac list that used to live here existed for exactly one purpose:
+  // `data.mercury_sign || signs[3]` and its four siblings picked from it to
+  // invent a placement. Since the columns it fell back from never existed,
+  // the fallback fired 100% of the time. Both are gone, and no list of all
+  // twelve signs is left behind to be reached for the same way — the web file
+  // was cleaned the same way on 30 August.
 
   // The ascendant we may name, or null. `birth_time` comes from
   // get_my_full_profile and is the strongest proof in the app, so this also
@@ -126,38 +168,85 @@ function NatalChartScreenContent() {
     [chartData]
   );
 
-  // Generate planetary positions (deterministic fallbacks instead of Math.random)
-  const getPlanetaryPositions = (data: NatalChartData): PlanetPosition[] => {
-    return [
-      // Sun/Moon/Rising glyphs flow through PlanetGlyph which normalizes
-      // emoji codepoints to monochrome text glyphs (☉ / ☾ / "ASC").
-      { planet: t('sun'), planetKey: 'sun', sign: data.sun_sign || 'Unknown', degree: 15, house: 1, emoji: '☉' },
-      { planet: t('moon'), planetKey: 'moon', sign: data.moon_sign || 'Unknown', degree: 22, house: 4, emoji: '☽' },
-      // Rising is included ONLY when the birth time proves it was computable.
-      // This screen loads birth_time via get_my_full_profile, so it can tell a
-      // real ascendant from one the old fallback invented — and it drops the
-      // row entirely rather than rendering a full interpretation ("With Aries
-      // Rising, you come across as confident...") about a sign nobody has.
-      ...(resolveTrustedRisingSign({
-        birthTime: data.birth_time,
-        storedRisingSign: data.rising_sign,
-      })
-        ? [{
-            planet: t('rising'),
-            planetKey: 'rising',
-            sign: data.rising_sign as string,
-            degree: 8,
-            house: 1,
-            emoji: '↑',
-          }]
-        : []),
-      { planet: t('mercury') || 'Mercury', planetKey: 'mercury', sign: data.mercury_sign || signs[3], degree: 12, house: 3, emoji: '☿️' },
-      { planet: t('venus') || 'Venus', planetKey: 'venus', sign: data.venus_sign || signs[6], degree: 28, house: 7, emoji: '♀️' },
-      { planet: t('mars') || 'Mars', planetKey: 'mars', sign: data.mars_sign || signs[0], degree: 5, house: 10, emoji: '♂️' },
-      { planet: t('jupiter') || 'Jupiter', planetKey: 'jupiter', sign: data.jupiter_sign || signs[8], degree: 19, house: 9, emoji: '♃' },
-      { planet: t('saturn') || 'Saturn', planetKey: 'saturn', sign: data.saturn_sign || signs[9], degree: 3, house: 11, emoji: '♄' },
-    ];
-  };
+  // What the reader's birth data actually supports. Every house-shaped value
+  // on this screen is downstream of `cusps`, which is null unless the birth
+  // CLOCK and the birth PLACE are both proven — the ascendant depends on the
+  // birthplace as strongly as on the time.
+  const trustInput = useMemo(
+    () =>
+      chartData
+        ? {
+            birthTime: chartData.birth_time,
+            birthLatitude: chartData.birth_latitude,
+            birthLongitude: chartData.birth_longitude,
+            birthChart: chartData.birth_chart,
+            storedRisingSign: chartData.rising_sign,
+          }
+        : null,
+    [chartData]
+  );
+
+  const birthDataState: BirthDataState = useMemo(
+    () => (trustInput ? resolveBirthDataState(trustInput) : 'missing_birth_time'),
+    [trustInput]
+  );
+  const houseCusps = useMemo(
+    () => (trustInput ? resolveHouseCusps(trustInput) : null),
+    [trustInput]
+  );
+  const cuspSigns = useMemo(() => signsOnCusps(houseCusps), [houseCusps]);
+
+  // Placements come from the stored chart, which is the only source that
+  // carries a degree and the only place mercury..saturn exist at all. A
+  // placement that is not there is DROPPED — never substituted.
+  const positions: PlanetPosition[] = useMemo(() => {
+    if (!chartData) return [];
+
+    const chart = hydrateStoredChart(chartData.birth_chart);
+    const rows: PlanetPosition[] = [];
+
+    const push = (
+      planetKey: string,
+      label: string,
+      sign: string | null | undefined,
+      longitude: number | null | undefined,
+      degree: number | null | undefined
+    ) => {
+      if (!sign) return;
+      rows.push({
+        planet: label,
+        planetKey,
+        sign,
+        degree: typeof degree === 'number' ? Math.round(degree) : null,
+        house:
+          houseCusps && typeof longitude === 'number'
+            ? houseOfLongitude(houseCusps, longitude)
+            : null,
+        emoji: PLANET_GLYPHS[planetKey] ?? '·',
+      });
+    };
+
+    // Sun/Moon/Rising glyphs flow through PlanetGlyph which normalizes emoji
+    // codepoints to monochrome text glyphs (☉ / ☾ / "ASC").
+    push('sun', t('sun'), chart?.sun.sign ?? chartData.sun_sign, chart?.sun.longitude, chart?.sun.degree);
+    push('moon', t('moon'), chart?.moon.sign ?? chartData.moon_sign, chart?.moon.longitude, chart?.moon.degree);
+
+    // Rising is included ONLY when the birth time proves it was computable.
+    // This screen loads birth_time via get_my_full_profile, so it can tell a
+    // real ascendant from one the old fallback invented — and it drops the
+    // row entirely rather than rendering a full interpretation ("With Aries
+    // Rising, you come across as confident...") about a sign nobody has.
+    if (trustedRisingSign) {
+      push('rising', t('rising'), trustedRisingSign, chart?.rising?.longitude, chart?.rising?.degree);
+    }
+
+    for (const key of ['mercury', 'venus', 'mars', 'jupiter', 'saturn'] as const) {
+      const placement = chart?.[key];
+      push(key, resolveOptional(t, key) ?? key, placement?.sign, placement?.longitude, placement?.degree);
+    }
+
+    return rows;
+  }, [chartData, houseCusps, trustedRisingSign, t]);
 
   useEffect(() => {
     loadChartData();
@@ -190,6 +279,13 @@ function NatalChartScreenContent() {
           birth_date: data.birth_date,
           birth_time: data.birth_time,
           birth_city: data.birth_city,
+          // The chart is the only source of degrees, of mercury..pluto, and
+          // therefore of any real house placement. get_my_full_profile has
+          // returned all three of these since 20260427000030; this screen
+          // simply never asked for them.
+          birth_chart: data.birth_chart ?? null,
+          birth_latitude: typeof data.birth_latitude === 'number' ? data.birth_latitude : null,
+          birth_longitude: typeof data.birth_longitude === 'number' ? data.birth_longitude : null,
         });
       }
     } catch (err) {
@@ -351,11 +447,8 @@ function NatalChartScreenContent() {
     return interpretations[modality] || '';
   };
 
-  // Memoize before any early returns to respect React hooks rules
-  const positions = useMemo(
-    () => chartData ? getPlanetaryPositions(chartData) : [],
-    [chartData, t] // eslint-disable-line react-hooks/exhaustive-deps
-  );
+  // `positions` is memoised further up, next to the birth-data state it
+  // depends on — both must run before any early return to respect hooks rules.
   const elements = useMemo(() => calculateElements(positions), [positions]);
   const modalities = useMemo(() => calculateModalities(positions), [positions]);
 
@@ -480,7 +573,12 @@ function NatalChartScreenContent() {
                     : getRisingInterpretation(pos.sign))
               : null;
           const datingLens = resolveOptional(t, `natalPlanetDatingLens_${pos.planetKey}_${signKey}`);
-          const hasHouse = pos.house >= 1 && pos.house <= 12;
+          // `pos.house` is null unless it came from a real longitude measured
+          // against trustworthy cusps. This used to be
+          // `pos.house >= 1 && pos.house <= 12`, unconditionally true because
+          // the number was a literal — so this block, and one of the 96
+          // `natalPlanetInHouse_*` interpretations, rendered for everyone.
+          const hasHouse = pos.house !== null;
           const houseName = hasHouse ? resolveOptional(t, `natalHouseName_${pos.house}`) : null;
           const planetInHouse = hasHouse
             ? resolveOptional(t, `natalPlanetInHouse_${pos.planetKey}_${pos.house}`)
@@ -506,8 +604,14 @@ function NatalChartScreenContent() {
                 />
                 <View style={styles.planetAccordionInfo}>
                   <Text style={styles.planetAccordionName}>{pos.planet}</Text>
+                  {/* Every part of this line is now optional, because every
+                      part of it used to be fabricated. A chart with no degree
+                      shows the sign alone, which is true, rather than a
+                      number that is not. */}
                   <Text style={styles.planetAccordionDetail}>
-                    {signLabel} {pos.degree}° · {t('house')} {pos.house}
+                    {signLabel}
+                    {pos.degree !== null ? ` ${pos.degree}°` : ''}
+                    {pos.house !== null ? ` · ${t('house')} ${pos.house}` : ''}
                   </Text>
                 </View>
                 <Text style={styles.planetAccordionChevron}>{isOpen ? '−' : '+'}</Text>
@@ -552,6 +656,68 @@ function NatalChartScreenContent() {
                   )}
                 </View>
               )}
+            </View>
+          );
+        })}
+      </View>
+
+      {/* The twelve houses.
+          Ported from web on 2026-08-31. The 24 content keys
+          (natalHouseName_1..12 / natalHouseMeaning_1..12) had already shipped
+          translated in all 8 mobile locales and were rendered nowhere — the
+          corpus was written, paid for and dormant.
+
+          The MEANINGS are pedagogical and identical for every chart. The SIGN
+          on each cusp is personal and appears only when `cuspSigns` is
+          non-null, which needs the birth clock AND the birthplace. */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('natalChartHousesTitle')}</Text>
+        <Text style={styles.housesIntro}>
+          {cuspSigns ? t('natalChartHousesBody') : t('natalChartHousesBodyGeneral')}
+        </Text>
+
+        {/* Explained ONCE, at the top, never as twelve empty slots. A blank
+            where a reader expects a sign reads as a bug, or as data being
+            withheld from them. */}
+        {!cuspSigns && (
+          <View style={styles.housesNotice}>
+            <Text style={styles.housesNoticeText}>
+              {birthDataState === 'missing_birth_time'
+                ? t('natalHousesNeedBirthTime')
+                : t('natalHousesNeedBirthPlace')}
+            </Text>
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => router.push('/profile/edit')}
+            >
+              <Text style={styles.housesNoticeAction}>
+                {t('natalHousesCompleteBirthData')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {Array.from({ length: 12 }, (_, i) => i + 1).map((houseNumber) => {
+          const name = resolveOptional(t, `natalHouseName_${houseNumber}`);
+          const meaning = resolveOptional(t, `natalHouseMeaning_${houseNumber}`);
+          if (!name && !meaning) return null;
+          return (
+            <View key={houseNumber} style={styles.houseCard}>
+              <View style={styles.houseBadge}>
+                <Text style={styles.houseBadgeText}>{houseNumber}</Text>
+              </View>
+              <View style={styles.houseCardBody}>
+                {name && <Text style={styles.houseCardName}>{name}</Text>}
+                {cuspSigns && (
+                  <Text style={styles.houseCardCusp}>
+                    {t('natalHouseCuspSign', {
+                      sign: resolveOptional(t, cuspSigns[houseNumber - 1].toLowerCase())
+                        ?? cuspSigns[houseNumber - 1],
+                    })}
+                  </Text>
+                )}
+                {meaning && <Text style={styles.houseCardMeaning}>{meaning}</Text>}
+              </View>
             </View>
           );
         })}
@@ -1161,6 +1327,80 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
     fontWeight: '600',
+  },
+
+  // --- The twelve houses ---------------------------------------------------
+  housesIntro: {
+    fontSize: 14,
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 22,
+    marginTop: -8,
+    marginBottom: 16,
+  },
+  housesNotice: {
+    backgroundColor: 'rgba(232, 93, 117, 0.12)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(232, 93, 117, 0.30)',
+    padding: 14,
+    gap: 10,
+    marginBottom: 16,
+  },
+  housesNoticeText: {
+    fontSize: 14,
+    color: AppTheme.colors.textPrimary,
+    lineHeight: 22,
+  },
+  housesNoticeAction: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffb7c7',
+  },
+  houseCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: 14,
+    marginBottom: 8,
+  },
+  houseBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  houseBadgeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  houseCardBody: {
+    flex: 1,
+    gap: 2,
+  },
+  houseCardName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  houseCardCusp: {
+    fontSize: 11,
+    color: '#ffb7c7',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  houseCardMeaning: {
+    fontSize: 14,
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 21,
   },
 });
 

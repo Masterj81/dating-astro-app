@@ -199,8 +199,19 @@ check('the reveal omits the rising row when there is none',
 // Display surfaces must gate on evidence, never on the bare column.
 check('own profile gates the rising card on birth_time',
   /resolveTrustedRisingSign\(\{[\s\S]{0,160}?birthTime: profile\?\.birth_time/.test(profileTab));
-check('the natal chart gates the rising row on birth_time',
-  /resolveTrustedRisingSign\(\{[\s\S]{0,120}?birthTime: data\.birth_time/.test(natalChart));
+// Two assertions, because the first one alone passed while proving less than
+// it looked like it did: it only checked that the call EXISTED somewhere in
+// the file, not that the rising row was actually conditional on its answer.
+// The screen was reworked on 2026-08-31 to read placements from birth_chart,
+// which moved this call into a memo over `chartData`; that is the moment the
+// weakness showed.
+check('the natal chart resolves the rising against birth_time',
+  /resolveTrustedRisingSign\(\{[\s\S]{0,160}?birthTime: (data|chartData)\.birth_time/.test(natalChart),
+  'the bare rising_sign column cannot tell a real ascendant from a fabricated one');
+check('the natal chart renders the rising row only when that answer is positive',
+  /if \(trustedRisingSign\) \{[\s\S]{0,200}?push\('rising'/.test(natalChart) ||
+    /\.\.\.\(resolveTrustedRisingSign\([\s\S]{0,200}?planetKey: 'rising'/.test(natalChart),
+  'resolving trust and then ignoring it would render "With Aries Rising, you come across as…" to someone who has no ascendant');
 check('discover hides an unprovable rising pill',
   /isRisingTrustworthy\(\{ storedRisingSign: currentProfile\.rising_sign \}\)/.test(discover));
 check('synastry refuses an unprovable ascendant on both sides',

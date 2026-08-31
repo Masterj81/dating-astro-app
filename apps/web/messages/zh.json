@@ -2171,7 +2171,12 @@
     "revealRefineMissingCity": "补充出生城市可以让星盘的时间计算更准确。可在设置中添加。",
     "revealDisclaimer": "JUNO 把占星当作一种思考的语言，而不是确定的答案。这里没有任何预测。",
     "revealOpenApp": "打开 JUNO",
-    "revealCompleteProfile": "完善我的资料"
+    "revealCompleteProfile": "完善我的资料",
+    "natalChartHousesBodyGeneral": "每个宫位描述人生的一个领域：你如何开始一件事、你建立什么、与谁结伴、在何处被看见。以下是各宫位所涵盖的范围。",
+    "natalHousesNeedBirthTime": "你的宫位取决于出生的确切时刻。没有出生时间就无法计算，因此以下是各宫位的一般含义，而非你的宫位。",
+    "natalHousesNeedBirthPlace": "你的出生时间已保存，但宫位还取决于出生地——出生地点会移动每一条宫头。补充出生城市后即可计算。",
+    "natalHousesCompleteBirthData": "补充出生信息",
+    "natalHouseCuspSign": "宫头星座：{sign}"
   },
   "invite": {
     "invalidCode": "无效的推荐码",

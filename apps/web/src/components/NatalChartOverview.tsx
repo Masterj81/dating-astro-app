@@ -3,7 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { resolveTrustedRisingSign } from "@astro/shared/astrology";
+import {
+  houseOfLongitude,
+  hydrateStoredChart,
+  resolveBirthDataState,
+  resolveHouseCusps,
+  resolveTrustedRisingSign,
+  signsOnCusps,
+  type BirthDataState,
+} from "@astro/shared/astrology";
 import { translateElement, translateModality, translateSign } from "@/lib/astrology-labels";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
@@ -17,11 +25,14 @@ type NatalProfile = {
   sun_sign: string | null;
   moon_sign: string | null;
   rising_sign: string | null;
-  mercury_sign?: string | null;
-  venus_sign?: string | null;
-  mars_sign?: string | null;
-  jupiter_sign?: string | null;
-  saturn_sign?: string | null;
+  // `profiles` has NO mercury_sign / venus_sign / … columns — only Sun, Moon
+  // and Rising exist as columns. Every other placement lives in `birth_chart`,
+  // which is also the ONLY source of degrees and therefore the only way to
+  // place a planet in a house. Reading the columns alone is why five of the
+  // eight planets silently never rendered on this screen.
+  birth_chart?: unknown;
+  birth_latitude?: number | null;
+  birth_longitude?: number | null;
 };
 
 type PlanetKey =
@@ -39,8 +50,20 @@ type PlanetPosition = {
   label: string;
   symbol: string;
   sign: string;
-  degree: number;
-  house: number;
+  /**
+   * Degree in sign, read from the stored chart. Null when only a sign column
+   * is available — a legacy row, or a chart too partial to hydrate. It used to
+   * be `((baseSeed + index * 7) % 29) + 1`.
+   */
+  degree: number | null;
+  /**
+   * House 1–12, computed from real longitudes against trustworthy cusps. Null
+   * whenever the birth time or the birthplace is missing. It used to be
+   * `((baseSeed + index * 2) % 12) + 1` — a hash of string lengths, which also
+   * meant a reader's "houses" rearranged themselves when they fixed a typo in
+   * their name. See packages/shared/src/astrology/houses.ts.
+   */
+  house: number | null;
 };
 
 const PLANET_SYMBOLS: Record<PlanetKey, string> = {
@@ -113,13 +136,32 @@ function formatPlanetInHouseLabel(planet: string, houseName: string, locale: str
   return `${planet} · ${houseName}`;
 }
 
-function buildPlanetPositions(profile: NatalProfile, t: ReturnType<typeof useTranslations>) {
-  const baseSeed =
-    (profile.sun_sign?.length || 0) +
-    (profile.moon_sign?.length || 0) +
-    (profile.rising_sign?.length || 0) +
-    (profile.birth_date?.length || 0);
+/** What this reader's chart actually supports, computed once per profile. */
+type ChartReading = {
+  positions: PlanetPosition[];
+  /** Trustworthy equal-house cusps, or null. */
+  cusps: number[] | null;
+  /** Sign on each of the twelve cusps, or null when there are no cusps. */
+  cuspSigns: string[] | null;
+  /** Which of the three birth-data states this reader is in. */
+  birthDataState: BirthDataState;
+};
 
+const PLANET_ORDER: readonly PlanetKey[] = [
+  "sun",
+  "moon",
+  "rising",
+  "mercury",
+  "venus",
+  "mars",
+  "jupiter",
+  "saturn",
+] as const;
+
+function readChart(
+  profile: NatalProfile,
+  t: ReturnType<typeof useTranslations>,
+): ChartReading {
   // The rising sign is the one placement that cannot exist without an exact
   // birth time, and this screen can read `birth_time` — the strongest proof
   // available. See packages/shared/src/astrology/rising.ts.
@@ -128,59 +170,69 @@ function buildPlanetPositions(profile: NatalProfile, t: ReturnType<typeof useTra
     storedRisingSign: profile.rising_sign,
   });
 
-  const picks: (string | null | undefined)[] = [
-    profile.sun_sign,
-    profile.moon_sign,
-    trustedRising,
-    profile.mercury_sign,
-    profile.venus_sign,
-    profile.mars_sign,
-    profile.jupiter_sign,
-    profile.saturn_sign,
-  ];
+  const trustInput = {
+    birthTime: profile.birth_time,
+    birthLatitude: profile.birth_latitude,
+    birthLongitude: profile.birth_longitude,
+    birthChart: profile.birth_chart,
+    storedRisingSign: profile.rising_sign,
+  };
 
-  const keys: PlanetKey[] = [
-    "sun",
-    "moon",
-    "rising",
-    "mercury",
-    "venus",
-    "mars",
-    "jupiter",
-    "saturn",
-  ];
+  const birthDataState = resolveBirthDataState(trustInput);
+  // Null unless the clock AND the birthplace are both proven. Everything
+  // house-shaped below is downstream of this one value.
+  const cusps = resolveHouseCusps(trustInput);
+  const cuspSigns = signsOnCusps(cusps);
+
+  // `hydrateStoredChart` returns null for a row too partial to be a chart. That
+  // is a legitimate outcome for legacy data, and it costs only the degrees —
+  // the Sun/Moon/Rising columns still carry real signs.
+  const chart = hydrateStoredChart(profile.birth_chart);
 
   // A placement we do not have is DROPPED, never invented.
   //
-  // This used to read `picks[index] || getFallbackSign(baseSeed + index * 3)`,
+  // Signs used to read `picks[index] || getFallbackSign(baseSeed + index * 3)`,
   // where getFallbackSign was `SIGNS[seed % 12]` — a sign derived from the
-  // length of some strings. Every missing placement got a plausible, varied,
-  // entirely fictional sign, and because it varied per profile there was no
-  // pattern for anyone to notice.
-  //
-  // It was mostly dormant while the mobile bug filled `rising_sign` with
-  // 'Aries'. Migration 20260830000001 nulled those columns, which would have
-  // handed this fallback 99 accounts to invent an ascendant for. Fixing the
-  // database made this one live; hence the removal.
-  return keys
-    .map((key, index) => {
-      const sign = picks[index];
-      if (!sign) return null;
-      return {
-        key,
-        label: t(`natalPlanet_${key}`),
-        symbol: PLANET_SYMBOLS[key],
-        sign,
-        // NOTE: degree and house remain decorative, derived from a string
-        // length. They are precision theatre of the same family as the "82%
-        // overall energy" removed in the Daily Reflection V2 rewrite, and
-        // deserve the same treatment — separate change, tracked in
-        // docs/rising-sign-integrity-2026-08.md §6.
-        degree: ((baseSeed + index * 7) % 29) + 1,
-        house: ((baseSeed + index * 2) % 12) + 1,
-      };
-    })
-    .filter((position): position is PlanetPosition => position !== null);
+  // length of some strings. Degrees and houses were the same trick and outlived
+  // it by a day; they are gone now too. Nothing on this screen is allowed to be
+  // derived from a seed.
+  const positions = PLANET_ORDER.map((key) => {
+    // The chart is the richer source: it carries a degree, which the columns
+    // never did, and it is the only place mercury..saturn exist at all.
+    const placement =
+      key === "rising"
+        ? (trustedRising ? chart?.rising ?? null : null)
+        : chart?.[key] ?? null;
+
+    const sign =
+      placement?.sign ??
+      (key === "sun"
+        ? profile.sun_sign
+        : key === "moon"
+          ? profile.moon_sign
+          : key === "rising"
+            ? trustedRising
+            : null);
+
+    if (!sign) return null;
+
+    const longitude = placement?.longitude;
+    const house =
+      cusps && typeof longitude === "number" ? houseOfLongitude(cusps, longitude) : null;
+
+    return {
+      key,
+      label: t(`natalPlanet_${key}`),
+      symbol: PLANET_SYMBOLS[key],
+      sign,
+      // Rounded for display only. Absent rather than approximated when the
+      // stored chart could not supply one.
+      degree: typeof placement?.degree === "number" ? Math.round(placement.degree) : null,
+      house,
+    } satisfies PlanetPosition;
+  }).filter((position): position is PlanetPosition => position !== null);
+
+  return { positions, cusps, cuspSigns, birthDataState };
 }
 
 type ServerGate = { allowed: boolean; reason: string | null };
@@ -249,10 +301,19 @@ export function NatalChartOverview() {
     load();
   }, [t]);
 
-  const positions = useMemo(
-    () => (profile ? buildPlanetPositions(profile, t) : []),
+  const reading = useMemo(
+    () =>
+      profile
+        ? readChart(profile, t)
+        : ({
+            positions: [],
+            cusps: null,
+            cuspSigns: null,
+            birthDataState: "missing_birth_time",
+          } satisfies ChartReading),
     [profile, t]
   );
+  const { positions, cuspSigns, birthDataState } = reading;
 
   const elementCounts = useMemo(() => {
     return positions.reduce(
@@ -449,8 +510,14 @@ export function NatalChartOverview() {
                 t.has(coreInterpretationKey);
               const hasDatingLens = t.has(datingLensKey);
 
+              // `houseNumber` is null unless it came from a real longitude
+              // measured against trustworthy cusps. `hasHouse` used to be
+              // `houseNumber >= 1 && houseNumber <= 12`, which was
+              // unconditionally true because the number was manufactured — so
+              // this block, and one of the 96 `natalPlanetInHouse_*`
+              // interpretations, rendered for everyone.
               const houseNumber = position.house;
-              const hasHouse = houseNumber >= 1 && houseNumber <= 12;
+              const hasHouse = houseNumber !== null;
               const planetInHouseKey = `natalPlanetInHouse_${position.key}_${houseNumber}`;
               const hasPlanetInHouse = hasHouse && t.has(planetInHouseKey);
 
@@ -476,8 +543,16 @@ export function NatalChartOverview() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-lg font-semibold text-white">{position.label}</p>
+                      {/* Every part of this line is now optional, because every
+                          part of it used to be fabricated. A reader whose chart
+                          carries no degree sees the sign alone, which is true,
+                          rather than a number that is not. */}
                       <p className="mt-1 text-sm text-text-muted">
-                        {signLabel} {position.degree}° · {t("natalHouse")} {position.house}
+                        {signLabel}
+                        {position.degree !== null ? ` ${position.degree}°` : ""}
+                        {position.house !== null
+                          ? ` · ${t("natalHouse")} ${position.house}`
+                          : ""}
                       </p>
                     </div>
                     {/* Chevron — CSS-only rotation, gated behind motion-safe
@@ -565,18 +640,45 @@ export function NatalChartOverview() {
           </ul>
         </div>
 
-        {/* House meanings — pedagogical, identical for every chart. Future
-            iteration will overlay the sign on each house's cusp once the
-            edge function returns cusps, but the meanings themselves don't
-            depend on the viewer's chart. Two-column grid on md+, single
-            column on mobile so 360px stays clean. */}
+        {/* The twelve houses.
+            The MEANINGS are pedagogical and identical for every chart. The
+            SIGN on each cusp is personal and appears only when `cuspSigns` is
+            non-null, which requires the birth clock AND the birthplace.
+
+            The intro copy used to promise the cusp sign unconditionally ("the
+            sign sitting on each house cusp colors how that area unfolds") and
+            then render twelve cards without one — describing a personalisation
+            the section did not deliver, right below an accordion that was
+            inventing house numbers. There are now two variants: `…BodyGeneral`
+            makes no claim, `…Body` is used only when the signs are really
+            there. */}
         <div className="rounded-[2rem] border border-border bg-card/90 p-6">
           <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
             {t("natalChartHousesTitle")}
           </p>
           <p className="mt-3 text-sm leading-7 text-text-muted">
-            {t("natalChartHousesBody")}
+            {cuspSigns ? t("natalChartHousesBody") : t("natalChartHousesBodyGeneral")}
           </p>
+
+          {/* Explained ONCE, at the top, never as twelve empty slots. A blank
+              where a reader expects a sign reads as a bug or as data being
+              withheld. */}
+          {!cuspSigns ? (
+            <div className="mt-4 rounded-[1.4rem] border border-[rgba(232,93,117,0.22)] bg-[rgba(232,93,117,0.10)] p-4">
+              <p className="text-sm leading-7 text-white/90">
+                {birthDataState === "missing_birth_time"
+                  ? t("natalHousesNeedBirthTime")
+                  : t("natalHousesNeedBirthPlace")}
+              </p>
+              <Link
+                href="/app/profile"
+                className="mt-3 inline-block text-sm font-semibold text-accent hover:underline"
+              >
+                {t("natalHousesCompleteBirthData")}
+              </Link>
+            </div>
+          ) : null}
+
           <div className="mt-6 grid gap-3 md:grid-cols-2">
             {Array.from({ length: 12 }, (_, i) => i + 1).map((houseNumber) => (
               <div
@@ -593,6 +695,13 @@ export function NatalChartOverview() {
                   <p className="text-sm font-semibold text-white">
                     {t(`natalHouseName_${houseNumber}`)}
                   </p>
+                  {cuspSigns ? (
+                    <p className="mt-0.5 text-xs uppercase tracking-[0.18em] text-accent">
+                      {t("natalHouseCuspSign", {
+                        sign: translateSign(cuspSigns[houseNumber - 1], locale),
+                      })}
+                    </p>
+                  ) : null}
                   <p className="mt-1 text-sm leading-6 text-text-muted">
                     {t(`natalHouseMeaning_${houseNumber}`)}
                   </p>

@@ -63,7 +63,16 @@ export type ChartWarning =
   | 'missing_birth_time'
   | 'missing_birth_timezone'
   | 'timezone_fallback_used'
-  | 'houses_unavailable_without_birth_time';
+  | 'houses_unavailable_without_birth_time'
+  /**
+   * No usable birth coordinates, so the ascendant, MC and houses were not
+   * computed. The angles depend on the birthplace as strongly as on the clock:
+   * birth longitude enters local sidereal time degree for degree. Three code
+   * paths used to substitute a location instead of emitting this — Greenwich
+   * in the edge functions, Montréal in the mobile facade — which produced
+   * plausible, varied, entirely fictional angles.
+   */
+  | 'missing_birth_place';
 
 export interface BirthInput {
   /** Local civil date, YYYY-MM-DD. */
@@ -75,10 +84,14 @@ export interface BirthInput {
   time?: string | null;
   /** IANA timezone identifier (e.g. "America/New_York"). Optional. */
   timezone?: string | null;
-  /** Latitude in degrees, -90..90. */
-  latitude: number;
-  /** Longitude in degrees, -180..180. */
-  longitude: number;
+  /**
+   * Latitude in degrees, -90..90. **Null means the birthplace is unknown** —
+   * pass null rather than a stand-in. A substituted location is not a smaller
+   * error than a missing one: it silently relocates every angle in the chart.
+   */
+  latitude: number | null;
+  /** Longitude in degrees, -180..180. Null means unknown; see `latitude`. */
+  longitude: number | null;
 }
 
 export interface NatalChart {

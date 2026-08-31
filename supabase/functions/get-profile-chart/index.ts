@@ -286,8 +286,19 @@ serve(async (req) => {
     minute = Number.parseInt(m) || 0
   }
 
-  const lat = typeof target.birth_latitude === 'number' ? target.birth_latitude : 51.5074
-  const lng = typeof target.birth_longitude === 'number' ? target.birth_longitude : 0
+  // Null, never a stand-in. These two lines used to read `: 51.5074` and
+  // `: 0` — Greenwich — and the result went straight into
+  // `calculateAscendant`, so a profile with no stored birthplace was rendered
+  // with an ascendant cast for London. Plausible, varied, fictional. The
+  // angles need the PLACE as much as the clock: birth longitude enters local
+  // sidereal time degree for degree.
+  const lat = typeof target.birth_latitude === 'number' && Number.isFinite(target.birth_latitude)
+    ? target.birth_latitude
+    : null
+  const lng = typeof target.birth_longitude === 'number' && Number.isFinite(target.birth_longitude)
+    ? target.birth_longitude
+    : null
+  const hasBirthPlace = lat !== null && lng !== null
 
   // Phase 1 fix: resolve the IANA timezone from coords (or trust the value
   // we stored on birth_chart.timezone if present) and build the UTC instant
@@ -307,7 +318,7 @@ serve(async (req) => {
 
   const sunLong = getGeocentricLongitude('Sun', time)
   const moonLong = getGeocentricLongitude('Moon', time)
-  const ascLong = hasBirthTime ? calculateAscendant(time, lat, lng) : null
+  const ascLong = hasBirthTime && hasBirthPlace ? calculateAscendant(time, lat as number, lng as number) : null
   const planets = calculatePlanetPositions(time)
 
   // 6. Coarsen coordinates to 0.5° (~55 km) before returning.
@@ -322,7 +333,7 @@ serve(async (req) => {
       : null,
     planets,
     coordinates: { latitude: coarseLat, longitude: coarseLng },
-    confidence: !hasBirthTime || tz.source === 'fallback' ? 'low' : tz.source === 'lookup' ? 'medium' : 'high',
+    confidence: !hasBirthTime || !hasBirthPlace || tz.source === 'fallback' ? 'low' : tz.source === 'lookup' ? 'medium' : 'high',
   }
 
   return new Response(

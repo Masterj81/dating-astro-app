@@ -2117,5 +2117,12 @@
   "risingUnknownTitle": "Ascendente no calculado",
   "risingUnknownBody": "Tu ascendente necesita tu hora de nacimiento exacta. Preferimos omitirlo antes que adivinarlo: puedes añadirla cuando quieras.",
   "risingUnknownCta": "Añadir hora de nacimiento",
-  "cosmicSummaryTextNoRising": "Con un Sol en {{sun}} y una Luna en {{moon}}, llevas una mezcla de energías muy tuya. Tu Sol guía tu yo consciente y tu Luna nutre tu mundo emocional."
+  "cosmicSummaryTextNoRising": "Con un Sol en {{sun}} y una Luna en {{moon}}, llevas una mezcla de energías muy tuya. Tu Sol guía tu yo consciente y tu Luna nutre tu mundo emocional.",
+  "natalChartHousesTitle": "Las doce casas",
+  "natalChartHousesBody": "Cada casa describe un área de la vida. El signo situado en la cúspide de cada casa matiza cómo se despliega esa área: por eso dos cartas con el mismo signo solar pueden sentirse muy distintas.",
+  "natalChartHousesBodyGeneral": "Cada casa describe un área de la vida: cómo empiezas las cosas, qué construyes, con quién te asocias, dónde eres visible. Esto es lo que abarca cada una.",
+  "natalHousesNeedBirthTime": "Tus casas dependen del minuto exacto de tu nacimiento. Sin la hora no pueden calcularse, así que lo siguiente es el significado general de cada casa, no el tuyo.",
+  "natalHousesNeedBirthPlace": "Tu hora de nacimiento está guardada, pero las casas también dependen del lugar: el lugar de nacimiento desplaza cada cúspide. Añade tu ciudad de nacimiento y podremos calcularlas.",
+  "natalHousesCompleteBirthData": "Completar mis datos de nacimiento",
+  "natalHouseCuspSign": "{{sign}} en la cúspide"
 }

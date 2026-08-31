@@ -304,3 +304,71 @@ describe('Moon position regression — Nepal +5:45 case', () => {
     expect(chart.sun.sign).toBe('Aries');
   });
 });
+
+describe('the engine never invents a birthplace', () => {
+  // The angles depend on the birthplace as strongly as on the clock: birth
+  // longitude enters local sidereal time degree for degree. Three code paths
+  // used to substitute one — Greenwich (51.5074, 0) in calculate-chart and
+  // get-profile-chart, Montréal (45.5017, -73.5673) as the mobile facade's
+  // default parameters — which produced plausible, varied, entirely fictional
+  // ascendants that no reader could ever have caught.
+  const NO_PLACE = {
+    date: '1990-08-05',
+    time: '14:30',
+    timezone: 'Europe/Paris',
+    latitude: null,
+    longitude: null,
+  };
+
+  it('returns no angles at all when the birthplace is unknown', () => {
+    const chart = computeNatalChart(NO_PLACE);
+    expect(chart.rising).toBeNull();
+    expect(chart.mc).toBeNull();
+    expect(chart.houses).toBeNull();
+  });
+
+  it('says so, rather than failing silently', () => {
+    expect(computeNatalChart(NO_PLACE).warnings).toContain('missing_birth_place');
+  });
+
+  it('still computes every planet, which does not depend on the place', () => {
+    // Withholding the angles must not cost the reader the rest of their chart:
+    // planetary longitudes depend only on the UTC instant.
+    const chart = computeNatalChart(NO_PLACE);
+    for (const key of ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn'] as const) {
+      expect(chart[key].sign).toBeTruthy();
+      expect(Number.isFinite(chart[key].longitude)).toBe(true);
+    }
+  });
+
+  it('matches the placed chart planet for planet when the timezone is explicit', () => {
+    // Same instant, same sky. Only the angles differ.
+    const placed = computeNatalChart({ ...NO_PLACE, latitude: 48.8566, longitude: 2.3522 });
+    const unplaced = computeNatalChart(NO_PLACE);
+    expect(unplaced.utcInstant).toBe(placed.utcInstant);
+    expect(unplaced.sun.longitude).toBeCloseTo(placed.sun.longitude, 9);
+    expect(placed.rising).not.toBeNull();
+    expect(unplaced.rising).toBeNull();
+  });
+
+  it('does not treat a genuine 0 as a missing coordinate', () => {
+    // `calculate-chart` used `if (!lat || !lng)`, which overwrote correct data
+    // for anyone born on the prime meridian or the equator. Zero is a place.
+    const chart = computeNatalChart({ ...NO_PLACE, latitude: 0, longitude: 0 });
+    expect(chart.rising).not.toBeNull();
+    expect(chart.warnings).not.toContain('missing_birth_place');
+  });
+
+  it('withholds the angles when the place is known but the clock is not', () => {
+    const chart = computeNatalChart({
+      date: '1990-08-05',
+      time: null,
+      timezone: 'Europe/Paris',
+      latitude: 48.8566,
+      longitude: 2.3522,
+    });
+    expect(chart.rising).toBeNull();
+    expect(chart.houses).toBeNull();
+    expect(chart.warnings).not.toContain('missing_birth_place');
+  });
+});

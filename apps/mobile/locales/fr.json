@@ -2117,5 +2117,12 @@
   "risingUnknownTitle": "Ascendant non calculé",
   "risingUnknownBody": "Ton ascendant demande ton heure de naissance exacte. On préfère l'omettre plutôt que de le deviner — tu peux l'ajouter quand tu veux.",
   "risingUnknownCta": "Ajouter l'heure de naissance",
-  "cosmicSummaryTextNoRising": "Avec un Soleil en {{sun}} et une Lune en {{moon}}, tu portes un mélange d’énergies bien à toi. Ton Soleil guide ta conscience, ta Lune nourrit ton monde émotionnel."
+  "cosmicSummaryTextNoRising": "Avec un Soleil en {{sun}} et une Lune en {{moon}}, tu portes un mélange d’énergies bien à toi. Ton Soleil guide ta conscience, ta Lune nourrit ton monde émotionnel.",
+  "natalChartHousesTitle": "Les douze maisons",
+  "natalChartHousesBody": "Chaque maison décrit un domaine de la vie. Le signe posé sur la cuspide de chaque maison colore la façon dont ce domaine se déploie — c'est pourquoi deux thèmes au même signe solaire peuvent être très différents.",
+  "natalChartHousesBodyGeneral": "Chaque maison décrit un domaine de la vie : la façon dont on commence les choses, ce qu'on construit, avec qui on s'associe, là où l'on est visible. Voici ce que couvre chacune d'elles.",
+  "natalHousesNeedBirthTime": "Vos maisons dépendent de la minute exacte de votre naissance. Sans heure de naissance, elles ne peuvent pas être calculées : ce qui suit est la signification générale de chaque maison, pas la vôtre.",
+  "natalHousesNeedBirthPlace": "Votre heure de naissance est enregistrée, mais les maisons dépendent aussi du lieu : le lieu de naissance déplace chaque cuspide. Ajoutez votre ville de naissance et nous pourrons les calculer.",
+  "natalHousesCompleteBirthData": "Compléter mes informations de naissance",
+  "natalHouseCuspSign": "{{sign}} sur la cuspide"
 }
