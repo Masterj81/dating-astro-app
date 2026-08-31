@@ -10,6 +10,7 @@ import { LocaleProviders } from "@/components/LocaleProviders";
 import { IOSInstallGuideModal } from "@/components/IOSInstallGuideModal";
 import { PreferredLanguageSync } from "@/components/PreferredLanguageSync";
 import { WebActivityTracker } from "@/components/WebActivityTracker";
+import { EmailLandingTracker } from "@/components/EmailLandingTracker";
 import { SITE } from "@/lib/constants";
 
 export function generateStaticParams() {
@@ -108,6 +109,10 @@ export default async function LocaleLayout({
               /app is still a D+1 return. iOS reaches JUNO through the PWA,
               so without this every iOS reader is invisible to retention. */}
           <WebActivityTracker />
+          {/* Records email_clicked when a landing carries ?template=… from a
+              lifecycle CTA. Global, so every current and future CTA target is
+              covered without wiring each page. */}
+          <EmailLandingTracker />
         </LocaleProviders>
         <Analytics />
         <SpeedInsights />

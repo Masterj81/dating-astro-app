@@ -283,6 +283,48 @@ for (const [name, source] of [
   );
 }
 
+// --- email-click measurement ------------------------------------------------
+// The lifecycle CTAs have carried `template` + three UTM params since the
+// sequence shipped, and the middleware preserves them through the
+// /app -> /{locale}/app redirect. Nothing read them, so "nobody clicked" and
+// "everybody clicked and bounced" produced the same row of data — and they
+// call for opposite fixes. These checks keep the reader wired up.
+console.log('email click measurement');
+
+const productEvents = read('src/lib/product-events.ts');
+const landingTracker = read('src/components/EmailLandingTracker.tsx');
+
+check(
+  'the landing tracker is mounted globally',
+  /<EmailLandingTracker \/>/.test(layout),
+  'CTAs point at /app, /app/plans and /app/premium/... — a per-page mount would miss one',
+);
+check(
+  'clicks are recorded through the RPC, never a direct insert',
+  /rpc\("record_product_event"/.test(productEvents) &&
+    !/from\("product_events"\)/.test(productEvents),
+  'product_events has RLS on and no policies; a direct insert is denied by design',
+);
+check(
+  'only the pathname is sent, never the query string',
+  /p_path: pathname/.test(productEvents) && !/p_path:[^\n]*search/.test(productEvents),
+  'the unsubscribe flow signs an HMAC into its URL and it must never reach an analytics row',
+);
+check(
+  'the recorder never throws at the caller',
+  /catch \{[\s\S]{0,160}?\}/.test(productEvents),
+);
+check(
+  'the tracker does not wait for a session',
+  !/getSession\(\)/.test(landingTracker) && !/onAuthStateChange/.test(landingTracker),
+  'a click that bounces at the sign-in wall is the case worth separating from no click at all',
+);
+check(
+  'useSearchParams is wrapped in Suspense',
+  /<Suspense/.test(landingTracker),
+  'without it Next de-opts every page under this layout to dynamic rendering',
+);
+
 // --- i18n -------------------------------------------------------------------
 console.log('reveal copy across locales');
 
