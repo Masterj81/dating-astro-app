@@ -327,8 +327,21 @@ export function welcomeEmail(ctx: TemplateContext): BuiltEmail {
 
 export function onboardingDay1Email(ctx: TemplateContext): BuiltEmail {
   const cta = {
+    // Points at the chart itself, not at the app menu.
+    //
+    // This CTA said "Read my full chart" and landed on `/app` — a grid of five
+    // navigation cards. The reader had to find the chart themselves, one day
+    // after signup, with no idea where it lived. Promise and destination did
+    // not match, and this is the Day 1 email: the single message with the best
+    // odds of bringing someone back.
+    //
+    // `natal_chart` is the one web surface with a real free daily preview
+    // (`premium_feature_policy.free_preview_quota = 1`, migration
+    // 20260823000001), so a free account clicking this gets the chart it was
+    // promised rather than a paywall. Still under the `/app` prefix, which the
+    // Android App Link intent filter requires.
     label: "Read my full chart",
-    url: appLink("/app", "onboarding_day1"),
+    url: appLink("/app/premium/celestial/natal-chart", "onboarding_day1"),
   };
   const name = ctx.name || "there";
   const insight = MOON_INSIGHT[ctx.moonSign.toLowerCase()];
