@@ -307,7 +307,10 @@ check(
 );
 check(
   'only the pathname is sent, never the query string',
-  /p_path: pathname/.test(productEvents) && !/p_path:[^\n]*search/.test(productEvents),
+  /p_path: pending\.path/.test(productEvents) &&
+    /path: pathname,/.test(productEvents) &&
+    !/p_path:[^\n]*search/.test(productEvents) &&
+    !/path: pathname \+/.test(productEvents),
   'the unsubscribe flow signs an HMAC into its URL and it must never reach an analytics row',
 );
 check(
@@ -316,19 +319,41 @@ check(
 );
 check(
   'the tracker records before any session exists',
-  /\/\/ recordEmailClick returns immediately[\s\S]{0,200}?void recordEmailClick\(search, pathname\);/.test(
-    landingTracker,
-  ),
+  /void recordEmailClick\(searchParams\.toString\(\), pathname\);/.test(landingTracker) &&
+    !/getSession[\s\S]{0,200}?void recordEmailClick/.test(landingTracker),
   'a click that bounces at the sign-in wall is the case worth separating from no click at all',
 );
 check(
-  'the tracker re-records once the reader signs in',
-  /onAuthStateChange\([\s\S]{0,400}?recordEmailClick\(search, pathname\)/.test(landingTracker),
-  'lifecycle mail lands in a browser with no session; without this, user_id stays NULL for most real clicks and every join to profiles comes back empty',
+  'the tracker attributes on every page, not only on the landing',
+  // Anchored to the mount path specifically. A bare /attributePendingClick\(\)/
+  // would also match the call inside onAuthStateChange, which is a DIFFERENT
+  // guarantee: that one fires on sign-in, this one fires on arrival — and it is
+  // the one that catches a reader who returns from /auth/login already
+  // authenticated, where no auth event fires at all.
+  /void recordEmailClick\(searchParams\.toString\(\), pathname\);\s*\n\s*void attributePendingClick\(\);/.test(
+    landingTracker,
+  ),
+  'AppShell bounces a signed-out reader to /auth/login and rebuilds `next` from the pathname alone, so the page that can attribute the click is never the page that received it',
+);
+check(
+  'the tracker attributes again on sign-in',
+  /onAuthStateChange\([\s\S]{0,400}?attributePendingClick\(\)/.test(landingTracker),
+);
+check(
+  'the pending click survives the sign-in navigation',
+  /sessionStorage\.setItem\(PENDING_KEY/.test(productEvents) &&
+    /const PENDING_KEY = /.test(productEvents),
+  'an in-page listener alone cannot see it: by the time identity exists the URL naming the template is two navigations behind',
+);
+check(
+  'the pending click is parked BEFORE the request goes out',
+  /writePending\(pending\);[\s\S]{0,200}?await send\(pending\)/.test(productEvents),
+  'the sign-in redirect can fire while the RPC is still in flight',
 );
 check(
   'repeat calls upgrade instead of duplicating',
-  /p_client_event_id: clientEventId\(template\)/.test(productEvents),
+  /p_client_event_id: pending\.id/.test(productEvents) &&
+    /existing\?\.template === template \? existing\.id : newId\(\)/.test(productEvents),
   'idempotency belongs in the database (unique client_event_id), not in a sessionStorage boolean that blocks the attribution retry',
 );
 check(

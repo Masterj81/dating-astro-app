@@ -3,10 +3,11 @@
 import { Suspense, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
-import { recordEmailClick } from "@/lib/product-events";
+import { attributePendingClick, recordEmailClick } from "@/lib/product-events";
 
 // Records `email_clicked` when a page load carries a lifecycle-email
-// `?template=…`, and attributes it once the reader is known.
+// `?template=…`, and attaches it to the reader whenever identity turns up —
+// which is usually two navigations later.
 //
 // WHY THIS EXISTS
 // The CTAs have carried `template` + three UTM params since the lifecycle
@@ -17,49 +18,48 @@ import { recordEmailClick } from "@/lib/product-events";
 // opposite fixes.
 //
 // MOUNTED GLOBALLY, next to PreferredLanguageSync and WebActivityTracker in
-// app/[locale]/layout.tsx. Not on /app alone: the CTAs already point at /app,
-// /app/plans and /app/premium/celestial/natal-chart, and any future one should
-// be covered without remembering to wire it up.
+// app/[locale]/layout.tsx. Two reasons, and the second is the important one:
+//   1. the CTAs already point at /app, /app/plans and
+//      /app/premium/celestial/natal-chart, and any future one should be
+//      covered without remembering to wire it up;
+//   2. the page that can finally ATTRIBUTE the click is not the page that
+//      received it. A signed-out reader is bounced to /auth/login and comes
+//      back on a URL with no `template` at all (AppShell builds `next` from
+//      the pathname alone), so the attribution attempt has to run everywhere.
 //
-// IT FIRES TWICE, ON PURPOSE
-//   1. on mount — even with no session. A reader who clicks and bounces at the
-//      sign-in wall is exactly the case worth separating from a reader who
-//      never clicked, and they have no auth.uid() at that moment. The RPC
-//      accepts a null user_id and is granted to anon for that reason.
-//   2. on sign-in — because that first path is the DOMINANT one. Lifecycle mail
-//      opens in a mail app, which hands the link to a browser that usually has
-//      no session; identity only arrives after the login. Without this second
-//      call, `user_id` would be NULL for most real clicks and every query
-//      joining clicks to profiles would come back empty.
-//
-// The two calls carry the same `client_event_id`, so the second upgrades the
-// row in place rather than adding a duplicate (migration 20260831000002).
+// TWO DISTINCT JOBS
+//   recordEmailClick      — only fires on a URL carrying a known template.
+//                           Writes the row, even with no session: a click that
+//                           bounces at the sign-in wall is exactly the case
+//                           worth separating from a click that never happened.
+//   attributePendingClick — fires on every page and on every auth change.
+//                           Replays the parked click once a session exists, by
+//                           the same client_event_id, so the original row gains
+//                           its user_id instead of gaining a twin.
 
 function EmailLandingTrackerInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const search = searchParams.toString();
-
-    // recordEmailClick returns immediately unless `template` is present and
-    // recognised, so this stays free on ordinary navigations.
-    void recordEmailClick(search, pathname);
+    // Cheap on ordinary navigations: both calls return immediately when there
+    // is no template in the URL and nothing parked in sessionStorage.
+    void recordEmailClick(searchParams.toString(), pathname);
+    void attributePendingClick();
 
     let unsubscribe: (() => void) | undefined;
     try {
       const supabase = getSupabaseBrowser();
       const { data } = supabase.auth.onAuthStateChange((event) => {
-        // SIGNED_IN and the initial session restore are the two moments the
-        // reader's identity becomes available on a page that started without
-        // one. Re-record: same id, so the existing row gains its user_id.
+        // The sign-in that ends the redirect trip is the moment the parked
+        // click can finally be attached to someone.
         if (event === "SIGNED_OUT") return;
-        void recordEmailClick(search, pathname);
+        void attributePendingClick();
       });
       unsubscribe = () => data.subscription.unsubscribe();
     } catch {
-      // Supabase env vars missing (e.g. a preview build). The mount-time call
-      // above already swallowed its own failure.
+      // Supabase env vars missing (e.g. a preview build). The calls above
+      // already swallowed their own failures.
     }
 
     return () => unsubscribe?.();
