@@ -2238,7 +2238,17 @@
     "synastryAspect_sextile": "Sextile",
     "synastryAspect_square": "Square",
     "synastryAspect_trine": "Trine",
-    "synastryAspect_opposition": "Opposition"
+    "synastryAspect_opposition": "Opposition",
+    "natalAnglesTitle": "Angles",
+    "natalAnglesBody": "Two points that depend on both the minute and the place of your birth. They are not planets — they are where the sky was cut by your horizon.",
+    "natalMidheavenLabel": "Midheaven (MC)",
+    "natalMidheavenMeaning": "Your MC points to public direction, visibility, and the role you grow into.",
+    "natalRisingMeaning": "Your Rising shapes first impressions and how you enter a new situation.",
+    "natalMidheavenNotTenthCusp": "In the Equal House system, MC is a separate angle. It is not always the 10th-house cusp.",
+    "natalMidheavenOnTenthCusp": "Here your MC happens to fall on the 10th-house cusp. In Equal House that is a coincidence, not a rule.",
+    "natalAnglesNeedBirthData": "Add your birth time and city to calculate your Rising, MC, and houses.",
+    "natalPlanetsInHouse": "Planets in this house",
+    "natalNoPlanetsInHouse": "No planets here — this house still matters."
   },
   "invite": {
     "invalidCode": "Invalid referral code",

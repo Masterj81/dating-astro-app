@@ -8,6 +8,8 @@ import {
   resolveBirthDataState,
   resolveHouseCusps,
   resolveRisingLongitude,
+  resolveTrustedMidheaven,
+  mcIsTenthCusp,
   signsOnCusps,
 } from '../houses';
 
@@ -306,3 +308,51 @@ function healthyHouse(cusps: number[], longitude: number): number {
   const rel = (((longitude - cusps[0]) % 360) + 360) % 360;
   return Math.floor(rel / 30) + 1;
 }
+
+describe('the midheaven, shown only when it is real', () => {
+  const CHART = computeNatalChart(FULL_BIRTH);
+  const COMPLETE = {
+    birthTime: FULL_BIRTH.time,
+    birthLatitude: FULL_BIRTH.latitude,
+    birthLongitude: FULL_BIRTH.longitude,
+    birthChart: CHART,
+  };
+
+  it('returns the MC for a fully known birth', () => {
+    const mc = resolveTrustedMidheaven(COMPLETE);
+    expect(mc).not.toBeNull();
+    expect(mc?.longitude).toBeCloseTo(CHART.mc!.longitude, 6);
+  });
+
+  it('withholds it without a birthplace', () => {
+    expect(
+      resolveTrustedMidheaven({ ...COMPLETE, birthLatitude: null, birthLongitude: null }),
+    ).toBeNull();
+  });
+
+  it('withholds it without a birth time', () => {
+    expect(resolveTrustedMidheaven({ ...COMPLETE, birthTime: null })).toBeNull();
+  });
+
+  it('withholds it for a legacy chart that never stored one', () => {
+    // 74 of 95 rows. The MC is NOT derivable from the ascendant — unlike
+    // equal-house cusps — so absence is the only honest answer for them.
+    const legacy = { ...CHART, mc: undefined };
+    expect(resolveTrustedMidheaven({ ...COMPLETE, birthChart: legacy })).toBeNull();
+  });
+
+  it('is not the tenth cusp in equal house', () => {
+    // Placidus and Koch make them identical by construction; equal house does
+    // not. A surface that shows both must not imply they are the same point.
+    const mc = resolveTrustedMidheaven(COMPLETE);
+    expect(mcIsTenthCusp(mc, CHART.houses)).toBe(false);
+  });
+
+  it('reports coincidence honestly when it does happen', () => {
+    // Construct the degenerate case rather than asserting it never occurs:
+    // an MC exactly on the tenth cusp is possible, just not guaranteed.
+    const cusps = computeEqualHouses(100);
+    const onCusp = { sign: 'Aries' as const, degree: 0, longitude: cusps[9] };
+    expect(mcIsTenthCusp(onCusp, cusps)).toBe(true);
+  });
+});

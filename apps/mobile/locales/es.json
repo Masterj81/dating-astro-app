@@ -2140,5 +2140,15 @@
   "synastryAspect_sextile": "Sextil",
   "synastryAspect_square": "Cuadratura",
   "synastryAspect_trine": "Trígono",
-  "synastryAspect_opposition": "Oposición"
+  "synastryAspect_opposition": "Oposición",
+  "natalAnglesTitle": "Ángulos",
+  "natalAnglesBody": "Dos puntos que dependen tanto del minuto como del lugar de tu nacimiento. No son planetas: son el lugar donde el cielo fue cortado por tu horizonte.",
+  "natalMidheavenLabel": "Medio Cielo (MC)",
+  "natalMidheavenMeaning": "Tu MC apunta a la dirección pública, la visibilidad y el papel en el que creces.",
+  "natalRisingMeaning": "Tu ascendente moldea las primeras impresiones y cómo entras en una situación nueva.",
+  "natalMidheavenNotTenthCusp": "En el sistema de casas iguales, el MC es un ángulo aparte. No siempre es la cúspide de la casa 10.",
+  "natalMidheavenOnTenthCusp": "Aquí tu MC cae justo en la cúspide de la casa 10. En casas iguales es una coincidencia, no una regla.",
+  "natalAnglesNeedBirthData": "Añade tu hora y ciudad de nacimiento para calcular tu ascendente, tu MC y tus casas.",
+  "natalPlanetsInHouse": "Planetas en esta casa",
+  "natalNoPlanetsInHouse": "Aquí no hay planetas: esta casa sigue importando."
 }

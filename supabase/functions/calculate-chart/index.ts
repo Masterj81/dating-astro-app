@@ -59,6 +59,30 @@ function calculateAscendant(time: any, latitude: number, longitude: number): num
   return asc
 }
 
+function calculateMidheaven(time: any, longitude: number): number {
+  // Identical to `computeMidheaven` in packages/shared/src/astrology/chart.ts.
+  // The engine contract executes BOTH and fails if they diverge, so this is a
+  // duplicate that cannot silently drift.
+  const gmstHours = Astronomy.SiderealTime(time)
+  const gmstDeg = gmstHours * 15
+  const lst = ((gmstDeg + longitude) % 360 + 360) % 360
+  const lstRad = lst * Math.PI / 180
+  const T = (time.ut - 0) / 36525
+  const eps = (23.439291 - 0.0130042 * T) * Math.PI / 180
+  const mc = Math.atan2(Math.sin(lstRad), Math.cos(lstRad) * Math.cos(eps)) * 180 / Math.PI
+  return ((mc % 360) + 360) % 360
+}
+
+function calculateEqualHouses(ascendantLongitude: number): number[] {
+  // Equal house: twelve cusps, thirty degrees apart, starting at the
+  // ascendant. Mirrors `computeEqualHouses` in the shared engine.
+  const houses: number[] = []
+  for (let i = 0; i < 12; i++) {
+    houses.push(((ascendantLongitude + i * 30) % 360 + 360) % 360)
+  }
+  return houses
+}
+
 // --- Aspect detection ---
 
 const ASPECTS = [
@@ -688,16 +712,36 @@ serve(async (req) => {
         const planets = calculatePlanetPositions(time)
         // The ascendant needs the CLOCK and the PLACE. Either one missing and
         // it is not computable — not approximable, not defaultable.
-        const risingObj = hasBirthTime && hasBirthPlace
+        // The angles need the CLOCK and the PLACE. Either one missing and none
+        // of the three is computable — not approximable, not defaultable.
+        const ascendantLong = hasBirthTime && hasBirthPlace
+          ? calculateAscendant(time, lat as number, lng as number)
+          : null
+
+        const risingObj = ascendantLong != null
+          ? {
+              longitude: ascendantLong,
+              sign: getZodiacSign(ascendantLong),
+              degree: getDegreeInSign(ascendantLong),
+            }
+          : null
+
+        // Midheaven and the twelve equal-house cusps, added 2026-09-01. They
+        // were computed by the shared engine and by nothing else, so a chart
+        // written through this function lost its MC entirely — and unlike the
+        // cusps, an MC cannot be rebuilt from the ascendant afterwards.
+        const mcObj = ascendantLong != null
           ? (() => {
-              const ascendantLong = calculateAscendant(time, lat as number, lng as number)
+              const mcLong = calculateMidheaven(time, lng as number)
               return {
-                longitude: ascendantLong,
-                sign: getZodiacSign(ascendantLong),
-                degree: getDegreeInSign(ascendantLong),
+                longitude: mcLong,
+                sign: getZodiacSign(mcLong),
+                degree: getDegreeInSign(mcLong),
               }
             })()
           : null
+
+        const housesArr = ascendantLong != null ? calculateEqualHouses(ascendantLong) : null
 
         // Confidence: low without birth time, without a birthplace, or with a
         // tz fallback; medium when we had to look the zone up; high otherwise.
@@ -719,6 +763,8 @@ serve(async (req) => {
             degree: getDegreeInSign(moonLong)
           },
           rising: risingObj,
+          mc: mcObj,
+          houses: housesArr,
           planets,
           coordinates: { latitude: lat, longitude: lng },
           julianDay: time.ut + 2451545.0,

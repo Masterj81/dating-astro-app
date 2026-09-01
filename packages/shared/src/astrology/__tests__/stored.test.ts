@@ -176,3 +176,93 @@ describe('round-trip: computeNatalChart → toStoredBirthChart → hydrateStored
     expect(hydrated.houses).toEqual(fresh.houses);
   });
 });
+
+// ---------------------------------------------------------------------------
+// mc and houses, persisted from 2026-09-01
+// ---------------------------------------------------------------------------
+// `toStoredBirthChart` computed both and wrote neither, so every stored chart
+// lost its midheaven entirely — the MC is not derivable from the ascendant the
+// way equal-house cusps are. Now both are written, without breaking the ~95
+// rows that predate the change.
+
+describe('mc and houses round-trip', () => {
+  const PLACED = computeNatalChart({
+    date: '1990-08-05',
+    time: '14:30',
+    timezone: 'Europe/Paris',
+    latitude: 48.8566,
+    longitude: 2.3522,
+  });
+
+  it('writes both when the chart has them', () => {
+    const stored = toStoredBirthChart(PLACED);
+    expect(stored.mc).not.toBeNull();
+    expect(stored.houses).toHaveLength(12);
+  });
+
+  it('hydrates them back unchanged', () => {
+    const back = hydrateStoredChart(toStoredBirthChart(PLACED));
+    expect(back?.mc?.longitude).toBe(PLACED.mc?.longitude);
+    expect(back?.mc?.sign).toBe(PLACED.mc?.sign);
+    expect(back?.houses).toEqual(PLACED.houses);
+  });
+
+  it('keeps them null when there is no birth time', () => {
+    const noTime = computeNatalChart({
+      date: '1990-08-05',
+      time: null,
+      timezone: 'Europe/Paris',
+      latitude: 48.8566,
+      longitude: 2.3522,
+    });
+    const stored = toStoredBirthChart(noTime);
+    expect(stored.mc).toBeNull();
+    expect(stored.houses).toBeNull();
+    expect(hydrateStoredChart(stored)?.mc).toBeNull();
+    expect(hydrateStoredChart(stored)?.houses).toBeNull();
+  });
+
+  it('keeps them null when there is no birthplace', () => {
+    const noPlace = computeNatalChart({
+      date: '1990-08-05',
+      time: '14:30',
+      timezone: 'Europe/Paris',
+      latitude: null,
+      longitude: null,
+    });
+    const stored = toStoredBirthChart(noPlace);
+    expect(stored.mc).toBeNull();
+    expect(stored.houses).toBeNull();
+  });
+
+  it('still hydrates a v1 row that has neither', () => {
+    // The shape written before 2026-09-01. 74 of 95 stored charts look like
+    // this, and they must keep working forever.
+    const legacy = {
+      sun: PLACED.sun,
+      moon: PLACED.moon,
+      rising: PLACED.rising,
+      planets: {
+        mercury: PLACED.mercury,
+        venus: PLACED.venus,
+        mars: PLACED.mars,
+        jupiter: PLACED.jupiter,
+        saturn: PLACED.saturn,
+      },
+      coordinates: { latitude: 48.8566, longitude: 2.3522 },
+    };
+    const back = hydrateStoredChart(legacy);
+    expect(back).not.toBeNull();
+    expect(back?.mc).toBeNull();
+    expect(back?.houses).toBeNull();
+    // The ascendant survives, which is what lets `resolveHouseCusps` rebuild
+    // the cusps for these rows. The MC cannot be rebuilt and stays absent —
+    // honestly.
+    expect(back?.rising?.longitude).toBe(PLACED.rising?.longitude);
+  });
+
+  it('ignores a malformed houses array rather than trusting it', () => {
+    const stored = { ...toStoredBirthChart(PLACED), houses: [1, 2, 3] };
+    expect(hydrateStoredChart(stored)?.houses).toBeNull();
+  });
+});

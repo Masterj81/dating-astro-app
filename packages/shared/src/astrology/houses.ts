@@ -295,3 +295,54 @@ const ZODIAC_ORDER = [
   'Aquarius',
   'Pisces',
 ] as const;
+
+/**
+ * The midheaven to display, or null.
+ *
+ * Same gate as the houses, and for the same reason: the MC is
+ * `arctan(sin LST / (cos LST · cos ε))`, and LST carries the birth longitude
+ * degree for degree. An MC computed without a birthplace is the same
+ * fabrication as an ascendant computed without one.
+ *
+ * Read only from the CHART, never from a column — there is no `mc` column, and
+ * `toStoredBirthChart` only began persisting it on 2026-09-01, so the ~74 v1
+ * rows have none. Those readers see the honest absence rather than a value
+ * rebuilt from the ascendant, which is not possible: unlike equal-house cusps,
+ * the MC is not a function of the ascendant.
+ */
+export function resolveTrustedMidheaven(input: HouseTrustInput): Placement | null {
+  if (!areHousesTrustworthy(input)) return null;
+
+  const chart = asRecord(input.birthChart);
+  const mc = chart ? asRecord(chart.mc) : null;
+  if (!mc) return null;
+
+  const sign = typeof mc.sign === 'string' && mc.sign.trim() ? mc.sign.trim() : null;
+  if (!sign) return null;
+
+  const longitude = isUsableCoordinate(mc.longitude)
+    ? ((mc.longitude % 360) + 360) % 360
+    : null;
+  const degree = isUsableCoordinate(mc.degree) ? mc.degree : null;
+  if (longitude == null && degree == null) return null;
+
+  return {
+    sign: sign as Placement['sign'],
+    degree: degree ?? (longitude as number) % 30,
+    longitude: longitude ?? placementToLongitude({ sign, degree: degree as number }),
+  };
+}
+
+/**
+ * True when the MC and the tenth cusp are the same point.
+ *
+ * In Placidus and Koch they coincide by construction. In EQUAL HOUSE — what
+ * JUNO uses — they do not: the MC falls where it falls, often in the 9th or
+ * the 11th. Surfaces that show both must say so, and this is what lets them
+ * check rather than assume.
+ */
+export function mcIsTenthCusp(mc: Placement | null, cusps: number[] | null): boolean {
+  if (!mc || !cusps || cusps.length !== 12) return false;
+  const delta = Math.abs(((((mc.longitude - cusps[9]) % 360) + 360) % 360 + 180) % 360 - 180);
+  return delta < 0.5;
+}
