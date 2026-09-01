@@ -223,8 +223,26 @@ export function normalizeBirthInput(input: BirthInput): NormalizedBirth {
       DateTime.fromJSDate(utcDate, { zone: tz.iana }).offset || tz.offsetMinutes,
   };
 
+  // The birthplace counts as much as the clock. A chart cast without
+  // coordinates has NO ascendant, NO midheaven and NO houses, so calling it
+  // "high confidence" overstates what we know — and now that `computeSynastry`
+  // is wired to the screens, `applyConfidenceCap` turns that overstatement into
+  // a number the reader sees.
+  //
+  // Found by `__tests__/engine-contract.test.ts`: `calculate-chart` and
+  // `get-profile-chart` have always downgraded on a missing place
+  // (`!hasBirthTime || !hasBirthPlace || tz.source === 'fallback'`), and this
+  // engine did not. The edge functions were right.
+  const hasBirthPlace =
+    typeof input.latitude === 'number' &&
+    Number.isFinite(input.latitude) &&
+    typeof input.longitude === 'number' &&
+    Number.isFinite(input.longitude);
+
   let confidence: Confidence;
   if (!hasBirthTime) {
+    confidence = 'low';
+  } else if (!hasBirthPlace) {
     confidence = 'low';
   } else if (tz.source === 'fallback') {
     confidence = 'low';

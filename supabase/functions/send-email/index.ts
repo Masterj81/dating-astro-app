@@ -161,13 +161,25 @@ Deno.serve(async (req) => {
     // reader has not already seen on screen.
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("email, name, notification_preferences, sun_sign, moon_sign")
+      .select("email, name, notification_preferences, sun_sign, moon_sign, is_active")
       .eq("id", userId)
       .single();
 
     if (profileError || !profile?.email) {
       return new Response(
         JSON.stringify({ skipped: true, reason: "No email on profile" }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    // A deactivated account gets no mail at all, transactional included: the
+    // account is not in use, and lifecycle mail queued days earlier (day5 is
+    // 120 hours out) can easily outlive the deactivation that happened in
+    // between. The scheduling trigger checks this too, but only at enqueue
+    // time — this is the check that holds for the whole window.
+    if (profile.is_active === false) {
+      return new Response(
+        JSON.stringify({ skipped: true, reason: "inactive" }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
     }

@@ -17,7 +17,12 @@ import PremiumGate from '../../components/PremiumGate';
 import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { buildExplorationQuestions, resolveTrustedRisingSign } from '@astro/shared/astrology';
+import {
+  buildExplorationQuestions,
+  buildSynastryView,
+  formatOrb,
+  resolveTrustedRisingSign,
+} from '@astro/shared/astrology';
 import {
   calculateSunCompatibility,
   calculateZoneScores,
@@ -118,6 +123,10 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
   const [loading, setLoading] = useState(true);
   const [selfProfile, setSelfProfile] = useState<SynastryProfile | null>(null);
   const [matchProfile, setMatchProfile] = useState<SynastryProfile | null>(null);
+  // Raw birth_chart JSONB for both sides. Degrees live here; the
+  // SynastryProfile above only carries sign names.
+  const [selfChart, setSelfChart] = useState<unknown>(null);
+  const [matchChart, setMatchChart] = useState<unknown>(null);
   const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(initialTargetId);
   const [error, setError] = useState<string | null>(null);
@@ -211,6 +220,10 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
         images: p.images ?? null,
       };
       setMatchProfile(profile);
+      // The raw chart, kept whole. `buildSynastryView` needs the LONGITUDES —
+      // the sign strings above cannot produce an aspect, and the sign-only
+      // reading is exactly what this screen stopped using.
+      setMatchChart(c ?? null);
       return profile;
     },
     [t],
@@ -261,6 +274,11 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
           birthTime: ownData.birth_time ?? null,
           storedRisingSign: ownData.rising_sign ?? null,
           birthChart: ownData.birth_chart,
+          // No synastry score may rest on an ascendant computed from a
+          // substituted birthplace. Montreal against Paris is 76 degrees of
+          // ascendant, which is a different sign and a different aspect set.
+          birthLatitude: ownData.birth_latitude ?? null,
+          birthLongitude: ownData.birth_longitude ?? null,
         }),
         mercury_sign: pickPlanetSign(ownData.birth_chart, 'mercury'),
         venus_sign: pickPlanetSign(ownData.birth_chart, 'venus'),
@@ -270,6 +288,7 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
         images: ownData.images ?? null,
       };
       setSelfProfile(own);
+      setSelfChart(ownData.birth_chart ?? null);
 
       let nextCandidates = (candidatesResult.data as CandidateProfile[]) || [];
       if (candidatesResult.error) {
@@ -395,6 +414,24 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
   const bottomInset = insets?.bottom ?? 0;
 
   // PremiumGate handles its own loading shell.
+  // Memoised BEFORE any early return: React hooks must run in the same order
+  // on every render, and this screen returns early while loading.
+  // ── The engine ────────────────────────────────────────────────────────────
+  //
+  // `computeSynastry` is now the source of the headline number. It reads the
+  // actual longitudes of both charts, detects the aspects between them, and
+  // weights them per frame — so two people whose Venus placements are 1° apart
+  // no longer score the same as two people 29° apart in the same sign.
+  //
+  // What this replaced: `calculateSunCompatibility(me.sun_sign,
+  // other.sun_sign)`, an element comparison between two Sun SIGNS. That
+  // function still exists and is still rendered, but only as the explicitly
+  // labelled "Sign rhythm preview" when a chart is missing.
+  const synastryView = useMemo(
+    () => buildSynastryView(selfChart, matchChart),
+    [selfChart, matchChart],
+  );
+
   if (loading) {
     return null;
   }
@@ -402,9 +439,24 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
   const me = selfProfile;
   const other = matchProfile;
 
-  const totalScore: number | null =
-    me && other ? calculateSunCompatibility(me.sun_sign, other.sun_sign) : null;
-  const band: SynastryScoreBand | null = totalScore != null ? getScoreBand(totalScore) : null;
+  // Derived, not a hook — safe below the early returns.
+  const aspectView = synastryView.source === 'aspects' ? synastryView : null;
+
+  // The sign-based score survives ONLY as the fallback. It is never blended
+  // with the aspect score and never shown under the same label.
+  const signRhythmScore: number | null =
+    !aspectView && me && other
+      ? calculateSunCompatibility(me.sun_sign, other.sun_sign)
+      : null;
+
+  const totalScore: number | null = aspectView
+    ? aspectView.headline.score
+    : signRhythmScore;
+  const band: SynastryScoreBand | null = aspectView
+    ? aspectView.headline.band
+    : totalScore != null
+      ? getScoreBand(totalScore)
+      : null;
 
   const zoneScores: ZoneScore[] = me && other ? calculateZoneScores(me, other) : [];
 
@@ -632,6 +684,93 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
                 ) : null}
               </View>
 
+              {/* Block 1b — Where the number comes from.
+                  Either the real engine, named and shown, or an honest
+                  statement that we could not run it. Never both, and never a
+                  sign-based number wearing the aspect label. */}
+              {aspectView ? (
+                <View style={styles.sectionCard}>
+                  <Text style={styles.sectionEyebrow}>
+                    {t('synastryAspectBasedTitle')}
+                  </Text>
+                  <Text style={styles.sectionBodyMuted}>
+                    {t('synastryAspectBasedBody')}
+                  </Text>
+
+                  {/* The three frames. The headline is love; friendship and
+                      business come from the same aspects, weighted differently. */}
+                  <View style={styles.frameRow}>
+                    {aspectView.frames.map((frame) => (
+                      <View
+                        key={frame.frame}
+                        style={[
+                          styles.frameCard,
+                          frame.frame === aspectView.headline.frame && styles.frameCardLead,
+                        ]}
+                      >
+                        <Text style={styles.frameLabel}>
+                          {t(`synastryFrame_${frame.frame}`)}
+                        </Text>
+                        <Text style={styles.frameScore}>{frame.score}</Text>
+                        <Text style={styles.frameBand}>
+                          {t(`synastryScoreTitle_${frame.band}`)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* The geometry itself. Orbs included: an aspect 0.4° from
+                      exact and one 7.8° from exact are not the same contact,
+                      and the reader can see which they have. */}
+                  {aspectView.headline.topAspects.length > 0 ? (
+                    <View style={styles.aspectList}>
+                      <Text style={styles.aspectListTitle}>
+                        {t('synastryTopAspectsTitle')}
+                      </Text>
+                      {aspectView.headline.topAspects.slice(0, 5).map((aspect, index) => (
+                        <View
+                          key={`${aspect.bodyA}-${aspect.bodyB}-${aspect.name}-${index}`}
+                          style={styles.aspectRow}
+                        >
+                          <Text style={styles.aspectBodies} numberOfLines={1}>
+                            {`${optional(t, aspect.bodyA) ?? aspect.bodyA} · ${
+                              optional(t, aspect.bodyB) ?? aspect.bodyB
+                            }`}
+                          </Text>
+                          <Text style={styles.aspectName}>
+                            {optional(t, `synastryAspect_${aspect.name}`) ?? aspect.name}
+                          </Text>
+                          <Text style={styles.aspectOrb}>{formatOrb(aspect.orb)}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+
+                  {aspectView.isLimited ? (
+                    <Text style={styles.aspectNotice}>
+                      {t('synastryLimitedConfidence')}
+                    </Text>
+                  ) : null}
+                  {aspectView.missingAscendant ? (
+                    <Text style={styles.aspectNotice}>
+                      {t('synastryMissingAscendant')}
+                    </Text>
+                  ) : null}
+                </View>
+              ) : (
+                <View style={styles.sectionCard}>
+                  <Text style={styles.sectionEyebrow}>
+                    {t('synastrySignRhythmTitle')}
+                  </Text>
+                  <Text style={styles.sectionBodyMuted}>
+                    {t('synastrySignRhythmBody')}
+                  </Text>
+                  <Text style={styles.aspectNotice}>
+                    {t('synastryNeedsBothCharts')}
+                  </Text>
+                </View>
+              )}
+
               {/* Block 2 — Why this score. Three element pairings. */}
               {whyFactors.length > 0 ? (
                 <View style={styles.sectionCard}>
@@ -854,7 +993,99 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
   );
 }
 
+/**
+ * i18n-js returns `[missing "key" translation]` — a truthy string — for an
+ * absent key, so `t(k) || fallback` never picks the fallback. This returns the
+ * translation or null, letting callers render the raw body name rather than a
+ * debug string.
+ */
+function optional(
+  t: (key: string) => string,
+  key: string,
+): string | null {
+  const value = t(key);
+  if (!value || value === key) return null;
+  return value.startsWith('[missing') ? null : value;
+}
+
 const styles = StyleSheet.create({
+  frameRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+  },
+  frameCard: {
+    flex: 1,
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    gap: 2,
+  },
+  frameCardLead: {
+    borderColor: 'rgba(232, 93, 117, 0.35)',
+    backgroundColor: 'rgba(232, 93, 117, 0.10)',
+  },
+  frameLabel: {
+    fontSize: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: AppTheme.colors.textMuted,
+  },
+  frameScore: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  frameBand: {
+    fontSize: 11,
+    color: AppTheme.colors.textSecondary,
+    textAlign: 'center',
+  },
+  aspectList: {
+    marginTop: 16,
+    gap: 6,
+  },
+  aspectListTitle: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: AppTheme.colors.textMuted,
+    marginBottom: 4,
+  },
+  aspectRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+  },
+  aspectBodies: {
+    flex: 1,
+    fontSize: 13,
+    color: '#fff',
+  },
+  aspectName: {
+    fontSize: 12,
+    color: AppTheme.colors.textSecondary,
+  },
+  aspectOrb: {
+    fontSize: 12,
+    color: '#ffb7c7',
+    minWidth: 44,
+    textAlign: 'right',
+  },
+  aspectNotice: {
+    marginTop: 14,
+    fontSize: 13,
+    lineHeight: 20,
+    color: AppTheme.colors.textSecondary,
+  },
   container: {
     flex: 1,
     ...(Platform.OS === 'web'

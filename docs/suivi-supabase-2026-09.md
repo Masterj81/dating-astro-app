@@ -296,7 +296,148 @@ l'effet espéré et il faut chercher plus haut dans le tunnel.
 
 ## Décisions ouvertes — rien à vérifier, tout à trancher
 
-### ☐ A. Les ascendants historiques calculés depuis un faux lieu
+### ✅ A. Les ascendants historiques calculés depuis un faux lieu — **TRANCHÉ**
+
+**Décision retenue (1ᵉʳ septembre) : masquer et demander confirmation, pas
+effacer.** Migration `20260901000002_rising_needs_location_confirmation.sql`.
+
+Le signe n'est pas supprimé : il est **déplacé** de `rising_sign` vers
+`rising_sign_unconfirmed`, et `birth_chart.rising` vers
+`birth_chart.rising_unconfirmed`. Conséquences voulues :
+
+- toutes les surfaces le masquent **sans changement de code**, y compris
+  Discover, le profil public et l'en-tête de chat, qui ne voient que la colonne ;
+- `rising_sign IS NOT NULL ⟹ heure **et** lieu` devient vrai, ce qui rend de
+  nouveau saine la relaxation de `rising.ts` ;
+- rien n'est détruit — la valeur reste auditable et récupérable ;
+- les écrans qui voient les coordonnées affichent « Confirmez votre ville de
+  naissance et nous le calculerons correctement ».
+
+À exécuter **avant** la migration pour connaître le nombre de personnes
+concernées :
+
+```sql
+SELECT COUNT(*)                        AS profils_suspects,
+       COUNT(DISTINCT rising_sign)     AS signes_distincts,
+       MIN(created_at)::date           AS du,
+       MAX(created_at)::date           AS au
+  FROM public.profiles
+ WHERE birth_time  IS NOT NULL
+   AND rising_sign IS NOT NULL
+   AND (birth_latitude IS NULL OR birth_longitude IS NULL);
+```
+
+Et **après**, pour vérifier que rien n'a été perdu :
+
+```sql
+SELECT (SELECT COUNT(*) FROM public.profiles
+         WHERE rising_sign_unconfirmed IS NOT NULL)          AS mis_de_cote,
+       (SELECT COUNT(*) FROM public.profiles
+         WHERE rising_sign IS NOT NULL)                      AS ascendants_fiables,
+       (SELECT COUNT(*) FROM public.profiles
+         WHERE rising_sign IS NOT NULL
+           AND (birth_time IS NULL
+             OR birth_latitude IS NULL
+             OR birth_longitude IS NULL))                    AS violations;
+```
+
+`mis_de_cote` doit égaler `profils_suspects` mesuré avant. `violations` doit
+être **0**.
+
+### ⚠️ A-ter. Les lieux de naissance substitués — **découvert le 1ᵉʳ septembre**
+
+`20260901000002` a cherché les ascendants stockés contre des coordonnées
+**nulles**. Il n'y en avait aucun, et j'en ai conclu à tort que les 93
+ascendants restants étaient fiables.
+
+L'onboarding mobile n'a jamais stocké de coordonnées nulles. Il appelait
+`geocodeCity(birthCity || 'Montreal')`, et `geocodeCity` se terminait par
+`return buildResult(45.5017, -73.5673, city)`. Une ville non résolue devenait
+**Montréal**, écrit comme un fait, indiscernable d'un vrai lieu de naissance.
+
+Le recensement du 1ᵉʳ septembre :
+
+| | |
+|---|---|
+| profils aux coordonnées exactes de Montréal | **69** |
+| dont ayant saisi une ville qui n'est pas Montréal | **67** |
+| dont n'ayant saisi aucune ville | **1** |
+| dont portant un `rising_sign` | **58** |
+
+**58 des 93 « ascendants fiables » ne l'étaient pas.**
+
+Réparation : `20260901000003_null_substituted_birthplaces.sql`. Elle met les
+coordonnées à NULL — les laisser ferait rejouer le même thème faux à chaque
+recalcul — et laisse le trigger BEFORE de `20260901000002` déplacer l'ascendant
+vers `rising_sign_unconfirmed`. `birth_city` est **conservée** : c'est ce que la
+personne a réellement tapé, et le flux de confirmation en a besoin.
+
+Les vrais Montréalais sont épargnés (`birth_city LIKE '%montr%'`).
+
+**Avant de l'appliquer**, regarde les villes concernées — elles disent si le
+géocodeur pourra les résoudre à la seconde tentative :
+
+```sql
+SELECT birth_city, COUNT(*) AS n
+  FROM public.profiles
+ WHERE ROUND(birth_latitude::numeric,4)  = 45.5017
+   AND ROUND(birth_longitude::numeric,4) = -73.5673
+   AND (birth_city IS NULL OR lower(birth_city) NOT LIKE '%montr%')
+ GROUP BY 1 ORDER BY n DESC;
+```
+
+**Réponse obtenue le 1ᵉʳ septembre : ce sont des villes parfaitement
+ordinaires.** Sofia, Varna, Vienne, Vérone, Lima, Tampa, Stara Zagora,
+Pazardzhik, Osijek, Kielce… majoritairement bulgares, ce qui recoupe la
+croissance de juin (`abv.bg`).
+
+**La cause racine n'était donc pas le matcher, c'était un en-tête HTTP manquant.**
+`rateLimitedFetch` dans `apps/mobile/services/geocoding.ts` faisait
+`return fetch(url)` sans `User-Agent`. La politique d'usage de Nominatim en
+exige un qui identifie l'application et répond **403** à tout le reste ; React
+Native envoie son défaut de plateforme, qui ne qualifie pas. Le
+`CITY_CACHE` local ne contient que 43 métropoles et aucune ville bulgare, donc
+**chaque ville hors de ces 43 tombait dans un appel refusé, puis dans le repli
+Montréal** — sans le moindre signal, puisque le `if (response.ok)` échouait en
+silence.
+
+L'edge function `calculate-chart`, elle, envoyait
+`'User-Agent': 'AstroDatingApp/1.0'` depuis toujours. C'est pour ça que la même
+ville se résolvait sur le web et échouait sur Android.
+
+Corrigé : User-Agent ajouté, refus journalisé au lieu d'être avalé, et un
+plancher de 4 caractères sur `name.includes(normalized)` pour qu'une saisie de
+deux lettres ne puisse plus désigner une métropole. Trois gardes dans
+`validate:natal-integrity` verrouillent les trois points.
+
+### ✅ A-quater. Résultat des trois migrations — 1ᵉʳ septembre
+
+| | avant | après |
+|---|---|---|
+| ascendants affichés comme fiables | 93 | **36** |
+| ascendants mis de côté (`rising_sign_unconfirmed`) | 0 | **57** |
+| lieux de naissance substitués (Montréal) | 69 | **0** |
+| profils à qui il manque le lieu (`a_reconfirmer`) | — | **57** |
+
+**61 % des ascendants que JUNO affichait avaient été calculés depuis une ville
+que le lecteur n'a jamais nommée.** Rien n'a été supprimé : les 57 valeurs sont
+dans `rising_sign_unconfirmed`, récupérables et auditables.
+
+Le trigger BEFORE de `20260901000002` a effectué les 57 déplacements de
+lui-même quand `20260901000003` a mis les coordonnées à NULL — la migration
+sert donc aussi de preuve que le trigger se déclenche.
+
+Un profil sur les 58 concernés a gardé son ascendant : c'est quelqu'un qui a
+réellement écrit « Montréal ». Le filtre `lower(birth_city) NOT LIKE '%montr%'`
+a fait son travail.
+
+> ⚠️ **Ces 57 personnes ne voient aucune explication tant que Vercel et Android
+> ne sont pas déployés.** Le CTA existe dans le code mais pas en production :
+> elles constatent une disparition silencieuse, ce que la décision produit
+> voulait précisément éviter. Le déploiement web n'est plus une étape parmi
+> d'autres — c'est la réparation de ce que la migration vient de créer.
+
+### ☐ A-bis. Ancienne rédaction, conservée pour mémoire
 
 Les comptes créés **avant** le 31 août 21:08 UTC avec une heure de naissance
 mais sans ville portent un `rising_sign` calculé depuis Greenwich ou Montréal.
@@ -328,7 +469,31 @@ a vu affiché pendant des mois n'est pas neutre. Trois options :
 
 Aucune migration n'est écrite. Dis-moi laquelle et je la fais.
 
-### ☐ B. Le template `welcome` n'est envoyé par rien
+### ✅ B. Le template `welcome` — **TRANCHÉ**
+
+**Envoyé après l'onboarding, une seule fois, via la file existante.**
+Migration `20260901000001_welcome_email_on_onboarding.sql`.
+
+Il est passé de `transactional` à `lifecycle` : `isSuppressed` ne supprime
+jamais un transactionnel, donc le laisser ainsi aurait écrit exactement aux
+personnes qui ont demandé qu'on arrête. **Aucun backfill** — souhaiter la
+bienvenue à un compte inscrit en juin se lirait comme une erreur.
+
+```sql
+SELECT COUNT(*)                                       AS welcome_en_file,
+       COUNT(*) FILTER (WHERE status = 'sent')        AS envoyes,
+       COUNT(*) FILTER (WHERE status = 'pending')     AS en_attente,
+       COUNT(*) FILTER (WHERE status = 'failed')      AS echecs,
+       COUNT(DISTINCT user_id)                        AS destinataires_uniques
+  FROM public.scheduled_emails
+ WHERE template = 'welcome';
+```
+
+`welcome_en_file` doit **toujours** égaler `destinataires_uniques` — l'index
+unique partiel `ux_scheduled_emails_welcome_once` le garantit au niveau du
+schéma. S'ils divergent, l'index a été supprimé.
+
+### ☐ B-bis. Ancienne rédaction, conservée pour mémoire
 
 Il existe dans `supabase/functions/send-email/templates.ts`, il est dans la
 whitelist de `record_product_event`, et **aucun trigger ni appel ne le

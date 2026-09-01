@@ -2124,5 +2124,21 @@
   "natalHousesNeedBirthTime": "تعتمد بيوتك على الدقيقة التي وُلدت فيها بالضبط. من دون وقت الميلاد لا يمكن حسابها، لذا فإن ما يلي هو المعنى العام لكل بيت، لا معناه عندك.",
   "natalHousesNeedBirthPlace": "وقت ميلادك محفوظ، لكن البيوت تعتمد أيضاً على مكان الولادة — فالمكان يزحزح كل طالع. أضِف مدينة ميلادك لنتمكّن من حسابها.",
   "natalHousesCompleteBirthData": "أكمل بيانات ميلادك",
-  "natalHouseCuspSign": "{{sign}} على الطالع"
+  "natalHouseCuspSign": "{{sign}} على الطالع",
+  "risingNeedsBirthCityLabel": "طالعك",
+  "risingNeedsBirthCity": "يعتمد طالعك على مكان ولادتك، لا على وقتها فحسب. لقد حُسب طالعك من دون مدينة ميلاد، فوضعناه جانباً بدل أن نعرض عليك قيمة لا يمكننا الوقوف خلفها. أكِّد مدينة ميلادك وسنحسبه بدقة.",
+  "risingConfirmBirthCity": "تأكيد مدينة ميلادي",
+  "synastryAspectBasedTitle": "توافق قائم على الاتصالات الفلكية",
+  "synastryAspectBasedBody": "يقرأ الهندسة الفعلية بين خريطتيكما — الزوايا بين مواقع الكواكب الحقيقية، لا بروج الشمس وحدها.",
+  "synastryTopAspectsTitle": "أقوى الاتصالات",
+  "synastryLimitedConfidence": "بعض التفاصيل محدودة لأن إحدى الخريطتين تنقصها ساعة الميلاد أو مكانه.",
+  "synastryMissingAscendant": "اتصالات الانطباع الأول مستبعدة: إحدى الخريطتين على الأقل بلا طالع.",
+  "synastrySignRhythmTitle": "معاينة إيقاع الأبراج",
+  "synastrySignRhythmBody": "قراءة عامة مبنية على بروج الشمس وحدها. لا تميّز بين اتصال كوكبي وثيق وآخر بعيد.",
+  "synastryNeedsBothCharts": "تتطلّب قراءة التوافق التفصيلية خريطتَي الميلاد كلتيهما.",
+  "synastryAspect_conjunction": "اقتران",
+  "synastryAspect_sextile": "تسديس",
+  "synastryAspect_square": "تربيع",
+  "synastryAspect_trine": "تثليث",
+  "synastryAspect_opposition": "مقابلة"
 }

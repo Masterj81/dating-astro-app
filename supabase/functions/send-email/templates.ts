@@ -276,7 +276,7 @@ export type TemplateContext = {
   unsubscribeUrl: string | null;
 };
 
-// --- welcome (transactional) ------------------------------------------------
+// --- welcome (lifecycle) ----------------------------------------------------
 
 export function welcomeEmail(ctx: TemplateContext): BuiltEmail {
   const cta = { label: "Open JUNO", url: appLink("/app", "welcome", "activation") };
@@ -552,7 +552,14 @@ export const TEMPLATES: Record<
   string,
   { category: TemplateCategory; build: (ctx: TemplateContext) => BuiltEmail }
 > = {
-  welcome: { category: "transactional", build: welcomeEmail },
+  // LIFECYCLE, not transactional. It reads like a transactional email — "your
+  // account is verified" — but it is the first beat of the onboarding
+  // sequence, and `isSuppressed` never suppresses a transactional template.
+  // Classifying it that way would have mailed the one group who explicitly
+  // asked us to stop. A reader who unsubscribes before the cron tick must not
+  // be welcomed; nothing is lost by their missing it, which is the test for
+  // whether a template is genuinely transactional.
+  welcome: { category: "lifecycle", build: welcomeEmail },
   onboarding_day1: { category: "lifecycle", build: onboardingDay1Email },
   onboarding_day3: { category: "lifecycle", build: onboardingDay3Email },
   onboarding_day5: { category: "lifecycle", build: onboardingDay5Email },

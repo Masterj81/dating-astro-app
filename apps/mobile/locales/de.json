@@ -2124,5 +2124,21 @@
   "natalHousesNeedBirthTime": "Deine Häuser hängen von der genauen Minute deiner Geburt ab. Ohne Geburtszeit lassen sie sich nicht berechnen — was folgt, ist die allgemeine Bedeutung jedes Hauses, nicht deine.",
   "natalHousesNeedBirthPlace": "Deine Geburtszeit ist gespeichert, aber Häuser hängen auch vom Ort ab — der Geburtsort verschiebt jede Spitze. Ergänze deinen Geburtsort, dann können wir sie berechnen.",
   "natalHousesCompleteBirthData": "Geburtsdaten vervollständigen",
-  "natalHouseCuspSign": "{{sign}} auf der Spitze"
+  "natalHouseCuspSign": "{{sign}} auf der Spitze",
+  "risingNeedsBirthCityLabel": "Dein Aszendent",
+  "risingNeedsBirthCity": "Dein Aszendent hängt davon ab, wo du geboren wurdest, nicht nur wann. Deiner wurde ohne Geburtsort berechnet, deshalb haben wir ihn zurückgestellt, statt dir etwas zu zeigen, wofür wir nicht einstehen können. Bestätige deinen Geburtsort und wir berechnen ihn genau.",
+  "risingConfirmBirthCity": "Geburtsort bestätigen",
+  "synastryAspectBasedTitle": "Aspektbasierte Synastrie",
+  "synastryAspectBasedBody": "Liest die tatsächliche Geometrie zwischen euren Horoskopen — die Winkel zwischen echten Planetenpositionen, nicht nur eure Sonnenzeichen.",
+  "synastryTopAspectsTitle": "Stärkste Kontakte",
+  "synastryLimitedConfidence": "Einige Details sind eingeschränkt, weil bei einem Horoskop Geburtszeit oder -ort fehlen.",
+  "synastryMissingAscendant": "Kontakte des ersten Eindrucks bleiben aussen vor: mindestens ein Horoskop hat keinen Aszendenten.",
+  "synastrySignRhythmTitle": "Vorschau: Rhythmus der Zeichen",
+  "synastrySignRhythmBody": "Eine grobe Lesung allein aus euren Sonnenzeichen. Sie kann einen engen Planetenkontakt nicht von einem weiten unterscheiden.",
+  "synastryNeedsBothCharts": "Für eine detaillierte Synastrie werden beide Geburtshoroskope benötigt.",
+  "synastryAspect_conjunction": "Konjunktion",
+  "synastryAspect_sextile": "Sextil",
+  "synastryAspect_square": "Quadrat",
+  "synastryAspect_trine": "Trigon",
+  "synastryAspect_opposition": "Opposition"
 }

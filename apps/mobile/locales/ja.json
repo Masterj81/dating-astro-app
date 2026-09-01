@@ -2124,5 +2124,21 @@
   "natalHousesNeedBirthTime": "あなた自身のハウスは、生まれた正確な時刻によって決まります。出生時刻がないと計算できないため、以下は各ハウスの一般的な意味であり、あなたのものではありません。",
   "natalHousesNeedBirthPlace": "出生時刻は保存されています。ただしハウスは出生地にも左右され、場所が変わるとすべてのカスプが動きます。出生地を追加すれば計算できます。",
   "natalHousesCompleteBirthData": "出生情報を追加する",
-  "natalHouseCuspSign": "カスプは{{sign}}"
+  "natalHouseCuspSign": "カスプは{{sign}}",
+  "risingNeedsBirthCityLabel": "あなたのアセンダント",
+  "risingNeedsBirthCity": "アセンダントは、生まれた時刻だけでなく生まれた場所にも左右されます。あなたのものは出生地なしで計算されていたため、根拠のない値をお見せするのではなく、いったん保留しました。出生地をご確認いただければ、正確に計算します。",
+  "risingConfirmBirthCity": "出生地を確認する",
+  "synastryAspectBasedTitle": "アスペクトに基づくシナストリー",
+  "synastryAspectBasedBody": "二つのチャートの実際の幾何を読み取ります。太陽星座だけでなく、実際の惑星位置どうしの角度です。",
+  "synastryTopAspectsTitle": "最も強い接触",
+  "synastryLimitedConfidence": "一方のチャートに出生時刻または出生地がないため、一部の内容は限定的です。",
+  "synastryMissingAscendant": "第一印象に関わる接触は除外されています。少なくとも一方のチャートにアセンダントがありません。",
+  "synastrySignRhythmTitle": "星座のリズム（プレビュー）",
+  "synastrySignRhythmBody": "これは太陽星座のみによる大まかな読みです。惑星どうしの接近した接触と離れた接触を区別できません。",
+  "synastryNeedsBothCharts": "詳細なシナストリーには、双方の出生図が必要です。",
+  "synastryAspect_conjunction": "コンジャンクション",
+  "synastryAspect_sextile": "セクスタイル",
+  "synastryAspect_square": "スクエア",
+  "synastryAspect_trine": "トライン",
+  "synastryAspect_opposition": "オポジション"
 }

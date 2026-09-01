@@ -2124,5 +2124,21 @@
   "natalHousesNeedBirthTime": "Your own houses depend on the exact minute you were born. Without a birth time they cannot be calculated, so what follows is what each house means in general — not yours.",
   "natalHousesNeedBirthPlace": "Your birth time is saved, but houses also depend on where you were born — the birthplace moves every cusp. Add your birth city and we can calculate them.",
   "natalHousesCompleteBirthData": "Complete your birth details",
-  "natalHouseCuspSign": "{{sign}} on the cusp"
+  "natalHouseCuspSign": "{{sign}} on the cusp",
+  "risingNeedsBirthCityLabel": "Your rising sign",
+  "risingNeedsBirthCity": "Your rising sign depends on where you were born, not only when. We calculated yours without a birth city, so we have set it aside rather than show you something we cannot stand behind. Confirm your birth city and we will calculate it accurately.",
+  "risingConfirmBirthCity": "Confirm my birth city",
+  "synastryAspectBasedTitle": "Aspect-based synastry",
+  "synastryAspectBasedBody": "Reads the actual geometry between your charts — the angles between real planetary positions, not just your Sun signs.",
+  "synastryTopAspectsTitle": "Strongest contacts",
+  "synastryLimitedConfidence": "Some details are limited because one chart is missing a birth time or place.",
+  "synastryMissingAscendant": "First-impression contacts are left out: at least one chart has no rising sign.",
+  "synastrySignRhythmTitle": "Sign rhythm preview",
+  "synastrySignRhythmBody": "This is a broad reading from your Sun signs alone. It cannot tell a close planetary contact from a distant one.",
+  "synastryNeedsBothCharts": "Detailed synastry needs both birth charts.",
+  "synastryAspect_conjunction": "Conjunction",
+  "synastryAspect_sextile": "Sextile",
+  "synastryAspect_square": "Square",
+  "synastryAspect_trine": "Trine",
+  "synastryAspect_opposition": "Opposition"
 }

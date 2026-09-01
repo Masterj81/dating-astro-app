@@ -23,6 +23,7 @@
     "validate:locale-contract": "node scripts/validate-locale-contract.mjs",
     "validate:retention-guards": "node scripts/validate-mobile-retention-guards.mjs",
     "validate:natal-integrity": "node scripts/validate-natal-integrity.mjs",
+    "validate:engine-contract": "npm run test --workspace=@astro/shared -- src/astrology/__tests__/engine-contract.test.ts",
     "validate:locales": "npm run validate:web:locales && npm run validate:mobile:locales && npm run validate:mobile:i18n-usage && npm run validate:locale-contract",
     "check:store-metadata": "node scripts/check-store-metadata.mjs",
     "lint": "turbo run lint",

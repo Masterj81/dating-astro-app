@@ -40,6 +40,17 @@
 //
 //     rising_sign IS NOT NULL  ⟹  birth_time IS NOT NULL
 //
+// and, since 20260901000002, the stronger form — because the ascendant needs
+// the birthplace as much as the clock, and four code paths used to substitute
+// one rather than admit they had none:
+//
+//     rising_sign IS NOT NULL  ⟹  birth_time IS NOT NULL
+//                              ∧  birth_latitude IS NOT NULL
+//                              ∧  birth_longitude IS NOT NULL
+//
+// That second migration does not DELETE the suspect signs: it moves them to
+// `rising_sign_unconfirmed`, out of the one column the blind surfaces read.
+//
 // So a stored sign is, on its own, evidence that a birth time existed when it
 // was computed. Before the trigger it was not, and this module refused a bare
 // sign outright — which was right at the time, but hid every REAL ascendant on
@@ -79,6 +90,53 @@ export interface RisingTrustInput {
   birthChart?: unknown;
   /** `profiles.rising_sign` as stored. */
   storedRisingSign?: string | null;
+  /**
+   * `profiles.birth_latitude` / `birth_longitude`.
+   *
+   * Same three-valued convention as `birthTime`: a number is proof, `null` is
+   * proof of absence, `undefined` means this caller cannot see the column.
+   * The ascendant needs the PLACE as much as the clock — birth longitude
+   * enters local sidereal time degree for degree — so a caller that CAN see
+   * these must not be told to trust a sign computed without them.
+   */
+  birthLatitude?: number | null;
+  birthLongitude?: number | null;
+  /**
+   * `profiles.rising_sign_unconfirmed` — an ascendant set aside by migration
+   * 20260901000002 because it was computed without a reliable birthplace.
+   *
+   * Present so a surface can say "we can recompute this once you confirm your
+   * birth city" instead of pretending the placement never existed. It must
+   * NEVER be rendered as a placement.
+   */
+  unconfirmedRisingSign?: string | null;
+}
+
+/**
+ * True when a coordinate pair is usable as an actual birthplace.
+ *
+ * A NULL test, never a truthiness test. `calculate-chart` used `!lat || !lng`,
+ * which treats a genuine 0 — the prime meridian, the equator — as missing, and
+ * so replaced correct data with a substituted location.
+ *
+ * Exported because `houses.ts` must ask exactly the same question: two
+ * definitions of "we know where they were born" is one too many.
+ */
+export function hasUsableBirthPlace(input: {
+  birthLatitude?: number | null;
+  birthLongitude?: number | null;
+}): boolean {
+  return (
+    typeof input.birthLatitude === 'number' &&
+    Number.isFinite(input.birthLatitude) &&
+    typeof input.birthLongitude === 'number' &&
+    Number.isFinite(input.birthLongitude)
+  );
+}
+
+/** True when the caller can see the coordinate columns at all. */
+function canSeeBirthPlace(input: RisingTrustInput): boolean {
+  return input.birthLatitude !== undefined || input.birthLongitude !== undefined;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -114,6 +172,20 @@ export function isRisingTrustworthy(input: RisingTrustInput): boolean {
   if (birthTime === null || (typeof birthTime === 'string' && birthTime.trim() === '')) {
     return false;
   }
+
+  // 2b. The caller can see the coordinates and there are none. Decisive for
+  //     the same reason as 2: the ascendant depends on the birthplace as
+  //     strongly as on the clock, and four code paths used to substitute one
+  //     (Greenwich in the edge functions, Montréal in the mobile facade and
+  //     the geocoder). A sign stored against null coordinates was cast for a
+  //     city the reader has never been to.
+  //
+  //     Migration 20260901000002 moves those signs out of `rising_sign` into
+  //     `rising_sign_unconfirmed`, so in practice this branch is a second lock
+  //     on a door the database already closed — which is exactly what it is
+  //     for: `birthTime === null` in rule 2 was written the same way, and it
+  //     is what protected readers while the poisoned rows were still live.
+  if (canSeeBirthPlace(input) && !hasUsableBirthPlace(input)) return false;
 
   // 3. The caller can see birth_time and it is present. The strongest positive
   //    proof available, and the common case for a reader's own profile.
@@ -163,4 +235,45 @@ export function resolveTrustedRisingSign(input: RisingTrustInput): string | null
   const rising = chart ? asRecord(chart.rising) : null;
   const sign = rising?.sign;
   return typeof sign === 'string' && sign.trim().length > 0 ? sign.trim() : null;
+}
+
+/**
+ * True when this reader has an ascendant we set aside for lack of a
+ * birthplace, and confirming their birth city would let us recompute it.
+ *
+ * This is the state behind "Confirm your birth city to calculate your rising
+ * sign accurately". It is deliberately NOT the same question as
+ * `isRisingTrustworthy`:
+ *
+ *   isRisingTrustworthy          may I show a sign?          (no, in this state)
+ *   risingNeedsLocationConfirmation  should I ask for the city?  (yes)
+ *
+ * A reader who never gave a birth time is NOT in this state — the city would
+ * not help them, and asking for it would send them to fix the wrong field.
+ * `docs/twelve-houses-audit-2026-08.md` §7.1 calls this the middle state, the
+ * one implementations forget.
+ */
+export function risingNeedsLocationConfirmation(input: RisingTrustInput): boolean {
+  const { birthTime } = input;
+
+  // Without a clock the birthplace changes nothing.
+  if (typeof birthTime !== 'string' || birthTime.trim().length === 0) return false;
+
+  // A caller that cannot see the coordinates cannot answer this. Returning
+  // false is the safe direction: it shows no CTA rather than showing one to
+  // someone whose chart is perfectly fine.
+  if (!canSeeBirthPlace(input)) return false;
+  if (hasUsableBirthPlace(input)) return false;
+
+  // There must be something to recompute. A reader who never had an ascendant
+  // at all is offered the city in onboarding, not here.
+  const setAside =
+    typeof input.unconfirmedRisingSign === 'string' &&
+    input.unconfirmedRisingSign.trim().length > 0;
+  const chart = asRecord(input.birthChart);
+  const chartSetAside = chart
+    ? asRecord(chart.rising_unconfirmed) !== null
+    : false;
+
+  return setAside || chartSetAside;
 }

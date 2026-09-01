@@ -15,6 +15,10 @@ export * from './orbs';
 export * from './aspects';
 export * from './scoring';
 export * from './synastry';
+// The single entry point the synastry screens use. Keeps mobile and web on
+// the same engine, and makes an aspect score impossible to render without
+// the aspects (discriminated union).
+export * from './synastry-view';
 export * from './stored';
 // Whether a stored rising sign may be shown at all. Needed because fixing the
 // engine does not fix the rows the old Aries fallback already wrote.

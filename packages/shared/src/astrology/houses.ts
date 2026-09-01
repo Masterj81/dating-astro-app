@@ -49,7 +49,7 @@
 // 30° apart.
 
 import { computeEqualHouses, placementToLongitude } from './chart';
-import { isRisingTrustworthy, type RisingTrustInput } from './rising';
+import { hasUsableBirthPlace, isRisingTrustworthy, type RisingTrustInput } from './rising';
 import type { NatalChart, PlanetKey, Placement } from './types';
 
 /**
@@ -68,12 +68,12 @@ export type BirthDataState =
   /** Time and place both known. Angles and houses may be shown. */
   | 'complete';
 
-export interface HouseTrustInput extends RisingTrustInput {
-  /** `profiles.birth_latitude`. Null/undefined means the place is unknown. */
-  birthLatitude?: number | null;
-  /** `profiles.birth_longitude`. Null/undefined means the place is unknown. */
-  birthLongitude?: number | null;
-}
+/**
+ * The coordinates now live on `RisingTrustInput` itself, because the ascendant
+ * needs the birthplace just as much as the houses do — this type is kept as an
+ * alias so the call sites that read as "house trust" still say so.
+ */
+export type HouseTrustInput = RisingTrustInput;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null
@@ -108,7 +108,10 @@ function hasBirthTime(birthTime: string | null | undefined): boolean {
 export function resolveBirthDataState(input: HouseTrustInput): BirthDataState {
   if (!hasBirthTime(input.birthTime)) return 'missing_birth_time';
 
-  if (!isUsableCoordinate(input.birthLatitude) || !isUsableCoordinate(input.birthLongitude)) {
+  // Shared with `isRisingTrustworthy` on purpose: two definitions of "we know
+  // where they were born" is one too many, and the divergence is exactly how
+  // the ascendant kept a Greenwich fallback the houses had already rejected.
+  if (!hasUsableBirthPlace(input)) {
     return 'missing_birth_place';
   }
 

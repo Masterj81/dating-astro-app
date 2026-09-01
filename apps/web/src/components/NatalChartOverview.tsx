@@ -9,6 +9,7 @@ import {
   resolveBirthDataState,
   resolveHouseCusps,
   resolveTrustedRisingSign,
+  risingNeedsLocationConfirmation,
   signsOnCusps,
   type BirthDataState,
 } from "@astro/shared/astrology";
@@ -33,6 +34,13 @@ type NatalProfile = {
   birth_chart?: unknown;
   birth_latitude?: number | null;
   birth_longitude?: number | null;
+  /**
+   * `profiles.rising_sign_unconfirmed` — an ascendant migration 20260901000002
+   * set aside because it was computed without a reliable birthplace. NEVER
+   * rendered as a placement; it exists so this screen can offer to recompute
+   * instead of pretending the placement never existed.
+   */
+  rising_sign_unconfirmed?: string | null;
 };
 
 type PlanetKey =
@@ -145,6 +153,8 @@ type ChartReading = {
   cuspSigns: string[] | null;
   /** Which of the three birth-data states this reader is in. */
   birthDataState: BirthDataState;
+  /** True when an ascendant was set aside and the birth city would restore it. */
+  needsLocationConfirmation: boolean;
 };
 
 const PLANET_ORDER: readonly PlanetKey[] = [
@@ -168,6 +178,11 @@ function readChart(
   const trustedRising = resolveTrustedRisingSign({
     birthTime: profile.birth_time,
     storedRisingSign: profile.rising_sign,
+    // The birthplace matters as much as the clock: birth longitude enters
+    // local sidereal time degree for degree, so an ascendant computed without
+    // coordinates was cast for whichever city the old fallback substituted.
+    birthLatitude: profile.birth_latitude,
+    birthLongitude: profile.birth_longitude,
   });
 
   const trustInput = {
@@ -176,9 +191,14 @@ function readChart(
     birthLongitude: profile.birth_longitude,
     birthChart: profile.birth_chart,
     storedRisingSign: profile.rising_sign,
+    unconfirmedRisingSign: profile.rising_sign_unconfirmed,
   };
 
   const birthDataState = resolveBirthDataState(trustInput);
+  // Shown only to readers who HAVE a set-aside ascendant. Someone who never
+  // gave a birth time is not in this state: the city would not help them, and
+  // asking would send them to fix the wrong field.
+  const needsLocationConfirmation = risingNeedsLocationConfirmation(trustInput);
   // Null unless the clock AND the birthplace are both proven. Everything
   // house-shaped below is downstream of this one value.
   const cusps = resolveHouseCusps(trustInput);
@@ -232,7 +252,7 @@ function readChart(
     } satisfies PlanetPosition;
   }).filter((position): position is PlanetPosition => position !== null);
 
-  return { positions, cusps, cuspSigns, birthDataState };
+  return { positions, cusps, cuspSigns, birthDataState, needsLocationConfirmation };
 }
 
 type ServerGate = { allowed: boolean; reason: string | null };
@@ -310,10 +330,11 @@ export function NatalChartOverview() {
             cusps: null,
             cuspSigns: null,
             birthDataState: "missing_birth_time",
+            needsLocationConfirmation: false,
           } satisfies ChartReading),
     [profile, t]
   );
-  const { positions, cuspSigns, birthDataState } = reading;
+  const { positions, cuspSigns, birthDataState, needsLocationConfirmation } = reading;
 
   const elementCounts = useMemo(() => {
     return positions.reduce(
@@ -639,6 +660,30 @@ export function NatalChartOverview() {
             })}
           </ul>
         </div>
+
+        {/* An ascendant we set aside.
+            The value was NOT deleted — migration 20260901000002 moved it to
+            `rising_sign_unconfirmed`, out of the one column the blind surfaces
+            read. The reader saw a rising sign here for months; saying nothing
+            would read as data quietly disappearing. So we say what happened
+            and offer the one thing that fixes it. The old sign is never shown:
+            it was cast for a city this reader has never been to. */}
+        {needsLocationConfirmation ? (
+          <div className="rounded-[2rem] border border-[rgba(232,93,117,0.28)] bg-[rgba(232,93,117,0.10)] p-6">
+            <p className="text-xs uppercase tracking-[0.24em] text-[#ffb7c7]">
+              {t("risingNeedsBirthCityLabel")}
+            </p>
+            <p className="mt-3 text-sm leading-7 text-white/90">
+              {t("risingNeedsBirthCity")}
+            </p>
+            <Link
+              href="/app/profile"
+              className="mt-4 inline-block rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+            >
+              {t("risingConfirmBirthCity")}
+            </Link>
+          </div>
+        ) : null}
 
         {/* The twelve houses.
             The MEANINGS are pedagogical and identical for every chart. The

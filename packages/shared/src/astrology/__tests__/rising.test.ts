@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { computeNatalChart } from '../chart';
-import { isRisingTrustworthy, resolveTrustedRisingSign } from '../rising';
+import {
+  isRisingTrustworthy,
+  resolveTrustedRisingSign,
+  risingNeedsLocationConfirmation,
+} from '../rising';
 
 // A chart written by the OLD mobile build: the engine reported the truth
 // (confidence low, rising could not be computed) but the facade substituted
@@ -248,5 +252,114 @@ describe('resolveTrustedRisingSign', () => {
     expect(
       resolveTrustedRisingSign({ storedRisingSign: 'Aries', birthChart: POISONED_STORED_CHART })
     ).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The birthplace, added 2026-09-01 (migration 20260901000002).
+// ---------------------------------------------------------------------------
+// The ascendant depends on the PLACE as much as the clock: birth longitude
+// enters local sidereal time degree for degree, so Montréal against Paris is
+// 76° — more than two and a half signs. Four code paths used to substitute a
+// location rather than admit they had none.
+
+const PLACED = {
+  birthTime: '14:30',
+  birthLatitude: 48.8566,
+  birthLongitude: 2.3522,
+  storedRisingSign: 'Scorpio',
+};
+
+describe('a birth time alone no longer proves an ascendant', () => {
+  it('hides the sign when the caller can see the coordinates and there are none', () => {
+    expect(
+      isRisingTrustworthy({ ...PLACED, birthLatitude: null, birthLongitude: null }),
+    ).toBe(false);
+    expect(
+      resolveTrustedRisingSign({ ...PLACED, birthLatitude: null, birthLongitude: null }),
+    ).toBeNull();
+  });
+
+  it('hides it when only one of the two coordinates is missing', () => {
+    expect(isRisingTrustworthy({ ...PLACED, birthLatitude: null })).toBe(false);
+    expect(isRisingTrustworthy({ ...PLACED, birthLongitude: null })).toBe(false);
+  });
+
+  it('accepts a genuine 0 — the prime meridian and the equator are places', () => {
+    // `calculate-chart` used `!lat || !lng`, which replaced CORRECT data with
+    // invented data for anyone born on the meridian.
+    expect(
+      isRisingTrustworthy({ ...PLACED, birthLatitude: 0, birthLongitude: 0 }),
+    ).toBe(true);
+  });
+
+  it('still trusts a bare sign when the caller cannot see the coordinates', () => {
+    // Discover reads through `get_discoverable_profiles`, which returns
+    // neither birth_time nor birth_chart nor the coordinates. It relies on the
+    // database invariant instead — which is why 20260901000002 MOVES suspect
+    // signs out of `rising_sign` rather than flagging them.
+    expect(isRisingTrustworthy({ storedRisingSign: 'Scorpio' })).toBe(true);
+  });
+
+  it('keeps showing a real ascendant', () => {
+    expect(isRisingTrustworthy(PLACED)).toBe(true);
+    expect(resolveTrustedRisingSign(PLACED)).toBe('Scorpio');
+  });
+});
+
+describe('asking for the birth city, and only when it would help', () => {
+  const SET_ASIDE = {
+    birthTime: '14:30',
+    birthLatitude: null,
+    birthLongitude: null,
+    storedRisingSign: null,
+    unconfirmedRisingSign: 'Scorpio',
+  };
+
+  it('asks when there is a set-aside ascendant and no place', () => {
+    expect(risingNeedsLocationConfirmation(SET_ASIDE)).toBe(true);
+  });
+
+  it('reads the set-aside placement from the chart too', () => {
+    expect(
+      risingNeedsLocationConfirmation({
+        birthTime: '14:30',
+        birthLatitude: null,
+        birthLongitude: null,
+        birthChart: { rising: null, rising_unconfirmed: { sign: 'Scorpio', degree: 18 } },
+      }),
+    ).toBe(true);
+  });
+
+  it('does not ask someone who never gave a birth time', () => {
+    // The city would not help them; the clock is what blocks. Sending them to
+    // fix the wrong field is the mistake this whole state exists to avoid.
+    expect(risingNeedsLocationConfirmation({ ...SET_ASIDE, birthTime: null })).toBe(false);
+  });
+
+  it('does not ask someone whose chart is fine', () => {
+    expect(risingNeedsLocationConfirmation(PLACED)).toBe(false);
+  });
+
+  it('does not ask when there is nothing to recompute', () => {
+    expect(
+      risingNeedsLocationConfirmation({
+        birthTime: '14:30',
+        birthLatitude: null,
+        birthLongitude: null,
+      }),
+    ).toBe(false);
+  });
+
+  it('stays silent for a caller that cannot see the coordinates', () => {
+    // Failing towards "no CTA" is the safe direction: showing one to someone
+    // whose chart is perfectly fine would be its own small lie.
+    expect(
+      risingNeedsLocationConfirmation({ birthTime: '14:30', unconfirmedRisingSign: 'Scorpio' }),
+    ).toBe(false);
+  });
+
+  it('never returns the set-aside sign as a displayable placement', () => {
+    expect(resolveTrustedRisingSign(SET_ASIDE)).toBeNull();
   });
 });

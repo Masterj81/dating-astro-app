@@ -100,8 +100,29 @@ export function parseStoredPlacement(raw: unknown): Placement | null {
   };
 }
 
+/**
+ * Confidence of a stored chart, defaulting to `medium` when the field is absent.
+ *
+ * WHY NOT `high` (which is what this returned until 2026-09-01)
+ * ------------------------------------------------------------
+ * A row with no `confidence` key predates the confidence model entirely. On
+ * 2026-09-01 that was 74 of the 95 stored charts, and they are the LEAST
+ * trustworthy data in the database, not the most: they were written by the
+ * pipeline that used the device timezone and substituted Montréal or Greenwich
+ * for an unknown birthplace. Hydrating them as `high` handed the top rating to
+ * the rows we can vouch for least.
+ *
+ * `medium` is the honest reading of "we do not know": not the best rating, not
+ * the floor reserved for charts we know are compromised. It also removes a
+ * real asymmetry — `get-profile-chart` recomputes those same charts and gives
+ * them `medium`, so the same person scored differently depending on which code
+ * path reached them.
+ *
+ * This became load-bearing when `computeSynastry` was wired to the screens:
+ * `applyConfidenceCap` now reaches a number the reader sees.
+ */
 function parseConfidence(raw: unknown): Confidence {
-  return raw === 'high' || raw === 'medium' || raw === 'low' ? raw : 'high';
+  return raw === 'high' || raw === 'medium' || raw === 'low' ? raw : 'medium';
 }
 
 const INNER_NON_LUMINARY: readonly Exclude<InnerPlanetKey, 'sun' | 'moon'>[] = [
