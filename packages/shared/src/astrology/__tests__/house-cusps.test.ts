@@ -68,9 +68,13 @@ const HEDGES = {
     'tendance',
     'en général',
   ],
-  es: ['puede', 'pueden', 'podria', 'a menudo', 'a veces'],
-  pt: ['pode', 'podem', 'poderia', 'muitas vezes', 'as vezes'],
-  de: ['kann', 'oft', 'manchmal'],
+  // `suelen` / `costumam` / `tende` are the "tends to" of these languages and
+  // hedge exactly as well as the modal verbs. Written accent-free because the
+  // check strips accents: "as vezes" here is what "às vezes" becomes, and
+  // before that stripping existed the entry could never match anything.
+  es: ['puede', 'pueden', 'podria', 'a menudo', 'a veces', 'suele', 'suelen', 'tiende', 'tienden'],
+  pt: ['pode', 'podem', 'poderia', 'muitas vezes', 'as vezes', 'costuma', 'costumam', 'tende', 'tendem'],
+  de: ['kann', 'konn', 'oft', 'manchmal', 'haufig'],
   ja: ['かもしれません', 'ことがあります', 'よく', '場合があります'],
   zh: ['可能', '常常', '有时'],
   ar: ['قد', 'يمكن', 'أحيانا'],
@@ -184,6 +188,33 @@ describe('house-cusp corpus — coverage', () => {
     expect(new Set(texts).size).toBe(texts.length);
   });
 
+  it.each([...HOUSE_CUSP_LOCALES])('%s opens its readings more than one way', (locale) => {
+    // Equal-house cusps always land on twelve consecutive, DISTINCT signs, so a
+    // reader opening their chart sees all twelve cards at once. When every
+    // reading in a language shared one sentence frame, that frame appeared
+    // twelve times on one screen — the only repetition an individual reader
+    // could actually perceive. Twelve frames, one per house, is the fix; ten is
+    // the floor so a future edit cannot quietly collapse them back to one.
+    const openings = new Set(
+      Object.values(HOUSE_CUSP_CORPUS[locale] as Record<string, string>).map((t) => t.slice(0, 16)),
+    );
+    expect(openings.size, `${locale} has ${openings.size} distinct openings`).toBeGreaterThanOrEqual(10);
+  });
+
+  it('gives every house its own frame, so no two houses read alike', () => {
+    // Same sign, different house: the opening must differ. This is what makes
+    // the twelve cards on screen look like twelve readings.
+    for (const locale of HOUSE_CUSP_LOCALES) {
+      const corpus = HOUSE_CUSP_CORPUS[locale] as Record<string, string>;
+      for (const sign of HOUSE_CUSP_SIGNS) {
+        const openings = HOUSE_NUMBERS.map((h) =>
+          corpus[`natalHouseCuspInterpretation_${h}_${sign}`].slice(0, 16),
+        );
+        expect(new Set(openings).size, `${locale}/${sign}`).toBeGreaterThanOrEqual(10);
+      }
+    }
+  });
+
   it('says something different in each written language', () => {
     // An entry identical to its English twin means a forgotten
     // translation, which the key-count check alone would happily pass.
@@ -201,8 +232,11 @@ describe('house-cusp corpus — coverage', () => {
 describe('house-cusp corpus — voice', () => {
   it.each([...HOUSE_CUSP_LOCALES])('%s hedges every claim', (locale) => {
     for (const [key, text] of Object.entries(HOUSE_CUSP_CORPUS[locale])) {
-      const lowered = text.toLowerCase();
-      const hedged = HEDGES[locale].some((word) => lowered.includes(word));
+      // Accents stripped on BOTH sides, like the banned-word check. Without it
+      // a list entry such as "as vezes" silently never matches the "as vezes"
+      // in the text, and the guard is one entry weaker than it reads.
+      const lowered = stripAccents(text.toLowerCase());
+      const hedged = HEDGES[locale].some((word) => lowered.includes(stripAccents(word)));
       expect(hedged, `${key} states a certainty: ${text}`).toBe(true);
     }
   });

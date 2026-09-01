@@ -1204,6 +1204,35 @@ for (const [key, words] of Object.entries(BANNED_CUSP_COPY)) {
 // the result, so this one runs the builder. `content-localized.ts` imports only
 // types, which Node's type stripping erases, so it loads with no bundler.
 const LOCALIZED_CUSP_LOCALES = ['es', 'pt', 'de', 'ja', 'zh', 'ar'];
+// The dynamic import below only works because that file imports TYPES and
+// nothing else: Node's stripping erases `import type` but does not resolve
+// extensionless specifiers. One value import turns this whole section into
+// ERR_MODULE_NOT_FOUND, with a cause nobody would guess from the message.
+check(
+  `${FILES.cuspLocalized}: imports types only`,
+  (raw.cuspLocalized.match(/^import\s/gm) ?? []).every((_, i, all) =>
+    all.length === (raw.cuspLocalized.match(/^import type\s/gm) ?? []).length,
+  ) && /^import type\s/m.test(raw.cuspLocalized),
+  'a runtime import here breaks the validator that checks this file',
+);
+// Each generated language must have its own opening frames, one per house.
+check(
+  'the generator varies its opening by house',
+  /const FRAME: Record<GeneratedLocale, Twelve<Frame>>/.test(code.cuspLocalized),
+  'one frame per language put the same sentence on all twelve cards at once',
+);
+// Tables typed as tuples: a short translation table is a compile error rather
+// than the string "undefined" interpolated into twelve readings.
+for (const table of ['HOUSE', 'REFLECTION']) {
+  check(
+    `the ${table} table is length-checked by the compiler`,
+    new RegExp(`const ${table}: Record<GeneratedLocale, Twelve<string>>`).test(code.cuspLocalized),
+  );
+}
+check(
+  'the SIGN table is keyed by the sign union',
+  /const SIGN: Record<GeneratedLocale, Record<HouseCuspSign, string>>/.test(code.cuspLocalized),
+);
 const localizedCusps = await import(
   pathToFileURL(path.join(ROOT, FILES.cuspLocalized)).href
 );

@@ -47,20 +47,43 @@ opening varies, the second sentence carries a reflective angle specific to that
 house-and-sign pair, and no two share a skeleton.
 
 **The other six are composed.** `content-localized.ts` holds, per language, 12
-house phrases, 12 sign phrases and 12 reflection lines, and builds each entry
-as `house-phrase x sign-phrase + reflection(sign)`. Consequences a reader can
-notice:
+house phrases, 12 sign phrases, 12 reflection lines and **12 opening frames —
+one per house** — and builds each entry as `frame(house)(house-phrase,
+sign-phrase) + reflection(sign)`.
 
-- All 144 entries in one of those languages share a single sentence frame
-  ("Esta casa puede hacer que … se exprese con …").
-- The reflection depends on the **sign only**, so House 1 Aries and House 12
-  Aries end with the same sentence.
+What a reader actually sees, and why that is the number that matters: equal-house
+cusps always land on twelve **consecutive, distinct** signs, so opening the
+chart shows twelve cards carrying twelve different signs. Two consequences:
 
-That is a real quality gap against EN/FR, and the honest framing is: those six
-languages get a correct, safe, on-voice reading rather than a rich one. It is a
-better default than showing English to a reader who does not read English, and
-it is not the finished state. Replacing any of the six with a written corpus is
-a drop-in: add `content-<locale>.ts` and point `contract.ts` at it instead.
+- The reflection is keyed on the sign, so it **never repeats for an individual
+  reader** — each of their twelve cards has a different sign. The repetition
+  exists in the corpus, not on anyone's screen.
+- The opening frame was the repetition that *was* visible: one frame per
+  language meant the same sentence twelve times on one screen. It is now one
+  frame per house, so all twelve cards open differently in every language.
+
+That leaves a real but narrower gap against EN/FR: within a language, the twelve
+readings of one house share a sentence skeleton, which only shows up if two
+people compare charts. Those six languages get a correct, safe, on-voice reading
+rather than an individually authored one. Replacing any of them with a written
+corpus is a drop-in: add `content-<locale>.ts` and point `contract.ts` at it.
+
+**Grammar defects found and fixed in the composed languages** (2026-09-01
+audit), each of which affected all 144 readings of its language:
+
+- `es` — every house phrase is a list of nouns, so the subject is plural. The
+  frame said `se exprese`. Fixed by construction: the frames use plural verbs.
+- `pt` — same defect, `se expresse`.
+- `de` — the frame used `durch` (accusative) while the sign phrases are written
+  in the dative (`langfristigem Aufbau`, `dem Bedürfnis nach Sicherheit`). The
+  frames now use `von` / `mit` / `an`, which is the case the table was written
+  for, and the house phrases stay nominative subjects. One table entry was also
+  the odd nominative out: `schnelle Bewegung` → `schneller Bewegung`.
+- `ar` — Arabic verbs agree with their subject, and the house phrases switch
+  gender (`المهنة` feminine, `البيت` masculine), so any frame with a leading
+  verb agreeing with the interpolated phrase is wrong for about half the
+  houses. Every frame keeps a fixed subject instead (`هذا البيت`, `أثر`,
+  `الأمر`, `لغة`).
 
 144 keys x 8 locales x 2 platforms is **2304 entries**. Mobile locale parity is
 exact (`npm run validate:mobile:locales`), so shipping English strings into
@@ -87,6 +110,28 @@ type HouseCuspCorpus = Record<HouseCuspKey, string>;
 A corpus missing `natalHouseCuspInterpretation_7_pisces` does not compile. The
 hole is caught by `tsc`, before a test, before a validator, and long before a
 reader sees a blank.
+
+**For the composed languages this guarantee works differently, and it is worth
+being precise.** `build()` fills an object in a loop, and TypeScript cannot
+prove a loop covered every key of a mapped type — the function ends in
+`{} as HouseCuspCorpus`, which is an assertion, not a proof. The guarantee was
+therefore moved to the **inputs**, where it can be proved:
+
+```ts
+type Twelve<T> = readonly [T, T, T, T, T, T, T, T, T, T, T, T];
+const HOUSE: Record<GeneratedLocale, Twelve<string>>
+const SIGN: Record<GeneratedLocale, Record<HouseCuspSign, string>>
+const REFLECTION: Record<GeneratedLocale, Twelve<string>>
+const FRAME: Record<GeneratedLocale, Twelve<Frame>>
+```
+
+An eleven-entry house table is now a compile error. Before the audit these
+tables were `as const` with no annotation, so a short table interpolated the
+string `undefined` into twelve readings and shipped silently. The key builder
+also lost its assertion: with `house: HouseNumber` and `sign: HouseCuspSign` the
+template literal *is* a `HouseCuspKey`, so `key(13, 'ophiuchus')` no longer
+type-checks. The output is checked at runtime by the test suite and by
+`validate-natal-integrity`, which imports the module and counts.
 
 ## What it refuses to do
 
@@ -145,7 +190,7 @@ whenever the cusps are shown:
 ## Voice rules
 
 Enforced for **all 8 languages** by
-`packages/shared/src/astrology/__tests__/house-cusps.test.ts` (98 tests) and
+`packages/shared/src/astrology/__tests__/house-cusps.test.ts` (107 tests) and
 again by `npm run validate:natal-integrity`:
 
 - Every entry hedges, in its own language: may / can / often / tends to —
@@ -168,6 +213,12 @@ again by `npm run validate:natal-integrity`:
   for Japanese and Chinese, which tokenise to one.
 - No entry repeats another within a language, and no entry in any language is
   identical to its English twin (which would mean a forgotten translation).
+- At least 10 distinct openings per language, and at least 10 distinct openings
+  across the twelve houses of any single sign — the corpus cannot collapse back
+  to one frame per language without failing the build.
+- Hedge matching strips accents on both sides. It did not, which meant the
+  Portuguese entry `as vezes` could never match the `às vezes` in the text: a
+  list entry that reads like coverage and provides none.
 
 ## Copyright
 
@@ -227,10 +278,14 @@ product priority named.
 
 ## Risks
 
-- **The six composed languages read formulaic.** Every entry in a language
-  shares one sentence frame, and the closing reflection repeats across all
-  twelve houses of a sign. A reader who opens all twelve house cards will
-  notice. Correct and safe, but visibly thinner than EN/FR.
+- **The six composed languages are still composed.** Within a language, the
+  twelve readings of one house share a sentence skeleton. An individual reader
+  does not see that (their twelve cards are twelve different houses AND twelve
+  different signs), but two people comparing charts would.
+- **The six composed languages have not been proofread by native speakers.**
+  The 2026-09-01 audit found a systematic grammar defect in three of them that
+  no test caught, because no test can check agreement. `ja`, `zh` and `ar` are
+  the least verifiable by the author and the most likely to still hold one.
 - **Tone is subjective.** 288 written texts in one pass share an author. They
   were varied deliberately (openings, structure, the reflective second
   sentence), but a reader going through all twelve houses may notice a rhythm.
