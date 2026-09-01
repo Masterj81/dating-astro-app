@@ -823,12 +823,13 @@ export function NatalChartOverview() {
         ) : null}
       </section>
 
-      {/* Sticky from `xl` up: the left column runs to twelve house cards, and
-          a rail that scrolls away with it would put the angles and the balance
-          off screen for the whole read. `self-start` keeps the aside its own
-          height — a grid item stretches by default, and a stretched box has
-          nothing to stick to. */}
-      <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
+      {/* NOT sticky, on purpose. It was, briefly: the left column runs to
+          twelve house cards, so pinning the rail kept the angles and the
+          balance on screen. But a column that holds still while its neighbour
+          moves reads as a rendering fault rather than as a feature — the two
+          halves of one page stop looking like one page. Both columns scroll
+          together. */}
+      <aside className="space-y-6">
         {/* Angles — the two points that need the birth clock AND the birthplace.
             Kept OUT of the planet list on purpose: an angle is not a body, and
             listing the MC beside Mars would say it moves through the zodiac the
