@@ -30,6 +30,7 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const LOCALES = ['en', 'fr', 'es', 'pt', 'de', 'ja', 'ar', 'zh'];
@@ -86,6 +87,12 @@ const FILES = {
   synastryView: 'packages/shared/src/astrology/synastry-view.ts',
   stored: 'packages/shared/src/astrology/stored.ts',
   wheel: 'packages/shared/src/astrology/wheel.ts',
+  cuspResolver: 'packages/shared/src/astrology/house-cusps/index.ts',
+  cuspEn: 'packages/shared/src/astrology/house-cusps/content-en.ts',
+  cuspFr: 'packages/shared/src/astrology/house-cusps/content-fr.ts',
+  cuspLocalized: 'packages/shared/src/astrology/house-cusps/content-localized.ts',
+  cuspTypes: 'packages/shared/src/astrology/house-cusps/types.ts',
+  cuspContract: 'packages/shared/src/astrology/house-cusps/contract.ts',
   webWheel: 'apps/web/src/components/NatalChartWheel.tsx',
   mobileWheel: 'apps/mobile/components/NatalChartWheel.tsx',
   calcChart: 'supabase/functions/calculate-chart/index.ts',
@@ -1045,11 +1052,191 @@ for (const locale of LOCALES) {
   check(`${locale}: houses copy promises nothing`, offenders.length === 0, offenders.join(', '));
 }
 
-// --- report ------------------------------------------------------------------
-if (failures === 0) {
-  console.log(`\nNatal chart integrity guards look clean: ${checks} checks passed.`);
-  process.exit(0);
+// --- sign-on-cusp interpretations -------------------------------------------
+// The richest personal text on the screen, and therefore the easiest place to
+// start inventing. Three ways it could go wrong, and a guard for each: a hole
+// in the corpus, a reading shown without trustworthy cusps, and the corpus
+// leaking into the eight locale files where nobody would ever finish it.
+console.log('sign-on-cusp interpretations');
+
+const CUSP_SIGNS = [
+  'aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo',
+  'libra', 'scorpio', 'sagittarius', 'capricorn', 'aquarius', 'pisces',
+];
+const CUSP_KEYS = [];
+for (let house = 1; house <= 12; house += 1) {
+  for (const sign of CUSP_SIGNS) {
+    CUSP_KEYS.push('natalHouseCuspInterpretation_' + house + '_' + sign);
+  }
 }
 
-console.error(`\n${failures} of ${checks} natal integrity guard(s) failed.`);
-process.exit(1);
+check('the key set is 12 houses x 12 signs', CUSP_KEYS.length === 144);
+
+for (const [locale, key] of [['en', 'cuspEn'], ['fr', 'cuspFr']]) {
+  const missing = CUSP_KEYS.filter((k) => !raw[key].includes(k + ':'));
+  check(
+    `${locale}: all 144 sign-on-cusp entries exist`,
+    missing.length === 0,
+    missing.slice(0, 4).join(', '),
+  );
+  // A stray 145th key would be an entry no house can ever reach.
+  const found = raw[key].match(/natalHouseCuspInterpretation_\d+_[a-z]+:/g) ?? [];
+  check(`${locale}: and nothing beyond them`, found.length === 144, `found ${found.length}`);
+}
+
+for (const locale of ['es', 'pt', 'de', 'ja', 'zh', 'ar']) {
+  check(
+    `${locale}: sign-on-cusp corpus is built locally, not served as English fallback`,
+    new RegExp(`HOUSE_CUSP_CONTENT_${locale.toUpperCase()}\\s*=\\s*build\\('${locale}'\\)`).test(
+      raw.cuspLocalized,
+    ) && new RegExp(`${locale}:\\s*HOUSE_CUSP_CONTENT_${locale.toUpperCase()}`).test(code.cuspContract),
+  );
+}
+
+check(
+  'all eight app locales are declared as written cusp locales',
+  /HouseCuspLocale = 'en' \| 'fr' \| 'es' \| 'pt' \| 'de' \| 'ja' \| 'zh' \| 'ar'/.test(
+    code.cuspTypes,
+  ) && /'en'[\s\S]{0,30}'fr'[\s\S]{0,30}'es'[\s\S]{0,30}'pt'[\s\S]{0,30}'de'[\s\S]{0,30}'ja'[\s\S]{0,30}'zh'[\s\S]{0,30}'ar'/.test(
+    code.cuspContract,
+  ),
+  'before build 125, shipped languages should not fall back to English',
+);
+
+check(
+  'the corpus is typed by the key, so a hole is a compile error',
+  /HouseCuspKey = `natalHouseCuspInterpretation_\$\{HouseNumber\}_\$\{HouseCuspSign\}`/.test(
+    code.cuspTypes,
+  ) && /Record<HouseCuspKey, string>/.test(code.cuspTypes),
+  'a Record over the template literal type is what makes 144 an obligation',
+);
+check(
+  'both corpora are checked against that type',
+  /Record<HouseCuspLocale, HouseCuspCorpus>/.test(code.cuspContract),
+);
+
+// The resolver refuses rather than guessing.
+check(
+  'an unknown house or sign returns null, not a default reading',
+  /if \(house === null \|\| sign === null\) return null;/.test(code.cuspResolver),
+  'a default interpretation is a plausible value standing in for an absent one',
+);
+check(
+  'a partial cusp array returns null — twelve or nothing',
+  /cuspSigns\.length !== 12\) return null/.test(code.cuspResolver),
+);
+check(
+  'the language fallback is stated rather than silent',
+  /isFallback/.test(code.cuspResolver),
+  'English shown to a German reader is fine; pretending it is German is not',
+);
+
+// Both screens gate on cusps that were actually computed.
+for (const key of ['webScreen', 'mobileScreen']) {
+  check(
+    `${FILES[key]}: readings are built only from trustworthy cusps`,
+    /cuspSigns[\s\S]{0,60}resolveHouseCuspInterpretations\(cuspSigns/.test(code[key]),
+    'cuspSigns is null without both the birth time and the birthplace',
+  );
+  check(
+    `${FILES[key]}: and rendered only when they exist`,
+    /houseCuspReadings (\?|&&)/.test(code[key]),
+  );
+  check(
+    `${FILES[key]}: names the house system where the houses are`,
+    /natalHousesSystemNote/.test(code[key]),
+    'Equal House was named only in the MC copy, in the other column',
+  );
+  check(
+    `${FILES[key]}: labels the block instead of dropping prose in`,
+    /natalHouseCuspColorsTitle/.test(code[key]),
+  );
+}
+
+// The chrome IS translated, in all eight. The corpus is not, and must not
+// quietly become 144 English strings sitting in eight files.
+for (const locale of LOCALES) {
+  for (const file of [`apps/web/messages/${locale}.json`, `apps/mobile/locales/${locale}.json`]) {
+    const json = read(file);
+    for (const key of [
+      'natalHouseCuspColorsTitle',
+      'natalHousesSystemNote',
+      'natalHouseCuspInterpretationLanguageNote',
+    ]) {
+      check(`${file}: has ${key}`, json.includes(`"${key}"`), 'a missing key renders as one');
+    }
+    check(
+      `${file}: carries no corpus entry`,
+      !json.includes('natalHouseCuspInterpretation_'),
+      'the corpus lives in packages/shared; eight copies is untranslatable debt',
+    );
+  }
+}
+
+// Voice. The vitest suite checks this exhaustively; this is the copy of it that
+// runs in the build, because the corpus is the part a future edit will touch.
+const BANNED_CUSP_COPY = {
+  cuspEn: ['always', 'never', 'destiny', 'soulmate', 'guaranteed', 'perfect match'],
+  cuspFr: ['toujours', 'jamais', 'destin', 'garanti'],
+};
+for (const [key, words] of Object.entries(BANNED_CUSP_COPY)) {
+  // Entry VALUES only: the file header names these words to forbid them, and a
+  // guard that punishes documenting a rule gets the documentation deleted.
+  const lines = raw[key].match(/^\s{4}'.*',$/gm) ?? [];
+  // A guard that matches nothing passes vacuously. That has bitten this file
+  // before, so the extraction itself is asserted rather than trusted.
+  check(
+    `${FILES[key]}: the value extraction found all 144 entries`,
+    lines.length === 144,
+    `matched ${lines.length}`,
+  );
+  const values = lines.join('\n').toLowerCase();
+  const offenders = words.filter((w) => values.includes(w));
+  check(
+    `${FILES[key]}: no deterministic vocabulary`,
+    offenders.length === 0,
+    offenders.join(', '),
+  );
+}
+
+// The other six languages are BUILT rather than written out: `content-localized.ts`
+// composes a house phrase with a sign phrase per locale. A text scan cannot see
+// the result, so this one runs the builder. `content-localized.ts` imports only
+// types, which Node's type stripping erases, so it loads with no bundler.
+const LOCALIZED_CUSP_LOCALES = ['es', 'pt', 'de', 'ja', 'zh', 'ar'];
+const localizedCusps = await import(
+  pathToFileURL(path.join(ROOT, FILES.cuspLocalized)).href
+);
+for (const locale of LOCALIZED_CUSP_LOCALES) {
+  const corpus = localizedCusps[`HOUSE_CUSP_CONTENT_${locale.toUpperCase()}`];
+  const entries = corpus ? Object.entries(corpus) : [];
+  check(`${locale}: the builder produced 144 entries`, entries.length === 144, `got ${entries.length}`);
+  check(
+    `${locale}: every key is one the twelve houses can reach`,
+    entries.every(([k]) => CUSP_KEYS.includes(k)),
+  );
+  // A short table — eleven house phrases instead of twelve — would not throw.
+  // It would interpolate the string "undefined" into twelve entries and ship.
+  const broken = entries.filter(
+    ([, text]) => typeof text !== 'string' || text.length < 20 || text.includes('undefined'),
+  );
+  check(`${locale}: no entry built from a missing phrase`, broken.length === 0, broken.slice(0, 3).map(([k]) => k).join(', '));
+  check(
+    `${locale}: the 144 entries are distinct`,
+    new Set(entries.map(([, t]) => t)).size === 144,
+  );
+}
+
+// --- report ------------------------------------------------------------------
+// `process.exitCode`, not `process.exit()`. This script now loads a module with
+// a dynamic `import()`, and tearing the process down while that handle is still
+// closing trips a libuv assertion on Windows: the run exits 127 with every
+// check green, roughly every other time. Setting the code and letting the event
+// loop drain is both correct and deterministic.
+if (failures === 0) {
+  console.log(`\nNatal chart integrity guards look clean: ${checks} checks passed.`);
+  process.exitCode = 0;
+} else {
+  console.error(`\n${failures} of ${checks} natal integrity guard(s) failed.`);
+  process.exitCode = 1;
+}

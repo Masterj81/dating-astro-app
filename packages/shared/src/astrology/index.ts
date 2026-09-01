@@ -26,6 +26,10 @@ export * from './rising';
 // Whether houses may be shown at all. Stricter than `rising`: the ascendant
 // needs the birth clock, the houses need the clock AND the birthplace.
 export * from './houses';
+// Sign-on-cusp interpretations. Content, not geometry: it says what "Cancer on
+// the 10th cusp" means, and returns null rather than a default for anything it
+// was not given real data for.
+export * from './house-cusps';
 // Drawable coordinates for the chart wheel. Geometry only — the SVG (web)
 // and View-based (mobile) renderers share it so the two wheels cannot place
 // the same planet in different sectors.
