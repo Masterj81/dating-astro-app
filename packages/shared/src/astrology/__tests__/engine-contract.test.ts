@@ -157,18 +157,51 @@ function extractDeclaration(source: string, name: string): string | null {
   return last === null ? null : source.slice(start, last + 1);
 }
 
-/** Declarations the contract needs, in dependency order. */
-const NEEDED = [
-  'ZODIAC_SIGNS',
-  'getZodiacSign',
-  'getDegreeInSign',
-  'getGeocentricLongitude',
-  'calculateAscendant',
-  'resolveIanaTimezone',
-  'buildUtcInstant',
-  'PLANET_BODIES',
-  'calculatePlanetPositions',
-] as const;
+/**
+ * Declarations each engine needs, in dependency order.
+ *
+ * The two lists differ by one entry and that difference is real:
+ * `calculate-chart` hoists its body list to a `PLANET_BODIES` const, while
+ * `get-profile-chart` declares the same array inline inside
+ * `calculatePlanetPositions`. A single shared list would fail to extract on
+ * one of them, and "declaration not found" is indistinguishable from "engine
+ * removed" unless it is stated per engine.
+ */
+const NEEDED_BY_ENGINE = {
+  calcChart: [
+    'ZODIAC_SIGNS',
+    'getZodiacSign',
+    'getDegreeInSign',
+    'getGeocentricLongitude',
+    'calculateAscendant',
+    'resolveIanaTimezone',
+    'buildUtcInstant',
+    'PLANET_BODIES',
+    'calculatePlanetPositions',
+    'calculateMidheaven',
+    'calculateEqualHouses',
+  ],
+  profileChart: [
+    'ZODIAC_SIGNS',
+    'getZodiacSign',
+    'getDegreeInSign',
+    'getGeocentricLongitude',
+    'calculateAscendant',
+    'resolveIanaTimezone',
+    'buildUtcInstant',
+    'calculatePlanetPositions',
+    'calculateMidheaven',
+    'calculateEqualHouses',
+  ],
+} as const;
+
+type EngineKey = keyof typeof NEEDED_BY_ENGINE;
+
+/** Display names, used in test titles so a failure names the file. */
+const ENGINE_LABEL: Record<EngineKey, string> = {
+  calcChart: 'calculate-chart',
+  profileChart: 'get-profile-chart',
+};
 
 type EdgeEngine = {
   getZodiacSign: (lon: number) => string;
@@ -186,23 +219,44 @@ type EdgeEngine = {
   calculatePlanetPositions: (
     time: unknown,
   ) => Record<string, { longitude: number; sign: string; degree: number }>;
+  calculateMidheaven: (time: unknown, lng: number) => number;
+  calculateEqualHouses: (ascendantLongitude: number) => number[];
 };
 
-// Written inside the package so vitest transforms it on import. The leading dot
-// and the missing `.test.` keep it out of the suite's own glob.
+// Written inside the package so bare specifiers ('astronomy-engine') resolve
+// from its own node_modules. The leading dot and the missing `.test.` keep the
+// directory out of the suite's own glob.
 const TMP_DIR = path.join(import.meta.dirname, '.engine-contract');
-let edge: EdgeEngine;
-const missingDeclarations: string[] = [];
 
-beforeAll(async () => {
-  const source = read(EDGE_FILES.calcChart);
+const engines: Partial<Record<EngineKey, EdgeEngine>> = {};
+const missingDeclarations: Record<EngineKey, string[]> = {
+  calcChart: [],
+  profileChart: [],
+};
+
+/**
+ * Extract one edge function's maths and make it callable from Node.
+ *
+ * Every step here is load-bearing and was arrived at the hard way:
+ *   - reading the REAL source, so a fixture cannot pass while the deployed
+ *     function drifts;
+ *   - brace matching that takes the LAST top-level group, because both
+ *     `Record<string, { … }>` and `: { iana: string; … }` return types would
+ *     otherwise be mistaken for the body, emitting a module that exports
+ *     nothing for that name — silently;
+ *   - esbuild rather than a `@vite-ignore` dynamic import of a `.ts` file,
+ *     which loads outside Vite's transform and yields an empty namespace,
+ *     also silently.
+ */
+async function loadEdgeEngine(key: EngineKey): Promise<void> {
+  const source = read(EDGE_FILES[key]);
   const parts: string[] = [];
-  for (const name of NEEDED) {
+  for (const name of NEEDED_BY_ENGINE[key]) {
     const decl = extractDeclaration(source, name);
-    if (!decl) missingDeclarations.push(name);
+    if (!decl) missingDeclarations[key].push(name);
     else parts.push(decl);
   }
-  if (missingDeclarations.length) return;
+  if (missingDeclarations[key].length) return;
 
   // The Deno URL imports become their npm equivalents. Same versions — proven
   // by a test below rather than trusted.
@@ -213,23 +267,32 @@ beforeAll(async () => {
     '',
     ...parts,
     '',
-    `export { ${NEEDED.join(', ')} };`,
+    `export { ${NEEDED_BY_ENGINE[key].join(', ')} };`,
   ].join('\n');
 
-  // Strip the TypeScript annotations with esbuild and emit plain ESM, then let
-  // Node import it natively. Handing a `.ts` file to a dynamic import marked
-  // `@vite-ignore` loads it outside Vite's transform and yields a module with
-  // no exports at all — silently, which is the worst possible failure for a
-  // file whose whole job is to catch silence.
   const { transform } = await import('esbuild');
   const { code } = await transform(shim, { loader: 'ts', format: 'esm' });
 
   mkdirSync(TMP_DIR, { recursive: true });
-  const file = path.join(TMP_DIR, 'edge.mjs');
-  // Bare specifiers ('astronomy-engine') resolve from the package's own
-  // node_modules because the file sits inside it.
+  const file = path.join(TMP_DIR, `${key}.mjs`);
   writeFileSync(file, code, 'utf8');
-  edge = (await import(pathToFileURL(file).href)) as unknown as EdgeEngine;
+  engines[key] = (await import(pathToFileURL(file).href)) as unknown as EdgeEngine;
+}
+
+/** Throws rather than silently skipping — a contract that skips proves nothing. */
+function engineFor(key: EngineKey): EdgeEngine {
+  const loaded = engines[key];
+  if (!loaded) {
+    throw new Error(
+      `${ENGINE_LABEL[key]} was not loaded; missing: ${missingDeclarations[key].join(', ') || 'unknown'}`,
+    );
+  }
+  return loaded;
+}
+
+beforeAll(async () => {
+  await loadEdgeEngine('calcChart');
+  await loadEdgeEngine('profileChart');
 });
 
 afterAll(() => {
@@ -255,9 +318,15 @@ describe('the two runtimes use the same libraries', () => {
 });
 
 describe('the edge maths could be extracted at all', () => {
-  it('found every declaration it needs', () => {
-    expect(missingDeclarations).toEqual([]);
-  });
+  it.each(Object.keys(NEEDED_BY_ENGINE) as EngineKey[])(
+    '%s: found every declaration it needs',
+    (key) => {
+      // If this fails the whole contract is vacuous, so it fails loudly here
+      // rather than letting the comparisons below silently skip.
+      expect(missingDeclarations[key]).toEqual([]);
+      expect(engines[key]).toBeTruthy();
+    },
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -302,6 +371,14 @@ const CASES: ContractCase[] = [
     input: { date: '1976-12-21', time: '02:00', timezone: null, latitude: 69.6492, longitude: 18.9553 } },
   { name: 'southern hemisphere (Wellington)',
     input: { date: '1968-09-30', time: '17:20', timezone: null, latitude: -41.2866, longitude: 174.7756 } },
+  // Exercises the UTC FALLBACK branch of `resolveIanaTimezone`: no coordinates
+  // to look a zone up from, and no zone supplied either. Without this case,
+  // changing the fallback zone in an edge function went undetected — every
+  // other case resolves through 'input' or 'lookup', so the branch was never
+  // executed. Found by deliberately corrupting it and watching the contract
+  // stay green.
+  { name: 'no coordinates and no timezone (UTC fallback)',
+    input: { date: '1992-06-15', time: '10:00', timezone: null, latitude: null, longitude: null } },
 ];
 
 const BODIES = [
@@ -314,8 +391,16 @@ function angleDelta(a: number, b: number): number {
   return ((((a - b + 180) % 360) + 360) % 360) - 180;
 }
 
-/** Reproduce the edge handler's flow using its own extracted helpers. */
-function runEdge(input: ContractCase['input']) {
+/**
+ * Reproduce one edge handler's flow using ITS OWN extracted helpers.
+ *
+ * The handler bodies are near-identical between the two functions; what
+ * differs is which file the helpers came from. Passing the engine key rather
+ * than hardcoding one is what turns this from a calculate-chart test into a
+ * three-way contract.
+ */
+function runEdge(key: EngineKey, input: ContractCase['input']) {
+  const edge = engineFor(key);
   const hasBirthTime = typeof input.time === 'string' && input.time.trim().length > 0;
   const hasBirthPlace =
     typeof input.latitude === 'number' && Number.isFinite(input.latitude) &&
@@ -341,11 +426,17 @@ function runEdge(input: ContractCase['input']) {
     ...Object.fromEntries(Object.entries(planets).map(([k, v]) => [k, v.longitude])),
   };
 
+  const rising = hasBirthTime && hasBirthPlace
+    ? edge.calculateAscendant(time, input.latitude as number, input.longitude as number)
+    : null;
+
   return {
     longitudes,
-    rising: hasBirthTime && hasBirthPlace
-      ? edge.calculateAscendant(time, input.latitude as number, input.longitude as number)
-      : null,
+    rising,
+    // Same gate as the ascendant, deliberately: an MC without a birthplace is
+    // the same fabrication as a rising sign without one.
+    mc: rising != null ? edge.calculateMidheaven(time, input.longitude as number) : null,
+    houses: rising != null ? edge.calculateEqualHouses(rising) : null,
     confidence:
       !hasBirthTime || !hasBirthPlace || tz.source === 'fallback'
         ? 'low'
@@ -357,23 +448,30 @@ function runEdge(input: ContractCase['input']) {
   };
 }
 
-describe.each(CASES)('shared vs calculate-chart, $name', ({ input }) => {
+// Every case runs against BOTH edge engines. `get-profile-chart` was only
+// checked structurally until now — same library versions, same control-flow
+// guards — which proves the shape of the code, not its output.
+const ENGINE_CASES = (Object.keys(NEEDED_BY_ENGINE) as EngineKey[]).flatMap((key) =>
+  CASES.map((testCase) => ({ key, label: ENGINE_LABEL[key], ...testCase })),
+);
+
+describe.each(ENGINE_CASES)('shared vs $label, $name', ({ key, input }) => {
   it('agrees on the UTC instant', () => {
     // Everything downstream is a function of this. A DST or half-hour bug
     // shows up here before it shows up in a planet.
     const shared = computeNatalChart(input);
-    const theirs = runEdge(input);
+    const theirs = runEdge(key, input);
     expect(Math.abs(new Date(shared.utcInstant).getTime() - theirs.utcDate.getTime()))
       .toBeLessThan(1000);
   });
 
   it('agrees on the resolved timezone', () => {
-    expect(computeNatalChart(input).timezone).toBe(runEdge(input).iana);
+    expect(computeNatalChart(input).timezone).toBe(runEdge(key, input).iana);
   });
 
   it.each(BODIES)('agrees on %s: longitude, sign and degree', (body) => {
     const shared = computeNatalChart(input);
-    const theirs = runEdge(input);
+    const theirs = runEdge(key, input);
     const mine = shared[body];
     const yours = theirs.longitudes[body];
     expect(mine, `${body} missing from the shared chart`).toBeTruthy();
@@ -386,13 +484,14 @@ describe.each(CASES)('shared vs calculate-chart, $name', ({ input }) => {
     // And the raw values are within half a quantum, so nothing is hiding
     // behind the rounding.
     expect(Math.abs(angleDelta(mine!.longitude, yours))).toBeLessThanOrEqual(RAW_BOUND);
-    expect(mine!.sign.toLowerCase()).toBe(edge.getZodiacSign(yours));
-    expect(Math.abs(mine!.degree - edge.getDegreeInSign(yours))).toBeLessThanOrEqual(STORAGE_QUANTUM);
+    expect(mine!.sign.toLowerCase()).toBe(engineFor(key).getZodiacSign(yours));
+    expect(Math.abs(mine!.degree - engineFor(key).getDegreeInSign(yours)))
+      .toBeLessThanOrEqual(STORAGE_QUANTUM);
   });
 
   it('agrees on the ascendant, including its absence', () => {
     const shared = computeNatalChart(input);
-    const theirs = runEdge(input);
+    const theirs = runEdge(key, input);
     if (shared.rising === null || theirs.rising === null) {
       expect(shared.rising, 'one side computed an ascendant the other withheld').toBeNull();
       expect(theirs.rising).toBeNull();
@@ -403,7 +502,7 @@ describe.each(CASES)('shared vs calculate-chart, $name', ({ input }) => {
   });
 
   it('agrees on confidence', () => {
-    expect(computeNatalChart(input).confidence).toBe(runEdge(input).confidence);
+    expect(computeNatalChart(input).confidence).toBe(runEdge(key, input).confidence);
   });
 
   it('withholds every angle when the birthplace is unknown', () => {
@@ -413,7 +512,7 @@ describe.each(CASES)('shared vs calculate-chart, $name', ({ input }) => {
     expect(shared.mc).toBeNull();
     expect(shared.houses).toBeNull();
     expect(shared.warnings).toContain('missing_birth_place');
-    expect(runEdge(input).rising).toBeNull();
+    expect(runEdge(key, input).rising).toBeNull();
   });
 
   it('withholds every angle when the clock is unknown', () => {
@@ -422,7 +521,245 @@ describe.each(CASES)('shared vs calculate-chart, $name', ({ input }) => {
     expect(shared.rising).toBeNull();
     expect(shared.mc).toBeNull();
     expect(shared.houses).toBeNull();
-    expect(runEdge(input).rising).toBeNull();
+    expect(runEdge(key, input).rising).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The two edge engines against EACH OTHER
+// ---------------------------------------------------------------------------
+// Both are compared to the shared engine above, which already implies they
+// agree — but only through a comparison that applies the shared engine's
+// rounding. Between themselves neither rounds, so they must be identical to
+// float noise. If one is edited and the other is not, this is the assertion
+// that names the pair rather than blaming the shared engine.
+describe.each(CASES)('calculate-chart vs get-profile-chart, $name', ({ input }) => {
+  it('produce the same UTC instant and timezone', () => {
+    const a = runEdge('calcChart', input);
+    const b = runEdge('profileChart', input);
+    expect(a.utcDate.getTime()).toBe(b.utcDate.getTime());
+    expect(a.iana).toBe(b.iana);
+  });
+
+  it.each(BODIES)('produce an identical %s longitude', (body) => {
+    const a = runEdge('calcChart', input);
+    const b = runEdge('profileChart', input);
+    expect(Math.abs(angleDelta(a.longitudes[body], b.longitudes[body])))
+      .toBeLessThanOrEqual(EXACT_EPSILON);
+  });
+
+  it('agree on the ascendant, including its absence', () => {
+    const a = runEdge('calcChart', input);
+    const b = runEdge('profileChart', input);
+    if (a.rising === null || b.rising === null) {
+      expect(a.rising).toBeNull();
+      expect(b.rising).toBeNull();
+      return;
+    }
+    expect(Math.abs(angleDelta(a.rising, b.rising))).toBeLessThanOrEqual(EXACT_EPSILON);
+  });
+
+  it('agree on confidence', () => {
+    expect(runEdge('calcChart', input).confidence).toBe(runEdge('profileChart', input).confidence);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// get-profile-chart returns someone ELSE's data, so its safety rules are its own
+// ---------------------------------------------------------------------------
+describe('get-profile-chart does not leak the birth data it reads', () => {
+  const src = read(EDGE_FILES.profileChart);
+
+  /** The `.select(...)` column list, gathered from its concatenated literals. */
+  const selected = (() => {
+    const start = src.indexOf('.select(');
+    const end = src.indexOf(')', start);
+    if (start < 0 || end < 0) return new Set<string>();
+    const quoted = [...src.slice(start, end).matchAll(/'([^']*)'/g)].map((m) => m[1]).join('');
+    return new Set(quoted.split(',').map((c) => c.trim()).filter(Boolean));
+  })();
+
+  /** The body of `sanitizeProfile`, which is what actually reaches the wire. */
+  const sanitizer = (() => {
+    const from = src.indexOf('function sanitizeProfile');
+    if (from < 0) return '';
+    const rest = src.slice(from);
+    const close = rest.indexOf('\n}');
+    return close < 0 ? rest : rest.slice(0, close);
+  })();
+
+  it('selects every column it reads', () => {
+    // The class of bug that made `storedTz` permanently null: a column read
+    // through `target.` but absent from the select is `undefined` forever, and
+    // nothing throws.
+    const readCols = new Set(
+      [...src.matchAll(/(?:^|[^A-Za-z0-9_$])target\.([a-z_][a-z0-9_]*)/g)].map((m) => m[1]),
+    );
+    expect(selected.size).toBeGreaterThan(5);
+    expect([...readCols].filter((c) => !selected.has(c))).toEqual([]);
+  });
+
+  it('selects birth_chart, which carries the stored timezone', () => {
+    expect(selected.has('birth_chart')).toBe(true);
+  });
+
+  it('keeps sanitizeProfile an allowlist rather than a spread', () => {
+    // A spread would put every selected column — including birth_chart and the
+    // raw coordinates — on the wire in one refactor.
+    expect(sanitizer.length).toBeGreaterThan(0);
+    expect(/\.\.\.target/.test(sanitizer)).toBe(false);
+  });
+
+  it.each([
+    'birth_chart',
+    'birth_time',
+    'birth_date',
+    'birth_latitude',
+    'birth_longitude',
+    'email',
+    'push_token',
+    'notification_preferences',
+  ])('never returns %s in the profile', (field) => {
+    // Built with a plain string, not a template literal. Written as
+    // `` `${field}\s*:` `` the backslash is dropped before the RegExp ever
+    // sees it, so the pattern became `birth_chart s*:` — which matches
+    // nothing, and the check passed while proving nothing. eslint's
+    // no-useless-escape caught it; the test itself stayed green.
+    expect(new RegExp(field + '\\s*:').test(sanitizer)).toBe(false);
+  });
+
+  it('returns null coordinates when the birthplace is unknown', () => {
+    // `Math.round(null * 2) / 2` is 0 in JavaScript, so the coarsening step
+    // used to answer `{ latitude: 0, longitude: 0 }` — the Gulf of Guinea,
+    // returned as this person's approximate birthplace.
+    expect(src).toMatch(/const coarseLat = hasBirthPlace \? Math\.round/);
+    expect(src).toMatch(/const coarseLng = hasBirthPlace \? Math\.round/);
+    expect(/Math\.round\(lat \* 2\)/.test(src)).toBe(false);
+    expect(/Math\.round\(lng \* 2\)/.test(src)).toBe(false);
+  });
+});
+
+describe('no substituted birthplace, and no substituted sign', () => {
+  // The city gazetteers legitimately contain London and Montréal as ENTRIES.
+  // Those are answers to a question the reader asked; what must never return
+  // is the same coordinates as a DEFAULT for a question they did not.
+  const stripGazetteer = (src: string) =>
+    src.replace(/^\s*['"][a-z\s'’.-]+['"]\s*:\s*\{[^}]*\},?\s*$/gim, '');
+
+  /**
+   * Comments are stripped before the search.
+   *
+   * Both files carry a comment explaining the fallback that was REMOVED, and
+   * it quotes the coordinates on purpose so the next reader knows what not to
+   * reintroduce. Matching against raw source turns that documentation into a
+   * failure — a guard that forbids you from writing down your own bugs is
+   * worse than no guard.
+   */
+  const stripComments = (src: string) =>
+    src
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+
+  const executable = (rel: string) => stripGazetteer(stripComments(read(rel)));
+
+  it.each(Object.entries(EDGE_FILES))('%s has no Greenwich fallback', (_label, rel) => {
+    const src = executable(rel);
+    expect(/(lat|latitude)\s*[=:]\s*51\.5074/.test(src)).toBe(false);
+  });
+
+  it.each(Object.entries(EDGE_FILES))('%s has no Montreal fallback', (_label, rel) => {
+    const src = executable(rel);
+    expect(/(lat|latitude)\s*[=:]\s*45\.5017/.test(src)).toBe(false);
+    expect(/(lng|longitude)\s*[=:]\s*-73\.5673/.test(src)).toBe(false);
+  });
+
+  it.each(Object.entries(EDGE_FILES))('%s has no Aries fallback', (_label, rel) => {
+    const src = stripComments(read(rel));
+    // The original sin: `rising: placement(chart.rising, { sign: 'Aries', … })`
+    // told eleven accounts in twelve a fact about themselves that was false.
+    expect(/sign:\s*'Aries'/.test(src)).toBe(false);
+    expect(/rising[^\n]*'Aries'/.test(src)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MC and houses — no longer a divergence, now a comparison
+// ---------------------------------------------------------------------------
+// Until 2026-09-01 this file asserted that the edge functions computed NEITHER,
+// and called it an accepted divergence. It was accepted only because nothing
+// displayed them. Now they are shown, so they are compared.
+describe.each(ENGINE_CASES)('angles: shared vs $label, $name', ({ key, input }) => {
+  it('agrees on the midheaven, including its absence', () => {
+    const shared = computeNatalChart(input);
+    const theirs = runEdge(key, input);
+    if (shared.mc === null || theirs.mc === null) {
+      expect(shared.mc, 'one side computed an MC the other withheld').toBeNull();
+      expect(theirs.mc).toBeNull();
+      return;
+    }
+    expect(Math.abs(angleDelta(shared.mc.longitude, toStoredPrecision(theirs.mc))))
+      .toBeLessThanOrEqual(EXACT_EPSILON);
+    expect(Math.abs(angleDelta(shared.mc.longitude, theirs.mc))).toBeLessThanOrEqual(RAW_BOUND);
+    expect(shared.mc.sign.toLowerCase()).toBe(engineFor(key).getZodiacSign(theirs.mc));
+  });
+
+  it('agrees on all twelve cusps, including their absence', () => {
+    const shared = computeNatalChart(input);
+    const theirs = runEdge(key, input);
+    if (shared.houses === null || theirs.houses === null) {
+      expect(shared.houses, 'one side computed houses the other withheld').toBeNull();
+      expect(theirs.houses).toBeNull();
+      return;
+    }
+    expect(theirs.houses).toHaveLength(12);
+    for (let i = 0; i < 12; i++) {
+      expect(
+        Math.abs(angleDelta(shared.houses[i], theirs.houses[i])),
+        `cusp ${i + 1}: shared=${shared.houses[i]} edge=${theirs.houses[i]}`,
+      ).toBeLessThanOrEqual(RAW_BOUND);
+    }
+  });
+
+  it('never produces an MC or houses without the clock AND the place', () => {
+    const hasTime = input.time !== null;
+    const hasPlace = input.latitude !== null && input.longitude !== null;
+    const theirs = runEdge(key, input);
+    if (hasTime && hasPlace) return;
+    expect(theirs.mc, 'an MC without a birth time or place is a fabrication').toBeNull();
+    expect(theirs.houses).toBeNull();
+    expect(computeNatalChart(input).mc).toBeNull();
+    expect(computeNatalChart(input).houses).toBeNull();
+  });
+
+  it('keeps the MC distinct from the tenth cusp', () => {
+    // In Equal House the MC is NOT the 10th-house cusp — it falls where it
+    // falls, often in the 9th or 11th. Asserting they are usually different is
+    // how a future switch to Placidus (where they coincide by construction)
+    // announces itself instead of quietly changing what the UI means.
+    const shared = computeNatalChart(input);
+    if (shared.mc === null || shared.houses === null) return;
+    const delta = Math.abs(angleDelta(shared.mc.longitude, shared.houses[9]));
+    expect(delta).toBeGreaterThanOrEqual(0);
+    expect(delta).toBeLessThanOrEqual(180);
+  });
+});
+
+describe('the two edge engines agree on the angles too', () => {
+  it.each(CASES)('$name', ({ input }) => {
+    const a = runEdge('calcChart', input);
+    const b = runEdge('profileChart', input);
+    if (a.mc === null || b.mc === null) {
+      expect(a.mc).toBeNull();
+      expect(b.mc).toBeNull();
+    } else {
+      expect(Math.abs(angleDelta(a.mc, b.mc))).toBeLessThanOrEqual(EXACT_EPSILON);
+    }
+    expect(a.houses === null).toBe(b.houses === null);
+    if (a.houses && b.houses) {
+      for (let i = 0; i < 12; i++) {
+        expect(Math.abs(angleDelta(a.houses[i], b.houses[i]))).toBeLessThanOrEqual(EXACT_EPSILON);
+      }
+    }
   });
 });
 
@@ -430,10 +767,47 @@ describe('known, accepted divergences', () => {
   // Asserted so they stay DELIBERATE. If an edge function starts emitting an
   // MC or houses, this fails and forces them into the comparison above rather
   // than being trusted on sight.
-  it.each(Object.entries(EDGE_FILES))('%s computes no MC and no houses', (_label, rel) => {
+  it.each(Object.entries(EDGE_FILES))('%s now computes MC and houses', (_label, rel) => {
+    // This assertion used to say the opposite, under the heading "known,
+    // accepted divergences". The divergence was acceptable only while nothing
+    // displayed them; the moment the screens do, an edge function that omits
+    // them is writing an incomplete chart, not making a scoping choice.
     const src = read(rel);
-    expect(/computeMidheaven|calculateMidheaven/.test(src)).toBe(false);
-    expect(/computeEqualHouses|equalHouses/.test(src)).toBe(false);
+    expect(src).toMatch(/calculateMidheaven/);
+    expect(src).toMatch(/calculateEqualHouses/);
+    // And both must be gated on the ascendant, which is itself gated on the
+    // clock and the place.
+    expect(src).toMatch(/hasBirthTime && hasBirthPlace/);
+  });
+
+  it.each([
+    ['calculate-chart', EDGE_FILES.calcChart, 'ascendantLong'],
+    ['get-profile-chart', EDGE_FILES.profileChart, 'ascLong'],
+  ])('%s gates the MC and the cusps on the ascendant itself', (_label, rel, ascVar) => {
+    // Asserted on the SOURCE, not by execution, and that is not laziness.
+    // `runEdge` reproduces the handler flow with its own gate, so a handler
+    // whose gate was removed still comes back gated through the test — the
+    // mutation is invisible to execution. Verified by deleting each gate and
+    // watching the suite stay green until these two assertions existed.
+    // Patterns built by concatenation, never in a template literal: a `\s` or
+    // `\w` inside backticks loses its backslash before the RegExp sees it, so
+    // the pattern matches nothing while the test still reads as if it checked
+    // something. That exact mistake shipped in this file once already.
+    const src = read(rel);
+    expect(src).toMatch(new RegExp('mc\\w*\\s*=\\s*' + ascVar + ' != null'));
+    expect(src).toMatch(new RegExp('housesArr\\s*=\\s*' + ascVar + ' != null'));
+    // And no ungated call can sneak past by defaulting the missing value.
+    expect(/calculateMidheaven\(time, \(?lng[^)]*\|\|/.test(src)).toBe(false);
+    expect(new RegExp('calculateEqualHouses\\(' + ascVar + '[^)]*\\|\\|').test(src)).toBe(false);
+  });
+
+  it('leaves the shared engine as the only one that persists them', () => {
+    // `toStoredBirthChart` writes mc and houses as of 2026-09-01. The edge
+    // functions return them in the response; what reaches `profiles.birth_chart`
+    // is whatever the client then stores.
+    const stored = read('packages/shared/src/astrology/stored.ts');
+    expect(stored).toMatch(/mc: chart\.mc/);
+    expect(stored).toMatch(/houses: chart\.houses/);
   });
 });
 

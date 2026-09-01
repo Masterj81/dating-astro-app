@@ -715,6 +715,96 @@ for (const locale of LOCALES) {
   check(`${locale}: synastry copy promises nothing`, offenders.length === 0, offenders.join(', '));
 }
 
+// --- the angles are shown, and only when they are real ------------------------
+// The MC was computed by the shared engine and displayed by nothing, while the
+// edge functions did not compute it at all — so a chart written through web
+// onboarding lost its midheaven permanently. Unlike equal-house cusps, an MC
+// cannot be rebuilt from the ascendant afterwards.
+console.log('the angles, and the honest absence of them');
+
+check(
+  'the trusted-midheaven helper exists',
+  /export function resolveTrustedMidheaven/.test(code.houses),
+);
+check(
+  'it applies the same gate as the houses',
+  /if \(!areHousesTrustworthy\(input\)\) return null;/.test(
+    code.houses.slice(code.houses.indexOf('export function resolveTrustedMidheaven')),
+  ),
+  'an MC without a birthplace is the same fabrication as a rising sign without one',
+);
+check(
+  'the MC is never rebuilt from the ascendant',
+  !/resolveRisingLongitude/.test(
+    code.houses.slice(code.houses.indexOf('export function resolveTrustedMidheaven')).slice(0, 900),
+  ),
+  'equal-house cusps derive from the ascendant; the midheaven does not',
+);
+check(
+  'MC-versus-tenth-cusp is checked, never assumed',
+  /export function mcIsTenthCusp/.test(code.houses),
+  'they coincide in Placidus and Koch, not in Equal House',
+);
+check(
+  'the stored chart now persists mc and houses',
+  /mc: chart\.mc/.test(code.stored) && /houses: chart\.houses/.test(code.stored),
+);
+
+for (const key of ['mobileScreen', 'webScreen']) {
+  check(
+    `${FILES[key]}: renders the midheaven behind resolveTrustedMidheaven`,
+    /resolveTrustedMidheaven\(/.test(code[key]) && /natalMidheavenLabel/.test(code[key]),
+  );
+  check(
+    `${FILES[key]}: says the MC is not the tenth cusp in equal house`,
+    /natalMidheavenNotTenthCusp/.test(code[key]) && /mcIsTenthCusp\(/.test(code[key]),
+    'a screen that shows both must not let the reader assume they are one point',
+  );
+  check(
+    `${FILES[key]}: the angles card explains its own absence`,
+    /natalAnglesNeedBirthData/.test(code[key]),
+  );
+  check(
+    `${FILES[key]}: planets per house come from planetsByHouse`,
+    /planetsByHouse\(/.test(code[key]) && /natalPlanetsInHouse/.test(code[key]),
+    'a planet may only be placed from a real longitude against trustworthy cusps',
+  );
+  check(
+    `${FILES[key]}: an empty house is said to be empty`,
+    /natalNoPlanetsInHouse/.test(code[key]),
+    'the alternative is a house that quietly acquires a plausible planet',
+  );
+}
+
+const ANGLE_KEYS = [
+  'natalAnglesTitle',
+  'natalAnglesBody',
+  'natalMidheavenLabel',
+  'natalMidheavenMeaning',
+  'natalRisingMeaning',
+  'natalMidheavenNotTenthCusp',
+  'natalMidheavenOnTenthCusp',
+  'natalAnglesNeedBirthData',
+  'natalPlanetsInHouse',
+  'natalNoPlanetsInHouse',
+];
+for (const locale of LOCALES) {
+  const webFile = path.join(ROOT, 'apps/web/messages', `${locale}.json`);
+  const mobileFile = path.join(ROOT, 'apps/mobile/locales', `${locale}.json`);
+  if (!existsSync(webFile) || !existsSync(mobileFile)) continue;
+  const web = JSON.parse(readFileSync(webFile, 'utf8')).webApp ?? {};
+  const mobile = JSON.parse(readFileSync(mobileFile, 'utf8'));
+  for (const [name, bag] of [['web', web], ['mobile', mobile]]) {
+    const missing = ANGLE_KEYS.filter((k) => typeof bag[k] !== 'string' || !bag[k].trim());
+    check(`${locale}: ${name} angles copy present`, missing.length === 0, missing.join(', '));
+  }
+  const offenders = ANGLE_KEYS.filter((key) => {
+    const value = web[key];
+    return typeof value === 'string' && BANNED_SYNASTRY.some((p) => p.test(value));
+  });
+  check(`${locale}: angles copy promises nothing`, offenders.length === 0, offenders.join(', '));
+}
+
 // --- the CTA is shown, and only to the right people --------------------------
 console.log('the confirm-your-birth-city CTA');
 

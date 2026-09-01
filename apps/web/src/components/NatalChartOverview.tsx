@@ -6,6 +6,9 @@ import { Link } from "@/i18n/navigation";
 import {
   houseOfLongitude,
   hydrateStoredChart,
+  mcIsTenthCusp,
+  planetsByHouse,
+  resolveTrustedMidheaven,
   resolveBirthDataState,
   resolveHouseCusps,
   resolveTrustedRisingSign,
@@ -155,6 +158,12 @@ type ChartReading = {
   birthDataState: BirthDataState;
   /** True when an ascendant was set aside and the birth city would restore it. */
   needsLocationConfirmation: boolean;
+  /** The midheaven, when the clock and the place both prove it. */
+  mc: { sign: string; degree: number } | null;
+  /** In equal house the MC is usually NOT the tenth cusp. Never assumed. */
+  mcIsTenth: boolean;
+  /** Which planets sit in each house, 1–12. Empty when there are no cusps. */
+  planetsPerHouse: Map<number, string[]>;
 };
 
 const PLANET_ORDER: readonly PlanetKey[] = [
@@ -199,6 +208,7 @@ function readChart(
   // gave a birth time is not in this state: the city would not help them, and
   // asking would send them to fix the wrong field.
   const needsLocationConfirmation = risingNeedsLocationConfirmation(trustInput);
+  const mcPlacement = resolveTrustedMidheaven(trustInput);
   // Null unless the clock AND the birthplace are both proven. Everything
   // house-shaped below is downstream of this one value.
   const cusps = resolveHouseCusps(trustInput);
@@ -252,7 +262,25 @@ function readChart(
     } satisfies PlanetPosition;
   }).filter((position): position is PlanetPosition => position !== null);
 
-  return { positions, cusps, cuspSigns, birthDataState, needsLocationConfirmation };
+  return {
+    positions,
+    cusps,
+    cuspSigns,
+    birthDataState,
+    needsLocationConfirmation,
+    mc: mcPlacement ? { sign: mcPlacement.sign, degree: Math.round(mcPlacement.degree) } : null,
+    mcIsTenth: mcIsTenthCusp(mcPlacement, cusps),
+    // Real longitudes only. A house with no planets renders as a house with no
+    // planets — never as a house with a plausible one.
+    planetsPerHouse: chart
+      ? new Map(
+          [...planetsByHouse(chart, cusps).entries()].map(([house, keys]) => [
+            house,
+            keys as string[],
+          ]),
+        )
+      : new Map<number, string[]>(),
+  };
 }
 
 type ServerGate = { allowed: boolean; reason: string | null };
@@ -331,10 +359,17 @@ export function NatalChartOverview() {
             cuspSigns: null,
             birthDataState: "missing_birth_time",
             needsLocationConfirmation: false,
+            mc: null,
+            mcIsTenth: false,
+            planetsPerHouse: new Map<number, string[]>(),
           } satisfies ChartReading),
     [profile, t]
   );
-  const { positions, cuspSigns, birthDataState, needsLocationConfirmation } = reading;
+  const { positions, cuspSigns, birthDataState, needsLocationConfirmation, mc, mcIsTenth, planetsPerHouse } =
+    reading;
+  // The ascendant is already gated inside `readChart`; if it is not in
+  // `positions` it must not appear in the Angles card either.
+  const risingAngle = positions.find((position) => position.key === "rising") ?? null;
 
   const elementCounts = useMemo(() => {
     return positions.reduce(
@@ -661,6 +696,69 @@ export function NatalChartOverview() {
           </ul>
         </div>
 
+        {/* Angles — the two points that need the birth clock AND the birthplace.
+            Kept OUT of the planet list on purpose: an angle is not a body, and
+            listing the MC beside Mars would say it moves through the zodiac the
+            way a planet does. */}
+        <div className="rounded-[2rem] border border-border bg-card/90 p-6">
+          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+            {t("natalAnglesTitle")}
+          </p>
+          <p className="mt-3 text-sm leading-7 text-text-muted">{t("natalAnglesBody")}</p>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            {/* Rising */}
+            <div className="rounded-[1.4rem] border border-border bg-bg/70 p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-text-dim">
+                {t("natalPlanet_rising")}
+              </p>
+              {risingAngle ? (
+                <>
+                  <p className="mt-1 text-lg font-semibold text-white">
+                    {translateSign(risingAngle.sign, locale)}
+                    {risingAngle.degree !== null ? ` ${risingAngle.degree}°` : ""}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-text-muted">
+                    {t("natalRisingMeaning")}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-2 text-sm leading-6 text-text-muted">
+                  {t("natalAnglesNeedBirthData")}
+                </p>
+              )}
+            </div>
+
+            {/* Midheaven */}
+            <div className="rounded-[1.4rem] border border-border bg-bg/70 p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-text-dim">
+                {t("natalMidheavenLabel")}
+              </p>
+              {mc ? (
+                <>
+                  <p className="mt-1 text-lg font-semibold text-white">
+                    {translateSign(mc.sign, locale)} {mc.degree}°
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-text-muted">
+                    {t("natalMidheavenMeaning")}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-2 text-sm leading-6 text-text-muted">
+                  {t("natalAnglesNeedBirthData")}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* The distinction that matters, and only when both are on screen. */}
+          {mc && cuspSigns ? (
+            <p className="mt-4 text-sm leading-7 text-text-muted">
+              {mcIsTenth ? t("natalMidheavenOnTenthCusp") : t("natalMidheavenNotTenthCusp")}
+            </p>
+          ) : null}
+        </div>
+
         {/* An ascendant we set aside.
             The value was NOT deleted — migration 20260901000002 moved it to
             `rising_sign_unconfirmed`, out of the one column the blind surfaces
@@ -750,6 +848,18 @@ export function NatalChartOverview() {
                   <p className="mt-1 text-sm leading-6 text-text-muted">
                     {t(`natalHouseMeaning_${houseNumber}`)}
                   </p>
+                  {/* Only real longitudes put a planet here. An empty house
+                      renders as an empty house — it is still a life area, and
+                      saying so beats filling it. */}
+                  {cuspSigns ? (
+                    <p className="mt-2 text-xs leading-5 text-text-dim">
+                      {(planetsPerHouse.get(houseNumber) ?? []).length > 0
+                        ? `${t("natalPlanetsInHouse")}: ${(planetsPerHouse.get(houseNumber) ?? [])
+                            .map((key) => t(`natalPlanet_${key}`))
+                            .join(" · ")}`
+                        : t("natalNoPlanetsInHouse")}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             ))}

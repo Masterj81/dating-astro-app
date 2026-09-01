@@ -2192,7 +2192,17 @@
     "synastryAspect_sextile": "セクスタイル",
     "synastryAspect_square": "スクエア",
     "synastryAspect_trine": "トライン",
-    "synastryAspect_opposition": "オポジション"
+    "synastryAspect_opposition": "オポジション",
+    "natalAnglesTitle": "アングル",
+    "natalAnglesBody": "生まれた時刻と場所の両方によって決まる二つの点です。惑星ではなく、あなたの地平線が空を切り取った位置です。",
+    "natalMidheavenLabel": "ミッドヘブン（MC）",
+    "natalMidheavenMeaning": "MCは、社会的な方向性、人からの見え方、そしてあなたが育っていく役割を示します。",
+    "natalRisingMeaning": "アセンダントは第一印象と、新しい場面への入り方を形づくります。",
+    "natalMidheavenNotTenthCusp": "イコールハウスでは、MCは独立したアングルです。必ずしも第10ハウスのカスプとは一致しません。",
+    "natalMidheavenOnTenthCusp": "この場合、MCはたまたま第10ハウスのカスプに重なっています。イコールハウスでは偶然であり、規則ではありません。",
+    "natalAnglesNeedBirthData": "出生時刻と出生地を追加すると、アセンダント、MC、ハウスを計算できます。",
+    "natalPlanetsInHouse": "このハウスの天体",
+    "natalNoPlanetsInHouse": "ここに天体はありません。それでもこのハウスは意味を持ちます。"
   },
   "invite": {
     "invalidCode": "無効な紹介コード",

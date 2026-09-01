@@ -2192,7 +2192,17 @@
     "synastryAspect_sextile": "六分相",
     "synastryAspect_square": "四分相",
     "synastryAspect_trine": "三分相",
-    "synastryAspect_opposition": "对分相"
+    "synastryAspect_opposition": "对分相",
+    "natalAnglesTitle": "四轴",
+    "natalAnglesBody": "两个同时取决于出生时刻与出生地点的点。它们不是行星，而是你的地平线切割天空之处。",
+    "natalMidheavenLabel": "天顶（MC）",
+    "natalMidheavenMeaning": "你的天顶指向公共方向、能见度，以及你逐渐长成的角色。",
+    "natalRisingMeaning": "上升星座塑造第一印象，以及你进入新情境的方式。",
+    "natalMidheavenNotTenthCusp": "在等宫制中，天顶是一个独立的轴点，并不总是第十宫的宫头。",
+    "natalMidheavenOnTenthCusp": "此处你的天顶恰好落在第十宫宫头。在等宫制中这是巧合，而非规律。",
+    "natalAnglesNeedBirthData": "补充出生时间与出生城市，即可计算上升、天顶与宫位。",
+    "natalPlanetsInHouse": "此宫内的行星",
+    "natalNoPlanetsInHouse": "此宫没有行星——这个宫位依然重要。"
   },
   "invite": {
     "invalidCode": "无效的推荐码",

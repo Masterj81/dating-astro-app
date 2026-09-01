@@ -14,6 +14,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   houseOfLongitude,
   hydrateStoredChart,
+  mcIsTenthCusp,
+  planetsByHouse,
+  resolveTrustedMidheaven,
   resolveBirthDataState,
   resolveHouseCusps,
   resolveTrustedRisingSign,
@@ -219,6 +222,34 @@ function NatalChartScreenContent() {
     [trustInput]
   );
   const cuspSigns = useMemo(() => signsOnCusps(houseCusps), [houseCusps]);
+
+  // The midheaven. Same gate as the houses: it needs the birth clock AND the
+  // birthplace, because the birth longitude enters local sidereal time degree
+  // for degree. Read from the chart only — there is no `mc` column, and
+  // `toStoredBirthChart` began persisting one on 2026-09-01, so older charts
+  // honestly have none.
+  const midheaven = useMemo(
+    () => (trustInput ? resolveTrustedMidheaven(trustInput) : null),
+    [trustInput]
+  );
+  const mcOnTenthCusp = useMemo(
+    () => mcIsTenthCusp(midheaven, houseCusps),
+    [midheaven, houseCusps]
+  );
+
+  // Which planets sit in each house. Real longitudes only — an empty house
+  // renders empty rather than plausible.
+  const planetsPerHouse = useMemo(() => {
+    if (!chartData || !houseCusps) return new Map<number, string[]>();
+    const chart = hydrateStoredChart(chartData.birth_chart);
+    if (!chart) return new Map<number, string[]>();
+    return new Map(
+      [...planetsByHouse(chart, houseCusps).entries()].map(([house, keys]) => [
+        house,
+        keys as string[],
+      ])
+    );
+  }, [chartData, houseCusps]);
 
   // Placements come from the stored chart, which is the only source that
   // carries a degree and the only place mercury..saturn exist at all. A
@@ -474,6 +505,10 @@ function NatalChartScreenContent() {
 
   // `positions` is memoised further up, next to the birth-data state it
   // depends on — both must run before any early return to respect hooks rules.
+  // The ascendant is already gated when `positions` is built; if it is not
+  // there it must not appear in the Angles card either.
+  const risingAngle = positions.find((position) => position.planetKey === 'rising') ?? null;
+
   const elements = useMemo(() => calculateElements(positions), [positions]);
   const modalities = useMemo(() => calculateModalities(positions), [positions]);
 
@@ -686,6 +721,53 @@ function NatalChartScreenContent() {
         })}
       </View>
 
+      {/* Angles — the two points that need the birth clock AND the birthplace.
+          Kept OUT of the planet list on purpose: an angle is not a body, and
+          listing the MC beside Mars would imply it moves through the zodiac
+          the way a planet does. */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('natalAnglesTitle')}</Text>
+        <Text style={styles.housesIntro}>{t('natalAnglesBody')}</Text>
+
+        <View style={styles.angleCard}>
+          <Text style={styles.angleLabel}>{t('rising')}</Text>
+          {risingAngle ? (
+            <>
+              <Text style={styles.angleValue}>
+                {resolveOptional(t, risingAngle.sign.toLowerCase()) ?? risingAngle.sign}
+                {risingAngle.degree !== null ? ` ${risingAngle.degree}°` : ''}
+              </Text>
+              <Text style={styles.angleMeaning}>{t('natalRisingMeaning')}</Text>
+            </>
+          ) : (
+            <Text style={styles.angleMeaning}>{t('natalAnglesNeedBirthData')}</Text>
+          )}
+        </View>
+
+        <View style={styles.angleCard}>
+          <Text style={styles.angleLabel}>{t('natalMidheavenLabel')}</Text>
+          {midheaven ? (
+            <>
+              <Text style={styles.angleValue}>
+                {resolveOptional(t, midheaven.sign.toLowerCase()) ?? midheaven.sign}{' '}
+                {Math.round(midheaven.degree)}°
+              </Text>
+              <Text style={styles.angleMeaning}>{t('natalMidheavenMeaning')}</Text>
+            </>
+          ) : (
+            <Text style={styles.angleMeaning}>{t('natalAnglesNeedBirthData')}</Text>
+          )}
+        </View>
+
+        {midheaven && cuspSigns ? (
+          <Text style={styles.angleNote}>
+            {mcOnTenthCusp
+              ? t('natalMidheavenOnTenthCusp')
+              : t('natalMidheavenNotTenthCusp')}
+          </Text>
+        ) : null}
+      </View>
+
       {/* An ascendant we set aside.
           The value was NOT deleted — migration 20260901000002 moved it to
           `rising_sign_unconfirmed`, out of the one column the blind surfaces
@@ -768,6 +850,17 @@ function NatalChartScreenContent() {
                   </Text>
                 )}
                 {meaning && <Text style={styles.houseCardMeaning}>{meaning}</Text>}
+                {/* Only real longitudes put a planet here. An empty house
+                    renders as an empty house — it is still a life area. */}
+                {cuspSigns && (
+                  <Text style={styles.houseCardPlanets}>
+                    {(planetsPerHouse.get(houseNumber) ?? []).length > 0
+                      ? `${t('natalPlanetsInHouse')}: ${(planetsPerHouse.get(houseNumber) ?? [])
+                          .map((key) => resolveOptional(t, key) ?? key)
+                          .join(' · ')}`
+                      : t('natalNoPlanetsInHouse')}
+                  </Text>
+                )}
               </View>
             </View>
           );
@@ -1454,6 +1547,43 @@ const styles = StyleSheet.create({
     color: '#ffb7c7',
     textTransform: 'uppercase',
     letterSpacing: 1,
+  },
+  angleCard: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: 14,
+    marginBottom: 8,
+    gap: 4,
+  },
+  angleLabel: {
+    fontSize: 11,
+    color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  angleValue: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  angleMeaning: {
+    fontSize: 14,
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 21,
+  },
+  angleNote: {
+    fontSize: 13,
+    color: AppTheme.colors.textSecondary,
+    lineHeight: 20,
+    marginTop: 6,
+  },
+  houseCardPlanets: {
+    fontSize: 12,
+    color: AppTheme.colors.textMuted,
+    lineHeight: 18,
+    marginTop: 4,
   },
   houseCardMeaning: {
     fontSize: 14,

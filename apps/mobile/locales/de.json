@@ -2140,5 +2140,15 @@
   "synastryAspect_sextile": "Sextil",
   "synastryAspect_square": "Quadrat",
   "synastryAspect_trine": "Trigon",
-  "synastryAspect_opposition": "Opposition"
+  "synastryAspect_opposition": "Opposition",
+  "natalAnglesTitle": "Achsen",
+  "natalAnglesBody": "Zwei Punkte, die sowohl von der Minute als auch vom Ort deiner Geburt abhängen. Es sind keine Planeten — es ist der Ort, an dem dein Horizont den Himmel geschnitten hat.",
+  "natalMidheavenLabel": "Medium Coeli (MC)",
+  "natalMidheavenMeaning": "Dein MC weist auf öffentliche Richtung, Sichtbarkeit und die Rolle, in die du hineinwächst.",
+  "natalRisingMeaning": "Dein Aszendent prägt den ersten Eindruck und wie du eine neue Situation betrittst.",
+  "natalMidheavenNotTenthCusp": "Im Gleich-Haus-System ist das MC eine eigene Achse. Es ist nicht immer die Spitze des 10. Hauses.",
+  "natalMidheavenOnTenthCusp": "Hier fällt dein MC zufällig auf die Spitze des 10. Hauses. Im Gleich-Haus-System ist das Zufall, keine Regel.",
+  "natalAnglesNeedBirthData": "Ergänze Geburtszeit und Geburtsort, um Aszendent, MC und Häuser zu berechnen.",
+  "natalPlanetsInHouse": "Planeten in diesem Haus",
+  "natalNoPlanetsInHouse": "Hier stehen keine Planeten — dieses Haus zählt trotzdem."
 }

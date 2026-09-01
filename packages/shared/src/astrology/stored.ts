@@ -45,6 +45,26 @@ export interface StoredBirthChart {
   sun: Placement;
   moon: Placement;
   rising: Placement | null;
+  /**
+   * Midheaven. Null whenever the ascendant is null — it needs the same birth
+   * clock and birthplace.
+   *
+   * Persisted since 2026-09-01. Before that `toStoredBirthChart` computed it
+   * and threw it away, so every stored chart had to have its angles rebuilt
+   * from `rising` on read. That worked only because the house system is equal;
+   * the MC is NOT derivable from the ascendant at all, so it was simply lost.
+   */
+  mc?: Placement | null;
+  /**
+   * The twelve equal-house cusps, in ecliptic longitude. Null when the angles
+   * are.
+   *
+   * Also persisted since 2026-09-01. `resolveHouseCusps` still derives them
+   * from `rising.longitude` when absent, which is what keeps the ~95 legacy
+   * rows readable — and stays exact only while the system is equal-house.
+   * Storing them is what makes a future Placidus migration possible at all.
+   */
+  houses?: number[] | null;
   planets: Partial<Record<Exclude<InnerPlanetKey, 'sun' | 'moon'> | OuterPlanetKey, Placement>>;
   /** Null when the birthplace was never given. Persisting a stand-in would
    *  record a fabricated birthplace as if it were a fact. */
@@ -247,6 +267,11 @@ export function toStoredBirthChart(chart: NatalChart): StoredBirthChart {
     sun: chart.sun,
     moon: chart.moon,
     rising: chart.rising,
+    // Both are null together with `rising`: `computeNatalChart` only produces
+    // them when the birth clock AND the birthplace are known. Writing them is
+    // never a claim — it is the engine's own answer, whatever that answer is.
+    mc: chart.mc,
+    houses: chart.houses,
     planets,
     coordinates: {
       latitude: chart.input.latitude,

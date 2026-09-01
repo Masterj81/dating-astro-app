@@ -75,6 +75,28 @@ function calculateAscendant(time: any, latitude: number, longitude: number): num
   return ((asc % 360) + 360) % 360
 }
 
+function calculateMidheaven(time: any, longitude: number): number {
+  // Identical to `computeMidheaven` in packages/shared/src/astrology/chart.ts
+  // and to `calculateMidheaven` in calculate-chart. The engine contract
+  // executes all three and fails if they diverge.
+  const gmstHours = Astronomy.SiderealTime(time)
+  const gmstDeg = gmstHours * 15
+  const lst = ((gmstDeg + longitude) % 360 + 360) % 360
+  const lstRad = (lst * Math.PI) / 180
+  const T = (time.ut - 0) / 36525
+  const eps = ((23.439291 - 0.0130042 * T) * Math.PI) / 180
+  const mc = (Math.atan2(Math.sin(lstRad), Math.cos(lstRad) * Math.cos(eps)) * 180) / Math.PI
+  return ((mc % 360) + 360) % 360
+}
+
+function calculateEqualHouses(ascendantLongitude: number): number[] {
+  const houses: number[] = []
+  for (let i = 0; i < 12; i++) {
+    houses.push(((ascendantLongitude + i * 30) % 360 + 360) % 360)
+  }
+  return houses
+}
+
 function resolveIanaTimezone(
   lat: number | null | undefined,
   lng: number | null | undefined,
@@ -328,6 +350,13 @@ serve(async (req) => {
   const sunLong = getGeocentricLongitude('Sun', time)
   const moonLong = getGeocentricLongitude('Moon', time)
   const ascLong = hasBirthTime && hasBirthPlace ? calculateAscendant(time, lat as number, lng as number) : null
+  // Midheaven and the twelve equal-house cusps, added 2026-09-01. These are
+  // ASTROLOGICAL OUTPUTS, not raw birth data: they say nothing about the exact
+  // minute or the exact coordinates, which is why they may be returned for
+  // someone else's chart while birth_time, birth_date and the raw lat/lng
+  // still may not. `sanitizeProfile` remains an allowlist and is unchanged.
+  const mcLong = ascLong != null ? calculateMidheaven(time, lng as number) : null
+  const housesArr = ascLong != null ? calculateEqualHouses(ascLong) : null
   const planets = calculatePlanetPositions(time)
 
   // 6. Coarsen coordinates to 0.5° (~55 km) before returning.
@@ -346,6 +375,10 @@ serve(async (req) => {
     rising: ascLong != null
       ? { longitude: ascLong, sign: getZodiacSign(ascLong), degree: getDegreeInSign(ascLong) }
       : null,
+    mc: mcLong != null
+      ? { longitude: mcLong, sign: getZodiacSign(mcLong), degree: getDegreeInSign(mcLong) }
+      : null,
+    houses: housesArr,
     planets,
     coordinates: { latitude: coarseLat, longitude: coarseLng },
     confidence: !hasBirthTime || !hasBirthPlace || tz.source === 'fallback' ? 'low' : tz.source === 'lookup' ? 'medium' : 'high',

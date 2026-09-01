@@ -2140,5 +2140,15 @@
   "synastryAspect_sextile": "تسديس",
   "synastryAspect_square": "تربيع",
   "synastryAspect_trine": "تثليث",
-  "synastryAspect_opposition": "مقابلة"
+  "synastryAspect_opposition": "مقابلة",
+  "natalAnglesTitle": "الزوايا",
+  "natalAnglesBody": "نقطتان تعتمدان على دقيقة ميلادك ومكانه معاً. ليستا كوكبين، بل الموضع الذي قطع فيه أفقك السماء.",
+  "natalMidheavenLabel": "وسط السماء (MC)",
+  "natalMidheavenMeaning": "يشير وسط السماء عندك إلى الاتجاه العام، والظهور، والدور الذي تنمو نحوه.",
+  "natalRisingMeaning": "يشكّل طالعك الانطباعات الأولى وطريقة دخولك إلى موقف جديد.",
+  "natalMidheavenNotTenthCusp": "في نظام البيوت المتساوية، وسط السماء زاوية مستقلة. وهو ليس دائماً طالع البيت العاشر.",
+  "natalMidheavenOnTenthCusp": "هنا يقع وسط السماء عندك على طالع البيت العاشر تحديداً. في البيوت المتساوية هذه مصادفة، لا قاعدة.",
+  "natalAnglesNeedBirthData": "أضِف ساعة ميلادك ومدينته لحساب طالعك ووسط سمائك وبيوتك.",
+  "natalPlanetsInHouse": "كواكب في هذا البيت",
+  "natalNoPlanetsInHouse": "لا كواكب هنا — ويظل هذا البيت مهماً."
 }
