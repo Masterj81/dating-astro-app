@@ -192,7 +192,7 @@ type EdgeEngine = {
 // and the missing `.test.` keep it out of the suite's own glob.
 const TMP_DIR = path.join(import.meta.dirname, '.engine-contract');
 let edge: EdgeEngine;
-let missingDeclarations: string[] = [];
+const missingDeclarations: string[] = [];
 
 beforeAll(async () => {
   const source = read(EDGE_FILES.calcChart);
