@@ -892,6 +892,19 @@ for (const key of ['webWheel', 'mobileWheel']) {
     /unavailableNote/.test(code[key]),
   );
 }
+// The wheel is the chart; the accordion, the angles and the houses are readings
+// of it. Shipped once below the planet list, where a desktop reader had to
+// scroll past a hundred lines of prose to reach the picture — which is how a
+// chart gets read as a list. Position is a product decision, so it is asserted.
+for (const key of ['webScreen', 'mobileScreen']) {
+  const wheelAt = code[key].indexOf('<NatalChartWheel');
+  const listAt = code[key].indexOf('planetaryPositions');
+  check(
+    `${FILES[key]}: the wheel is rendered above the planet list`,
+    wheelAt !== -1 && listAt !== -1 && wheelAt < listAt,
+    'a reader who scrolls past the reading to reach the chart was shown a list',
+  );
+}
 
 const WHEEL_KEYS = [
   'natalWheelTitle',
