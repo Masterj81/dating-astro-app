@@ -15,3 +15,19 @@ ios/build/
 
 # Gradle caches can also carry absolute, host-specific paths.
 .gradle/
+
+# Repo-root working files that are untracked and have nothing to do with the
+# app. They matter because eas-cli only ignores untracked files when the
+# working tree is CLEAN; with any tracked file modified it tars the working
+# tree instead, and these ride along. Measured 2026-09-01: BigAd/ alone is
+# 393 MB, and the two spreadsheets are business data that has no reason to
+# reach a third-party build service.
+/BigAd/
+/app/
+/.tools/
+/.tmp/
+/marketingagent/
+/*.xlsx
+
+# Store assets are inputs to the listing, not to the binary.
+store-assets/
