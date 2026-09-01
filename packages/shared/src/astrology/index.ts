@@ -26,5 +26,9 @@ export * from './rising';
 // Whether houses may be shown at all. Stricter than `rising`: the ascendant
 // needs the birth clock, the houses need the clock AND the birthplace.
 export * from './houses';
+// Drawable coordinates for the chart wheel. Geometry only — the SVG (web)
+// and View-based (mobile) renderers share it so the two wheels cannot place
+// the same planet in different sectors.
+export * from './wheel';
 export * from './exploration';
 export * from './version';

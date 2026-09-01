@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
+import { useWindowDimensions } from 'react-native';
 import {
   ActivityIndicator,
   Platform,
@@ -25,6 +26,7 @@ import {
   type BirthDataState,
 } from '@astro/shared/astrology';
 import AuthBrandMark from '../../components/AuthBrandMark';
+import NatalChartWheel from '../../components/NatalChartWheel';
 import PremiumGate from '../../components/PremiumGate';
 import PlanetGlyph from '../../components/ui/PlanetGlyph';
 import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
@@ -141,6 +143,10 @@ function NatalChartScreenContent() {
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  // The screen pads 20 either side and the card another 16; the outer labels
+  // sit ~3.5% beyond the ring, so leave room rather than clipping "MC".
+  const wheelSize = Math.max(240, Math.min(340, windowWidth - 40 - 32 - 24));
 
   // Locale-aware label builders for "Planet in Sign" / "Planet in House".
   // English: "Sun in Taurus" / "Sun in the 1st house"
@@ -237,11 +243,17 @@ function NatalChartScreenContent() {
     [midheaven, houseCusps]
   );
 
+  // The hydrated chart, shared by the wheel and the per-house grouping.
+  const hydratedChart = useMemo(
+    () => (chartData ? hydrateStoredChart(chartData.birth_chart) : null),
+    [chartData]
+  );
+
   // Which planets sit in each house. Real longitudes only — an empty house
   // renders empty rather than plausible.
   const planetsPerHouse = useMemo(() => {
-    if (!chartData || !houseCusps) return new Map<number, string[]>();
-    const chart = hydrateStoredChart(chartData.birth_chart);
+    if (!houseCusps) return new Map<number, string[]>();
+    const chart = hydratedChart;
     if (!chart) return new Map<number, string[]>();
     return new Map(
       [...planetsByHouse(chart, houseCusps).entries()].map(([house, keys]) => [
@@ -249,7 +261,7 @@ function NatalChartScreenContent() {
         keys as string[],
       ])
     );
-  }, [chartData, houseCusps]);
+  }, [hydratedChart, houseCusps]);
 
   // Placements come from the stored chart, which is the only source that
   // carries a degree and the only place mercury..saturn exist at all. A
@@ -719,6 +731,36 @@ function NatalChartScreenContent() {
             </View>
           );
         })}
+      </View>
+
+      {/* The wheel. First, because it is the chart — everything below reads it. */}
+      <View style={styles.section}>
+        <NatalChartWheel
+          chart={hydratedChart}
+          rising={trustedRisingSign && hydratedChart?.rising ? hydratedChart.rising : null}
+          mc={midheaven}
+          cusps={houseCusps}
+          size={wheelSize}
+          unavailableNote={
+            birthDataState === 'missing_birth_time'
+              ? t('natalWheelNeedBirthTime')
+              : birthDataState === 'missing_birth_place'
+                ? t('natalWheelNeedBirthPlace')
+                : null
+          }
+          labels={{
+            title: t('natalWheelTitle'),
+            body:
+              trustedRisingSign && houseCusps
+                ? t('natalWheelBodyAnchored')
+                : t('natalWheelBodyAries'),
+            asc: t('natalWheelAsc'),
+            mc: t('natalWheelMc'),
+            hideAspects: t('natalWheelHideAspects'),
+            showAspects: t('natalWheelShowAspects'),
+            noChart: t('natalWheelNoChart'),
+          }}
+        />
       </View>
 
       {/* Angles — the two points that need the birth clock AND the birthplace.

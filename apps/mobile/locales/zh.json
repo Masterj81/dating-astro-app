@@ -2150,5 +2150,16 @@
   "natalMidheavenOnTenthCusp": "此处你的天顶恰好落在第十宫宫头。在等宫制中这是巧合，而非规律。",
   "natalAnglesNeedBirthData": "补充出生时间与出生城市，即可计算上升、天顶与宫位。",
   "natalPlanetsInHouse": "此宫内的行星",
-  "natalNoPlanetsInHouse": "此宫没有行星——这个宫位依然重要。"
+  "natalNoPlanetsInHouse": "此宫没有行星——这个宫位依然重要。",
+  "natalWheelTitle": "星盘轮",
+  "natalWheelBodyAnchored": "你的上升位于左侧。黄经沿逆时针方向推进，因此第一宫从其下方开始。",
+  "natalWheelBodyAries": "白羊座0度位于左侧。没有出生时间与城市就没有可供转动星盘的上升点，因此不绘制宫位。",
+  "natalWheelAsc": "上升",
+  "natalWheelMc": "天顶",
+  "natalWheelShowAspects": "显示相位",
+  "natalWheelHideAspects": "隐藏相位",
+  "natalWheelAriaLabel": "你的本命盘轮：星座、行星、轴点与宫位。",
+  "natalWheelNeedBirthTime": "补充出生时间与出生城市，即可看到宫位与轴点。",
+  "natalWheelNeedBirthPlace": "出生时间已保存。补充出生城市即可看到宫位与轴点。",
+  "natalWheelNoChart": "我们尚未能读取此账户的星盘。"
 }

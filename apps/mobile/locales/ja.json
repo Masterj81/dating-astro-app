@@ -2150,5 +2150,16 @@
   "natalMidheavenOnTenthCusp": "この場合、MCはたまたま第10ハウスのカスプに重なっています。イコールハウスでは偶然であり、規則ではありません。",
   "natalAnglesNeedBirthData": "出生時刻と出生地を追加すると、アセンダント、MC、ハウスを計算できます。",
   "natalPlanetsInHouse": "このハウスの天体",
-  "natalNoPlanetsInHouse": "ここに天体はありません。それでもこのハウスは意味を持ちます。"
+  "natalNoPlanetsInHouse": "ここに天体はありません。それでもこのハウスは意味を持ちます。",
+  "natalWheelTitle": "チャートホイール",
+  "natalWheelBodyAnchored": "アセンダントは左にあります。黄経は反時計回りに進むため、第1ハウスはそのすぐ下から始まります。",
+  "natalWheelBodyAries": "牡羊座0度が左にあります。出生時刻と出生地がないとホイールを回す基準となるアセンダントがないため、ハウスは描かれません。",
+  "natalWheelAsc": "ASC",
+  "natalWheelMc": "MC",
+  "natalWheelShowAspects": "アスペクトを表示",
+  "natalWheelHideAspects": "アスペクトを隠す",
+  "natalWheelAriaLabel": "出生図のホイール：星座、天体、アングル、ハウス。",
+  "natalWheelNeedBirthTime": "出生時刻と出生地を追加すると、ハウスとアングルが表示されます。",
+  "natalWheelNeedBirthPlace": "出生時刻は保存されています。出生地を追加すると、ハウスとアングルが表示されます。",
+  "natalWheelNoChart": "このアカウントのチャートはまだ読み取れていません。"
 }

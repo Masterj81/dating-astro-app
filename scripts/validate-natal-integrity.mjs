@@ -85,6 +85,9 @@ const FILES = {
   webSynastry: 'apps/web/src/components/SynastryOverview.tsx',
   synastryView: 'packages/shared/src/astrology/synastry-view.ts',
   stored: 'packages/shared/src/astrology/stored.ts',
+  wheel: 'packages/shared/src/astrology/wheel.ts',
+  webWheel: 'apps/web/src/components/NatalChartWheel.tsx',
+  mobileWheel: 'apps/mobile/components/NatalChartWheel.tsx',
   calcChart: 'supabase/functions/calculate-chart/index.ts',
   profileChart: 'supabase/functions/get-profile-chart/index.ts',
 };
@@ -803,6 +806,116 @@ for (const locale of LOCALES) {
     return typeof value === 'string' && BANNED_SYNASTRY.some((p) => p.test(value));
   });
   check(`${locale}: angles copy promises nothing`, offenders.length === 0, offenders.join(', '));
+}
+
+// --- the chart wheel draws only what is known --------------------------------
+// A wheel is the easiest place in an astrology app to fake something: an empty
+// ring still looks like a chart, and a planet drawn at 0 Aries looks like a
+// planet. These guard the three ways that could happen.
+console.log('the chart wheel');
+
+check(
+  'the geometry lives in the shared package, not in a renderer',
+  /export function buildNatalWheelData/.test(code.wheel),
+);
+for (const key of ['webWheel', 'mobileWheel']) {
+  check(
+    `${FILES[key]}: takes its coordinates from the shared builder`,
+    /buildNatalWheelData\(/.test(code[key]),
+    'two renderers computing their own placement is how the platforms drift',
+  );
+  check(
+    `${FILES[key]}: computes no angle of its own`,
+    !/Math\.cos\(|Math\.sin\(/.test(code[key].replace(/atan2/g, '')),
+    'the only trigonometry a renderer needs is the line-rotation helper',
+  );
+}
+check(
+  'the wheel never invents a placement',
+  /Boolean\(entry\.placement\) && Number\.isFinite/.test(code.wheel),
+  'a legacy null outer planet must vanish, not appear at 0 Aries',
+);
+check(
+  'houses appear only for a full twelve-cusp array',
+  /options\.cusps\.length === 12 \? options\.cusps : null/.test(code.wheel),
+  'half a ring is worse than none',
+);
+check(
+  'the anchor is stated rather than implied',
+  /anchor: NatalWheelData\['anchor'\] = rising \? 'ascendant' : 'aries'/.test(code.wheel),
+  'a wheel with no ascendant is a different picture and must say so',
+);
+check(
+  'aspect chords use the TRUE positions, not the nudged glyphs',
+  /from: polar\(center, hubRadius, trueAngles\[i\]\)/.test(code.wheel) &&
+    /to: polar\(center, hubRadius, trueAngles\[j\]\)/.test(code.wheel),
+  'a chord pointing at a moved symbol would draw a relationship that does not exist',
+);
+check(
+  'the tick mark stays on the true longitude',
+  /tickOuter: polar\(center, zodiacInner, angle\)/.test(code.wheel),
+);
+check(
+  'aspects are capped so the hub stays readable',
+  /found\.slice\(0, maxAspects\)/.test(code.wheel),
+);
+// A basename collision is enough to put one platform's component in the other
+// platform's file, and every guard above still passes because both call the
+// same builder. These two say which renderer is which.
+check(
+  'the web wheel is a web component',
+  /<svg/.test(code.webWheel) && !/from ['"]react-native['"]/.test(code.webWheel),
+  'the web wheel is SVG; react-native in this file means the wrong file was written',
+);
+check(
+  'the mobile wheel is a React Native component',
+  /from ['"]react-native['"]/.test(code.mobileWheel) && !/<svg/.test(code.mobileWheel),
+  'the mobile wheel is Views; raw <svg> here would render nothing on Android',
+);
+check(
+  'mobile adds no native SVG dependency',
+  // Comment-stripped source, like every other check in this file: the header
+  // of that component NAMES react-native-svg to explain why it is not used,
+  // and a guard that forbids documenting a decision is a guard that gets the
+  // documentation deleted instead.
+  !/react-native-svg/.test(code.mobileWheel),
+  'a native module means a new build; this wheel needs Views, lines and text',
+);
+check(
+  'and it is not in the mobile dependencies either',
+  !/"react-native-svg"/.test(read('apps/mobile/package.json')),
+  'the guard above only covers the component; this covers the install',
+);
+for (const key of ['webWheel', 'mobileWheel']) {
+  check(
+    `${FILES[key]}: explains an absent ring instead of drawing an empty one`,
+    /unavailableNote/.test(code[key]),
+  );
+}
+
+const WHEEL_KEYS = [
+  'natalWheelTitle',
+  'natalWheelBodyAnchored',
+  'natalWheelBodyAries',
+  'natalWheelAsc',
+  'natalWheelMc',
+  'natalWheelShowAspects',
+  'natalWheelHideAspects',
+  'natalWheelAriaLabel',
+  'natalWheelNeedBirthTime',
+  'natalWheelNeedBirthPlace',
+  'natalWheelNoChart',
+];
+for (const locale of LOCALES) {
+  const webFile = path.join(ROOT, 'apps/web/messages', `${locale}.json`);
+  const mobileFile = path.join(ROOT, 'apps/mobile/locales', `${locale}.json`);
+  if (!existsSync(webFile) || !existsSync(mobileFile)) continue;
+  const web = JSON.parse(readFileSync(webFile, 'utf8')).webApp ?? {};
+  const mobile = JSON.parse(readFileSync(mobileFile, 'utf8'));
+  for (const [name, bag] of [['web', web], ['mobile', mobile]]) {
+    const missing = WHEEL_KEYS.filter((k) => typeof bag[k] !== 'string' || !bag[k].trim());
+    check(`${locale}: ${name} wheel copy present`, missing.length === 0, missing.join(', '));
+  }
 }
 
 // --- the CTA is shown, and only to the right people --------------------------

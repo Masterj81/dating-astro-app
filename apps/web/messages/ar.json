@@ -2202,7 +2202,18 @@
     "natalMidheavenOnTenthCusp": "هنا يقع وسط السماء عندك على طالع البيت العاشر تحديداً. في البيوت المتساوية هذه مصادفة، لا قاعدة.",
     "natalAnglesNeedBirthData": "أضِف ساعة ميلادك ومدينته لحساب طالعك ووسط سمائك وبيوتك.",
     "natalPlanetsInHouse": "كواكب في هذا البيت",
-    "natalNoPlanetsInHouse": "لا كواكب هنا — ويظل هذا البيت مهماً."
+    "natalNoPlanetsInHouse": "لا كواكب هنا — ويظل هذا البيت مهماً.",
+    "natalWheelTitle": "عجلة الخريطة",
+    "natalWheelBodyAnchored": "طالعك على اليسار. ويتقدّم الطول الفلكي عكس عقارب الساعة، فيبدأ البيت الأول أسفله مباشرة.",
+    "natalWheelBodyAries": "درجة الحمل صفر على اليسار. من دون ساعة الميلاد ومدينته لا يوجد طالع تدور عليه العجلة، فلا تُرسم البيوت.",
+    "natalWheelAsc": "الطالع",
+    "natalWheelMc": "MC",
+    "natalWheelShowAspects": "إظهار الاتصالات",
+    "natalWheelHideAspects": "إخفاء الاتصالات",
+    "natalWheelAriaLabel": "عجلة خريطتك الفلكية: الأبراج والكواكب والزوايا والبيوت.",
+    "natalWheelNeedBirthTime": "أضِف ساعة ميلادك ومدينته لرؤية البيوت والزوايا.",
+    "natalWheelNeedBirthPlace": "وقت ميلادك محفوظ. أضِف مدينة ميلادك لرؤية البيوت والزوايا.",
+    "natalWheelNoChart": "لم نتمكّن بعد من قراءة خريطة لهذا الحساب."
   },
   "invite": {
     "invalidCode": "رمز إحالة غير صالح",
