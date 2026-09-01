@@ -17,6 +17,7 @@ import {
   hydrateStoredChart,
   mcIsTenthCusp,
   planetsByHouse,
+  resolveHouseCuspInterpretations,
   resolveTrustedMidheaven,
   resolveBirthDataState,
   resolveHouseCusps,
@@ -228,6 +229,15 @@ function NatalChartScreenContent() {
     [trustInput]
   );
   const cuspSigns = useMemo(() => signsOnCusps(houseCusps), [houseCusps]);
+
+  // The twelve sign-on-cusp readings, or null. `resolveHouseCuspInterpretations`
+  // enforces twelve-or-nothing itself, so a short cusp array can never render
+  // half a set. `language` picks English or French; every other locale gets the
+  // English text with `isFallback` true, which the card says out loud.
+  const houseCuspReadings = useMemo(
+    () => (cuspSigns ? resolveHouseCuspInterpretations(cuspSigns, language) : null),
+    [cuspSigns, language],
+  );
 
   // The midheaven. Same gate as the houses: it needs the birth clock AND the
   // birthplace, because the birth longitude enters local sidereal time degree
@@ -852,6 +862,14 @@ function NatalChartScreenContent() {
           {cuspSigns ? t('natalChartHousesBody') : t('natalChartHousesBodyGeneral')}
         </Text>
 
+        {/* Which house system produced these cusps. It was named only in the MC
+            copy, which renders only when an MC exists — so the twelve cusps
+            could be read with no idea where they came from. Equal House is not
+            a detail: it is why cusp 10 is not the Midheaven. */}
+        {cuspSigns ? (
+          <Text style={styles.housesSystemNote}>{t('natalHousesSystemNote')}</Text>
+        ) : null}
+
         {/* Explained ONCE, at the top, never as twelve empty slots. A blank
             where a reader expects a sign reads as a bug, or as data being
             withheld from them. */}
@@ -893,6 +911,25 @@ function NatalChartScreenContent() {
                   </Text>
                 )}
                 {meaning && <Text style={styles.houseCardMeaning}>{meaning}</Text>}
+                {/* What the SIGN does to that area — personal, where the line
+                    above is identical for every chart. Gated on
+                    `houseCuspReadings`, null unless the birth time AND the
+                    birthplace produced twelve trustworthy cusps. */}
+                {houseCuspReadings && (
+                  <View style={styles.houseCuspReading}>
+                    <Text style={styles.houseCuspReadingLabel}>
+                      {t('natalHouseCuspColorsTitle')}
+                    </Text>
+                    <Text style={styles.houseCuspReadingText}>
+                      {houseCuspReadings[houseNumber - 1].text}
+                    </Text>
+                    {houseCuspReadings[houseNumber - 1].isFallback && (
+                      <Text style={styles.houseCuspReadingNote}>
+                        {t('natalHouseCuspInterpretationLanguageNote')}
+                      </Text>
+                    )}
+                  </View>
+                )}
                 {/* Only real longitudes put a planet here. An empty house
                     renders as an empty house — it is still a life area. */}
                 {cuspSigns && (
@@ -1632,6 +1669,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: AppTheme.colors.textSecondary,
     lineHeight: 21,
+  },
+  housesSystemNote: {
+    fontSize: 12,
+    color: AppTheme.colors.textMuted,
+    lineHeight: 18,
+    marginTop: 6,
+  },
+  houseCuspReading: {
+    marginTop: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    padding: 10,
+    gap: 4,
+  },
+  houseCuspReadingLabel: {
+    fontSize: 10,
+    color: AppTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  houseCuspReadingText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    lineHeight: 21,
+  },
+  houseCuspReadingNote: {
+    fontSize: 11,
+    color: AppTheme.colors.textMuted,
+    lineHeight: 16,
   },
 });
 

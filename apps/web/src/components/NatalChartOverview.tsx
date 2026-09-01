@@ -8,6 +8,7 @@ import {
   hydrateStoredChart,
   mcIsTenthCusp,
   planetsByHouse,
+  resolveHouseCuspInterpretations,
   resolveTrustedMidheaven,
   resolveBirthDataState,
   resolveHouseCusps,
@@ -505,6 +506,15 @@ export function NatalChartOverview() {
     );
   }
 
+  // The twelve sign-on-cusp readings, or null. `resolveHouseCuspInterpretations`
+  // enforces twelve-or-nothing itself, so this cannot render a partial ring
+  // even if `cuspSigns` were ever handed a short array. Deliberately not a
+  // `useMemo`: it is twelve object lookups, and every hook in this component
+  // has to sit above the five early returns to stay unconditional.
+  const houseCuspReadings = cuspSigns
+    ? resolveHouseCuspInterpretations(cuspSigns, locale)
+    : null;
+
   return (
     <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
       <section className="space-y-6">
@@ -753,6 +763,17 @@ export function NatalChartOverview() {
             {cuspSigns ? t("natalChartHousesBody") : t("natalChartHousesBodyGeneral")}
           </p>
 
+          {/* Which house system produced these cusps. It was named only in the
+              MC copy, which lives in the other column and appears only when an
+              MC exists — so the twelve cusps could be read with no idea where
+              they came from. Equal House is not a detail: it is why cusp 10 is
+              not the Midheaven. */}
+          {cuspSigns ? (
+            <p className="mt-2 text-xs leading-6 text-text-dim">
+              {t("natalHousesSystemNote")}
+            </p>
+          ) : null}
+
           {/* Explained ONCE, at the top, never as twelve empty slots. A blank
               where a reader expects a sign reads as a bug or as data being
               withheld. */}
@@ -798,6 +819,31 @@ export function NatalChartOverview() {
                   <p className="mt-1 text-sm leading-6 text-text-muted">
                     {t(`natalHouseMeaning_${houseNumber}`)}
                   </p>
+                  {/* What the SIGN does to that area — personal, where the line
+                      above is the same for every chart. Gated on
+                      `houseCuspReadings`, which is null unless the birth time
+                      AND the birthplace produced twelve trustworthy cusps.
+                      `lang` is set because the corpus is English and French
+                      only: without it a screen reader would read English prose
+                      with the page's voice. */}
+                  {houseCuspReadings ? (
+                    <div className="mt-3 rounded-[1rem] border border-white/[0.07] bg-white/[0.03] p-3">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-text-dim">
+                        {t("natalHouseCuspColorsTitle")}
+                      </p>
+                      <p
+                        lang={houseCuspReadings[houseNumber - 1].locale}
+                        className="mt-1.5 text-sm leading-6 text-white/90"
+                      >
+                        {houseCuspReadings[houseNumber - 1].text}
+                      </p>
+                      {houseCuspReadings[houseNumber - 1].isFallback ? (
+                        <p className="mt-2 text-[11px] leading-5 text-text-dim">
+                          {t("natalHouseCuspInterpretationLanguageNote")}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                   {/* Only real longitudes put a planet here. An empty house
                       renders as an empty house — it is still a life area, and
                       saying so beats filling it. */}
@@ -823,12 +869,13 @@ export function NatalChartOverview() {
         ) : null}
       </section>
 
-      {/* Sticky from `xl` up: the left column runs to twelve house cards, and
-          a rail that scrolls away with it would put the angles and the balance
-          off screen for the whole read. `self-start` keeps the aside its own
-          height — a grid item stretches by default, and a stretched box has
-          nothing to stick to. */}
-      <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
+      {/* NOT sticky, on purpose. It was, briefly: the left column runs to
+          twelve house cards, so pinning the rail kept the angles and the
+          balance on screen. But a column that holds still while its neighbour
+          moves reads as a rendering fault rather than as a feature — the two
+          halves of one page stop looking like one page. Both columns scroll
+          together. */}
+      <aside className="space-y-6">
         {/* Angles — the two points that need the birth clock AND the birthplace.
             Kept OUT of the planet list on purpose: an angle is not a body, and
             listing the MC beside Mars would say it moves through the zodiac the
