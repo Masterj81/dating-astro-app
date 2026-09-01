@@ -598,6 +598,37 @@ function NatalChartScreenContent() {
         </View>
       </View>
 
+      {/* The wheel. First, because it IS the chart — the accordion, the angles
+          and the houses below are all readings of it. */}
+      <View style={styles.section}>
+        <NatalChartWheel
+          chart={hydratedChart}
+          rising={trustedRisingSign && hydratedChart?.rising ? hydratedChart.rising : null}
+          mc={midheaven}
+          cusps={houseCusps}
+          size={wheelSize}
+          unavailableNote={
+            birthDataState === 'missing_birth_time'
+              ? t('natalWheelNeedBirthTime')
+              : birthDataState === 'missing_birth_place'
+                ? t('natalWheelNeedBirthPlace')
+                : null
+          }
+          labels={{
+            title: t('natalWheelTitle'),
+            body:
+              trustedRisingSign && houseCusps
+                ? t('natalWheelBodyAnchored')
+                : t('natalWheelBodyAries'),
+            asc: t('natalWheelAsc'),
+            mc: t('natalWheelMc'),
+            hideAspects: t('natalWheelHideAspects'),
+            showAspects: t('natalWheelShowAspects'),
+            noChart: t('natalWheelNoChart'),
+          }}
+        />
+      </View>
+
       {/* Planetary Positions — inline accordion. Each row is a Pressable
           that toggles a panel below with up to four reads:
           (1) planet meaning, (2) sign expression, (3) house area,
@@ -731,36 +762,6 @@ function NatalChartScreenContent() {
             </View>
           );
         })}
-      </View>
-
-      {/* The wheel. First, because it is the chart — everything below reads it. */}
-      <View style={styles.section}>
-        <NatalChartWheel
-          chart={hydratedChart}
-          rising={trustedRisingSign && hydratedChart?.rising ? hydratedChart.rising : null}
-          mc={midheaven}
-          cusps={houseCusps}
-          size={wheelSize}
-          unavailableNote={
-            birthDataState === 'missing_birth_time'
-              ? t('natalWheelNeedBirthTime')
-              : birthDataState === 'missing_birth_place'
-                ? t('natalWheelNeedBirthPlace')
-                : null
-          }
-          labels={{
-            title: t('natalWheelTitle'),
-            body:
-              trustedRisingSign && houseCusps
-                ? t('natalWheelBodyAnchored')
-                : t('natalWheelBodyAries'),
-            asc: t('natalWheelAsc'),
-            mc: t('natalWheelMc'),
-            hideAspects: t('natalWheelHideAspects'),
-            showAspects: t('natalWheelShowAspects'),
-            noChart: t('natalWheelNoChart'),
-          }}
-        />
       </View>
 
       {/* Angles — the two points that need the birth clock AND the birthplace.

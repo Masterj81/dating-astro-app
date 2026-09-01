@@ -543,6 +543,27 @@ export function NatalChartOverview() {
           </div>
         </div>
 
+        {/* The wheel. First, because it IS the chart — the accordion, the
+            angles and the houses below are all readings of it, and a reader
+            who has to scroll past a hundred lines of prose to reach the
+            picture has been shown a list, not a chart.
+            340 is the mobile cap; the column is wider than that from `xl` up
+            and the SVG scales to whatever it is given. */}
+        <NatalChartWheel
+          size={420}
+          chart={reading.chart}
+          rising={reading.risingPlacement}
+          mc={reading.mcPlacement}
+          cusps={reading.cusps}
+          unavailableNote={
+            birthDataState === "missing_birth_time"
+              ? t("natalWheelNeedBirthTime")
+              : birthDataState === "missing_birth_place"
+                ? t("natalWheelNeedBirthPlace")
+                : null
+          }
+        />
+
         {/* Editorial reminder — sits just above the Planetary Positions card
             so the user reads the framing before tapping into each placement. */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
@@ -712,109 +733,6 @@ export function NatalChartOverview() {
           </ul>
         </div>
 
-        {/* The wheel. First, because it is the chart — everything below is a
-            reading of it. */}
-        <NatalChartWheel
-          chart={reading.chart}
-          rising={reading.risingPlacement}
-          mc={reading.mcPlacement}
-          cusps={reading.cusps}
-          unavailableNote={
-            birthDataState === "missing_birth_time"
-              ? t("natalWheelNeedBirthTime")
-              : birthDataState === "missing_birth_place"
-                ? t("natalWheelNeedBirthPlace")
-                : null
-          }
-        />
-
-        {/* Angles — the two points that need the birth clock AND the birthplace.
-            Kept OUT of the planet list on purpose: an angle is not a body, and
-            listing the MC beside Mars would say it moves through the zodiac the
-            way a planet does. */}
-        <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
-            {t("natalAnglesTitle")}
-          </p>
-          <p className="mt-3 text-sm leading-7 text-text-muted">{t("natalAnglesBody")}</p>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {/* Rising */}
-            <div className="rounded-[1.4rem] border border-border bg-bg/70 p-4">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-text-dim">
-                {t("natalPlanet_rising")}
-              </p>
-              {risingAngle ? (
-                <>
-                  <p className="mt-1 text-lg font-semibold text-white">
-                    {translateSign(risingAngle.sign, locale)}
-                    {risingAngle.degree !== null ? ` ${risingAngle.degree}°` : ""}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-text-muted">
-                    {t("natalRisingMeaning")}
-                  </p>
-                </>
-              ) : (
-                <p className="mt-2 text-sm leading-6 text-text-muted">
-                  {t("natalAnglesNeedBirthData")}
-                </p>
-              )}
-            </div>
-
-            {/* Midheaven */}
-            <div className="rounded-[1.4rem] border border-border bg-bg/70 p-4">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-text-dim">
-                {t("natalMidheavenLabel")}
-              </p>
-              {mc ? (
-                <>
-                  <p className="mt-1 text-lg font-semibold text-white">
-                    {translateSign(mc.sign, locale)} {mc.degree}°
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-text-muted">
-                    {t("natalMidheavenMeaning")}
-                  </p>
-                </>
-              ) : (
-                <p className="mt-2 text-sm leading-6 text-text-muted">
-                  {t("natalAnglesNeedBirthData")}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* The distinction that matters, and only when both are on screen. */}
-          {mc && cuspSigns ? (
-            <p className="mt-4 text-sm leading-7 text-text-muted">
-              {mcIsTenth ? t("natalMidheavenOnTenthCusp") : t("natalMidheavenNotTenthCusp")}
-            </p>
-          ) : null}
-        </div>
-
-        {/* An ascendant we set aside.
-            The value was NOT deleted — migration 20260901000002 moved it to
-            `rising_sign_unconfirmed`, out of the one column the blind surfaces
-            read. The reader saw a rising sign here for months; saying nothing
-            would read as data quietly disappearing. So we say what happened
-            and offer the one thing that fixes it. The old sign is never shown:
-            it was cast for a city this reader has never been to. */}
-        {needsLocationConfirmation ? (
-          <div className="rounded-[2rem] border border-[rgba(232,93,117,0.28)] bg-[rgba(232,93,117,0.10)] p-6">
-            <p className="text-xs uppercase tracking-[0.24em] text-[#ffb7c7]">
-              {t("risingNeedsBirthCityLabel")}
-            </p>
-            <p className="mt-3 text-sm leading-7 text-white/90">
-              {t("risingNeedsBirthCity")}
-            </p>
-            <Link
-              href="/app/profile"
-              className="mt-4 inline-block rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
-            >
-              {t("risingConfirmBirthCity")}
-            </Link>
-          </div>
-        ) : null}
-
         {/* The twelve houses.
             The MEANINGS are pedagogical and identical for every chart. The
             SIGN on each cusp is personal and appears only when `cuspSigns` is
@@ -905,7 +823,102 @@ export function NatalChartOverview() {
         ) : null}
       </section>
 
-      <aside className="space-y-6">
+      {/* Sticky from `xl` up: the left column runs to twelve house cards, and
+          a rail that scrolls away with it would put the angles and the balance
+          off screen for the whole read. `self-start` keeps the aside its own
+          height — a grid item stretches by default, and a stretched box has
+          nothing to stick to. */}
+      <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
+        {/* Angles — the two points that need the birth clock AND the birthplace.
+            Kept OUT of the planet list on purpose: an angle is not a body, and
+            listing the MC beside Mars would say it moves through the zodiac the
+            way a planet does.
+            In the right rail because ASC and MC are drawn on the wheel: from
+            `xl` up they sit level with it and name what the reader is looking
+            at, instead of arriving one screen later. */}
+        <div className="rounded-[2rem] border border-border bg-card/90 p-6">
+          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+            {t("natalAnglesTitle")}
+          </p>
+          <p className="mt-3 text-sm leading-7 text-text-muted">{t("natalAnglesBody")}</p>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            {/* Rising */}
+            <div className="rounded-[1.4rem] border border-border bg-bg/70 p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-text-dim">
+                {t("natalPlanet_rising")}
+              </p>
+              {risingAngle ? (
+                <>
+                  <p className="mt-1 text-lg font-semibold text-white">
+                    {translateSign(risingAngle.sign, locale)}
+                    {risingAngle.degree !== null ? ` ${risingAngle.degree}°` : ""}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-text-muted">
+                    {t("natalRisingMeaning")}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-2 text-sm leading-6 text-text-muted">
+                  {t("natalAnglesNeedBirthData")}
+                </p>
+              )}
+            </div>
+
+            {/* Midheaven */}
+            <div className="rounded-[1.4rem] border border-border bg-bg/70 p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-text-dim">
+                {t("natalMidheavenLabel")}
+              </p>
+              {mc ? (
+                <>
+                  <p className="mt-1 text-lg font-semibold text-white">
+                    {translateSign(mc.sign, locale)} {mc.degree}°
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-text-muted">
+                    {t("natalMidheavenMeaning")}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-2 text-sm leading-6 text-text-muted">
+                  {t("natalAnglesNeedBirthData")}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* The distinction that matters, and only when both are on screen. */}
+          {mc && cuspSigns ? (
+            <p className="mt-4 text-sm leading-7 text-text-muted">
+              {mcIsTenth ? t("natalMidheavenOnTenthCusp") : t("natalMidheavenNotTenthCusp")}
+            </p>
+          ) : null}
+        </div>
+
+        {/* An ascendant we set aside.
+            The value was NOT deleted — migration 20260901000002 moved it to
+            `rising_sign_unconfirmed`, out of the one column the blind surfaces
+            read. The reader saw a rising sign here for months; saying nothing
+            would read as data quietly disappearing. So we say what happened
+            and offer the one thing that fixes it. The old sign is never shown:
+            it was cast for a city this reader has never been to. */}
+        {needsLocationConfirmation ? (
+          <div className="rounded-[2rem] border border-[rgba(232,93,117,0.28)] bg-[rgba(232,93,117,0.10)] p-6">
+            <p className="text-xs uppercase tracking-[0.24em] text-[#ffb7c7]">
+              {t("risingNeedsBirthCityLabel")}
+            </p>
+            <p className="mt-3 text-sm leading-7 text-white/90">
+              {t("risingNeedsBirthCity")}
+            </p>
+            <Link
+              href="/app/profile"
+              className="mt-4 inline-block rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+            >
+              {t("risingConfirmBirthCity")}
+            </Link>
+          </div>
+        ) : null}
+
         <div className="rounded-[2rem] border border-border bg-card/90 p-6">
           <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
             {t("elementsModalities")}
