@@ -2150,5 +2150,16 @@
   "natalMidheavenOnTenthCusp": "Hier fällt dein MC zufällig auf die Spitze des 10. Hauses. Im Gleich-Haus-System ist das Zufall, keine Regel.",
   "natalAnglesNeedBirthData": "Ergänze Geburtszeit und Geburtsort, um Aszendent, MC und Häuser zu berechnen.",
   "natalPlanetsInHouse": "Planeten in diesem Haus",
-  "natalNoPlanetsInHouse": "Hier stehen keine Planeten — dieses Haus zählt trotzdem."
+  "natalNoPlanetsInHouse": "Hier stehen keine Planeten — dieses Haus zählt trotzdem.",
+  "natalWheelTitle": "Horoskoprad",
+  "natalWheelBodyAnchored": "Dein Aszendent liegt links. Die Länge läuft gegen den Uhrzeigersinn, das erste Haus beginnt direkt darunter.",
+  "natalWheelBodyAries": "0° Widder liegt links. Ohne Geburtszeit und -ort gibt es keinen Aszendenten, um das Rad auszurichten — die Häuser werden nicht gezeichnet.",
+  "natalWheelAsc": "AC",
+  "natalWheelMc": "MC",
+  "natalWheelShowAspects": "Aspekte zeigen",
+  "natalWheelHideAspects": "Aspekte ausblenden",
+  "natalWheelAriaLabel": "Das Rad deines Geburtshoroskops: Tierkreiszeichen, Planeten, Achsen und Häuser.",
+  "natalWheelNeedBirthTime": "Ergänze Geburtszeit und Geburtsort, um Häuser und Achsen zu sehen.",
+  "natalWheelNeedBirthPlace": "Deine Geburtszeit ist gespeichert. Ergänze deinen Geburtsort, um Häuser und Achsen zu sehen.",
+  "natalWheelNoChart": "Für dieses Konto konnten wir noch kein Horoskop lesen."
 }

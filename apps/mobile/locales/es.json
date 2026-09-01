@@ -2150,5 +2150,16 @@
   "natalMidheavenOnTenthCusp": "Aquí tu MC cae justo en la cúspide de la casa 10. En casas iguales es una coincidencia, no una regla.",
   "natalAnglesNeedBirthData": "Añade tu hora y ciudad de nacimiento para calcular tu ascendente, tu MC y tus casas.",
   "natalPlanetsInHouse": "Planetas en esta casa",
-  "natalNoPlanetsInHouse": "Aquí no hay planetas: esta casa sigue importando."
+  "natalNoPlanetsInHouse": "Aquí no hay planetas: esta casa sigue importando.",
+  "natalWheelTitle": "Rueda de la carta",
+  "natalWheelBodyAnchored": "Tu ascendente está a la izquierda. La longitud avanza en sentido antihorario, así que la casa 1 empieza justo debajo.",
+  "natalWheelBodyAries": "0° Aries está a la izquierda. Sin hora ni ciudad de nacimiento no hay ascendente sobre el que girar la rueda, así que las casas no se dibujan.",
+  "natalWheelAsc": "ASC",
+  "natalWheelMc": "MC",
+  "natalWheelShowAspects": "Mostrar aspectos",
+  "natalWheelHideAspects": "Ocultar aspectos",
+  "natalWheelAriaLabel": "La rueda de tu carta natal: signos, planetas, ángulos y casas.",
+  "natalWheelNeedBirthTime": "Añade tu hora y ciudad de nacimiento para ver las casas y los ángulos.",
+  "natalWheelNeedBirthPlace": "Tu hora de nacimiento está guardada. Añade tu ciudad de nacimiento para ver las casas y los ángulos.",
+  "natalWheelNoChart": "Todavía no hemos podido leer una carta para esta cuenta."
 }

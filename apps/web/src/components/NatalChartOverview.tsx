@@ -19,6 +19,8 @@ import {
 import { translateElement, translateModality, translateSign } from "@/lib/astrology-labels";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
+import { NatalChartWheel } from "@/components/NatalChartWheel";
+import type { Placement } from "@astro/shared/astrology";
 
 type NatalProfile = {
   id: string;
@@ -164,6 +166,12 @@ type ChartReading = {
   mcIsTenth: boolean;
   /** Which planets sit in each house, 1–12. Empty when there are no cusps. */
   planetsPerHouse: Map<number, string[]>;
+  /** The hydrated chart, for the wheel. Null when the row cannot be read. */
+  chart: ReturnType<typeof hydrateStoredChart>;
+  /** The ascendant placement, only when it was proven. */
+  risingPlacement: Placement | null;
+  /** The midheaven placement, only when it was proven. */
+  mcPlacement: Placement | null;
 };
 
 const PLANET_ORDER: readonly PlanetKey[] = [
@@ -268,6 +276,11 @@ function readChart(
     cuspSigns,
     birthDataState,
     needsLocationConfirmation,
+    chart,
+    // The wheel places the ascendant itself, so it needs the placement, not
+    // just the sign. Gated exactly as the Angles card is.
+    risingPlacement: trustedRising && chart?.rising ? chart.rising : null,
+    mcPlacement: mcPlacement ?? null,
     mc: mcPlacement ? { sign: mcPlacement.sign, degree: Math.round(mcPlacement.degree) } : null,
     mcIsTenth: mcIsTenthCusp(mcPlacement, cusps),
     // Real longitudes only. A house with no planets renders as a house with no
@@ -362,6 +375,9 @@ export function NatalChartOverview() {
             mc: null,
             mcIsTenth: false,
             planetsPerHouse: new Map<number, string[]>(),
+            chart: null,
+            risingPlacement: null,
+            mcPlacement: null,
           } satisfies ChartReading),
     [profile, t]
   );
@@ -695,6 +711,22 @@ export function NatalChartOverview() {
             })}
           </ul>
         </div>
+
+        {/* The wheel. First, because it is the chart — everything below is a
+            reading of it. */}
+        <NatalChartWheel
+          chart={reading.chart}
+          rising={reading.risingPlacement}
+          mc={reading.mcPlacement}
+          cusps={reading.cusps}
+          unavailableNote={
+            birthDataState === "missing_birth_time"
+              ? t("natalWheelNeedBirthTime")
+              : birthDataState === "missing_birth_place"
+                ? t("natalWheelNeedBirthPlace")
+                : null
+          }
+        />
 
         {/* Angles — the two points that need the birth clock AND the birthplace.
             Kept OUT of the planet list on purpose: an angle is not a body, and

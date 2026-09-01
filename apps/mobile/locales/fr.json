@@ -2150,5 +2150,16 @@
   "natalMidheavenOnTenthCusp": "Ici, votre MC tombe justement sur la cuspide de la 10e maison. En maisons égales, c'est une coïncidence, pas une règle.",
   "natalAnglesNeedBirthData": "Ajoutez votre heure et votre ville de naissance pour calculer votre ascendant, votre MC et vos maisons.",
   "natalPlanetsInHouse": "Planètes dans cette maison",
-  "natalNoPlanetsInHouse": "Aucune planète ici — cette maison compte quand même."
+  "natalNoPlanetsInHouse": "Aucune planète ici — cette maison compte quand même.",
+  "natalWheelTitle": "Roue du thème",
+  "natalWheelBodyAnchored": "Votre ascendant est à gauche. La longitude tourne dans le sens antihoraire : la première maison commence juste en dessous.",
+  "natalWheelBodyAries": "0° Bélier est à gauche. Sans heure ni ville de naissance, il n'y a pas d'ascendant sur lequel faire tourner la roue : les maisons ne sont pas tracées.",
+  "natalWheelAsc": "ASC",
+  "natalWheelMc": "MC",
+  "natalWheelShowAspects": "Afficher les aspects",
+  "natalWheelHideAspects": "Masquer les aspects",
+  "natalWheelAriaLabel": "La roue de votre thème natal : signes du zodiaque, planètes, angles et maisons.",
+  "natalWheelNeedBirthTime": "Ajoutez votre heure et votre ville de naissance pour voir les maisons et les angles.",
+  "natalWheelNeedBirthPlace": "Votre heure de naissance est enregistrée. Ajoutez votre ville de naissance pour voir les maisons et les angles.",
+  "natalWheelNoChart": "Nous n'avons pas encore pu lire de thème pour ce compte."
 }

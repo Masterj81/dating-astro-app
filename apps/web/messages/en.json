@@ -2248,7 +2248,18 @@
     "natalMidheavenOnTenthCusp": "Here your MC happens to fall on the 10th-house cusp. In Equal House that is a coincidence, not a rule.",
     "natalAnglesNeedBirthData": "Add your birth time and city to calculate your Rising, MC, and houses.",
     "natalPlanetsInHouse": "Planets in this house",
-    "natalNoPlanetsInHouse": "No planets here — this house still matters."
+    "natalNoPlanetsInHouse": "No planets here — this house still matters.",
+    "natalWheelTitle": "Chart wheel",
+    "natalWheelBodyAnchored": "Your ascendant sits at the left. Longitude runs counter-clockwise, so the first house begins just below it.",
+    "natalWheelBodyAries": "0° Aries sits at the left. Without a birth time and city there is no ascendant to turn the wheel on, so the houses are not drawn.",
+    "natalWheelAsc": "ASC",
+    "natalWheelMc": "MC",
+    "natalWheelShowAspects": "Show aspects",
+    "natalWheelHideAspects": "Hide aspects",
+    "natalWheelAriaLabel": "Your natal chart wheel: zodiac signs, planets, angles and houses.",
+    "natalWheelNeedBirthTime": "Add your birth time and city to see houses and angles.",
+    "natalWheelNeedBirthPlace": "Your birth time is saved. Add your birth city to see houses and angles.",
+    "natalWheelNoChart": "We could not read a chart for this account yet."
   },
   "invite": {
     "invalidCode": "Invalid referral code",

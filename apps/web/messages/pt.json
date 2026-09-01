@@ -2202,7 +2202,18 @@
     "natalMidheavenOnTenthCusp": "Aqui o seu MC cai mesmo na cúspide da casa 10. Em casas iguais é uma coincidência, não uma regra.",
     "natalAnglesNeedBirthData": "Adicione a sua hora e cidade de nascimento para calcular o ascendente, o MC e as casas.",
     "natalPlanetsInHouse": "Planetas nesta casa",
-    "natalNoPlanetsInHouse": "Aqui não há planetas — esta casa continua a importar."
+    "natalNoPlanetsInHouse": "Aqui não há planetas — esta casa continua a importar.",
+    "natalWheelTitle": "Roda do mapa",
+    "natalWheelBodyAnchored": "O seu ascendente está à esquerda. A longitude avança no sentido anti-horário, por isso a casa 1 começa logo abaixo.",
+    "natalWheelBodyAries": "0° Carneiro está à esquerda. Sem hora e cidade de nascimento não há ascendente para girar a roda, por isso as casas não são desenhadas.",
+    "natalWheelAsc": "ASC",
+    "natalWheelMc": "MC",
+    "natalWheelShowAspects": "Mostrar aspetos",
+    "natalWheelHideAspects": "Ocultar aspetos",
+    "natalWheelAriaLabel": "A roda do seu mapa natal: signos, planetas, ângulos e casas.",
+    "natalWheelNeedBirthTime": "Adicione a sua hora e cidade de nascimento para ver as casas e os ângulos.",
+    "natalWheelNeedBirthPlace": "A sua hora de nascimento está guardada. Adicione a sua cidade de nascimento para ver as casas e os ângulos.",
+    "natalWheelNoChart": "Ainda não conseguimos ler um mapa para esta conta."
   },
   "invite": {
     "invalidCode": "Código de indicação inválido",
