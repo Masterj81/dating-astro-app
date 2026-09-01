@@ -131,7 +131,26 @@ async function rateLimitedFetch(url: string): Promise<Response> {
     await new Promise((resolve) => setTimeout(resolve, 1000 - timeSinceLast));
   }
   lastNominatimRequest = Date.now();
-  return fetch(url);
+  // Nominatim's usage policy REQUIRES a User-Agent that identifies the
+  // application, and answers 403 to anything else. React Native sends its
+  // platform default (okhttp on Android), which does not qualify — so every
+  // request from this file was refused, silently, for the life of the app.
+  //
+  // The cache below holds 43 world metros and no Bulgarian city, so the whole
+  // June growth cohort fell straight through to the refused call and then to
+  // the Montréal fallback. A census on 2026-09-01 found 69 profiles stored at
+  // Montréal's exact coordinates: Sofia, Varna, Vienna, Verona, Lima, Tampa —
+  // every one of them trivially resolvable, none of them ever asked for.
+  //
+  // The `calculate-chart` edge function has always sent this header. Only the
+  // client was missing it, which is why the same city resolved on web and
+  // failed on Android.
+  return fetch(url, {
+    headers: {
+      'User-Agent': 'JUNO/1.0 (https://junosynastry.com)',
+      Accept: 'application/json',
+    },
+  });
 }
 
 /**
@@ -158,8 +177,14 @@ export async function geocodeCity(city: string): Promise<GeoResult | null> {
     return buildResult(c.lat, c.lng, city);
   }
 
+  // Partial match, with a floor on the reverse direction: `name.includes(
+  // normalized)` alone means an input of "on" matches "london" and "a" matches
+  // almost everything. Four characters keeps the useful case ("york" ->
+  // newyork) and drops the absurd one.
   for (const [name, coords] of Object.entries(CITY_CACHE)) {
-    if (normalized.includes(name) || name.includes(normalized)) {
+    const forward = normalized.includes(name);
+    const reverse = normalized.length >= 4 && name.includes(normalized);
+    if (forward || reverse) {
       return buildResult(coords.lat, coords.lng, city);
     }
   }
@@ -168,6 +193,13 @@ export async function geocodeCity(city: string): Promise<GeoResult | null> {
     const encodedCity = encodeURIComponent(city);
     const url = `https://nominatim.openstreetmap.org/search?q=${encodedCity}&format=json&limit=1`;
     const response = await rateLimitedFetch(url);
+    if (!response.ok) {
+      // Previously this fell through with no signal whatsoever, so a 403 that
+      // affected every non-cached city looked exactly like "city not found".
+      console.warn(
+        `[geocoding] Nominatim refused "${city}" with ${response.status}; no coordinates will be stored.`,
+      );
+    }
     if (response.ok) {
       const results = await response.json();
       if (results && results.length > 0) {

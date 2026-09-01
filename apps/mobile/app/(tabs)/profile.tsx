@@ -28,6 +28,18 @@ type UserProfile = {
   sun_sign: string;
   moon_sign: string;
   rising_sign: string;
+  // The ascendant needs the birthplace as much as the clock: birth longitude
+  // enters local sidereal time degree for degree. Without these two, a stored
+  // rising_sign was cast for whichever city the old fallback substituted —
+  // Greenwich in the edge functions, Montréal in the mobile facade.
+  birth_latitude?: number | null;
+  birth_longitude?: number | null;
+  /**
+   * `profiles.rising_sign_unconfirmed` — set aside by migration 20260901000002
+   * rather than deleted. Never rendered as a placement; it is what makes the
+   * "confirm your birth city" offer honest instead of a blank space.
+   */
+  rising_sign_unconfirmed?: string | null;
   bio: string;
   photos: string[];
   is_verified?: boolean;
@@ -234,8 +246,19 @@ export default function ProfileScreen() {
       resolveTrustedRisingSign({
         birthTime: profile?.birth_time ?? null,
         storedRisingSign: profile?.rising_sign ?? null,
+        // The birthplace matters as much as the clock: birth longitude enters
+        // local sidereal time degree for degree, so an ascendant computed
+        // without coordinates was cast for whichever city the old fallback
+        // picked. get_my_full_profile returns both columns.
+        birthLatitude: profile?.birth_latitude ?? null,
+        birthLongitude: profile?.birth_longitude ?? null,
       }),
-    [profile?.birth_time, profile?.rising_sign]
+    [
+      profile?.birth_time,
+      profile?.rising_sign,
+      profile?.birth_latitude,
+      profile?.birth_longitude,
+    ]
   );
 
   const completeness = useMemo(() => {

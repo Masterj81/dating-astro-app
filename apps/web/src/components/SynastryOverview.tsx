@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
+import { buildSynastryView, formatOrb } from "@astro/shared/astrology";
 import {
   calculateSunCompatibility,
   calculateZoneScores,
@@ -111,6 +112,10 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
   const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [matchProfile, setMatchProfile] = useState<SynastryProfile | null>(null);
+  // Raw birth_chart JSONB for both sides. The SynastryProfile above carries
+  // only sign names; `buildSynastryView` needs the LONGITUDES.
+  const [selfChart, setSelfChart] = useState<unknown>(null);
+  const [matchChart, setMatchChart] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -150,6 +155,7 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
         setState(account);
 
         if (!account?.userId) {
+          setSelfChart(null);
           setSelfProfile(null);
           setCandidates([]);
           return;
@@ -180,6 +186,9 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
         if (ownData) {
           setSelfIntentions(sanitizeConnectionIntentions(ownData.connection_intentions));
         }
+        // The raw chart, kept whole: `buildSynastryView` needs the longitudes,
+        // which the sign columns below do not carry.
+        setSelfChart(ownData?.birth_chart ?? null);
         let nextCandidates = (candidateRows as CandidateProfile[]) || [];
         setSelfProfile(
           ownData
@@ -195,6 +204,10 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
                   birthTime: ownData.birth_time ?? null,
                   storedRisingSign: ownData.rising_sign,
                   birthChart: ownData.birth_chart,
+                  // No synastry score may rest on an ascendant computed from a
+                  // substituted birthplace.
+                  birthLatitude: ownData.birth_latitude ?? null,
+                  birthLongitude: ownData.birth_longitude ?? null,
                 }),
                 // birth_chart JSONB is already returned by
                 // get_my_full_profile. Pull mercury/venus/mars/saturn out
@@ -334,6 +347,7 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
         }
 
         const c = response.chart;
+        setMatchChart(c ?? null);
         setMatchProfile({
           id: response.profile.id,
           name: response.profile.name ?? null,
@@ -431,8 +445,25 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
 
   const me = selfProfile;
   const other = matchProfile;
-  const totalScore =
-    me && other ? calculateSunCompatibility(me.sun_sign, other.sun_sign) : null;
+  // ── The engine ────────────────────────────────────────────────────────────
+  //
+  // Same `buildSynastryView` as mobile, on purpose: two implementations of the
+  // headline number is how the platforms drift. It reads the actual longitudes
+  // of both charts and the aspects between them, replacing
+  // `calculateSunCompatibility(me.sun_sign, other.sun_sign)` — an element
+  // comparison between two Sun SIGNS that could not tell a 1° Venus contact
+  // from a 29° one.
+  const synastryView = buildSynastryView(selfChart, matchChart);
+  const aspectView = synastryView.source === "aspects" ? synastryView : null;
+
+  // The sign-based score survives ONLY as the labelled fallback. Never blended
+  // with the aspect score, never shown under the same heading.
+  const signRhythmScore =
+    !aspectView && me && other
+      ? calculateSunCompatibility(me.sun_sign, other.sun_sign)
+      : null;
+
+  const totalScore = aspectView ? aspectView.headline.score : signRhythmScore;
   const zoneScores: ZoneScore[] = me && other ? calculateZoneScores(me, other) : [];
 
   // "Why this score" — three element pairings. Filter out rows where
@@ -587,6 +618,94 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
             )}
           </div>
         </div>
+
+        {/* Where the number comes from.
+            Either the real engine, named and shown with its geometry, or an
+            honest statement that we could not run it. Never both, and never a
+            sign-based number wearing the aspect label. */}
+        {aspectView ? (
+          <div className="rounded-[2rem] border border-border bg-card/90 p-6">
+            <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+              {t("synastryAspectBasedTitle")}
+            </p>
+            <p className="mt-3 text-sm leading-7 text-text-muted">
+              {t("synastryAspectBasedBody")}
+            </p>
+
+            {/* The three frames. Same aspects, three weightings. */}
+            <div className="mt-6 grid grid-cols-3 gap-3">
+              {aspectView.frames.map((frame) => (
+                <div
+                  key={frame.frame}
+                  className={`flex flex-col items-center gap-1 rounded-[1.2rem] border p-4 ${
+                    frame.frame === aspectView.headline.frame
+                      ? "border-[rgba(232,93,117,0.35)] bg-[rgba(232,93,117,0.10)]"
+                      : "border-border bg-bg/70"
+                  }`}
+                >
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-text-dim">
+                    {t(`synastryFrame_${frame.frame}`)}
+                  </span>
+                  <span className="text-2xl font-bold text-white">{frame.score}</span>
+                  <span className="text-center text-xs text-text-muted">
+                    {t(`synastryScoreTitle_${frame.band}`)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* The geometry. Orbs included: an aspect 0.4° from exact and one
+                7.8° from exact are not the same contact. */}
+            {aspectView.headline.topAspects.length > 0 ? (
+              <div className="mt-6">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-text-dim">
+                  {t("synastryTopAspectsTitle")}
+                </p>
+                <ul className="mt-2 divide-y divide-white/[0.06]">
+                  {aspectView.headline.topAspects.slice(0, 5).map((aspect, index) => (
+                    <li
+                      key={`${aspect.bodyA}-${aspect.bodyB}-${aspect.name}-${index}`}
+                      className="flex items-center justify-between gap-3 py-2"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-sm text-white">
+                        {`${t(`natalPlanet_${aspect.bodyA}`)} · ${t(`natalPlanet_${aspect.bodyB}`)}`}
+                      </span>
+                      <span className="text-xs text-text-muted">
+                        {t(`synastryAspect_${aspect.name}`)}
+                      </span>
+                      <span className="min-w-[3rem] text-right text-xs text-accent">
+                        {formatOrb(aspect.orb)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {aspectView.isLimited ? (
+              <p className="mt-4 text-sm leading-7 text-text-muted">
+                {t("synastryLimitedConfidence")}
+              </p>
+            ) : null}
+            {aspectView.missingAscendant ? (
+              <p className="mt-2 text-sm leading-7 text-text-muted">
+                {t("synastryMissingAscendant")}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <div className="rounded-[2rem] border border-border bg-card/90 p-6">
+            <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+              {t("synastrySignRhythmTitle")}
+            </p>
+            <p className="mt-3 text-sm leading-7 text-text-muted">
+              {t("synastrySignRhythmBody")}
+            </p>
+            <p className="mt-4 text-sm leading-7 text-white/90">
+              {t("synastryNeedsBothCharts")}
+            </p>
+          </div>
+        )}
 
         {/* Why this score — three element pairings (Sun/Sun, Moon/Moon,
             Rising/Rising) framed as a starting point rather than a verdict.

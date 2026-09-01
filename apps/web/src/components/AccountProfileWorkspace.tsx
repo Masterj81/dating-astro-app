@@ -969,6 +969,10 @@ export function AccountProfileWorkspace({
             birthTime: profile.birth_time,
             storedRisingSign: profile.rising_sign,
             birthChart: profile.birth_chart,
+            // The birthplace matters as much as the clock: birth longitude
+            // enters local sidereal time degree for degree.
+            birthLatitude: profile.birth_latitude ?? null,
+            birthLongitude: profile.birth_longitude ?? null,
           }) ? (
             <p className="mt-1 text-sm font-semibold text-white">
               {translateSign(profile.rising_sign, locale)}

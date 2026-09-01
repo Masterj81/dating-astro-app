@@ -2124,5 +2124,21 @@
   "natalHousesNeedBirthTime": "As suas casas dependem do minuto exato do seu nascimento. Sem a hora não podem ser calculadas, por isso o que se segue é o significado geral de cada casa, não o seu.",
   "natalHousesNeedBirthPlace": "A sua hora de nascimento está guardada, mas as casas também dependem do local: o local de nascimento desloca cada cúspide. Adicione a sua cidade de nascimento e poderemos calculá-las.",
   "natalHousesCompleteBirthData": "Completar os meus dados de nascimento",
-  "natalHouseCuspSign": "{{sign}} na cúspide"
+  "natalHouseCuspSign": "{{sign}} na cúspide",
+  "risingNeedsBirthCityLabel": "O seu ascendente",
+  "risingNeedsBirthCity": "O seu ascendente depende de onde nasceu, não apenas de quando. Calculámos o seu sem uma cidade de nascimento, por isso pusemo-lo de lado em vez de lhe mostrar algo que não podemos sustentar. Confirme a sua cidade de nascimento e calculá-lo-emos com precisão.",
+  "risingConfirmBirthCity": "Confirmar a minha cidade de nascimento",
+  "synastryAspectBasedTitle": "Sinastria por aspetos",
+  "synastryAspectBasedBody": "Lê a geometria real entre os vossos mapas — os ângulos entre posições planetárias reais, não apenas os signos solares.",
+  "synastryTopAspectsTitle": "Contactos mais fortes",
+  "synastryLimitedConfidence": "Alguns detalhes são limitados porque falta a hora ou o local de nascimento num dos mapas.",
+  "synastryMissingAscendant": "Os contactos de primeira impressão ficam de fora: pelo menos um mapa não tem ascendente.",
+  "synastrySignRhythmTitle": "Pré-visualização do ritmo dos signos",
+  "synastrySignRhythmBody": "É uma leitura ampla, apenas a partir dos vossos signos solares. Não distingue um contacto planetário próximo de um distante.",
+  "synastryNeedsBothCharts": "A sinastria detalhada precisa dos dois mapas natais.",
+  "synastryAspect_conjunction": "Conjunção",
+  "synastryAspect_sextile": "Sextil",
+  "synastryAspect_square": "Quadratura",
+  "synastryAspect_trine": "Trígono",
+  "synastryAspect_opposition": "Oposição"
 }

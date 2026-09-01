@@ -246,9 +246,18 @@ serve(async (req) => {
   // 4. Read target via service_role (bypasses RLS + Phase 3-C column REVOKEs).
   const { data: target, error: targetErr } = await adminClient
     .from('profiles')
+    // `birth_chart` is read below for its stored IANA timezone, and was missing
+    // from this list. `target.birth_chart` was therefore always `undefined`,
+    // `storedTz` always null, and the zone always re-derived from coordinates —
+    // which flips `tz.source` from 'input' to 'lookup', drops confidence from
+    // 'high' to 'medium', and makes `applyConfidenceCap` truncate every
+    // synastry score to 92. The best matches in the product were invisible.
+    //
+    // Adding it here cannot leak anything: `sanitizeProfile` is an allowlist
+    // and never copies birth_chart into the response.
     .select(
       'id, name, age, birth_date, birth_time, birth_city, birth_latitude, birth_longitude, ' +
-      'sun_sign, moon_sign, rising_sign, bio, image_url, images, photos, gender, ' +
+      'birth_chart, sun_sign, moon_sign, rising_sign, bio, image_url, images, photos, gender, ' +
       'has_voice_intro, voice_intro_url, is_verified, last_active, is_active, onboarding_completed',
     )
     .eq('id', targetUserId)
@@ -322,8 +331,14 @@ serve(async (req) => {
   const planets = calculatePlanetPositions(time)
 
   // 6. Coarsen coordinates to 0.5° (~55 km) before returning.
-  const coarseLat = Math.round(lat * 2) / 2
-  const coarseLng = Math.round(lng * 2) / 2
+  //
+  // Null stays null. `Math.round(null * 2) / 2` is 0 in JavaScript, so an
+  // unknown birthplace used to be returned as `{ latitude: 0, longitude: 0 }`
+  // — the Gulf of Guinea, presented as this person's approximate birthplace.
+  // The same shape is what `hydrateStoredChart` reads coordinates from, so a
+  // consumer that hydrated this payload would rebuild a chart cast there.
+  const coarseLat = hasBirthPlace ? Math.round((lat as number) * 2) / 2 : null
+  const coarseLng = hasBirthPlace ? Math.round((lng as number) * 2) / 2 : null
 
   const chart = {
     sun: { longitude: sunLong, sign: getZodiacSign(sunLong), degree: getDegreeInSign(sunLong) },

@@ -19,7 +19,7 @@
 //
 // Usage: node scripts/validate-email-templates.mjs
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 
@@ -328,7 +328,13 @@ check('preference key is not "promotions"', LIFECYCLE_PREF_KEY !== 'promotions')
 check('promotions=false does not suppress lifecycle mail',
   isSuppressed({ promotions: false }, 'lifecycle') === false);
 
-check('welcome is transactional', TEMPLATES.welcome.category === 'transactional');
+// welcome was transactional until 2026-09-01 and was sent by nothing at all.
+// Now that it is actually enqueued (20260901000001), it must respect the
+// unsubscribe: it is the first beat of onboarding, not a receipt. A
+// transactional classification would mail exactly the people who asked us to
+// stop, because `isSuppressed` returns false for that category unconditionally.
+check('welcome is lifecycle, so the unsubscribe applies to it',
+  TEMPLATES.welcome.category === 'lifecycle');
 for (const n of ['onboarding_day1', 'onboarding_day3', 'onboarding_day5']) {
   check(`${n} is lifecycle`, TEMPLATES[n].category === 'lifecycle');
 }
@@ -353,6 +359,40 @@ check('index: one-click headers are lifecycle-only',
 check('index: reads moon_sign from the profile', /moon_sign/.test(indexSrc));
 check('index: default sender is a junosynastry.com address',
   /noreply@junosynastry\.com/.test(indexSrc));
+
+// --- the welcome email, and the account that must not receive mail ----------
+// `welcome` shipped, was whitelisted, was asserted here — and was enqueued by
+// nothing for its entire life. Now that 20260901000001 enqueues it, these
+// guard the two ways it could go wrong: mailing a deactivated account, or
+// mailing the same person twice.
+check('index: reads is_active from the profile',
+  /is_active/.test(indexSrc),
+  'lifecycle mail queued days ahead can outlive the deactivation in between');
+check('index: skips a deactivated account before Resend',
+  /profile\.is_active === false[\s\S]{0,220}?skipped: true[\s\S]{0,60}?"inactive"/.test(indexSrc));
+
+const WELCOME_MIGRATION = path.join(
+  ROOT, 'supabase/migrations/20260901000001_welcome_email_on_onboarding.sql',
+);
+const welcomeSql = existsSync(WELCOME_MIGRATION) ? readFileSync(WELCOME_MIGRATION, 'utf8') : '';
+check('a migration enqueues welcome at all', welcomeSql.length > 0,
+  '20260901000001_welcome_email_on_onboarding.sql is missing');
+check('welcome is enqueued through scheduled_emails, not sent from the trigger',
+  /INSERT INTO public\.scheduled_emails[\s\S]{0,200}?'welcome'/.test(welcomeSql),
+  'an HTTP call inside the onboarding transaction would let a Resend outage roll back onboarding');
+check('welcome is idempotent at the schema level',
+  /CREATE UNIQUE INDEX[\s\S]{0,200}?ux_scheduled_emails_welcome_once[\s\S]{0,200}?WHERE template = 'welcome'/.test(welcomeSql) &&
+    /ON CONFLICT \(user_id\) WHERE template = 'welcome' DO NOTHING/.test(welcomeSql),
+  'a column would only be as reliable as the code that remembers to write it');
+check('welcome is not enqueued for a deactivated account',
+  /IF COALESCE\(NEW\.is_active, TRUE\) = TRUE THEN/.test(welcomeSql));
+check('the three existing onboarding emails are still enqueued',
+  ['onboarding_day1', 'onboarding_day3', 'onboarding_day5']
+    .every((t) => welcomeSql.includes(`'${t}'`)),
+  'replacing schedule_onboarding_emails must not drop the sequence it already sent');
+check('the migration performs no backfill',
+  !/INSERT INTO public\.scheduled_emails[\s\S]{0,400}?SELECT[\s\S]{0,200}?FROM public\.profiles/.test(welcomeSql),
+  'welcoming an account that signed up in June would read as a mistake, not a welcome');
 
 // Source cleanliness, including comments. The rendered-output checks above are
 // the ones that matter for what readers receive — but a banned literal sitting

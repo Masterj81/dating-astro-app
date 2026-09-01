@@ -17,6 +17,7 @@ import {
   resolveBirthDataState,
   resolveHouseCusps,
   resolveTrustedRisingSign,
+  risingNeedsLocationConfirmation,
   signsOnCusps,
   type BirthDataState,
 } from '@astro/shared/astrology';
@@ -82,6 +83,13 @@ type NatalChartData = {
   birth_chart: unknown;
   birth_latitude: number | null;
   birth_longitude: number | null;
+  /**
+   * `profiles.rising_sign_unconfirmed` — an ascendant migration 20260901000002
+   * set aside because it was computed without a reliable birthplace. NEVER
+   * rendered as a placement; it exists so this screen can offer to recompute
+   * rather than pretend the placement never existed.
+   */
+  rising_sign_unconfirmed: string | null;
 };
 
 // Glyphs are display chrome, not data. Module scope so the memo below does not
@@ -163,6 +171,12 @@ function NatalChartScreenContent() {
         ? resolveTrustedRisingSign({
             birthTime: chartData.birth_time,
             storedRisingSign: chartData.rising_sign,
+            // Same gate as the houses: the ascendant needs the birthplace as
+            // much as the clock, and these two columns are already loaded for
+            // the cusps.
+            birthLatitude: chartData.birth_latitude,
+            birthLongitude: chartData.birth_longitude,
+            unconfirmedRisingSign: chartData.rising_sign_unconfirmed,
           })
         : null,
     [chartData]
@@ -181,9 +195,19 @@ function NatalChartScreenContent() {
             birthLongitude: chartData.birth_longitude,
             birthChart: chartData.birth_chart,
             storedRisingSign: chartData.rising_sign,
+            unconfirmedRisingSign: chartData.rising_sign_unconfirmed,
           }
         : null,
     [chartData]
+  );
+
+  // "Confirm your birth city so we can calculate your rising sign" — shown
+  // only to readers who HAVE a set-aside ascendant. Someone who never gave a
+  // birth time is not in this state: the city would not help them, and asking
+  // would send them to fix the wrong field.
+  const needsLocationConfirmation = useMemo(
+    () => (trustInput ? risingNeedsLocationConfirmation(trustInput) : false),
+    [trustInput]
   );
 
   const birthDataState: BirthDataState = useMemo(
@@ -286,6 +310,7 @@ function NatalChartScreenContent() {
           birth_chart: data.birth_chart ?? null,
           birth_latitude: typeof data.birth_latitude === 'number' ? data.birth_latitude : null,
           birth_longitude: typeof data.birth_longitude === 'number' ? data.birth_longitude : null,
+          rising_sign_unconfirmed: data.rising_sign_unconfirmed ?? null,
         });
       }
     } catch (err) {
@@ -660,6 +685,32 @@ function NatalChartScreenContent() {
           );
         })}
       </View>
+
+      {/* An ascendant we set aside.
+          The value was NOT deleted — migration 20260901000002 moved it to
+          `rising_sign_unconfirmed`, out of the one column the blind surfaces
+          read. The reader saw a rising sign here for months; saying nothing
+          would read as data quietly disappearing. So we say what happened and
+          offer the one thing that fixes it. The old sign is never shown: it
+          was cast for a city this reader has never been to. */}
+      {needsLocationConfirmation && (
+        <View style={styles.section}>
+          <View style={styles.housesNotice}>
+            <Text style={styles.risingNoticeLabel}>
+              {t('risingNeedsBirthCityLabel')}
+            </Text>
+            <Text style={styles.housesNoticeText}>{t('risingNeedsBirthCity')}</Text>
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => router.push('/profile/edit')}
+            >
+              <Text style={styles.housesNoticeAction}>
+                {t('risingConfirmBirthCity')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* The twelve houses.
           Ported from web on 2026-08-31. The 24 content keys
@@ -1345,6 +1396,13 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 10,
     marginBottom: 16,
+  },
+  risingNoticeLabel: {
+    fontSize: 11,
+    color: '#ffb7c7',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    fontWeight: '600',
   },
   housesNoticeText: {
     fontSize: 14,
