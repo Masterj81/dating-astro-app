@@ -1,6 +1,38 @@
-import type { HouseCuspCorpus, HouseCuspKey, HouseCuspLocale } from './types';
+import type {
+  HouseCuspCorpus,
+  HouseCuspKey,
+  HouseCuspLocale,
+  HouseCuspSign,
+  HouseNumber,
+} from './types';
 
-const SIGNS = [
+// TYPE-ONLY IMPORT, AND IT HAS TO STAY THAT WAY.
+// `scripts/validate-natal-integrity.mjs` loads this module with a dynamic
+// `import()` so it can run the builder — a text scan cannot see composed
+// output. Node's type stripping erases `import type` but does NOT resolve
+// extensionless specifiers, so a single VALUE import here (say, pulling
+// HOUSE_NUMBERS from './types') would make the validator die with
+// ERR_MODULE_NOT_FOUND. A guard in that script asserts this file imports
+// nothing at runtime, because the failure is loud but the cause is not obvious.
+
+type GeneratedLocale = Exclude<HouseCuspLocale, 'en' | 'fr'>;
+
+/**
+ * Exactly twelve of something.
+ *
+ * The tables below used to be `as const` with no annotation, so an eleven-entry
+ * house table was not a compile error — it silently interpolated the string
+ * "undefined" into twelve readings and shipped. The tuple type makes a short
+ * table fail `tsc`, which is where a missing translation should be caught.
+ */
+type Twelve<T> = readonly [T, T, T, T, T, T, T, T, T, T, T, T];
+
+/** Builds one opening sentence from the house phrase and the sign phrase. */
+type Frame = (house: string, sign: string) => string;
+
+const HOUSES: Twelve<HouseNumber> = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+const SIGNS: Twelve<HouseCuspSign> = [
   'aries',
   'taurus',
   'gemini',
@@ -15,7 +47,7 @@ const SIGNS = [
   'pisces',
 ] as const;
 
-const HOUSE = {
+const HOUSE: Record<GeneratedLocale, Twelve<string>> = {
   es: [
     'la identidad, el cuerpo y la primera impresión',
     'el dinero, los valores y la sensación de estabilidad',
@@ -102,7 +134,7 @@ const HOUSE = {
   ],
 } as const;
 
-const SIGN = {
+const SIGN: Record<GeneratedLocale, Record<HouseCuspSign, string>> = {
   es: {
     aries: 'iniciativa, franqueza y movimiento rápido',
     taurus: 'paciencia, lealtad y necesidad de algo confiable',
@@ -132,7 +164,10 @@ const SIGN = {
     pisces: 'sensibilidade, imaginação e compaixão',
   },
   de: {
-    aries: 'Initiative, Direktheit und schnelle Bewegung',
+    // Dative throughout: every frame below puts these behind `von` / `mit` /
+    // `an`. This entry was the only nominative one left ("schnelle Bewegung"),
+    // which read as a case error in all twelve of its readings.
+    aries: 'Initiative, Direktheit und schneller Bewegung',
     taurus: 'Geduld, Loyalität und dem Wunsch nach Verlässlichkeit',
     gemini: 'Neugier, Sprache und Beweglichkeit',
     cancer: 'Fürsorge, emotionaler Erinnerung und dem Bedürfnis nach Sicherheit',
@@ -189,7 +224,7 @@ const SIGN = {
   },
 } as const;
 
-const REFLECTION = {
+const REFLECTION: Record<GeneratedLocale, Twelve<string>> = {
   es: [
     'Puede ayudarte a notar cuándo actuar y cuándo dejar que la otra persona llegue.',
     'A menudo se vuelve más claro cuando distingues seguridad de rigidez.',
@@ -276,27 +311,157 @@ const REFLECTION = {
   ],
 } as const;
 
-function key(house: number, sign: string): HouseCuspKey {
-  return `natalHouseCuspInterpretation_${house}_${sign}` as HouseCuspKey;
+/** First letter upper-cased, for the frames that open on a variable. */
+function cap(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function build(locale: Exclude<HouseCuspLocale, 'en' | 'fr'>): HouseCuspCorpus {
+/**
+ * One opening sentence per HOUSE, per language.
+ *
+ * There used to be a single frame per language, so all 144 readings began with
+ * the same eight words. That is not a theoretical blemish: equal-house cusps
+ * always land on twelve consecutive, DISTINCT signs, so a reader opening their
+ * chart sees twelve cards at once — and saw the same sentence twelve times. It
+ * was the one repetition an individual reader could actually perceive, and the
+ * cheapest thing in the file to fix.
+ *
+ * Grammar notes that are easy to undo by accident:
+ *   es / pt — every house phrase is a LIST of nouns, so the verb is plural.
+ *             The old frames said "se exprese" / "se expresse" against a plural
+ *             subject in all 288 readings.
+ *   de      — the sign phrases are DATIVE, so frames use von / mit / an, never
+ *             `durch` (accusative), and the house phrases stay nominative
+ *             subjects rather than accusative objects.
+ *   ar      — the grammatical subject is never the interpolated phrase. Arabic
+ *             verbs agree with it, and the house phrases switch gender
+ *             (المهنة feminine, البيت masculine), so a leading verb would be
+ *             wrong for roughly half the houses. Every frame keeps a fixed
+ *             subject (هذا البيت, أثر, الأمر, لغة) instead.
+ */
+const FRAME: Record<GeneratedLocale, Twelve<Frame>> = {
+  es: [
+    (h, s) => `En esta casa, ${h} pueden expresarse con ${s}.`,
+    (h, s) => `Aquí, ${h} suelen teñirse de ${s}.`,
+    (h, s) => `Esta casa puede dar a ${h} un tono de ${s}.`,
+    (h, s) => `Con este signo en la cúspide, ${h} pueden vivirse con ${s}.`,
+    (h, s) => `${cap(s)} pueden colorear ${h}.`,
+    (h, s) => `Esta casa tiende a filtrar ${h} a través de ${s}.`,
+    (h, s) => `Aquí, ${h} encuentran su tono en ${s}.`,
+    (h, s) => `${cap(h)} pueden apoyarse en ${s}.`,
+    (h, s) => `Esta casa puede pedir que ${h} se vivan con ${s}.`,
+    (h, s) => `En esta zona de tu vida, ${h} pueden mostrarse con ${s}.`,
+    (h, s) => `Aquí, ${s} pueden marcar el ritmo de ${h}.`,
+    (h, s) => `Esta casa puede teñir ${h} de ${s}.`,
+  ],
+  pt: [
+    (h, s) => `Nesta casa, ${h} podem se expressar com ${s}.`,
+    (h, s) => `Aqui, ${h} costumam ganhar o tom de ${s}.`,
+    (h, s) => `Esta casa pode dar a ${h} um tom de ${s}.`,
+    (h, s) => `Com este signo na cúspide, ${h} podem aparecer com ${s}.`,
+    (h, s) => `${cap(s)} podem colorir ${h}.`,
+    (h, s) => `Esta casa tende a filtrar ${h} através de ${s}.`,
+    (h, s) => `Aqui, ${h} encontram seu tom em ${s}.`,
+    (h, s) => `${cap(h)} podem se apoiar em ${s}.`,
+    (h, s) => `Esta casa pode pedir que ${h} caminhem com ${s}.`,
+    (h, s) => `Nesta área da sua vida, ${h} podem se mostrar com ${s}.`,
+    (h, s) => `Aqui, ${s} podem marcar o ritmo de ${h}.`,
+    (h, s) => `Esta casa pode tingir ${h} de ${s}.`,
+  ],
+  de: [
+    (h, s) => `In diesem Haus können ${h} von ${s} gefärbt sein.`,
+    (h, s) => `Hier tragen ${h} oft eine Note von ${s}.`,
+    (h, s) => `${h} können hier von ${s} geprägt sein.`,
+    (h, s) => `In diesem Bereich zeigen sich ${h} häufig zusammen mit ${s}.`,
+    (h, s) => `Hier können ${h} eine Färbung von ${s} annehmen.`,
+    (h, s) => `${h} bekommen in diesem Haus oft einen Ton von ${s}.`,
+    (h, s) => `Dieses Haus kann zeigen, wie sich ${h} mit ${s} verbinden.`,
+    (h, s) => `In diesem Lebensbereich können ${h} von ${s} begleitet sein.`,
+    (h, s) => `Hier wirken ${h} oft stark von ${s} gefärbt.`,
+    (h, s) => `${h} können sich hier mit ${s} verweben.`,
+    (h, s) => `In diesem Haus mischen sich ${h} gern mit ${s}.`,
+    (h, s) => `Hier lassen sich ${h} oft an ${s} erkennen.`,
+  ],
+  ja: [
+    (h, s) => `このハウスでは、${h}が${s}によって色づくかもしれません。`,
+    (h, s) => `ここでは、${h}に${s}の色が混じることがあります。`,
+    (h, s) => `${h}は、${s}とともに動くかもしれません。`,
+    (h, s) => `この領域では、${h}が${s}の影響を受けやすいかもしれません。`,
+    (h, s) => `${h}に、${s}のトーンが重なることがあります。`,
+    (h, s) => `このハウスは、${h}を${s}で彩ることがあります。`,
+    (h, s) => `ここでの${h}は、${s}を通して形になりやすいようです。`,
+    (h, s) => `${s}が、${h}の進み方を左右することがあります。`,
+    (h, s) => `この場所では、${h}と${s}が結びつきやすいかもしれません。`,
+    (h, s) => `${h}は、${s}を手がかりに動くことがあります。`,
+    (h, s) => `ここでは、${s}が${h}に色を添えるかもしれません。`,
+    (h, s) => `このハウスでは、${h}が${s}のかたちをとることがあります。`,
+  ],
+  zh: [
+    (h, s) => `这个宫位可能让${h}带上${s}的色彩。`,
+    (h, s) => `在这里，${h}常常与${s}交织在一起。`,
+    (h, s) => `${h}可能以${s}的方式展开。`,
+    (h, s) => `这个领域里，${h}容易被${s}影响。`,
+    (h, s) => `${s}可能为${h}定下基调。`,
+    (h, s) => `这个宫位有时会用${s}来描绘${h}。`,
+    (h, s) => `此处的${h}，往往透过${s}显现。`,
+    (h, s) => `${h}可能带着${s}的节奏前行。`,
+    (h, s) => `在这个位置，${h}与${s}容易彼此呼应。`,
+    (h, s) => `${s}可能成为${h}的底色。`,
+    (h, s) => `这里，${h}或许会以${s}的语气表达。`,
+    (h, s) => `这个宫位可能把${h}染上${s}的色彩。`,
+  ],
+  ar: [
+    (h, s) => `قد يجعل هذا البيت ${h} يتلون بصفات ${s}.`,
+    (h, s) => `قد يرسم هذا البيت ${h} بألوان ${s}.`,
+    (h, s) => `قد يعطي هذا البيت ${h} نبرة من ${s}.`,
+    (h, s) => `في هذا المجال، قد يظهر أثر ${s} على ${h}.`,
+    (h, s) => `قد يصبغ هذا البيت ${h} بصفات ${s}.`,
+    (h, s) => `هنا، قد نلمس في ${h} أثر ${s}.`,
+    (h, s) => `قد يمنح هذا البيت ${h} طابعا من ${s}.`,
+    (h, s) => `في هذا الموضع، قد نجد أثر ${s} في ${h}.`,
+    (h, s) => `قد يلوّن هذا البيت ${h} بصفات ${s}.`,
+    (h, s) => `هنا، قد يسير الأمر في ${h} على إيقاع ${s}.`,
+    (h, s) => `قد يضع هذا البيت في ${h} لمسة من ${s}.`,
+    (h, s) => `في هذه المنطقة من حياتك، قد تظهر لغة ${s} داخل ${h}.`,
+  ],
+};
+
+/** Japanese and Chinese do not put a space after 。 */
+const JOIN: Record<GeneratedLocale, string> = {
+  es: ' ',
+  pt: ' ',
+  de: ' ',
+  ja: '',
+  zh: '',
+  ar: ' ',
+};
+
+/**
+ * No `as HouseCuspKey` any more: with `house` typed as `HouseNumber` and
+ * `sign` as `HouseCuspSign`, the template literal IS a `HouseCuspKey` and the
+ * compiler can see it. The assertion it replaced would have accepted
+ * `key(13, 'ophiuchus')`.
+ */
+function key(house: HouseNumber, sign: HouseCuspSign): HouseCuspKey {
+  return `natalHouseCuspInterpretation_${house}_${sign}`;
+}
+
+/**
+ * The one assertion left in this file is on the RETURN value, and it cannot be
+ * removed: TypeScript has no way to prove a loop filled every key of a mapped
+ * type. What CAN be guaranteed is that the inputs are total — `Twelve<T>` and
+ * `Record<HouseCuspSign, string>` above make a short table a compile error — so
+ * the loop has nothing to be short of. The output is checked at runtime by
+ * `__tests__/house-cusps.test.ts` and by `validate-natal-integrity`, which
+ * imports this module and counts.
+ */
+function build(locale: GeneratedLocale): HouseCuspCorpus {
   const corpus = {} as HouseCuspCorpus;
-  for (let h = 1; h <= 12; h += 1) {
+  for (const house of HOUSES) {
     for (const sign of SIGNS) {
-      if (locale === 'es') {
-        corpus[key(h, sign)] = `Esta casa puede hacer que ${HOUSE.es[h - 1]} se exprese con ${SIGN.es[sign]}. ${REFLECTION.es[SIGNS.indexOf(sign)]}`;
-      } else if (locale === 'pt') {
-        corpus[key(h, sign)] = `Esta casa pode fazer com que ${HOUSE.pt[h - 1]} se expresse com ${SIGN.pt[sign]}. ${REFLECTION.pt[SIGNS.indexOf(sign)]}`;
-      } else if (locale === 'de') {
-        corpus[key(h, sign)] = `Dieses Haus kann ${HOUSE.de[h - 1]} durch ${SIGN.de[sign]} färben. ${REFLECTION.de[SIGNS.indexOf(sign)]}`;
-      } else if (locale === 'ja') {
-        corpus[key(h, sign)] = `このハウスでは、${HOUSE.ja[h - 1]}が${SIGN.ja[sign]}によって色づくかもしれません。${REFLECTION.ja[SIGNS.indexOf(sign)]}`;
-      } else if (locale === 'zh') {
-        corpus[key(h, sign)] = `这个宫位可能让${HOUSE.zh[h - 1]}带上${SIGN.zh[sign]}的色彩。${REFLECTION.zh[SIGNS.indexOf(sign)]}`;
-      } else {
-        corpus[key(h, sign)] = `قد يجعل هذا البيت ${HOUSE.ar[h - 1]} يتلون بصفات ${SIGN.ar[sign]}. ${REFLECTION.ar[SIGNS.indexOf(sign)]}`;
-      }
+      const opening = FRAME[locale][house - 1](HOUSE[locale][house - 1], SIGN[locale][sign]);
+      const reflection = REFLECTION[locale][SIGNS.indexOf(sign)];
+      corpus[key(house, sign)] = `${opening}${JOIN[locale]}${reflection}`;
     }
   }
   return corpus;
