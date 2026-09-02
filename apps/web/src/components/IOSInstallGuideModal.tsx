@@ -116,7 +116,7 @@ export function IOSInstallGuideModal() {
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="mt-6 w-full rounded-full bg-accent py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+          className="mt-6 w-full rounded-full bg-gold py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
         >
           {t("gotIt") || "Got it"}
         </button>

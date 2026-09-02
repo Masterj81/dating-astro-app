@@ -34,6 +34,9 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
+// Named because a literal backslash-n has been mangled by this repo's shell
+// more than once while editing this very file.
+const NEWLINE = String.fromCharCode(10);
 
 let checks = 0;
 let failures = 0;
@@ -71,9 +74,13 @@ const SHARED_COLORS = {
   goldSoft: ['--color-gold-soft', 'goldSoft'],
   goldDeep: ['--color-gold-deep', 'goldDeep'],
   goldMuted: ['--color-gold-muted', 'goldMuted'],
+  goldAntique: ['--color-gold-antique', 'goldAntique'],
   accent: ['--color-accent', 'coral'],
   accentHover: ['--color-accent-hover', 'coralStrong'],
+  accentDeep: ['--color-accent-deep', 'coralDeep'],
+  coral: ['--color-coral', 'coralVivid'],
   purple: ['--color-purple', 'cosmic'],
+  purpleDeep: ['--color-purple-deep', 'cosmicDeep'],
 };
 
 function cssHex(prop) {
@@ -105,13 +112,13 @@ for (const [name, [prop, key]] of Object.entries(SHARED_COLORS)) {
 console.log('the second palette stays dead');
 
 const BANNED = [
-  ['#e94560', 'the legacy coral. AppTheme.colors.coral (#E85D75) is the one.'],
-  ['#c23a51', 'the legacy pressed coral. Use coralStrong (#D93C5A).'],
-  ['#c23152', 'the legacy pressed coral. Use coralStrong (#D93C5A).'],
+  ['#e94560', 'the legacy coral. The accent is #C98692; vivid coral is #E85D75.'],
+  ['#c23a51', 'the legacy pressed coral. Use coralStrong (#B76E79).'],
+  ['#c23152', 'the legacy pressed coral. Use coralStrong (#B76E79).'],
   ['#0f0f1a', 'the legacy canvas. Use AppTheme.colors.canvas (#0B0B14).'],
   ['#1a1a2e', 'the legacy mid stop. Use gradients.screen.'],
   ['#16213e', 'the legacy end stop. Use gradients.screen.'],
-  ['#9333ea', 'raw tailwind purple-600. Cosmic is #8B87FF.'],
+  ['#9333ea', 'raw tailwind purple-600. Cosmic is #A79FEA / #5B54A8.'],
   ['#dab56d', 'the old dim gold. The scale starts at #E8C77E.'],
 ];
 
@@ -206,12 +213,17 @@ function contrast(a, b) {
 // on top can be read, not whether the fill can.
 const MIN = 4.5;
 /** Tokens rendered as TEXT, measured against the card they sit on. */
-const AS_TEXT = ['gold', 'goldSoft', 'goldMuted', 'accent', 'purple'];
+const AS_TEXT = ['gold', 'goldSoft', 'goldMuted', 'goldAntique', 'accent', 'purple'];
 /** Tokens rendered as a FILL, measured against the label that sits on them. */
 // `goldDeep` is only ever the far end of the premium gradient, which is a
 // gold surface: its label is near-black like the rest of that button, not
 // white. Testing it against white measured a pairing that does not exist.
-const AS_BACKGROUND = { accentHover: '#ffffff', goldDeep: '#0b0b14' };
+const AS_BACKGROUND = {
+  accentHover: '#ffffff',
+  accentDeep: '#ffffff',
+  purpleDeep: '#ffffff',
+  goldDeep: '#0b0b14',
+};
 
 for (const name of AS_TEXT) {
   const hex = palette[name];
@@ -254,6 +266,92 @@ check(
   'the CTA gradient never ends on a colour white cannot sit on',
   !/cta:\s*\['#E85D75',\s*'#E8C77E'\]/.test(theme),
   'coral into gold with white text ends at 1.63:1',
+);
+
+// ---------------------------------------------------------------------------
+// 3b. Coral is rare, and it is not the accent
+// ---------------------------------------------------------------------------
+// The first gold pass gave gold the identity surfaces and left coral doing
+// everything else — borders, tints, links, every button — so the product still
+// read as the old pink dating brand with gold stuck on top. `accent` now means
+// muted rose-gold; true coral survives under its own name for a handful of
+// moments and must not creep back into the general accent.
+console.log('coral is rare, and it is not the accent');
+
+check(
+  'the accent token is not coral',
+  palette.accent !== '#e85d75',
+  'accent carried ~470 call sites. While it was coral, no amount of gold elsewhere could win.',
+);
+// Vivid coral may appear in exactly two kinds of place: the two token
+// definitions, and the standalone error boundaries (a critical failure is one
+// of the two moments the palette still allows it, and those files are inline
+// styles with no token to reference). 90 hard-coded literals elsewhere were
+// bypassing the theme entirely — same shape as the shadow palette, different
+// disguise.
+const CORAL_ALLOWED = [
+  'apps/web/src/app/globals.css',
+  'apps/web/src/app/error.tsx',
+  'apps/web/src/app/[locale]/error.tsx',
+  'apps/web/src/app/[locale]/app/error.tsx',
+  'apps/mobile/constants/theme.ts',
+];
+const coralStrays = [];
+for (const rel of files) {
+  if (CORAL_ALLOWED.includes(rel)) continue;
+  readFileSync(path.join(ROOT, rel), 'utf8').split(NEWLINE).forEach((line, i) => {
+    const t = line.trimStart();
+    if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return;
+    if (/#e85d75/i.test(line)) coralStrays.push(`${rel}:${i + 1}`);
+  });
+}
+check(
+  'vivid coral appears only where it is meant to',
+  coralStrays.length === 0,
+  `hard-coded coral outside the token definitions and the error boundaries:
+        ${coralStrays.slice(0, 4).join(', ')}`,
+);
+
+check(
+  'true coral is still available, under its own name',
+  palette.coral === '#e85d75',
+  'the hot colour should exist for a like or a match — just not as the default accent',
+);
+
+// Solid `bg-accent` fills are buttons. A light rose-gold fill cannot carry a
+// white label (2.3:1), and the brief wants primary CTAs gold anyway.
+let solidAccentFills = 0;
+for (const rel of files) {
+  if (!rel.startsWith('apps/web/')) continue;
+  const src = readFileSync(path.join(ROOT, rel), 'utf8');
+  solidAccentFills += (src.match(/bg-accent(?![-/\w])/g) ?? []).length;
+}
+check(
+  'no solid bg-accent fills remain',
+  solidAccentFills === 0,
+  `${solidAccentFills} found. Primary CTAs are gold with a near-black label; accent is for text, borders and tints.`,
+);
+
+// The navigation is the surface the reader sees before anything else, and it
+// used to announce three unrelated brands: pink, blue and bright violet.
+const shell = read('apps/web/src/components/AppShell.tsx');
+check(
+  'the active nav dot is gold',
+  /rounded-full bg-gold/.test(shell),
+  'a coral dot is the first thing on screen and the last thing that should be pink',
+);
+check(
+  'the active nav surface is bronze, not pink',
+  /activeBg = "bg-bronze"/.test(shell),
+);
+check(
+  'Celestial navigation is gold, not blue',
+  /activeBg = "bg-\[rgba\(\s*232,\s*199,\s*126/.test(shell),
+  'gold is what celestial MEANS here; painting that entry blue is the palette competing with itself',
+);
+check(
+  'Cosmic navigation is deep violet',
+  /activeBg = "bg-\[rgba\(\s*91,\s*84,\s*168/.test(shell),
 );
 
 // ---------------------------------------------------------------------------
@@ -306,10 +404,11 @@ for (const rel of files) {
   );
 }
 
+const RING_GOLD = /rgba\(\s*232,\s*199,\s*126,\s*0\.26\s*\)/;
 check(
   'the chart wheel zodiac ring is gold',
-  /rgba\(232,199,126,0\.26\)/.test(read('apps/web/src/components/NatalChartWheel.tsx')) &&
-    /rgba\(232,199,126,0\.26\)/.test(read('apps/mobile/components/NatalChartWheel.tsx')),
+  RING_GOLD.test(read('apps/web/src/components/NatalChartWheel.tsx')) &&
+    RING_GOLD.test(read('apps/mobile/components/NatalChartWheel.tsx')),
   'the wheel is the hero image of the product; in flat white it reads as a wireframe',
 );
 

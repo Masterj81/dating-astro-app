@@ -35,7 +35,7 @@ export function PrimaryButton({
       >
         <LinearGradient colors={[...AppTheme.gradients.cta]} style={styles.button}>
           {loading ? (
-            <ActivityIndicator color={AppTheme.colors.textOnAccent} />
+            <ActivityIndicator color={AppTheme.colors.textOnGold} />
           ) : (
             <>
               <Text style={styles.label}>{label}</Text>
@@ -64,12 +64,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   label: {
-    color: AppTheme.colors.textOnAccent,
+    // gradients.cta is gold now. White here would be 1.6:1.
+    color: AppTheme.colors.textOnGold,
     fontSize: 18,
     fontWeight: '700',
   },
   subtitle: {
-    color: 'rgba(255,255,255,0.75)',
+    // Same reason as the label above: this sits on gold.
+    color: 'rgba(11, 11, 20, 0.72)',
     fontSize: 13,
     marginTop: 4,
   },

@@ -605,10 +605,10 @@ const styles = StyleSheet.create({
     color: AppTheme.colors.textMuted,
   },
   referralCard: {
-    backgroundColor: 'rgba(232, 93, 117, 0.08)',
+    backgroundColor: 'rgba(201, 134, 146, 0.08)',
     borderRadius: AppTheme.radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(232, 93, 117, 0.2)',
+    borderColor: 'rgba(201, 134, 146, 0.2)',
     padding: 16,
     marginBottom: 12,
   },

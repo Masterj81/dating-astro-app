@@ -920,11 +920,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 20,
     marginBottom: 16,
-    backgroundColor: 'rgba(232, 93, 117, 0.08)',
+    backgroundColor: 'rgba(201, 134, 146, 0.08)',
     borderRadius: AppTheme.radius.lg,
     padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(232, 93, 117, 0.18)',
+    borderColor: 'rgba(201, 134, 146, 0.18)',
     gap: 12,
   },
   dailyNudgeIcon: {
@@ -951,11 +951,11 @@ const styles = StyleSheet.create({
   completenessCard: {
     marginHorizontal: 20,
     marginBottom: 24,
-    backgroundColor: 'rgba(124, 108, 255, 0.08)',
+    backgroundColor: 'rgba(91, 84, 168, 0.08)',
     borderRadius: AppTheme.radius.lg,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(124, 108, 255, 0.20)',
+    borderColor: 'rgba(91, 84, 168, 0.20)',
   },
   completenessHeader: {
     flexDirection: 'row',
@@ -975,7 +975,7 @@ const styles = StyleSheet.create({
   },
   completenessBar: {
     height: 6,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 3,
     overflow: 'hidden',
     marginBottom: 10,
@@ -1074,8 +1074,8 @@ const styles = StyleSheet.create({
     borderColor: AppTheme.colors.border,
   },
   premiumAction: {
-    backgroundColor: 'rgba(232, 93, 117, 0.1)',
-    borderColor: 'rgba(232, 93, 117, 0.3)',
+    backgroundColor: 'rgba(201, 134, 146, 0.1)',
+    borderColor: 'rgba(201, 134, 146, 0.3)',
   },
   actionIcon: {
     fontSize: 24,
@@ -1087,7 +1087,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   premiumActionText: {
-    color: '#E85D75',
+    color: '#C98692',
   },
   settingsRow: {
     flexDirection: 'row',
@@ -1124,11 +1124,11 @@ const styles = StyleSheet.create({
   cosmicTeaser: {
     marginHorizontal: 20,
     marginBottom: 24,
-    backgroundColor: 'rgba(124, 108, 255, 0.08)',
+    backgroundColor: 'rgba(91, 84, 168, 0.08)',
     borderRadius: AppTheme.radius.lg,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(124, 108, 255, 0.20)',
+    borderColor: 'rgba(91, 84, 168, 0.20)',
   },
   cosmicTeaserHeader: {
     flexDirection: 'row',
@@ -1160,7 +1160,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: 10,
     padding: 10,
   },
@@ -1174,7 +1174,7 @@ const styles = StyleSheet.create({
   blurredLine: {
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     width: '80%',
   },
   cosmicTeaserCta: {
@@ -1191,13 +1191,13 @@ const styles = StyleSheet.create({
   verificationPrompt: {
     marginHorizontal: 20,
     marginBottom: 24,
-    backgroundColor: 'rgba(124, 108, 255, 0.12)',
+    backgroundColor: 'rgba(91, 84, 168, 0.12)',
     borderRadius: AppTheme.radius.lg,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(124, 108, 255, 0.24)',
+    borderColor: 'rgba(91, 84, 168, 0.24)',
   },
   verificationContent: {
     flex: 1,
@@ -1207,7 +1207,7 @@ const styles = StyleSheet.create({
   verificationIcon: {
     fontSize: 24,
     color: AppTheme.colors.cosmic,
-    backgroundColor: 'rgba(124, 108, 255, 0.16)',
+    backgroundColor: 'rgba(91, 84, 168, 0.16)',
     width: 40,
     height: 40,
     borderRadius: 20,

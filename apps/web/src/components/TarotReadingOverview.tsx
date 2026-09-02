@@ -155,7 +155,7 @@ export function TarotReadingOverview() {
   if (state.tier === "free") {
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-8">
-        <div className="max-w-3xl rounded-[1.75rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-6">
+        <div className="max-w-3xl rounded-[1.75rem] border border-[rgba(91, 84, 168, 0.24)] bg-[rgba(91, 84, 168, 0.12)] p-6">
           <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("premiumNav")}
           </p>
@@ -171,7 +171,7 @@ export function TarotReadingOverview() {
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/app/plans"
-              className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+              className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
             >
               {t("viewPlans")}
             </Link>
@@ -254,7 +254,7 @@ export function TarotReadingOverview() {
       {/* Main spread area */}
       <section className="rounded-[2rem] border border-border bg-card/90 p-6">
         {/* Hero */}
-        <div className="rounded-[1.75rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-5">
+        <div className="rounded-[1.75rem] border border-[rgba(91, 84, 168, 0.24)] bg-[rgba(91, 84, 168, 0.12)] p-5">
           <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t(periodLabelKey)}
           </p>
@@ -271,7 +271,7 @@ export function TarotReadingOverview() {
               onClick={() => setMode("love")}
               className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors ${
                 mode === "love"
-                  ? "bg-accent text-white"
+                  ? "bg-gold text-bg"
                   : "border border-border bg-bg/70 text-white hover:bg-card-hover"
               }`}
             >
@@ -281,7 +281,7 @@ export function TarotReadingOverview() {
               onClick={() => setMode("general")}
               className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors ${
                 mode === "general"
-                  ? "bg-accent text-white"
+                  ? "bg-gold text-bg"
                   : "border border-border bg-bg/70 text-white hover:bg-card-hover"
               }`}
             >
@@ -362,7 +362,7 @@ export function TarotReadingOverview() {
         {/* Interpretations — shown after all cards revealed */}
         {allRevealed && (
           <div className="mt-6 space-y-4">
-            <div className="rounded-[1.75rem] border border-[rgba(232,93,117,0.24)] bg-[rgba(232,93,117,0.10)] p-5">
+            <div className="rounded-[1.75rem] border border-[rgba(201, 134, 146, 0.24)] bg-[rgba(201, 134, 146, 0.10)] p-5">
               <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                 {t("tarotV2InterpretationTitle")}
               </p>
@@ -490,7 +490,7 @@ export function TarotReadingOverview() {
           </div>
 
           {state.tier === "premium" && (
-            <div className="rounded-2xl border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-4">
+            <div className="rounded-2xl border border-[rgba(91, 84, 168, 0.24)] bg-[rgba(91, 84, 168, 0.12)] p-4">
               <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                 {t("tarotV2UpgradeLabel")}
               </p>
@@ -499,7 +499,7 @@ export function TarotReadingOverview() {
               </p>
               <Link
                 href="/app/plans"
-                className="mt-3 inline-block rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+                className="mt-3 inline-block rounded-full bg-gold px-5 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
               >
                 {t("viewPlans")}
               </Link>

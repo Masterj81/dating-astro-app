@@ -401,7 +401,7 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
           <>
             <Link
               href="/app/plans"
-              className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+              className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
             >
               {t("viewPlans")}
             </Link>
@@ -427,7 +427,7 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
           <>
             <Link
               href="/app/profile"
-              className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+              className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
             >
               {t("openProfile")}
             </Link>
@@ -639,7 +639,7 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
                   key={frame.frame}
                   className={`flex flex-col items-center gap-1 rounded-[1.2rem] border p-4 ${
                     frame.frame === aspectView.headline.frame
-                      ? "border-[rgba(232,93,117,0.35)] bg-[rgba(232,93,117,0.10)]"
+                      ? "border-[rgba(201, 134, 146, 0.35)] bg-[rgba(201, 134, 146, 0.10)]"
                       : "border-border bg-bg/70"
                   }`}
                 >

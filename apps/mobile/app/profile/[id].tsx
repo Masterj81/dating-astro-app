@@ -161,7 +161,7 @@ export default function ProfileDetailScreen() {
         <View style={styles.photoWrap}>
           <Image source={{ uri: imageSrc }} style={styles.photo} resizeMode="cover" />
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.85)']}
+            colors={['transparent', 'rgba(0, 0, 0, 0.85)']}
             style={styles.photoGradient}
           >
             <Text style={styles.name}>
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     paddingTop: 80,
   },
   name: { color: '#fff', fontSize: 28, fontWeight: '700' },
-  city: { color: 'rgba(255,255,255,0.8)', fontSize: 14, marginTop: 4 },
+  city: { color: 'rgba(255, 255, 255, 0.8)', fontSize: 14, marginTop: 4 },
 
   body: { padding: 20, gap: 16 },
   signsRow: { flexDirection: 'row', gap: 8 },
@@ -331,14 +331,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   signText: { color: '#fff', fontWeight: '600', fontSize: 14 },
 
   bio: {
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(255, 255, 255, 0.85)',
     fontSize: 15,
     lineHeight: 22,
     paddingHorizontal: 4,
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   intentionChipPrefix: {
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 11,
     fontWeight: '600',
     letterSpacing: 0.4,
@@ -366,9 +366,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(255, 255, 255, 0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(255, 255, 255, 0.18)',
   },
   intentionChipText: {
     color: '#fff',
@@ -386,9 +386,9 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   secondaryButton: {
-    backgroundColor: 'rgba(124,108,255,0.12)',
+    backgroundColor: 'rgba(91, 84, 168, 0.12)',
     borderWidth: 1.5,
-    borderColor: 'rgba(124,108,255,0.4)',
+    borderColor: 'rgba(91, 84, 168, 0.4)',
     paddingVertical: 14,
     borderRadius: 999,
     alignItems: 'center',
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
-  tertiaryButtonText: { color: 'rgba(255,255,255,0.8)', fontWeight: '600', fontSize: 14 },
+  tertiaryButtonText: { color: 'rgba(255, 255, 255, 0.8)', fontWeight: '600', fontSize: 14 },
 });

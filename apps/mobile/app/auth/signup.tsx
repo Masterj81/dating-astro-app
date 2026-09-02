@@ -336,7 +336,7 @@ export default function SignupScreen() {
                 )}
               >
                 <LinearGradient
-                  colors={['#E85D75', '#D93C5A']}
+                  colors={['#B76E79', '#9E5A66']}
                   style={styles.buttonGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
   },
   zodiacRing: {
     fontSize: 18,
-    color: '#E85D75',
+    color: '#C98692',
     letterSpacing: 8,
     opacity: 0.6,
   },
@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1
   },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
     borderRadius: AppTheme.radius.md,
@@ -541,8 +541,8 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(232, 93, 117, 0.18)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderColor: 'rgba(201, 134, 146, 0.18)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -552,10 +552,10 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   inputError: {
-    borderColor: '#E85D75',
+    borderColor: '#C98692',
   },
   fieldError: {
-    color: '#E85D75',
+    color: '#C98692',
     fontSize: 12,
     marginTop: 6,
     fontStyle: 'italic',
@@ -569,14 +569,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
     alignItems: 'center',
   },
   preferenceOptionActive: {
-    backgroundColor: 'rgba(232, 93, 117, 0.16)',
-    borderColor: 'rgba(232, 93, 117, 0.55)',
+    backgroundColor: 'rgba(201, 134, 146, 0.16)',
+    borderColor: 'rgba(201, 134, 146, 0.55)',
   },
   preferenceOptionText: {
     color: '#d3d0da',
@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
   dividerText: {
     color: AppTheme.colors.textMuted,
@@ -624,7 +624,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: AppTheme.radius.md,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
     borderColor: AppTheme.colors.borderStrong,
     justifyContent: 'center',
@@ -645,7 +645,7 @@ const styles = StyleSheet.create({
     fontSize: 14
   },
   linkText: {
-    color: '#E85D75',
+    color: '#C98692',
     fontSize: 14,
     fontWeight: '600'
   },

@@ -317,7 +317,7 @@ export function ConversationGuideOverview() {
               data-testid={`coach-sign-${option}`}
               className={`flex items-center gap-2 rounded-2xl border px-3 py-2.5 text-sm transition-colors ${
                 selected
-                  ? "border-accent/50 bg-accent/12 text-white"
+                  ? "border-gold-border bg-gold-wash text-white"
                   : "border-border bg-bg/70 text-text-muted hover:border-white/20 hover:text-white"
               }`}
             >
@@ -349,7 +349,7 @@ export function ConversationGuideOverview() {
               data-testid={`coach-situation-${option.key}`}
               className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition-colors ${
                 selected
-                  ? "border-accent/50 bg-accent/10"
+                  ? "border-gold-border bg-gold-wash"
                   : "border-border bg-bg/70 hover:border-white/20"
               }`}
             >
@@ -359,8 +359,8 @@ export function ConversationGuideOverview() {
               <span
                 className={`shrink-0 rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${
                   openToReader
-                    ? "border-[rgba(124,200,160,0.3)] bg-[rgba(124,200,160,0.12)] text-[#a9e0c4]"
-                    : "border-white/12 bg-black/20 text-white/70"
+                    ? "border-gold-border bg-gold-wash text-gold"
+                    : "border-[rgba(169, 130, 61, 0.35)] bg-black/20 text-gold-muted"
                 }`}
               >
                 {openToReader
@@ -392,7 +392,7 @@ export function ConversationGuideOverview() {
       // were never offered is how a paywall loses trust.
       return (
         <div
-          className="rounded-[2rem] border border-[rgba(232,93,117,0.28)] bg-[rgba(232,93,117,0.08)] p-8"
+          className="rounded-[2rem] border border-[rgba(201, 134, 146, 0.3)] bg-[rgba(201, 134, 146, 0.08)] p-8"
           data-testid="coach-locked-card"
         >
           <h2 className="text-xl font-semibold text-white">
@@ -484,7 +484,7 @@ export function ConversationGuideOverview() {
                 <>
                   <p
                     lang="en"
-                    className="mt-2 rounded-2xl border border-accent/25 bg-accent/[0.07] p-4 text-sm leading-7 text-white"
+                    className="mt-2 rounded-2xl border border-gold-border bg-gold-wash p-4 text-sm leading-7 text-white"
                   >
                     “{section.body}”
                   </p>
@@ -527,7 +527,7 @@ export function ConversationGuideOverview() {
       {unlock.status === "unlocked" && unlock.viaPreview && state?.tier === "free" ? (
         <p
           data-testid="coach-preview-banner"
-          className="rounded-2xl border border-[rgba(124,200,160,0.25)] bg-[rgba(124,200,160,0.08)] px-5 py-3 text-sm text-[#a9e0c4]"
+          className="rounded-2xl border border-gold-border bg-gold-wash px-5 py-3 text-sm text-gold"
         >
           {t("conversationGuidePreviewBanner")}
         </p>

@@ -175,7 +175,7 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
     return (
       <LinearGradient colors={['#0B0B14', '#151A2B', '#1E2540']} style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#E85D75" />
+          <ActivityIndicator size="large" color="#C98692" />
           <Text style={styles.loadingText}>
             {t('verifyingAccess') || 'Verifying access...'}
           </Text>
@@ -257,7 +257,7 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
             testID="premium-paywall-cta"
           >
             <LinearGradient
-              colors={['#E85D75', '#D93C5A']}
+              colors={['#B76E79', '#9E5A66']}
               style={styles.ctaGradient}
             >
               <Text style={styles.ctaText}>
@@ -294,7 +294,7 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
             colors={['#0B0B14', '#151A2B', '#1E2540']}
             style={StyleSheet.absoluteFill}
           />
-          <ActivityIndicator size="large" color="#E85D75" />
+          <ActivityIndicator size="large" color="#C98692" />
           <Text style={styles.loadingText}>
             {t('consultingStars') || 'Consulting the stars...'}
           </Text>
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(232, 93, 117, 0.15)',
+    backgroundColor: 'rgba(201, 134, 146, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
@@ -443,14 +443,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   tierBadge: {
-    backgroundColor: 'rgba(232, 93, 117, 0.2)',
+    backgroundColor: 'rgba(201, 134, 146, 0.2)',
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 16,
   },
   tierBadgeText: {
     fontSize: 12,
-    color: '#E85D75',
+    color: '#C98692',
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,

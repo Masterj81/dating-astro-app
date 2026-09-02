@@ -739,7 +739,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     width: 28,
     height: 28,
     borderRadius: 14,
@@ -794,8 +794,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   preferenceOptionActive: {
-    backgroundColor: 'rgba(232, 93, 117, 0.16)',
-    borderColor: 'rgba(232, 93, 117, 0.55)',
+    backgroundColor: 'rgba(201, 134, 146, 0.16)',
+    borderColor: 'rgba(201, 134, 146, 0.55)',
   },
   preferenceOptionText: {
     color: AppTheme.colors.textSecondary,
@@ -831,20 +831,20 @@ const styles = StyleSheet.create({
   },
   tipsCard: {
     marginHorizontal: 20,
-    backgroundColor: 'rgba(232, 93, 117, 0.08)',
+    backgroundColor: 'rgba(201, 134, 146, 0.08)',
     borderRadius: AppTheme.radius.lg,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(232, 93, 117, 0.2)',
+    borderColor: 'rgba(201, 134, 146, 0.2)',
   },
   completenessCard: {
     marginHorizontal: 20,
     marginBottom: 24,
-    backgroundColor: 'rgba(124, 108, 255, 0.08)',
+    backgroundColor: 'rgba(91, 84, 168, 0.08)',
     borderRadius: AppTheme.radius.lg,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(124, 108, 255, 0.2)',
+    borderColor: 'rgba(91, 84, 168, 0.2)',
   },
   completenessHeader: {
     flexDirection: 'row',
@@ -864,7 +864,7 @@ const styles = StyleSheet.create({
   },
   completenessBar: {
     height: 6,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 3,
     overflow: 'hidden',
     marginBottom: 10,

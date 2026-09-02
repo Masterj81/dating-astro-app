@@ -191,7 +191,7 @@ export default function PaywallModal() {
               {...getButtonA11yProps(t('a11y.upgradeButton'))}
             >
               <LinearGradient
-                colors={['#E85D75', '#7C6CFF']}
+                colors={['#B76E79', '#7C6CFF']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.ctaGradient}
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(232, 93, 117, 0.15)',
+    backgroundColor: 'rgba(201, 134, 146, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,

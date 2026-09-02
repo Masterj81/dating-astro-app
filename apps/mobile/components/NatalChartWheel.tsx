@@ -71,7 +71,7 @@ const SIGN_GLYPHS: Record<string, string> = {
 
 const ASPECT_COLOR: Record<WheelAspect['kind'], string> = {
   harmonious: 'rgba(139, 176, 255, 0.55)',
-  challenging: 'rgba(232, 93, 117, 0.50)',
+  challenging: 'rgba(201, 134, 146, 0.50)',
   intense: 'rgba(240, 214, 160, 0.55)',
 };
 
@@ -204,9 +204,9 @@ export default function NatalChartWheel({
       <Text style={styles.body}>{labels.body}</Text>
 
       <View style={{ width: size, height: size, alignSelf: 'center', marginTop: 14 }}>
-        <View style={ring(geometry.zodiacOuter, 'rgba(232,199,126,0.26)')} />
-        <View style={ring(geometry.zodiacInner, 'rgba(232,199,126,0.16)')} />
-        <View style={ring(geometry.hubRadius, 'rgba(255,255,255,0.07)', 'rgba(255,255,255,0.02)')} />
+        <View style={ring(geometry.zodiacOuter, 'rgba(232, 199, 126, 0.26)')} />
+        <View style={ring(geometry.zodiacInner, 'rgba(232, 199, 126, 0.16)')} />
+        <View style={ring(geometry.hubRadius, 'rgba(255, 255, 255, 0.07)', 'rgba(255, 255, 255, 0.02)')} />
 
         {/* Zodiac dividers and glyphs. */}
         {wheel.zodiac.map((sector) => (
@@ -214,11 +214,11 @@ export default function NatalChartWheel({
             <Segment
               from={sector.divider.inner}
               to={sector.divider.outer}
-              color="rgba(232,199,126,0.18)"
+              color="rgba(232, 199, 126, 0.18)"
             />
             <Mark
               at={sector.label}
-              color="rgba(232,199,126,0.72)"
+              color="rgba(232, 199, 126, 0.72)"
               fontSize={size * 0.042}
             >
               {SIGN_GLYPHS[sector.sign] ?? sector.sign.slice(0, 2)}
@@ -229,8 +229,8 @@ export default function NatalChartWheel({
         {/* House cusps — absent entirely without a birth time and place. */}
         {wheel.houses.map((house) => (
           <View key={house.number}>
-            <Segment from={house.inner} to={house.outer} color="rgba(255,255,255,0.09)" dashed />
-            <Mark at={house.numberAt} color="rgba(255,255,255,0.32)" fontSize={size * 0.03}>
+            <Segment from={house.inner} to={house.outer} color="rgba(255, 255, 255, 0.09)" dashed />
+            <Mark at={house.numberAt} color="rgba(255, 255, 255, 0.32)" fontSize={size * 0.03}>
               {String(house.number)}
             </Mark>
           </View>
@@ -253,7 +253,7 @@ export default function NatalChartWheel({
             <Segment
               from={angle.inner}
               to={angle.outer}
-              color="rgba(232,93,117,0.55)"
+              color="rgba(201, 134, 146, 0.55)"
               width={1.4}
             />
             <Mark at={angle.label} color="#ffb7c7" fontSize={size * 0.032} weight="600">
@@ -270,14 +270,14 @@ export default function NatalChartWheel({
               <Segment
                 from={planet.tickInner}
                 to={planet.tickOuter}
-                color="rgba(255,255,255,0.45)"
+                color="rgba(255, 255, 255, 0.45)"
                 width={1.2}
               />
               {planet.nudged && offset > 1.5 ? (
                 <Segment
                   from={planet.tickInner}
                   to={planet.glyph}
-                  color="rgba(255,255,255,0.16)"
+                  color="rgba(255, 255, 255, 0.16)"
                   width={0.7}
                 />
               ) : null}
@@ -299,10 +299,10 @@ export default function NatalChartWheel({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     padding: 16,
     marginBottom: 16,
   },
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
   toggle: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     paddingHorizontal: 10,
     paddingVertical: 4,
   },

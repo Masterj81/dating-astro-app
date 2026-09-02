@@ -22,15 +22,44 @@ mobile. Web had no gold token at all — three raw hexes in the entire app,
 against 425 uses of the coral accent and 54 of purple. An astrology product
 read pink, and the premium surfaces looked like Like buttons.
 
+## Second pass, 2 Sep 2026 — coral stops being the accent
+
+The first pass gave gold the identity surfaces and left coral doing everything
+else. On the preview it read as **the old pink dating brand with gold stuck on
+top**, which is a fair description of what it was: `--color-accent` was still
+`#E85D75` and it carried roughly **470 call sites** — every border, tint, link
+and button in the app. No amount of gold elsewhere wins that argument.
+
+So the token was redefined rather than its 470 call sites edited:
+
+- `--color-accent` is now **muted rose-gold** `#C98692`. Text, borders and
+  tints softened at once.
+- The **78 solid `bg-accent` fills** moved to gold with near-black labels.
+  They had to move regardless: a light rose fill carries a white label at
+  2.3:1. The brief wanted primary CTAs gold anyway, so the constraint and the
+  intent pointed the same way.
+- True coral survives as `--color-coral`, for a like or a match. Nothing else.
+- Errors got `--color-danger`, because a failure that looks like a link is a
+  failure nobody reads.
+- Cosmic went **deep and desaturated** (`#8B87FF` → `#A79FEA` for text,
+  `#5B54A8` for fills). At its old brightness it competed with gold, so the
+  two tiers read as noise rather than as a hierarchy.
+- **Celestial navigation was blue.** Gold is what "celestial" means here, so
+  painting that entry blue was the palette arguing with itself. It is gold now,
+  Cosmic is deep violet, and ordinary entries are bronze.
+
+311 raw `rgba` washes moved with them: 179 coral, 124 cosmic, 8 celestial blue.
+
 ## The rule
 
 Each family has one job. This is the part that keeps it from becoming confetti.
 
 | Family | Job | Where |
 |---|---|---|
-| **Gold** | identity, premium, status, every section marker | tab bar, badges, tier pills, hub cards, paywall and unlock CTAs, zodiac ring, 205 section labels |
-| **Coral** | emotional **actions** — like, message, send | buttons inside Discover and Chat, never decoration |
-| **Purple** | Cosmic tier (`premium_plus`) only | Cosmic hub and its cards |
+| **Gold** | identity, premium, status, primary CTAs, every section marker | tab bar, nav dot, badges, tier pills, hub cards, all primary buttons, zodiac ring, 205 section labels |
+| **Rose-gold** | the secondary accent — borders, tints, links, selected chrome | what `accent` now means, ~470 sites |
+| **Coral** | rare and hot — a like, a match | `--color-coral`, deliberately not the accent |
+| **Purple** | Cosmic tier (`premium_plus`) only, deep and desaturated | Cosmic hub and its cards |
 
 ## The palette
 
@@ -42,9 +71,15 @@ Each family has one job. This is the part that keeps it from becoming confetti.
 | `--color-gold-muted` / `goldMuted` | `#B8A87F` | 7.9:1 text | Section labels |
 | `--color-gold-wash` / `goldWash` | `rgba(232,199,126,.10)` | — | Tinted surfaces |
 | `--color-gold-border` / `goldBorder` | `rgba(232,199,126,.28)` | — | Gold hairlines |
-| `--color-accent` / `coral` | `#E85D75` | 5.5:1 text | Actions |
-| `--color-accent-hover` / `coralStrong` | `#D93C5A` | 4.4:1 with white | Pressed/hover fill |
-| `--color-purple` / `cosmic` | `#8B87FF` | 6.2:1 text | Cosmic tier |
+| `--color-gold-antique` / `goldAntique` | `#A9823D` | 4.8:1 text | Depth: borders, gradient ends |
+| `--color-bronze` / `bronze` | `rgba(216,181,109,.14)` | — | Active navigation surface |
+| `--color-accent` / `coral` | `#C98692` | 5.9:1 text | Secondary accent — rose-gold |
+| `--color-accent-hover` / `coralStrong` | `#B76E79` | 3.8:1 with white | Hover/pressed tint |
+| `--color-accent-deep` / `coralDeep` | `#9E5A66` | 5.1:1 with white | Rose fills carrying a label |
+| `--color-coral` / `coralVivid` | `#E85D75` | 5.0:1 text | Rare and hot only |
+| `--color-danger` | `#F2707F` | 6.0:1 text | Errors, never the accent |
+| `--color-purple` / `cosmic` | `#A79FEA` | 7.1:1 text | Cosmic tier, text and icons |
+| `--color-purple-deep` / `cosmicDeep` | `#5B54A8` | 4.5:1 with white | Cosmic fills |
 | — / `textOnGold` | `#0B0B14` | 12:1 on gold | Anything sitting on gold |
 
 Every value is measured against the card surface as it really composites —
@@ -82,7 +117,7 @@ replaces. Every other button stays coral.
 
 ## What the guard checks
 
-`npm run validate:design-tokens`, 46 checks:
+`npm run validate:design-tokens`, 68 checks:
 
 - the seven shared colours are declared on **both** platforms with **identical
   hexes** — one palette means one value, in two files, and nothing else
@@ -96,9 +131,17 @@ replaces. Every other button stays coral.
 - the identity is applied, not just declared: floors on the section-label
   counts, the tab bar tint, the wheel's zodiac ring, and the gold-button rule.
 
-Verified by introducing five regressions — mobile gold drifting from web,
-section labels below AA, the tab bar reverting to coral, a white label on a
-gold button, and a legacy hex returning. All five were caught.
+The second pass added a section of its own: `accent` must not be coral, true
+coral must still exist under its own name, **no solid `bg-accent` fill may
+remain**, and the navigation must be gold/bronze/deep-violet rather than
+pink/blue/bright-violet.
+
+Verified by introducing twelve regressions across the two passes — mobile gold
+drifting from web, labels below AA, the tab bar reverting to coral, a white
+label on a gold button, a legacy hex returning, `accent` going back to coral,
+true coral disappearing, the nav dot and nav surface reverting, Celestial
+repainted blue, a solid accent fill reappearing, and antique gold pushed below
+AA. All twelve were caught.
 
 ## Not changed
 

@@ -140,7 +140,7 @@ export default async function UnsubscribePage({ params, searchParams }: PageProp
 
         <Link
           href="/app"
-          className="mt-9 inline-flex w-full items-center justify-center rounded-full bg-accent px-6 py-4 text-base font-semibold text-white transition-colors hover:bg-accent-hover"
+          className="mt-9 inline-flex w-full items-center justify-center rounded-full bg-gold px-6 py-4 text-base font-semibold text-bg transition-colors hover:bg-gold-soft"
         >
           {t("openApp")}
         </Link>

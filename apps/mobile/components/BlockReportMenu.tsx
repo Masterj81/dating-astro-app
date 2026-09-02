@@ -190,7 +190,7 @@ export default function BlockReportMenu({
                     {reason.label}
                   </Text>
                   {selectedReason === reason.key && (
-                    <Ionicons name="checkmark-circle" size={22} color="#E85D75" />
+                    <Ionicons name="checkmark-circle" size={22} color="#C98692" />
                   )}
                 </TouchableOpacity>
               ))}
@@ -219,7 +219,7 @@ export default function BlockReportMenu({
       {/* Loading Overlay */}
       {loading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#E85D75" />
+          <ActivityIndicator size="large" color="#C98692" />
         </View>
       )}
     </>
@@ -302,20 +302,20 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   reasonItemSelected: {
-    backgroundColor: 'rgba(232, 93, 117, 0.2)',
+    backgroundColor: 'rgba(201, 134, 146, 0.2)',
     borderWidth: 1,
-    borderColor: '#E85D75',
+    borderColor: '#C98692',
   },
   reasonText: {
     color: '#fff',
     fontSize: 16,
   },
   reasonTextSelected: {
-    color: '#E85D75',
+    color: '#C98692',
     fontWeight: '600',
   },
   submitButton: {
-    backgroundColor: '#E85D75',
+    backgroundColor: '#B76E79',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',

@@ -213,7 +213,7 @@ export function LuckyDaysOverview() {
   if (state.tier !== "premium_plus") {
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-8">
-        <div className="max-w-3xl rounded-[1.75rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-6">
+        <div className="max-w-3xl rounded-[1.75rem] border border-[rgba(91, 84, 168, 0.24)] bg-[rgba(91, 84, 168, 0.12)] p-6">
           <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("premiumNav")}
           </p>
@@ -226,7 +226,7 @@ export function LuckyDaysOverview() {
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/app/plans"
-              className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+              className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
             >
               {t("viewPlans")}
             </Link>
@@ -258,7 +258,7 @@ export function LuckyDaysOverview() {
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
             href="/app/profile"
-            className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+            className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
           >
             {t("openProfile")}
           </Link>
@@ -278,13 +278,13 @@ export function LuckyDaysOverview() {
     <div className="grid gap-6">
       {/* Block 1 — Hero. Month + sign glyph + qualitative monthly theme. */}
       <section className="rounded-[2rem] border border-border bg-card/90 p-6">
-        <div className="rounded-[1.75rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-6">
+        <div className="rounded-[1.75rem] border border-[rgba(91, 84, 168, 0.24)] bg-[rgba(91, 84, 168, 0.12)] p-6">
           <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("luckyDaysV2HeroEyebrow")}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-4">
             <div
-              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[rgba(124,108,255,0.34)] bg-[rgba(124,108,255,0.18)] text-3xl text-white"
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[rgba(91, 84, 168, 0.34)] bg-[rgba(91, 84, 168, 0.18)] text-3xl text-white"
               aria-hidden="true"
             >
               <ZodiacGlyph sign={sign} className="leading-none" />
@@ -372,7 +372,7 @@ export function LuckyDaysOverview() {
 
       {/* Block 4 — Dating lens. Coral-tinted card, mirrors Daily V2 /
           Monthly V2 styling for the dating block. */}
-      <section className="rounded-[2rem] border border-[rgba(232,93,117,0.24)] bg-[rgba(232,93,117,0.10)] p-6">
+      <section className="rounded-[2rem] border border-[rgba(201, 134, 146, 0.24)] bg-[rgba(201, 134, 146, 0.10)] p-6">
         <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#ffb7c7]">
           {t("luckyDaysV2DatingTitle")}
         </p>

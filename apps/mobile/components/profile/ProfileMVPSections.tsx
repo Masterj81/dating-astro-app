@@ -477,7 +477,7 @@ const s = StyleSheet.create({
   },
   intentCardActive: {
     borderColor: AppTheme.colors.coral,
-    backgroundColor: 'rgba(232,93,117,0.10)',
+    backgroundColor: 'rgba(201, 134, 146, 0.10)',
   },
   intentEmoji: {
     fontSize: 24,
@@ -517,7 +517,7 @@ const s = StyleSheet.create({
   },
   chipActive: {
     borderColor: AppTheme.colors.coral,
-    backgroundColor: 'rgba(232,93,117,0.10)',
+    backgroundColor: 'rgba(201, 134, 146, 0.10)',
   },
   chipDisabled: {
     opacity: 0.4,
@@ -581,7 +581,7 @@ const s = StyleSheet.create({
   // Modal
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'flex-end',
   },
   modalSheet: {

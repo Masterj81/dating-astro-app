@@ -75,7 +75,7 @@ const SIGN_GLYPHS: Record<string, string> = {
 // and calm, tension reads warm — legible in dark mode without shouting.
 const ASPECT_STROKE: Record<WheelAspect["kind"], string> = {
   harmonious: "rgba(139, 176, 255, 0.55)",
-  challenging: "rgba(232, 93, 117, 0.50)",
+  challenging: "rgba(201, 134, 146, 0.50)",
   intense: "rgba(240, 214, 160, 0.55)",
 };
 
@@ -136,21 +136,21 @@ export function NatalChartWheel({
             cy={center.y}
             r={geometry.zodiacOuter}
             fill="none"
-            stroke="rgba(232,199,126,0.26)"
+            stroke="rgba(232, 199, 126, 0.26)"
           />
           <circle
             cx={center.x}
             cy={center.y}
             r={geometry.zodiacInner}
             fill="none"
-            stroke="rgba(232,199,126,0.16)"
+            stroke="rgba(232, 199, 126, 0.16)"
           />
           <circle
             cx={center.x}
             cy={center.y}
             r={geometry.hubRadius}
-            fill="rgba(255,255,255,0.02)"
-            stroke="rgba(255,255,255,0.07)"
+            fill="rgba(255, 255, 255, 0.02)"
+            stroke="rgba(255, 255, 255, 0.07)"
           />
 
           {/* Zodiac: twelve dividers and twelve glyphs. */}
@@ -161,7 +161,7 @@ export function NatalChartWheel({
                 y1={sector.divider.inner.y}
                 x2={sector.divider.outer.x}
                 y2={sector.divider.outer.y}
-                stroke="rgba(232,199,126,0.18)"
+                stroke="rgba(232, 199, 126, 0.18)"
               />
               <text
                 x={sector.label.x}
@@ -170,7 +170,7 @@ export function NatalChartWheel({
                 dominantBaseline="central"
                 className="select-none"
                 fontSize={geometry.size * 0.042}
-                fill="rgba(232,199,126,0.72)"
+                fill="rgba(232, 199, 126, 0.72)"
               >
                 {SIGN_GLYPHS[sector.sign] ?? sector.sign.slice(0, 2)}
               </text>
@@ -186,7 +186,7 @@ export function NatalChartWheel({
                 y1={house.inner.y}
                 x2={house.outer.x}
                 y2={house.outer.y}
-                stroke="rgba(255,255,255,0.09)"
+                stroke="rgba(255, 255, 255, 0.09)"
                 strokeDasharray="2 4"
               />
               <text
@@ -196,7 +196,7 @@ export function NatalChartWheel({
                 dominantBaseline="central"
                 className="select-none"
                 fontSize={geometry.size * 0.03}
-                fill="rgba(255,255,255,0.32)"
+                fill="rgba(255, 255, 255, 0.32)"
               >
                 {house.number}
               </text>
@@ -230,7 +230,7 @@ export function NatalChartWheel({
                 y1={angle.inner.y}
                 x2={angle.outer.x}
                 y2={angle.outer.y}
-                stroke="rgba(232,93,117,0.55)"
+                stroke="rgba(201, 134, 146, 0.55)"
                 strokeWidth={1.3}
               />
               <text
@@ -259,7 +259,7 @@ export function NatalChartWheel({
                   y1={planet.tickInner.y}
                   x2={planet.tickOuter.x}
                   y2={planet.tickOuter.y}
-                  stroke="rgba(255,255,255,0.45)"
+                  stroke="rgba(255, 255, 255, 0.45)"
                   strokeWidth={1.2}
                 />
                 {planet.nudged && offset > 1.5 ? (
@@ -268,7 +268,7 @@ export function NatalChartWheel({
                     y1={planet.tickInner.y}
                     x2={planet.glyph.x}
                     y2={planet.glyph.y}
-                    stroke="rgba(255,255,255,0.16)"
+                    stroke="rgba(255, 255, 255, 0.16)"
                     strokeWidth={0.7}
                   />
                 ) : null}

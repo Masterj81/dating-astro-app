@@ -119,7 +119,7 @@ export function BillingSettingsPanel() {
             type="button"
             onClick={handleOpenPortal}
             disabled={portalLoading}
-            className="w-full rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-70"
           >
             {portalLoading ? (
               <span className="flex items-center justify-center gap-2">
@@ -138,7 +138,7 @@ export function BillingSettingsPanel() {
         <div className="mt-6 space-y-4">
           {/* Feature comparison for free users -- conversion nudge */}
           {state.tier === "free" && (
-            <div className="rounded-2xl border border-[rgba(232,93,117,0.15)] bg-[linear-gradient(135deg,rgba(232,93,117,0.06),rgba(124,108,255,0.04))] p-4">
+            <div className="rounded-2xl border border-[rgba(201, 134, 146, 0.15)] bg-[linear-gradient(135deg,rgba(201, 134, 146, 0.06),rgba(91, 84, 168, 0.04))] p-4">
               <p className="text-xs font-medium uppercase tracking-[0.2em] text-gold-muted">
                 {t("billingFeatureCompareTitle")}
               </p>
@@ -158,7 +158,7 @@ export function BillingSettingsPanel() {
 
           <Link
             href="/app/plans"
-            className="block w-full rounded-full bg-accent px-5 py-3 text-center text-sm font-semibold text-white transition-all hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.25)]"
+            className="block w-full rounded-full bg-gold px-5 py-3 text-center text-sm font-semibold text-bg transition-all hover:bg-gold-soft hover:shadow-[0_0_20px_rgba(201, 134, 146, 0.25)]"
           >
             {t("upgradePlan")}
           </Link>

@@ -113,7 +113,7 @@ export function ChatInbox() {
         action={
           <Link
             href="/app/discover"
-            className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+            className="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
           >
             {t("discoverNav")}
           </Link>
@@ -138,7 +138,7 @@ export function ChatInbox() {
       {/* Unread indicator */}
       {totalUnread > 0 && (
         <div className="flex items-center gap-3 rounded-2xl border border-accent/20 bg-accent/8 px-5 py-3">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gold text-sm font-bold text-bg">
             {totalUnread}
           </span>
           <span className="text-sm font-medium text-white">
@@ -176,7 +176,7 @@ export function ChatInbox() {
                 </div>
                 {hasUnread && (
                   <span
-                    className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white ring-2 ring-[#090b13]"
+                    className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[10px] font-bold text-bg ring-2 ring-[#090b13]"
                     aria-label={t("matchesUnread", { count: conversation.unread_count || 0 })}
                   >
                     {conversation.unread_count}

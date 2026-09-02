@@ -72,11 +72,11 @@ export function PlacementCard({
   const hasHouse = typeof houseNumber === "number" && houseNumber >= 1 && houseNumber <= 12;
   return (
     <article
-      className={`flex h-full flex-col rounded-[1.75rem] border border-border bg-card/90 p-6 shadow-[0_18px_50px_rgba(0,0,0,0.16)] ${className}`}
+      className={`flex h-full flex-col rounded-[1.75rem] border border-border bg-card/90 p-6 shadow-[0_18px_50px_rgba(0, 0, 0, 0.16)] ${className}`}
     >
       <header className="flex items-start gap-4">
         <div
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[rgba(232,93,117,0.22)] bg-[rgba(232,93,117,0.12)] text-2xl text-white"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[rgba(201, 134, 146, 0.22)] bg-[rgba(201, 134, 146, 0.12)] text-2xl text-white"
           aria-hidden="true"
         >
           <ZodiacGlyph sign={signKey} className="text-2xl leading-none" />
@@ -115,7 +115,7 @@ export function PlacementCard({
       ) : null}
 
       {datingLens ? (
-        <div className="mt-5 rounded-2xl border border-[rgba(232,93,117,0.22)] bg-[rgba(232,93,117,0.08)] p-4">
+        <div className="mt-5 rounded-2xl border border-[rgba(201, 134, 146, 0.22)] bg-[rgba(201, 134, 146, 0.08)] p-4">
           <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#ffb7c7]">
             {datingLensLabel ?? "Dating lens"}
           </p>

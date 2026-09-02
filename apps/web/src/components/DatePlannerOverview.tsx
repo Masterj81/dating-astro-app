@@ -139,7 +139,7 @@ export function DatePlannerOverview() {
   if (state.tier !== "premium_plus") {
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-8">
-        <div className="max-w-3xl rounded-[1.75rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-6">
+        <div className="max-w-3xl rounded-[1.75rem] border border-[rgba(91, 84, 168, 0.24)] bg-[rgba(91, 84, 168, 0.12)] p-6">
           <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("premiumNav")}
           </p>
@@ -152,7 +152,7 @@ export function DatePlannerOverview() {
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/app/plans"
-              className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+              className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
             >
               {t("viewPlans")}
             </Link>
@@ -193,7 +193,7 @@ export function DatePlannerOverview() {
     <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
       <section className="space-y-6">
         {/* Hero */}
-        <div className="rounded-[2rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-6">
+        <div className="rounded-[2rem] border border-[rgba(91, 84, 168, 0.24)] bg-[rgba(91, 84, 168, 0.12)] p-6">
           <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("dateReflectionV2HeroEyebrow")}
           </p>
@@ -273,7 +273,7 @@ export function DatePlannerOverview() {
             {t(`dateReflectionV2Lens_${intent}`)}
           </p>
 
-          <div className="mt-5 rounded-[1.25rem] border border-[rgba(251,191,36,0.24)] bg-[rgba(251,191,36,0.10)] p-4">
+          <div className="mt-5 rounded-[1.25rem] border border-[rgba(251, 191, 36, 0.24)] bg-[rgba(251, 191, 36, 0.10)] p-4">
             <p className="text-xs uppercase tracking-[0.24em] text-amber-200">
               {t("dateReflectionV2AvoidTitle")}
             </p>
@@ -282,7 +282,7 @@ export function DatePlannerOverview() {
             </p>
           </div>
 
-          <div className="mt-5 rounded-[1.25rem] border border-[rgba(74,222,128,0.24)] bg-[rgba(74,222,128,0.10)] p-4">
+          <div className="mt-5 rounded-[1.25rem] border border-[rgba(74, 222, 128, 0.24)] bg-[rgba(74, 222, 128, 0.10)] p-4">
             <p className="text-sm leading-7 text-emerald-100">
               {t("dateReflectionV2Callout")}
             </p>
@@ -345,7 +345,7 @@ export function DatePlannerOverview() {
       {/* Right rail: consent / boundaries note. Sits beside the main column
           on wide screens, drops below on narrow viewports. */}
       <aside className="space-y-6">
-        <div className="rounded-[2rem] border border-[rgba(74,222,128,0.24)] bg-[rgba(74,222,128,0.10)] p-6">
+        <div className="rounded-[2rem] border border-[rgba(74, 222, 128, 0.24)] bg-[rgba(74, 222, 128, 0.10)] p-6">
           <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("dateReflectionV2BoundariesTitle")}
           </p>

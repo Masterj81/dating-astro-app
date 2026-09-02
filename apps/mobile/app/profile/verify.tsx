@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(124, 108, 255, 0.15)',
+    backgroundColor: 'rgba(91, 84, 168, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(124, 108, 255, 0.12)',
+    backgroundColor: 'rgba(91, 84, 168, 0.12)',
     borderRadius: AppTheme.radius.md,
     padding: 16,
     marginBottom: 32,

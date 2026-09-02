@@ -1096,7 +1096,7 @@ export function AccountProfileWorkspace({
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
+              className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-70"
             >
               {saving ? t("loading") : t("profileSave")}
             </button>
@@ -1272,7 +1272,7 @@ export function AccountProfileWorkspace({
               type="button"
               onClick={handleBirthSave}
               disabled={savingBirth}
-              className="mt-5 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
+              className="mt-5 rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-70"
             >
               {savingBirth ? t("loading") : t("profileBirthSave")}
             </button>
@@ -1441,7 +1441,7 @@ export function AccountProfileWorkspace({
                   type="button"
                   onClick={handlePreferencesSave}
                   disabled={savingPreferences || preferencesForm.minAge >= preferencesForm.maxAge}
-                  className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
+                  className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {savingPreferences ? t("loading") : t("profilePreferencesSave")}
                 </button>
@@ -1515,7 +1515,7 @@ export function AccountProfileWorkspace({
                   type="button"
                   onClick={handleMvpSave}
                   disabled={savingMvp || mvpForm.connectionIntentions.length === 0}
-                  className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
+                  className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {savingMvp ? t("loading") : t("profileMvpSave")}
                 </button>
@@ -1598,7 +1598,7 @@ export function AccountProfileWorkspace({
                   type="button"
                   onClick={handlePasswordSave}
                   disabled={savingPassword}
-                  className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
+                  className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {savingPassword ? t("loading") : t("profilePasswordSave")}
                 </button>
@@ -1646,7 +1646,7 @@ export function AccountProfileWorkspace({
 
         {/* Referral Section */}
         {!isSetupMode ? (
-          <div className="mt-6 rounded-[1.5rem] border border-accent/20 bg-[linear-gradient(135deg,rgba(232, 93, 117,0.06),rgba(124,108,255,0.06))] p-5">
+          <div className="mt-6 rounded-[1.5rem] border border-accent/20 bg-[linear-gradient(135deg,rgba(201, 134, 146, 0.06),rgba(91, 84, 168, 0.06))] p-5">
             <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
               {t("inviteFriends") || "Invite Friends"}
             </p>
@@ -1725,7 +1725,7 @@ export function AccountProfileWorkspace({
                       setReferralLoading(false);
                     }
                   }}
-                  className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-xl bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {referralLoading ? "..." : t("apply") || "Apply"}
                 </button>

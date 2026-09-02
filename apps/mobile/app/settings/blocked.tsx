@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   avatarPlaceholder: {
-    backgroundColor: 'rgba(232, 93, 117, 0.2)',
+    backgroundColor: 'rgba(201, 134, 146, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },

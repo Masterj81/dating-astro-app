@@ -79,7 +79,7 @@ export default function HelpPage() {
         </p>
         <Link
           href="/contact"
-          className="inline-block rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+          className="inline-block rounded-full bg-gold px-6 py-2.5 text-sm font-medium text-bg transition-colors hover:bg-gold-soft"
         >
           {c("contactSupport")}
         </Link>

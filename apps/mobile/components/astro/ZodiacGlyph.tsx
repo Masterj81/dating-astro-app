@@ -153,7 +153,7 @@ const GOLD_DOT = '#E9C873';
 const NAVY = '#151522';
 const NAVY_INNER = '#1f1f2e';
 const MUTED_BG = '#1a1a26';
-const MUTED_GLYPH = 'rgba(241,230,204,0.75)'; // #F1E6CC @ 75 %
+const MUTED_GLYPH = 'rgba(241, 230, 204, 0.75)'; // #F1E6CC @ 75 %
 
 // ── Public utilities ────────────────────────────────────────────────
 
@@ -484,13 +484,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: 'rgba(255, 255, 255, 0.10)',
   },
   chipActive: {
-    backgroundColor: 'rgba(233,200,115,0.14)',
-    borderColor: 'rgba(233,200,115,0.55)',
+    backgroundColor: 'rgba(233, 200, 115, 0.14)',
+    borderColor: 'rgba(233, 200, 115, 0.55)',
   },
   chipText: {
     color: '#FFFFFF',
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(241,230,204,0.16)',
+    borderColor: 'rgba(241, 230, 204, 0.16)',
   },
   mutedText: {
     color: MUTED_GLYPH,
@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(233,200,115,0.32)',
+    borderColor: 'rgba(233, 200, 115, 0.32)',
   },
   luminaryText: {
     color: GOLD,

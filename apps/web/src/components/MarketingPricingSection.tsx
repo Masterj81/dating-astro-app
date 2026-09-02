@@ -271,7 +271,7 @@ function PricingCard({
     <div
       className={`relative overflow-hidden rounded-2xl border p-7 transition-all duration-300 ${
         highlighted
-          ? "scale-[1.02] border-accent/40 bg-accent/5 shadow-[0_0_40px_rgba(232,93,117,0.12)]"
+          ? "scale-[1.02] border-accent/40 bg-accent/5 shadow-[0_0_40px_rgba(201, 134, 146, 0.12)]"
           : "border-border bg-card hover:border-white/15"
       }`}
     >
@@ -282,7 +282,7 @@ function PricingCard({
         <div className="flex items-start justify-between gap-2">
           <div>
             {badge && (
-              <span className="mb-3 inline-block rounded-full bg-accent px-3 py-1 text-xs font-semibold text-white">
+              <span className="mb-3 inline-block rounded-full bg-gold px-3 py-1 text-xs font-semibold text-bg">
                 {badge}
               </span>
             )}
@@ -320,7 +320,7 @@ function PricingCard({
           onClick={onCtaClick}
           className={`w-full rounded-full py-3 text-sm font-semibold transition-all ${
             highlighted
-              ? "bg-accent text-white hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)]"
+              ? "bg-gold text-bg hover:bg-gold-soft hover:shadow-[0_0_20px_rgba(201, 134, 146, 0.3)]"
               : "border border-border text-white hover:bg-card-hover"
           }`}
         >

@@ -28,7 +28,7 @@ const TabIcon = React.memo(function TabIcon({
     <MotiView
       style={styles.iconContainer}
       animate={{
-        // Was rgba(233,69,96,.2) — the legacy coral, in rgba form, which the
+        // Was rgba(233, 69, 96, .2) — the legacy coral, in rgba form, which the
         // hex sweep could not see. Gold wash, matching the active tint.
         backgroundColor: focused ? AppTheme.colors.goldWash : 'transparent',
         scale: focused ? 1.1 : 1,

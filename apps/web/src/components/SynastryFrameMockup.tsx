@@ -40,25 +40,25 @@ type FrameTheme = {
 
 const FRAME_THEMES: Record<FrameKey, FrameTheme> = {
   love: {
-    glow: "rgba(232,93,117,0.22)",
-    accent: "#E85D75",
-    dot: "#E85D75",
-    pillBg: "rgba(232,93,117,0.10)",
-    pillBorder: "rgba(232,93,117,0.36)",
+    glow: "rgba(201, 134, 146, 0.22)",
+    accent: "#C98692",
+    dot: "#C98692",
+    pillBg: "rgba(201, 134, 146, 0.10)",
+    pillBorder: "rgba(201, 134, 146, 0.36)",
   },
   friendship: {
-    glow: "rgba(118,129,255,0.20)",
+    glow: "rgba(91, 84, 168, 0.20)",
     accent: "#7681FF",
     dot: "#7681FF",
-    pillBg: "rgba(118,129,255,0.10)",
-    pillBorder: "rgba(118,129,255,0.36)",
+    pillBg: "rgba(91, 84, 168, 0.10)",
+    pillBorder: "rgba(91, 84, 168, 0.36)",
   },
   business: {
-    glow: "rgba(218,181,109,0.20)",
+    glow: "rgba(218, 181, 109, 0.20)",
     accent: "#E8C77E",
     dot: "#E8C77E",
-    pillBg: "rgba(218,181,109,0.10)",
-    pillBorder: "rgba(218,181,109,0.36)",
+    pillBg: "rgba(218, 181, 109, 0.10)",
+    pillBorder: "rgba(218, 181, 109, 0.36)",
   },
 };
 
@@ -153,7 +153,7 @@ export function SynastryFrameMockup({
       {/* Phone frame — same chrome as PhoneMockupPlaceholder so the triptych
           reads consistent with the rest of the marketing page if any
           PNG-backed mockup ever appears alongside it. */}
-      <div className="absolute inset-0 rounded-[42px] border border-white/15 bg-gradient-to-b from-[#1a1825] to-[#0e0c14] shadow-[0_30px_80px_-20px_rgba(232,93,117,0.25)]">
+      <div className="absolute inset-0 rounded-[42px] border border-white/15 bg-gradient-to-b from-[#1a1825] to-[#0e0c14] shadow-[0_30px_80px_-20px_rgba(201, 134, 146, 0.25)]">
         {/* Notch */}
         <div
           className="absolute left-1/2 top-2 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-black"

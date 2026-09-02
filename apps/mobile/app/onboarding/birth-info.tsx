@@ -169,7 +169,7 @@ const progressStyles = StyleSheet.create({
     flex: 1,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
   },
   segmentFilled: {
     backgroundColor: AppTheme.colors.coral,
@@ -344,7 +344,7 @@ const revealStyles = StyleSheet.create({
     padding: 28,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(232, 93, 117, 0.25)',
+    borderColor: 'rgba(201, 134, 146, 0.25)',
     shadowColor: AppTheme.colors.coral,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
@@ -372,11 +372,11 @@ const revealStyles = StyleSheet.create({
   placementRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   placementEmoji: {
     fontSize: 28,
@@ -433,7 +433,8 @@ const revealStyles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonText: {
-    color: '#fff',
+    // Sits on gradients.cta, which is gold. White here would be 1.6:1.
+    color: AppTheme.colors.textOnGold,
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -1032,7 +1033,7 @@ export default function BirthInfoScreen() {
                             onValueChange={handleBirthMonthChange}
                             mode={pickerMode}
                             style={styles.picker}
-                            dropdownIconColor="#E85D75"
+                            dropdownIconColor="#C98692"
                             itemStyle={styles.pickerItem}
                           >
                             <Picker.Item label={t('month')} value="" style={styles.pickerItemPlaceholder} />
@@ -1050,7 +1051,7 @@ export default function BirthInfoScreen() {
                             onValueChange={handleBirthDayChange}
                             mode={pickerMode}
                             style={styles.picker}
-                            dropdownIconColor="#E85D75"
+                            dropdownIconColor="#C98692"
                             itemStyle={styles.pickerItem}
                           >
                             <Picker.Item label={t('day')} value="" style={styles.pickerItemPlaceholder} />
@@ -1070,7 +1071,7 @@ export default function BirthInfoScreen() {
                             onValueChange={handleBirthYearChange}
                             mode={pickerMode}
                             style={styles.picker}
-                            dropdownIconColor="#E85D75"
+                            dropdownIconColor="#C98692"
                             itemStyle={styles.pickerItem}
                           >
                             <Picker.Item label={t('year')} value="" style={styles.pickerItemPlaceholder} />
@@ -1130,7 +1131,7 @@ export default function BirthInfoScreen() {
                           onValueChange={setBirthHour}
                           mode={pickerMode}
                           style={styles.picker}
-                          dropdownIconColor="#E85D75"
+                          dropdownIconColor="#C98692"
                           itemStyle={styles.pickerItem}
                         >
                           <Picker.Item label={t('hour')} value="" style={styles.pickerItemPlaceholder} />
@@ -1145,7 +1146,7 @@ export default function BirthInfoScreen() {
                           onValueChange={setBirthMinute}
                           mode={pickerMode}
                           style={styles.picker}
-                          dropdownIconColor="#E85D75"
+                          dropdownIconColor="#C98692"
                           itemStyle={styles.pickerItem}
                         >
                           <Picker.Item label={t('min')} value="" style={styles.pickerItemPlaceholder} />
@@ -1445,7 +1446,7 @@ const styles = StyleSheet.create({
   },
   zodiacRing: {
     fontSize: 14,
-    color: '#E85D75',
+    color: '#C98692',
     marginBottom: 12,
     letterSpacing: 4,
     opacity: 0.7,
@@ -1474,13 +1475,13 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     padding: 20,
     borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: 'rgba(255, 255, 255, 0.10)',
   },
   sectionDivider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     marginVertical: 12,
     marginHorizontal: 20,
   },
@@ -1598,8 +1599,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   preferenceOptionActive: {
-    backgroundColor: 'rgba(232, 93, 117, 0.16)',
-    borderColor: 'rgba(232, 93, 117, 0.55)',
+    backgroundColor: 'rgba(201, 134, 146, 0.16)',
+    borderColor: 'rgba(201, 134, 146, 0.55)',
   },
   preferenceOptionText: {
     color: '#d3d0da',
@@ -1623,7 +1624,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   fieldError: {
-    color: '#E85D75',
+    color: '#C98692',
     fontSize: 13,
     marginTop: 8,
     marginBottom: 4,
@@ -1632,20 +1633,20 @@ const styles = StyleSheet.create({
   infoBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(232, 93, 117, 0.08)',
+    backgroundColor: 'rgba(201, 134, 146, 0.08)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: 'rgba(232, 93, 117, 0.15)',
+    borderColor: 'rgba(201, 134, 146, 0.15)',
   },
   infoBoxSubtle: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: 12,
     padding: 14,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   infoIcon: {
     fontSize: 20,
@@ -1672,7 +1673,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonText: {
-    color: '#fff',
+    // Sits on gradients.cta, which is gold. White here would be 1.6:1.
+    color: AppTheme.colors.textOnGold,
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -1686,9 +1688,9 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     paddingHorizontal: 20,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
   backBtnText: {
     color: AppTheme.colors.textSecondary,
@@ -1728,8 +1730,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.12)',
   },
   intentionOptionActive: {
-    backgroundColor: 'rgba(232, 93, 117, 0.14)',
-    borderColor: 'rgba(232, 93, 117, 0.55)',
+    backgroundColor: 'rgba(201, 134, 146, 0.14)',
+    borderColor: 'rgba(201, 134, 146, 0.55)',
   },
   intentionOptionLabel: {
     color: '#d3d0da',

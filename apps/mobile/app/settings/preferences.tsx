@@ -307,7 +307,7 @@ export default function PreferencesScreen() {
   if (loading) {
     return (
       <LinearGradient colors={['#0B0B14', '#151A2B', '#1E2540']} style={s.container}>
-        <ActivityIndicator size="large" color="#E85D75" style={{ marginTop: 100 }} />
+        <ActivityIndicator size="large" color="#C98692" style={{ marginTop: 100 }} />
       </LinearGradient>
     );
   }
@@ -497,13 +497,13 @@ const s = StyleSheet.create({
 
   // Header
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
+  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255, 255, 255, 0.1)', justifyContent: 'center', alignItems: 'center' },
   backText: { color: '#fff', fontSize: 20, fontWeight: '600' },
   title: { fontSize: 20, fontWeight: '600', color: '#fff' },
   headerSpacer: { width: 40, height: 40 },
 
   // Save button (bottom)
-  saveBtnBottom: { backgroundColor: '#E85D75', paddingVertical: 16, borderRadius: 16, alignItems: 'center', marginTop: 12, marginBottom: 8 },
+  saveBtnBottom: { backgroundColor: '#B76E79', paddingVertical: 16, borderRadius: 16, alignItems: 'center', marginTop: 12, marginBottom: 8 },
   saveTextBottom: { color: '#fff', fontWeight: '700', fontSize: 16 },
 
   // Section
@@ -512,14 +512,14 @@ const s = StyleSheet.create({
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   hint: { fontSize: 13, color: '#888', marginBottom: 12 },
   label: { fontSize: 14, color: '#888', textAlign: 'center', marginBottom: 8 },
-  clearText: { fontSize: 14, color: '#E85D75' },
+  clearText: { fontSize: 14, color: '#C98692' },
 
   // Stepper
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  stepBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(232, 93, 117,0.15)', justifyContent: 'center', alignItems: 'center' },
+  stepBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(201, 134, 146, 0.15)', justifyContent: 'center', alignItems: 'center' },
   stepBtnDisabled: { opacity: 0.3 },
-  stepBtnText: { color: '#E85D75', fontSize: 24, fontWeight: '600', lineHeight: 28 },
-  stepValue: { fontSize: 32, fontWeight: 'bold', color: '#E85D75', minWidth: 50, textAlign: 'center' },
+  stepBtnText: { color: '#C98692', fontSize: 24, fontWeight: '600', lineHeight: 28 },
+  stepValue: { fontSize: 32, fontWeight: 'bold', color: '#C98692', minWidth: 50, textAlign: 'center' },
 
   // Age
   ageRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20 },
@@ -527,45 +527,45 @@ const s = StyleSheet.create({
   ageSep: { fontSize: 24, color: '#666', marginTop: 20 },
 
   // Distance
-  bigValue: { fontSize: 36, fontWeight: 'bold', color: '#E85D75', textAlign: 'center', marginBottom: 16 },
+  bigValue: { fontSize: 36, fontWeight: 'bold', color: '#C98692', textAlign: 'center', marginBottom: 16 },
   distanceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
-  distanceChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1.5, borderColor: 'transparent' },
-  distanceChipActive: { borderColor: '#E85D75', backgroundColor: 'rgba(232, 93, 117,0.15)' },
+  distanceChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255, 255, 255, 0.05)', borderWidth: 1.5, borderColor: 'transparent' },
+  distanceChipActive: { borderColor: '#B76E79', backgroundColor: 'rgba(201, 134, 146, 0.15)' },
   distanceText: { fontSize: 14, color: '#888', fontWeight: '500' },
-  distanceTextActive: { color: '#E85D75' },
+  distanceTextActive: { color: '#C98692' },
 
   // Options (Show Me)
   optionRow: { flexDirection: 'row', gap: 10 },
-  optionBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', borderWidth: 2, borderColor: 'transparent' },
-  optionBtnActive: { borderColor: '#E85D75', backgroundColor: 'rgba(232, 93, 117,0.1)' },
+  optionBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: 'rgba(255, 255, 255, 0.05)', alignItems: 'center', borderWidth: 2, borderColor: 'transparent' },
+  optionBtnActive: { borderColor: '#B76E79', backgroundColor: 'rgba(201, 134, 146, 0.1)' },
   optionText: { fontSize: 15, color: '#888', fontWeight: '500' },
-  optionTextActive: { color: '#E85D75' },
+  optionTextActive: { color: '#C98692' },
 
   // Elements
   elementGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  elementCard: { width: '47%', flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 2, borderColor: 'transparent', gap: 10 },
+  elementCard: { width: '47%', flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, backgroundColor: 'rgba(255, 255, 255, 0.05)', borderWidth: 2, borderColor: 'transparent', gap: 10 },
   elementEmoji: { fontSize: 24 },
   elementName: { fontSize: 15, color: '#888', fontWeight: '500' },
 
   // Zodiac
   zodiacGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  zodiacCard: { width: '22%', aspectRatio: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 2, borderColor: 'transparent', gap: 6 },
+  zodiacCard: { width: '22%', aspectRatio: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 12, backgroundColor: 'rgba(255, 255, 255, 0.05)', borderWidth: 2, borderColor: 'transparent', gap: 6 },
   zodiacName: { fontSize: 10, color: '#888', textAlign: 'center' },
 
   // Shared active states
-  cardActive: { borderColor: '#E85D75', backgroundColor: 'rgba(232, 93, 117,0.1)' },
-  textActive: { color: '#E85D75' },
+  cardActive: { borderColor: '#B76E79', backgroundColor: 'rgba(201, 134, 146, 0.1)' },
+  textActive: { color: '#C98692' },
 
   // Compatibility
-  compatRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.05)', padding: 16, borderRadius: 16 },
+  compatRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255, 255, 255, 0.05)', padding: 16, borderRadius: 16 },
   compatLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 },
   compatTitle: { fontSize: 16, fontWeight: '600', color: '#fff', marginBottom: 2 },
   checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: '#666', justifyContent: 'center', alignItems: 'center' },
-  checkboxActive: { backgroundColor: '#E85D75', borderColor: '#E85D75' },
+  checkboxActive: { backgroundColor: '#B76E79', borderColor: '#B76E79' },
   checkmark: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
 
   // Summary
-  summary: { backgroundColor: 'rgba(232, 93, 117,0.1)', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(232, 93, 117,0.2)' },
-  summaryTitle: { fontSize: 14, fontWeight: '600', color: '#E85D75', marginBottom: 4 },
+  summary: { backgroundColor: 'rgba(201, 134, 146, 0.1)', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(201, 134, 146, 0.2)' },
+  summaryTitle: { fontSize: 14, fontWeight: '600', color: '#C98692', marginBottom: 4 },
   summaryText: { fontSize: 13, color: '#ccc' },
 });

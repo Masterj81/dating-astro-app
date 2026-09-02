@@ -395,7 +395,7 @@ export default function ChatScreen() {
   if (loading) {
     return (
       <LinearGradient colors={['#0B0B14', '#151A2B', '#1E2540']} style={[styles.container, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color="#E85D75" />
+        <ActivityIndicator size="large" color="#C98692" />
         <Text style={styles.loadingText}>{t('loading')}</Text>
       </LinearGradient>
     );
@@ -680,13 +680,13 @@ const styles = StyleSheet.create({
     color: '#888',
   },
   headerCompatBadge: {
-    backgroundColor: 'rgba(232, 93, 117, 0.16)',
+    backgroundColor: 'rgba(201, 134, 146, 0.16)',
     paddingVertical: 2,
     paddingHorizontal: 6,
     borderRadius: 8,
   },
   headerCompatText: {
-    color: '#E85D75',
+    color: '#C98692',
     fontSize: 10,
     fontWeight: '600',
   },
@@ -715,7 +715,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 4,
   },
   messageBubbleMe: {
-    backgroundColor: '#E85D75',
+    backgroundColor: '#B76E79',
     borderBottomRightRadius: 4,
   },
   messageBubblePending: {
@@ -723,7 +723,7 @@ const styles = StyleSheet.create({
   },
   messageBubbleFailed: {
     backgroundColor: '#6b2a37',
-    borderColor: '#E85D75',
+    borderColor: '#C98692',
     borderWidth: 1,
   },
   messageMetaRow: {
@@ -838,15 +838,15 @@ const styles = StyleSheet.create({
     gap: 10,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.06)',
-    backgroundColor: 'rgba(124, 108, 255, 0.06)',
+    backgroundColor: 'rgba(91, 84, 168, 0.06)',
   },
   prefillChip: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: 'rgba(124, 108, 255, 0.18)',
+    backgroundColor: 'rgba(91, 84, 168, 0.18)',
     borderWidth: 1,
-    borderColor: 'rgba(124, 108, 255, 0.35)',
+    borderColor: 'rgba(91, 84, 168, 0.35)',
   },
   prefillChipText: {
     color: '#d8d2ff',
@@ -882,7 +882,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#E85D75',
+    backgroundColor: '#B76E79',
     justifyContent: 'center',
     alignItems: 'center',
   },

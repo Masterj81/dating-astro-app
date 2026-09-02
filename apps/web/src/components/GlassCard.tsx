@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 
 /**
  * Glass-surface card matching the mobile AppTheme look:
- *   bg: rgba(255,255,255,0.05)
- *   border: rgba(255,255,255,0.10)
+ *   bg: rgba(255, 255, 255, 0.05)
+ *   border: rgba(255, 255, 255, 0.10)
  *   backdrop-blur for the slight depth without committing to heavy glass.
  *
  * Use as the default container for any premium card on the marketing

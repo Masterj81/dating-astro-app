@@ -47,7 +47,7 @@ export default function PasswordResetSentScreen() {
           onPress={() => router.replace('/auth/login')}
         >
           <LinearGradient
-            colors={['#E85D75', '#D93C5A']}
+            colors={['#B76E79', '#9E5A66']}
             style={styles.buttonGradient}
           >
             <Text style={styles.buttonText}>{t('backToLogin')}</Text>
@@ -91,12 +91,12 @@ const styles = StyleSheet.create({
   },
   email: {
     fontSize: 16,
-    color: '#E85D75',
+    color: '#C98692',
     fontWeight: '600',
     marginBottom: 24,
   },
   infoBox: {
-    backgroundColor: 'rgba(232, 93, 117, 0.1)',
+    backgroundColor: 'rgba(201, 134, 146, 0.1)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 32,

@@ -26,7 +26,7 @@ export function LifestyleTagsCloud({
     <div className={className}>
       {showInCommonBadge && sharedCount > 0 && (
         <p className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-accent">
-          <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent" />
+          <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-gold" />
           {sharedCount} in common
         </p>
       )}

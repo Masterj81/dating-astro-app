@@ -29,9 +29,9 @@ export default function JSSlider({
   step = 0,
   value = 0,
   onValueChange,
-  minimumTrackTintColor = '#E85D75',
+  minimumTrackTintColor = '#C98692',
   maximumTrackTintColor = '#333',
-  thumbTintColor = '#E85D75',
+  thumbTintColor = '#C98692',
   style,
 }: JSSliderProps) {
   const [trackWidth, setTrackWidth] = useState(0);

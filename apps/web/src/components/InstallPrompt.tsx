@@ -91,7 +91,7 @@ export function InstallPrompt() {
           <button
             type="button"
             onClick={handleInstall}
-            className="rounded-full bg-accent px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
+            className="rounded-full bg-gold px-4 py-2 text-xs font-semibold text-bg transition-colors hover:bg-gold-soft"
           >
             {t("installButton") || "Install"}
           </button>
@@ -99,7 +99,7 @@ export function InstallPrompt() {
           <button
             type="button"
             onClick={handleHow}
-            className="rounded-full bg-accent px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
+            className="rounded-full bg-gold px-4 py-2 text-xs font-semibold text-bg transition-colors hover:bg-gold-soft"
           >
             {t("installHow") || "How?"}
           </button>

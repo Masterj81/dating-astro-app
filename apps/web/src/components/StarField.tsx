@@ -24,11 +24,11 @@ interface Star {
 }
 
 const STAR_COLORS = [
-  "rgba(255,255,255,0.9)",
-  "rgba(255,255,255,0.7)",
-  "rgba(232,93,117,0.5)",
-  "rgba(118,129,255,0.5)",
-  "rgba(77,167,255,0.4)",
+  "rgba(255, 255, 255, 0.9)",
+  "rgba(255, 255, 255, 0.7)",
+  "rgba(201, 134, 146, 0.5)",
+  "rgba(91, 84, 168, 0.5)",
+  "rgba(232, 199, 126, 0.4)",
 ];
 
 /** Simple seeded PRNG (mulberry32) — deterministic across server/client. */

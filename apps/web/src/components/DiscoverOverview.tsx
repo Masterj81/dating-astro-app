@@ -293,7 +293,7 @@ export function DiscoverOverview() {
             <button
               type="button"
               onClick={loadProfiles}
-              className="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)]"
+              className="inline-flex items-center gap-2 rounded-full bg-gold px-6 py-3 text-sm font-semibold text-bg transition-all hover:bg-gold-soft hover:shadow-[0_0_20px_rgba(201, 134, 146, 0.3)]"
             >
               {t("refreshProfiles")}
             </button>
@@ -303,9 +303,9 @@ export function DiscoverOverview() {
         {/* Profile improvement nudge -- activation booster */}
         <Link
           href="/app/profile"
-          className="group flex items-center gap-4 rounded-2xl border border-[rgba(74,222,128,0.18)] bg-[linear-gradient(135deg,rgba(74,222,128,0.06),rgba(74,222,128,0.02))] px-6 py-5 transition-all hover:-translate-y-0.5 hover:border-[rgba(74,222,128,0.3)]"
+          className="group flex items-center gap-4 rounded-2xl border border-[rgba(74, 222, 128, 0.18)] bg-[linear-gradient(135deg,rgba(74, 222, 128, 0.06),rgba(74, 222, 128, 0.02))] px-6 py-5 transition-all hover:-translate-y-0.5 hover:border-[rgba(74, 222, 128, 0.3)]"
         >
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(74,222,128,0.12)] text-xl">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(74, 222, 128, 0.12)] text-xl">
             📸
           </div>
           <div className="min-w-0 flex-1">
@@ -363,7 +363,7 @@ export function DiscoverOverview() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
-      <section className="overflow-hidden rounded-[2rem] border border-border bg-card/90 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
+      <section className="overflow-hidden rounded-[2rem] border border-border bg-card/90 shadow-[0_18px_50px_rgba(0, 0, 0, 0.18)]">
         <div className="grid lg:grid-cols-[0.95fr_1.05fr]">
           <div className="relative min-h-[420px] bg-bg-secondary">
             <Image
@@ -380,7 +380,7 @@ export function DiscoverOverview() {
                 single surface for the score breakdown. */}
             <Link
               href={compatibilityHref}
-              className="absolute left-5 top-5 flex items-center gap-2 rounded-full border border-purple/30 bg-[rgba(124,108,255,0.30)] px-4 py-2 text-sm font-semibold text-white backdrop-blur-md transition-colors hover:bg-[rgba(124,108,255,0.40)]"
+              className="absolute left-5 top-5 flex items-center gap-2 rounded-full border border-purple/30 bg-[rgba(91, 84, 168, 0.30)] px-4 py-2 text-sm font-semibold text-white backdrop-blur-md transition-colors hover:bg-[rgba(91, 84, 168, 0.40)]"
             >
               {t("findYourCompatibility")}
             </Link>
@@ -558,7 +558,7 @@ export function DiscoverOverview() {
                   for free users; paid tiers already own the synastry view
                   and the in-card pitch would be noise for them. */}
               {isFreeTier ? (
-                <div className="mt-6 rounded-2xl border border-purple/25 bg-[linear-gradient(135deg,rgba(124,108,255,0.10),rgba(232,93,117,0.06))] p-5">
+                <div className="mt-6 rounded-2xl border border-purple/25 bg-[linear-gradient(135deg,rgba(91, 84, 168, 0.10),rgba(201, 134, 146, 0.06))] p-5">
                   <h4 className="text-base font-semibold text-white">
                     {t("findYourCompatibility")}
                   </h4>
@@ -567,7 +567,7 @@ export function DiscoverOverview() {
                   </p>
                   <Link
                     href="/app/plans"
-                    className="mt-4 inline-flex items-center gap-2 rounded-full bg-purple/90 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-purple hover:shadow-[0_0_18px_rgba(124,108,255,0.30)]"
+                    className="mt-4 inline-flex items-center gap-2 rounded-full bg-purple/90 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-purple hover:shadow-[0_0_18px_rgba(91, 84, 168, 0.30)]"
                   >
                     {t("viewAllPlans")}
                   </Link>
@@ -594,7 +594,7 @@ export function DiscoverOverview() {
                 type="button"
                 onClick={() => handleStartConversation()}
                 disabled={actionLoading !== null}
-                className="group flex items-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
+                className="group flex items-center gap-2 rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-all hover:bg-gold-soft hover:shadow-[0_0_20px_rgba(201, 134, 146, 0.3)] disabled:cursor-not-allowed disabled:opacity-70"
                 title="Keyboard: M"
               >
                 {actionLoading === "message" ? (
@@ -689,7 +689,7 @@ export function DiscoverOverview() {
                     type="button"
                     onClick={handleReport}
                     disabled={reportSubmitting}
-                    className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {reportSubmitting ? t("sending") : t("submitReport")}
                   </button>
@@ -719,7 +719,7 @@ export function DiscoverOverview() {
         </div>
       </section>
 
-      <aside className="rounded-[2rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.16)]">
+      <aside className="rounded-[2rem] border border-border bg-[linear-gradient(180deg,rgba(255, 255, 255, 0.08),rgba(255, 255, 255, 0.03))] p-6 shadow-[0_18px_50px_rgba(0, 0, 0, 0.16)]">
         <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("discoverQueue")}
         </p>
@@ -750,7 +750,7 @@ export function DiscoverOverview() {
                   onClick={() => {
                     if (targetIndex >= 0) setCurrentIndex(targetIndex);
                   }}
-                  className="block w-full rounded-[1.4rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] px-4 py-4 text-left transition-colors hover:border-accent/40 hover:bg-card-hover"
+                  className="block w-full rounded-[1.4rem] border border-border bg-[linear-gradient(180deg,rgba(255, 255, 255, 0.05),rgba(255, 255, 255, 0.02))] px-4 py-4 text-left transition-colors hover:border-accent/40 hover:bg-card-hover"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">

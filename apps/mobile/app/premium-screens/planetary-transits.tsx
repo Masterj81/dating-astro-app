@@ -196,9 +196,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     padding: 20,
     borderRadius: 20,
-    backgroundColor: 'rgba(124, 108, 255, 0.12)',
+    backgroundColor: 'rgba(91, 84, 168, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(124, 108, 255, 0.22)',
+    borderColor: 'rgba(91, 84, 168, 0.22)',
   },
   heroEyebrow: {
     fontSize: 11,
@@ -264,9 +264,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     padding: 16,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: 'rgba(255, 255, 255, 0.10)',
   },
   disclaimerEyebrow: {
     fontSize: 11,

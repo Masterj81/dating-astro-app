@@ -367,13 +367,13 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(232, 93, 117, 0.2)',
+    backgroundColor: 'rgba(201, 134, 146, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
   recordingActive: {
-    backgroundColor: '#E85D75',
+    backgroundColor: '#B76E79',
   },
   stopIcon: {
     width: 24,
@@ -391,12 +391,12 @@ const styles = StyleSheet.create({
   timer: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#E85D75',
+    color: '#C98692',
     marginBottom: 4,
   },
   recordingLabel: {
     fontSize: 14,
-    color: '#E85D75',
+    color: '#C98692',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#E85D75',
+    backgroundColor: '#B76E79',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: '#E85D75',
+    backgroundColor: '#B76E79',
     alignItems: 'center',
   },
   uploadText: {

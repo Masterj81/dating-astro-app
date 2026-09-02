@@ -52,7 +52,7 @@ export function CompatibilityArc({
         x: size / 2 + x - dotSize / 2,
         y: size / 2 + y - dotSize / 2,
         isFilled,
-        color: isFilled ? interpolateColor(dotPct) : 'rgba(255,255,255,0.15)',
+        color: isFilled ? interpolateColor(dotPct) : 'rgba(255, 255, 255, 0.15)',
         delay: i * 60,
       };
     });

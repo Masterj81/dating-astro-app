@@ -669,7 +669,7 @@ export function AccountSetupForm() {
             separate notes: a missing time costs the rising sign outright, a
             missing city only costs precision. */}
         {reveal.missingBirthTime || reveal.missingBirthCity ? (
-          <div className="mt-5 rounded-[1.25rem] border border-[rgba(250,204,21,0.18)] bg-[rgba(250,204,21,0.06)] px-5 py-4">
+          <div className="mt-5 rounded-[1.25rem] border border-[rgba(250, 204, 21, 0.18)] bg-[rgba(250, 204, 21, 0.06)] px-5 py-4">
             <p className="text-xs font-medium text-[#fde68a]">{t("revealRefineTitle")}</p>
             <p className="mt-1 text-[13px] leading-6 text-text-muted">
               {reveal.missingBirthTime
@@ -685,7 +685,7 @@ export function AccountSetupForm() {
           <Link
             href="/app"
             data-testid="setup-reveal-open"
-            className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)]"
+            className="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-bg transition-all hover:bg-gold-soft hover:shadow-[0_0_20px_rgba(201, 134, 146, 0.3)]"
           >
             {t("revealOpenApp")}
           </Link>
@@ -932,7 +932,7 @@ export function AccountSetupForm() {
 
           {/* Birth time importance nudge */}
           {!form.birthTime && form.birthDate && (
-            <div className="mt-3 flex items-start gap-3 rounded-xl border border-[rgba(250,204,21,0.18)] bg-[rgba(250,204,21,0.06)] px-4 py-3">
+            <div className="mt-3 flex items-start gap-3 rounded-xl border border-[rgba(250, 204, 21, 0.18)] bg-[rgba(250, 204, 21, 0.06)] px-4 py-3">
               <span className="mt-0.5 text-sm">💡</span>
               <div>
                 <p className="text-xs font-medium text-[#fde68a]">{t("setupWhyBirthTime")}</p>
@@ -1095,7 +1095,7 @@ export function AccountSetupForm() {
           type="button"
           onClick={handleSubmit}
           disabled={saving}
-          className="flex shrink-0 items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
+          className="flex shrink-0 items-center gap-2 rounded-full bg-gold px-6 py-3 text-sm font-semibold text-bg transition-all hover:bg-gold-soft hover:shadow-[0_0_20px_rgba(201, 134, 146, 0.3)] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {saving ? (
             <>

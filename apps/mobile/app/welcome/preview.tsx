@@ -550,7 +550,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ctaText: {
-    color: AppTheme.colors.textOnAccent,
+    // Sits on gradients.cta, which is gold. White here would be 1.6:1.
+    color: AppTheme.colors.textOnGold,
     ...AppTheme.type.bodyLarge,
     fontWeight: '700',
     letterSpacing: 0.3,

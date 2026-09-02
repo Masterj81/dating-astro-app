@@ -240,7 +240,7 @@ export function AppShell({
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="mt-4 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+            className="mt-4 rounded-full bg-gold px-5 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
           >
             {t("refreshProfiles")}
           </button>
@@ -258,7 +258,7 @@ export function AppShell({
       {/* ─── Desktop Sidebar ─── */}
       <aside
         aria-label="JUNO"
-        className={`sticky top-0 hidden h-screen flex-col border-r border-white/8 bg-[rgba(10,12,20,0.85)] backdrop-blur-2xl transition-all duration-300 lg:flex ${
+        className={`sticky top-0 hidden h-screen flex-col border-r border-white/8 bg-[rgba(10, 12, 20, 0.85)] backdrop-blur-2xl transition-all duration-300 lg:flex ${
           sidebarCollapsed ? "w-[72px]" : "w-[240px]"
         }`}
       >
@@ -287,15 +287,20 @@ export function AppShell({
             const active = isActive(link.href);
             let activeBg = "bg-white/10";
             let hoverBg = "hover:bg-white/[0.06]";
+            // Bronze for the ordinary entries, gold for Celestial, deep
+            // violet for Cosmic. The three used to be pink / blue / bright
+            // violet, so the navigation announced three unrelated brands
+            // before the reader had opened anything. `rose` here now means
+            // "a warm neutral", not "the pink one".
             if (link.accent === "cosmic") {
-              activeBg = "bg-[rgba(124,108,255,0.2)]";
-              hoverBg = "hover:bg-[rgba(124,108,255,0.1)]";
+              activeBg = "bg-[rgba(91, 84, 168, 0.26)]";
+              hoverBg = "hover:bg-[rgba(91, 84, 168, 0.14)]";
             } else if (link.accent === "celestial") {
-              activeBg = "bg-[rgba(77,167,255,0.18)]";
-              hoverBg = "hover:bg-[rgba(77,167,255,0.1)]";
+              activeBg = "bg-[rgba(232, 199, 126, 0.16)]";
+              hoverBg = "hover:bg-[rgba(232, 199, 126, 0.09)]";
             } else if (link.accent === "rose") {
-              activeBg = "bg-[rgba(232,93,117,0.18)]";
-              hoverBg = "hover:bg-[rgba(232,93,117,0.1)]";
+              activeBg = "bg-bronze";
+              hoverBg = "hover:bg-[rgba(216, 181, 109, 0.07)]";
             }
 
             return (
@@ -313,7 +318,7 @@ export function AppShell({
                 <NavIcon name={link.icon} className="h-5 w-5 shrink-0" />
                 {!sidebarCollapsed && <span>{link.label}</span>}
                 {active && !sidebarCollapsed && (
-                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent" />
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-gold" />
                 )}
               </Link>
             );
@@ -325,7 +330,7 @@ export function AppShell({
           <div className="mx-3 mb-2">
             <Link
               href="/app/plans"
-              className="flex flex-col gap-1 rounded-xl border border-accent/20 bg-[linear-gradient(135deg,rgba(232,93,117,0.1),rgba(124,108,255,0.08))] px-3 py-3 transition-all hover:border-accent/35 hover:shadow-[0_4px_12px_rgba(232,93,117,0.12)]"
+              className="flex flex-col gap-1 rounded-xl border border-gold-border bg-[linear-gradient(135deg,rgba(232, 199, 126, 0.12),rgba(169, 130, 61, 0.10))] px-3 py-3 transition-all hover:border-[rgba(232, 199, 126, 0.45)] hover:shadow-[0_4px_12px_rgba(232, 199, 126, 0.14)]"
             >
               <span className="text-xs font-semibold text-white">{t("sidebarUpgradeCta")}</span>
               <span className="text-[11px] leading-4 text-text-muted">{t("sidebarUpgradeHint")}</span>
@@ -414,7 +419,7 @@ export function AppShell({
       {/* ─── Main content area ─── */}
       <div className="flex min-w-0 flex-1 flex-col pb-[72px] lg:pb-0">
         {/* Mobile top bar */}
-        <header className="sticky top-0 z-40 flex items-center justify-between border-b border-white/8 bg-[rgba(10,12,20,0.9)] px-4 py-3 backdrop-blur-xl lg:hidden">
+        <header className="sticky top-0 z-40 flex items-center justify-between border-b border-white/8 bg-[rgba(10, 12, 20, 0.9)] px-4 py-3 backdrop-blur-xl lg:hidden">
           <Link href="/" className="flex items-center gap-2">
             <Image
               src="/icon-192.png"
@@ -508,7 +513,7 @@ export function AppShell({
       </div>
 
       {/* ─── Mobile Bottom Tab Bar ─── */}
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[rgba(10,12,20,0.92)] backdrop-blur-2xl lg:hidden" aria-label="App tabs">
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[rgba(10, 12, 20, 0.92)] backdrop-blur-2xl lg:hidden" aria-label="App tabs">
         <div className="mx-auto flex max-w-lg items-stretch">
           {bottomNav.map((link) => {
             const active = isActive(link.href);
@@ -527,7 +532,7 @@ export function AppShell({
                 />
                 <span className={active ? "font-semibold" : ""}>{link.label}</span>
                 {active && (
-                  <span className="absolute top-0 h-0.5 w-8 rounded-b-full bg-accent" aria-hidden="true" />
+                  <span className="absolute top-0 h-0.5 w-8 rounded-b-full bg-gold" aria-hidden="true" />
                 )}
               </Link>
             );

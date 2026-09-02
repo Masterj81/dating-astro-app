@@ -168,7 +168,7 @@ export function CheckoutSuccessCard() {
               <>
                 <Link
                   href="/app/discover"
-                  className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)]"
+                  className="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft hover:shadow-[0_0_20px_rgba(201, 134, 146, 0.3)]"
                 >
                   {t("successCtaPrimary")}
                 </Link>
@@ -228,7 +228,7 @@ export function CheckoutSuccessCard() {
 
       {/* Feature highlights -- reinforce value of purchase */}
       <div
-        className={`rounded-[2rem] border border-[rgba(124,108,255,0.18)] bg-[linear-gradient(135deg,rgba(124,108,255,0.08),rgba(77,159,255,0.04))] p-6 ${
+        className={`rounded-[2rem] border border-[rgba(91, 84, 168, 0.18)] bg-[linear-gradient(135deg,rgba(91, 84, 168, 0.08),rgba(232, 199, 126, 0.04))] p-6 ${
           prefersReducedMotion
             ? "opacity-100"
             : `transition-all duration-500 delay-[900ms] ${
@@ -262,7 +262,7 @@ export function CheckoutSuccessCard() {
 
       {/* Referral CTA -- viral loop */}
       <div
-        className={`rounded-[2rem] border border-[rgba(74,222,128,0.18)] bg-[linear-gradient(135deg,rgba(74,222,128,0.06),rgba(74,222,128,0.02))] p-6 text-center ${
+        className={`rounded-[2rem] border border-[rgba(74, 222, 128, 0.18)] bg-[linear-gradient(135deg,rgba(74, 222, 128, 0.06),rgba(74, 222, 128, 0.02))] p-6 text-center ${
           prefersReducedMotion
             ? "opacity-100"
             : `transition-all duration-500 delay-[1100ms] ${
@@ -276,7 +276,7 @@ export function CheckoutSuccessCard() {
         <p className="mx-auto mt-2 max-w-sm text-xs text-text-muted">{t("successShareBody")}</p>
         <Link
           href="/app/profile"
-          className="mt-4 inline-flex items-center gap-2 rounded-full border border-[rgba(74,222,128,0.3)] bg-[rgba(74,222,128,0.12)] px-5 py-2.5 text-sm font-semibold text-[#a7f3c0] transition-all hover:bg-[rgba(74,222,128,0.2)]"
+          className="mt-4 inline-flex items-center gap-2 rounded-full border border-[rgba(74, 222, 128, 0.3)] bg-[rgba(74, 222, 128, 0.12)] px-5 py-2.5 text-sm font-semibold text-[#a7f3c0] transition-all hover:bg-[rgba(74, 222, 128, 0.2)]"
         >
           {t("successShareCta")}
         </Link>

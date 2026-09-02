@@ -44,8 +44,8 @@ export default function RootError({
           {process.env.NODE_ENV === "development" && (
             <pre
               style={{
-                background: "rgba(232, 93, 117,0.1)",
-                border: "1px solid rgba(232, 93, 117,0.3)",
+                background: "rgba(201, 134, 146, 0.1)",
+                border: "1px solid rgba(201, 134, 146, 0.3)",
                 borderRadius: 8,
                 padding: "1rem",
                 fontSize: "0.8rem",

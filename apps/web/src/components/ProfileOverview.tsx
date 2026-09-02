@@ -180,7 +180,7 @@ export function ProfileOverview({ profileId }: ProfileOverviewProps) {
         </p>
         <Link
           href="/app/discover"
-          className="mt-6 inline-flex rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+          className="mt-6 inline-flex rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
         >
           {t("backToDiscover")}
         </Link>
@@ -309,7 +309,7 @@ export function ProfileOverview({ profileId }: ProfileOverviewProps) {
             type="button"
             onClick={() => handleStartConversation()}
             disabled={startingChat}
-            className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
+            className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-70"
           >
             {startingChat ? t("sending") : t("publicStartConversation")}
           </button>
@@ -378,7 +378,7 @@ export function ProfileOverview({ profileId }: ProfileOverviewProps) {
                 type="button"
                 onClick={handleReport}
                 disabled={reportSubmitting}
-                className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {reportSubmitting ? t("sending") : t("submitReport")}
               </button>

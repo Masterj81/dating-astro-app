@@ -128,7 +128,7 @@ export default function PremiumScreen() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginBottom: 32, maxWidth: 360 }}>
             {PAYWALL_PREVIEW_FEATURES.map((feature, i) => (
               <div key={i} style={{
-                backgroundColor: 'rgba(255,255,255,0.05)',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
                 padding: '8px 16px',
                 borderRadius: 20,
                 color: '#ccc',
@@ -142,7 +142,7 @@ export default function PremiumScreen() {
           <button
             onClick={() => router.push('/premium-screens/plans' as any)}
             style={{
-              background: 'linear-gradient(90deg, #E85D75, #8B87FF)',
+              background: 'linear-gradient(90deg, #C98692, #8B87FF)',
               border: 'none',
               borderRadius: 16,
               padding: '16px 48px',
@@ -281,15 +281,15 @@ export default function PremiumScreen() {
           <h1 style={{ fontSize: 32, fontWeight: 'bold', color: '#fff', marginBottom: 8, margin: 0 }}>
             {t('cosmicHub') || 'Cosmic Hub'}
           </h1>
-          <p style={{ fontSize: 16, color: '#E85D75', fontWeight: 600, margin: 0 }}>
+          <p style={{ fontSize: 16, color: '#C98692', fontWeight: 600, margin: 0 }}>
             {isPremiumPlus ? (t('cosmicMember') || 'Cosmic Member') : (t('celestialMember') || 'Celestial Member')}
           </p>
           <button
             onClick={() => void handleManageSubscription()}
             style={{
               marginTop: 16,
-              backgroundColor: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.12)',
+              backgroundColor: 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
               borderRadius: 14,
               padding: '12px 16px',
               color: '#fff',
@@ -312,7 +312,7 @@ export default function PremiumScreen() {
                 key={feature.key}
                 onClick={() => router.push(feature.route as any)}
                 style={{
-                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
                   borderRadius: 20,
                   padding: 16,
                   minHeight: 150,
@@ -320,7 +320,7 @@ export default function PremiumScreen() {
                   flexDirection: 'column',
                   justifyContent: 'center',
                   alignItems: 'center',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
                   cursor: 'pointer',
                   boxSizing: 'border-box'
                 }}
@@ -353,7 +353,7 @@ export default function PremiumScreen() {
                   }
                 }}
                 style={{
-                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
                   borderRadius: 20,
                   padding: 16,
                   minHeight: 150,
@@ -361,7 +361,7 @@ export default function PremiumScreen() {
                   flexDirection: 'column',
                   justifyContent: 'center',
                   alignItems: 'center',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
                   cursor: 'pointer',
                   boxSizing: 'border-box',
                   opacity: isPremiumPlus ? 1 : 0.5,
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
     maxWidth: 320,
   },
   featureTag: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
@@ -576,7 +576,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   subscribeButtonSubtext: {
-    color: 'rgba(11,11,20,0.72)',
+    color: 'rgba(11, 11, 20, 0.72)',
     fontSize: 13,
     fontWeight: '500',
     textAlign: 'center',
@@ -639,11 +639,11 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(232,93,117,0.10)',
+    backgroundColor: 'rgba(201, 134, 146, 0.10)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(232,93,117,0.18)',
+    borderColor: 'rgba(201, 134, 146, 0.18)',
   },
   benefitIcon: {
     fontSize: 24,
@@ -699,7 +699,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     overflow: 'hidden',
   },
   previewBarFill: {
