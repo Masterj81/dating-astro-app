@@ -1,7 +1,12 @@
 // Conversation Guide — public surface.
 //
-// Imported by mobile as `@astro/shared/coach`. Web parity is P1; the module is
-// deliberately platform-free so adding it costs a render layer, not a rewrite.
+// Imported by BOTH platforms as `@astro/shared/coach`:
+//   mobile  apps/mobile/app/premium-screens/conversation-guide.tsx
+//   web     apps/web/src/components/ConversationGuideOverview.tsx
+// Being platform-free is what made the web port a render layer rather than a
+// rewrite — the situation table, the free/locked split and the card builder
+// are shared, so the two surfaces cannot disagree about which situation is
+// free. Keep it that way: no React, no React Native, no storage, no network.
 //
 // Design contract, in one line: this module decides WHAT a card says. It never
 // decides WHETHER the reader may see it — access is a property of the
