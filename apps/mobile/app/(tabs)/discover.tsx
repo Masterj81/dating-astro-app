@@ -796,7 +796,7 @@ export default function DiscoverScreen() {
             </Animated.View>
           )}
 
-          <LinearGradient colors={['transparent', 'rgba(0,0,0,0.9)']} style={styles.cardGradient}>
+          <LinearGradient colors={['transparent', 'rgba(0, 0, 0, 0.9)']} style={styles.cardGradient}>
             {/* Synastry CTA -- the chart context entry point. Replaces the
                 old compatibility % badge: the synastry insight is reviewed
                 before any conversation, the score is never shown on the card. */}
@@ -1085,12 +1085,12 @@ const styles = StyleSheet.create({
   navOverlayRight: {
     right: 20,
     borderColor: AppTheme.colors.cosmic,
-    backgroundColor: 'rgba(124, 108, 255, 0.30)',
+    backgroundColor: 'rgba(91, 84, 168, 0.30)',
   },
   navOverlayLeft: {
     left: 20,
     borderColor: AppTheme.colors.cosmic,
-    backgroundColor: 'rgba(124, 108, 255, 0.30)',
+    backgroundColor: 'rgba(91, 84, 168, 0.30)',
   },
   navOverlayText: {
     color: '#FFFFFF',
@@ -1144,7 +1144,7 @@ const styles = StyleSheet.create({
   // "Chart context" label above the sign pills -- makes the synastry /
   // birth-chart framing explicit on the card.
   chartContextLabel: {
-    color: 'rgba(255,255,255,0.64)',
+    color: 'rgba(255, 255, 255, 0.64)',
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.2,
@@ -1162,9 +1162,9 @@ const styles = StyleSheet.create({
   signPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: AppTheme.radius.pill,
     paddingVertical: 7,
     paddingHorizontal: 14,
@@ -1180,7 +1180,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   signSubtext: {
-    color: 'rgba(255,255,255,0.50)',
+    color: 'rgba(255, 255, 255, 0.50)',
     fontSize: 9,
     fontWeight: '500',
     marginTop: 1,
@@ -1218,9 +1218,9 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.22)',
+    borderColor: 'rgba(255, 255, 255, 0.22)',
   },
   cardActionButtonDisabled: {
     opacity: 0.35,
@@ -1290,7 +1290,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   actionErrorDismiss: {
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 18,
     fontWeight: 'bold',
     padding: 4,
@@ -1371,12 +1371,12 @@ const styles = StyleSheet.create({
   exhaustedHoroscopeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(124, 108, 255, 0.10)',
+    backgroundColor: 'rgba(91, 84, 168, 0.10)',
     borderRadius: AppTheme.radius.lg,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: 'rgba(124, 108, 255, 0.22)',
+    borderColor: 'rgba(91, 84, 168, 0.22)',
     gap: 12,
     width: '100%',
     maxWidth: 320,
@@ -1409,8 +1409,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     borderRadius: AppTheme.radius.pill,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.18)',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     marginBottom: 16,
   },
   exhaustedMatchesText: {
@@ -1431,9 +1431,9 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     zIndex: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -1451,9 +1451,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 20,
-    backgroundColor: 'rgba(124, 108, 255, 0.92)',
+    backgroundColor: 'rgba(91, 84, 168, 0.92)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.20)',
+    borderColor: 'rgba(255, 255, 255, 0.20)',
     shadowColor: AppTheme.colors.cosmic,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.40,
@@ -1484,16 +1484,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
   intentionFilterPillActive: {
-    backgroundColor: 'rgba(233, 69, 96, 0.18)',
-    borderColor: 'rgba(233, 69, 96, 0.55)',
+    backgroundColor: 'rgba(201, 134, 146, 0.18)',
+    borderColor: 'rgba(201, 134, 146, 0.55)',
   },
   intentionFilterPillText: {
-    color: 'rgba(255,255,255,0.78)',
+    color: 'rgba(255, 255, 255, 0.78)',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -1512,7 +1512,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   intentionChipPrefix: {
-    color: 'rgba(255,255,255,0.72)',
+    color: 'rgba(255, 255, 255, 0.72)',
     fontSize: 11,
     fontWeight: '600',
     letterSpacing: 0.4,
@@ -1522,9 +1522,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(255, 255, 255, 0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(255, 255, 255, 0.18)',
   },
   intentionChipText: {
     color: '#fff',

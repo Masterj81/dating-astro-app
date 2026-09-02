@@ -1,6 +1,6 @@
 /**
  * Line-art SVG icons for marketing pages.
- * Stroke 1.5px on `#F7F4EE` (cream), accent rose `#E94560` is reserved for hover/details.
+ * Stroke 1.5px on `#F7F4EE` (cream), accent rose `#E85D75` is reserved for hover/details.
  * Replaces the previous emoji set (🪐💫🔮⭐🌙 + 🌟🔮💬) with consistent custom glyphs.
  */
 

@@ -20,10 +20,10 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
-    borderColor: 'rgba(233, 69, 96, 0.2)',
-    shadowColor: '#e94560',
+    borderColor: 'rgba(201, 134, 146, 0.2)',
+    shadowColor: '#C98692',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.24,
     shadowRadius: 18,

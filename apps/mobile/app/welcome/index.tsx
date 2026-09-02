@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     ...AppTheme.type.meta,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 2.4,
     marginBottom: 14,
@@ -498,7 +498,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ctaText: {
-    color: AppTheme.colors.textOnAccent,
+    // Sits on gradients.cta, which is gold. White here would be 1.6:1.
+    color: AppTheme.colors.textOnGold,
     ...AppTheme.type.bodyLarge,
     fontWeight: '700',
     letterSpacing: 0.3,

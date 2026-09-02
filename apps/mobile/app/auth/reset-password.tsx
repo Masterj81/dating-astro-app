@@ -132,7 +132,7 @@ export default function ResetPasswordScreen() {
               testID="reset-password-submit-button"
             >
               <LinearGradient
-                colors={['#e94560', '#c23a51']}
+                colors={['#B76E79', '#9E5A66']}
                 style={styles.buttonGradient}
               >
                 {loading ? (
@@ -190,14 +190,14 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   label: {
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     fontSize: 14,
     marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
     borderRadius: AppTheme.radius.md,

@@ -332,8 +332,8 @@ const styles = StyleSheet.create({
     borderColor: AppTheme.colors.border,
   },
   planTabActive: {
-    backgroundColor: 'rgba(124,108,255,0.12)',
-    borderColor: 'rgba(124,108,255,0.35)',
+    backgroundColor: 'rgba(91, 84, 168, 0.12)',
+    borderColor: 'rgba(91, 84, 168, 0.35)',
   },
   planTabLabel: {
     ...AppTheme.type.meta,

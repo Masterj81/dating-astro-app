@@ -26,7 +26,6 @@ import {
   signsOnCusps,
   type BirthDataState,
 } from '@astro/shared/astrology';
-import AuthBrandMark from '../../components/AuthBrandMark';
 import NatalChartWheel from '../../components/NatalChartWheel';
 import PremiumGate from '../../components/PremiumGate';
 import PlanetGlyph from '../../components/ui/PlanetGlyph';
@@ -571,28 +570,6 @@ function NatalChartScreenContent() {
           </View>
         </View>
       )}
-
-      {/* Chart Wheel Visual.
-          Each sign glyph is followed by U+FE0E (text variation selector)
-          so the codepoint is forced into text presentation, not colored
-          emoji. Bounding box is identical across all twelve symbols. */}
-      <View style={styles.chartWheel}>
-        <View style={styles.wheelOuter}>
-          <View style={styles.wheelInner}>
-            <AuthBrandMark size={58} />
-          </View>
-          <Text accessibilityLabel="Aries" style={[styles.wheelSign, { top: 5, left: '45%' }]}>{'♈︎'}</Text>
-          <Text accessibilityLabel="Taurus" style={[styles.wheelSign, { top: '15%', right: '10%' }]}>{'♉︎'}</Text>
-          <Text accessibilityLabel="Gemini" style={[styles.wheelSign, { top: '40%', right: 0 }]}>{'♊︎'}</Text>
-          <Text accessibilityLabel="Cancer" style={[styles.wheelSign, { bottom: '40%', right: 0 }]}>{'♋︎'}</Text>
-          <Text accessibilityLabel="Leo" style={[styles.wheelSign, { bottom: '15%', right: '10%' }]}>{'♌︎'}</Text>
-          <Text accessibilityLabel="Virgo" style={[styles.wheelSign, { bottom: 5, left: '45%' }]}>{'♍︎'}</Text>
-          <Text accessibilityLabel="Libra" style={[styles.wheelSign, { bottom: '15%', left: '10%' }]}>{'♎︎'}</Text>
-          <Text accessibilityLabel="Scorpio" style={[styles.wheelSign, { bottom: '40%', left: 0 }]}>{'♏︎'}</Text>
-          <Text accessibilityLabel="Sagittarius" style={[styles.wheelSign, { top: '40%', left: 0 }]}>{'♐︎'}</Text>
-          <Text accessibilityLabel="Capricorn" style={[styles.wheelSign, { top: '15%', left: '10%' }]}>{'♑︎'}</Text>
-        </View>
-      </View>
 
       {/* Editorial reminder — sits above the Planetary Positions list so
           the user reads the framing before tapping into a placement. */}
@@ -1141,7 +1118,7 @@ const styles = StyleSheet.create({
   },
   birthInfoTitle: {
     fontSize: 14,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 12,
@@ -1158,36 +1135,6 @@ const styles = StyleSheet.create({
   birthInfoValue: {
     fontSize: 15,
     color: AppTheme.colors.textSecondary,
-  },
-  chartWheel: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  wheelOuter: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    borderWidth: 2,
-    borderColor: 'rgba(232, 93, 117, 0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  wheelInner: {
-    width: 108,
-    height: 108,
-    borderRadius: 54,
-    backgroundColor: 'rgba(232, 93, 117, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(232, 93, 117, 0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  wheelSign: {
-    position: 'absolute',
-    fontSize: 16,
-    color: AppTheme.colors.coral,
-    opacity: 0.7,
   },
   section: {
     paddingHorizontal: 20,
@@ -1229,11 +1176,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   interpretationHeaderLeft: {
     flexDirection: 'row',
@@ -1245,7 +1192,7 @@ const styles = StyleSheet.create({
   },
   interpretationTitle: {
     fontSize: 14,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -1260,7 +1207,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   interpretationContent: {
-    backgroundColor: 'rgba(233, 69, 96, 0.08)',
+    backgroundColor: 'rgba(201, 134, 146, 0.08)',
     borderRadius: 0,
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
@@ -1268,7 +1215,7 @@ const styles = StyleSheet.create({
     marginTop: -8,
     borderWidth: 1,
     borderTopWidth: 0,
-    borderColor: 'rgba(233, 69, 96, 0.2)',
+    borderColor: 'rgba(201, 134, 146, 0.2)',
   },
   interpretationLabel: {
     fontSize: 12,
@@ -1303,14 +1250,14 @@ const styles = StyleSheet.create({
   },
   elementBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(233, 69, 96, 0.2)',
+    backgroundColor: 'rgba(201, 134, 146, 0.2)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
   },
   elementBadgeText: {
     fontSize: 12,
-    color: '#e94560',
+    color: '#C98692',
     fontWeight: '600',
     textTransform: 'capitalize',
   },
@@ -1319,7 +1266,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
   planetEmoji: {
     fontSize: 24,
@@ -1340,7 +1287,7 @@ const styles = StyleSheet.create({
     color: '#888',
   },
   analysisCard: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
@@ -1372,7 +1319,7 @@ const styles = StyleSheet.create({
   },
   elementCardDominant: {
     borderColor: AppTheme.colors.coral,
-    backgroundColor: 'rgba(233, 69, 96, 0.1)',
+    backgroundColor: 'rgba(201, 134, 146, 0.1)',
   },
   elementEmoji: {
     fontSize: 24,
@@ -1394,7 +1341,7 @@ const styles = StyleSheet.create({
   },
   modalityCard: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 12,
     padding: 12,
     alignItems: 'center',
@@ -1419,11 +1366,11 @@ const styles = StyleSheet.create({
     color: AppTheme.colors.textPrimary,
   },
   summaryCard: {
-    backgroundColor: 'rgba(233, 69, 96, 0.1)',
+    backgroundColor: 'rgba(201, 134, 146, 0.1)',
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(233, 69, 96, 0.2)',
+    borderColor: 'rgba(201, 134, 146, 0.2)',
   },
   summaryTitle: {
     fontSize: 18,
@@ -1452,15 +1399,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   disclaimerCard: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: 'rgba(255, 255, 255, 0.10)',
   },
   disclaimerTitle: {
     fontSize: 12,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 6,
@@ -1476,11 +1423,11 @@ const styles = StyleSheet.create({
   planetAccordionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   planetAccordionEmoji: {
     fontSize: 22,
@@ -1510,10 +1457,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   planetAccordionPanel: {
-    backgroundColor: 'rgba(232, 93, 117, 0.06)',
+    backgroundColor: 'rgba(201, 134, 146, 0.06)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(232, 93, 117, 0.22)',
+    borderColor: 'rgba(201, 134, 146, 0.22)',
     padding: 14,
     marginTop: 6,
     gap: 12,
@@ -1523,7 +1470,7 @@ const styles = StyleSheet.create({
   },
   panelLabel: {
     fontSize: 11,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -1538,10 +1485,10 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   panelDatingLens: {
-    backgroundColor: 'rgba(232, 93, 117, 0.12)',
+    backgroundColor: 'rgba(201, 134, 146, 0.12)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(232, 93, 117, 0.30)',
+    borderColor: 'rgba(201, 134, 146, 0.30)',
     padding: 12,
     gap: 4,
   },
@@ -1562,10 +1509,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   housesNotice: {
-    backgroundColor: 'rgba(232, 93, 117, 0.12)',
+    backgroundColor: 'rgba(201, 134, 146, 0.12)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(232, 93, 117, 0.30)',
+    borderColor: 'rgba(201, 134, 146, 0.30)',
     padding: 14,
     gap: 10,
     marginBottom: 16,
@@ -1591,10 +1538,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     padding: 14,
     marginBottom: 8,
   },
@@ -1604,9 +1551,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: 'rgba(255, 255, 255, 0.10)',
   },
   houseBadgeText: {
     fontSize: 14,
@@ -1629,17 +1576,17 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   angleCard: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     padding: 14,
     marginBottom: 8,
     gap: 4,
   },
   angleLabel: {
     fontSize: 11,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -1680,20 +1627,20 @@ const styles = StyleSheet.create({
     marginTop: 10,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderColor: 'rgba(255, 255, 255, 0.07)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     padding: 10,
     gap: 4,
   },
   houseCuspReadingLabel: {
     fontSize: 10,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   houseCuspReadingText: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
+    color: 'rgba(255, 255, 255, 0.9)',
     lineHeight: 21,
   },
   houseCuspReadingNote: {

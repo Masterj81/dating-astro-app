@@ -76,14 +76,14 @@ export function PlacementCard({
     >
       <header className="flex items-start gap-4">
         <div
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[rgba(232,93,117,0.22)] bg-[rgba(232,93,117,0.12)] text-2xl text-white"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[rgba(201,134,146,0.22)] bg-[rgba(201,134,146,0.12)] text-2xl text-white"
           aria-hidden="true"
         >
           <ZodiacGlyph sign={signKey} className="text-2xl leading-none" />
         </div>
         <div className="min-w-0 flex-1">
           {eyebrow ? (
-            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-gold-muted">
               {eyebrow}
             </p>
           ) : null}
@@ -115,7 +115,7 @@ export function PlacementCard({
       ) : null}
 
       {datingLens ? (
-        <div className="mt-5 rounded-2xl border border-[rgba(232,93,117,0.22)] bg-[rgba(232,93,117,0.08)] p-4">
+        <div className="mt-5 rounded-2xl border border-[rgba(201,134,146,0.22)] bg-[rgba(201,134,146,0.08)] p-4">
           <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#ffb7c7]">
             {datingLensLabel ?? "Dating lens"}
           </p>

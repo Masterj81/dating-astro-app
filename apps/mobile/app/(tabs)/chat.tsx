@@ -349,8 +349,8 @@ const styles = StyleSheet.create({
     height: 8,
   },
   conversationRowNew: {
-    borderColor: 'rgba(124, 108, 255, 0.25)',
-    backgroundColor: 'rgba(124, 108, 255, 0.06)',
+    borderColor: 'rgba(91, 84, 168, 0.25)',
+    backgroundColor: 'rgba(91, 84, 168, 0.06)',
   },
   newConversationDot: {
     position: 'absolute',

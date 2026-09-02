@@ -180,7 +180,7 @@ export function ProfileOverview({ profileId }: ProfileOverviewProps) {
         </p>
         <Link
           href="/app/discover"
-          className="mt-6 inline-flex rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+          className="mt-6 inline-flex rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
         >
           {t("backToDiscover")}
         </Link>
@@ -218,7 +218,7 @@ export function ProfileOverview({ profileId }: ProfileOverviewProps) {
       </section>
 
       <section className="rounded-[2rem] border border-border bg-card/90 p-6">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("profileSummaryLabel")}
         </p>
         <h2 className="mt-3 text-2xl font-semibold text-white">
@@ -309,7 +309,7 @@ export function ProfileOverview({ profileId }: ProfileOverviewProps) {
             type="button"
             onClick={() => handleStartConversation()}
             disabled={startingChat}
-            className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
+            className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-70"
           >
             {startingChat ? t("sending") : t("publicStartConversation")}
           </button>
@@ -378,7 +378,7 @@ export function ProfileOverview({ profileId }: ProfileOverviewProps) {
                 type="button"
                 onClick={handleReport}
                 disabled={reportSubmitting}
-                className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {reportSubmitting ? t("sending") : t("submitReport")}
               </button>

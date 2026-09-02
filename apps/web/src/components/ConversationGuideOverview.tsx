@@ -299,7 +299,7 @@ export function ConversationGuideOverview() {
 
   const renderSignPicker = () => (
     <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-      <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+      <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
         {t("conversationGuideChooseSign")}
       </p>
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
@@ -317,11 +317,14 @@ export function ConversationGuideOverview() {
               data-testid={`coach-sign-${option}`}
               className={`flex items-center gap-2 rounded-2xl border px-3 py-2.5 text-sm transition-colors ${
                 selected
-                  ? "border-accent/50 bg-accent/12 text-white"
+                  ? "border-gold-border bg-gold-wash text-white"
                   : "border-border bg-bg/70 text-text-muted hover:border-white/20 hover:text-white"
               }`}
             >
-              <ZodiacGlyph sign={option} className="text-base leading-none text-accent" />
+              <ZodiacGlyph
+                sign={option}
+                className={`text-base leading-none ${selected ? "text-gold" : "text-gold-muted"}`}
+              />
               <span className="truncate">{translateSign(option, locale)}</span>
             </button>
           );
@@ -332,7 +335,7 @@ export function ConversationGuideOverview() {
 
   const renderSituationPicker = () => (
     <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-      <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+      <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
         {t("conversationGuideChooseSituation")}
       </p>
       <div className="mt-4 space-y-2">
@@ -349,7 +352,7 @@ export function ConversationGuideOverview() {
               data-testid={`coach-situation-${option.key}`}
               className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition-colors ${
                 selected
-                  ? "border-accent/50 bg-accent/10"
+                  ? "border-gold-border bg-gold-wash"
                   : "border-border bg-bg/70 hover:border-white/20"
               }`}
             >
@@ -359,8 +362,8 @@ export function ConversationGuideOverview() {
               <span
                 className={`shrink-0 rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${
                   openToReader
-                    ? "border-[rgba(124,200,160,0.3)] bg-[rgba(124,200,160,0.12)] text-[#a9e0c4]"
-                    : "border-white/12 bg-black/20 text-white/70"
+                    ? "border-gold-border bg-gold-wash text-gold"
+                    : "border-[rgba(169,130,61,0.35)] bg-black/20 text-gold-muted"
                 }`}
               >
                 {openToReader
@@ -392,7 +395,7 @@ export function ConversationGuideOverview() {
       // were never offered is how a paywall loses trust.
       return (
         <div
-          className="rounded-[2rem] border border-[rgba(232,93,117,0.28)] bg-[rgba(232,93,117,0.08)] p-8"
+          className="rounded-[2rem] border border-[rgba(201,134,146,0.3)] bg-[rgba(201,134,146,0.08)] p-8"
           data-testid="coach-locked-card"
         >
           <h2 className="text-xl font-semibold text-white">
@@ -425,7 +428,7 @@ export function ConversationGuideOverview() {
             <Link
               href="/app/plans"
               data-testid="coach-upgrade-cta"
-              className="mt-5 inline-block rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+              className="mt-5 inline-block rounded-full bg-gold px-5 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
             >
               {t("conversationGuideUpgradeCta")}
             </Link>
@@ -447,7 +450,7 @@ export function ConversationGuideOverview() {
           type="button"
           onClick={() => void requestUnlock()}
           data-testid="coach-unlock-cta"
-          className="mt-5 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+          className="mt-5 rounded-full bg-gold px-5 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
         >
           {t("conversationGuideUnlockCta")}
         </button>
@@ -477,14 +480,14 @@ export function ConversationGuideOverview() {
         <div className="mt-6 space-y-5">
           {card.sections.map((section) => (
             <div key={section.id}>
-              <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-gold-muted">
                 {t(section.labelKey)}
               </p>
               {section.copyable ? (
                 <>
                   <p
                     lang="en"
-                    className="mt-2 rounded-2xl border border-accent/25 bg-accent/[0.07] p-4 text-sm leading-7 text-white"
+                    className="mt-2 rounded-2xl border border-gold-border bg-gold-wash p-4 text-sm leading-7 text-white"
                   >
                     “{section.body}”
                   </p>
@@ -527,7 +530,7 @@ export function ConversationGuideOverview() {
       {unlock.status === "unlocked" && unlock.viaPreview && state?.tier === "free" ? (
         <p
           data-testid="coach-preview-banner"
-          className="rounded-2xl border border-[rgba(124,200,160,0.25)] bg-[rgba(124,200,160,0.08)] px-5 py-3 text-sm text-[#a9e0c4]"
+          className="rounded-2xl border border-gold-border bg-gold-wash px-5 py-3 text-sm text-gold"
         >
           {t("conversationGuidePreviewBanner")}
         </p>

@@ -168,7 +168,7 @@ export function CheckoutSuccessCard() {
               <>
                 <Link
                   href="/app/discover"
-                  className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)]"
+                  className="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft hover:shadow-[0_0_20px_rgba(201,134,146,0.3)]"
                 >
                   {t("successCtaPrimary")}
                 </Link>
@@ -209,7 +209,7 @@ export function CheckoutSuccessCard() {
               }`
         }`}
       >
-        <h3 className="mb-4 text-center text-sm font-medium uppercase tracking-[0.24em] text-text-dim">
+        <h3 className="mb-4 text-center text-sm font-medium uppercase tracking-[0.24em] text-gold-muted">
           {t("successNextSteps")}
         </h3>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -228,7 +228,7 @@ export function CheckoutSuccessCard() {
 
       {/* Feature highlights -- reinforce value of purchase */}
       <div
-        className={`rounded-[2rem] border border-[rgba(124,108,255,0.18)] bg-[linear-gradient(135deg,rgba(124,108,255,0.08),rgba(77,159,255,0.04))] p-6 ${
+        className={`rounded-[2rem] border border-[rgba(91,84,168,0.18)] bg-[linear-gradient(135deg,rgba(91,84,168,0.08),rgba(232,199,126,0.04))] p-6 ${
           prefersReducedMotion
             ? "opacity-100"
             : `transition-all duration-500 delay-[900ms] ${

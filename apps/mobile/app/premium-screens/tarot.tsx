@@ -106,7 +106,7 @@ function TarotScreenContent() {
     return (
       <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#e94560" />
+          <ActivityIndicator size="large" color="#C98692" />
         </View>
       </LinearGradient>
     );
@@ -341,13 +341,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
   modeButtonActive: {
-    backgroundColor: 'rgba(233,69,96,0.2)',
-    borderColor: 'rgba(233,69,96,0.5)',
+    backgroundColor: 'rgba(201, 134, 146, 0.2)',
+    borderColor: 'rgba(201, 134, 146, 0.5)',
   },
   modeText: {
     fontSize: 15,
@@ -405,19 +405,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: 'rgba(147,51,234,0.4)',
+    borderColor: 'rgba(147, 51, 234, 0.4)',
     borderRadius: 12,
   },
   cardBackSymbol: {
     fontSize: 36,
-    color: 'rgba(147,51,234,0.6)',
+    color: 'rgba(147, 51, 234, 0.6)',
     marginBottom: 8,
   },
   cardBackLabel: {
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 2,
-    color: 'rgba(147,51,234,0.5)',
+    color: 'rgba(147, 51, 234, 0.5)',
   },
   cardImage: {
     width: '100%',
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
     padding: 18,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   interpretationHeader: {
     flexDirection: 'row',
@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
   },
   interpretationCardName: {
     fontSize: 14,
-    color: '#e94560',
+    color: '#C98692',
     fontWeight: '600',
   },
   interpretationText: {
@@ -477,17 +477,17 @@ const styles = StyleSheet.create({
   },
   badge: {
     alignSelf: 'center',
-    backgroundColor: 'rgba(147,51,234,0.15)',
+    backgroundColor: 'rgba(147, 51, 234, 0.15)',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(147,51,234,0.3)',
+    borderColor: 'rgba(147, 51, 234, 0.3)',
     marginBottom: 16,
   },
   badgeText: {
     fontSize: 12,
-    color: '#9333ea',
+    color: '#8B87FF',
     fontWeight: '600',
   },
 });

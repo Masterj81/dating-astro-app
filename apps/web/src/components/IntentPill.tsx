@@ -13,19 +13,19 @@ type IntentTone = "longTerm" | "casual" | "friendship";
 
 const TONES: Record<IntentTone, { dot: string; ring: string; bg: string }> = {
   longTerm: {
-    dot: "#E85D75",
-    ring: "rgba(232,93,117,0.35)",
-    bg: "rgba(232,93,117,0.08)",
+    dot: "#C98692",
+    ring: "rgba(201, 134, 146, 0.35)",
+    bg: "rgba(201, 134, 146, 0.08)",
   },
   casual: {
-    dot: "#DAB56D",
-    ring: "rgba(218,181,109,0.35)",
-    bg: "rgba(218,181,109,0.08)",
+    dot: "#E8C77E",
+    ring: "rgba(218, 181, 109, 0.35)",
+    bg: "rgba(218, 181, 109, 0.08)",
   },
   friendship: {
     dot: "#7681FF",
-    ring: "rgba(118,129,255,0.35)",
-    bg: "rgba(118,129,255,0.08)",
+    ring: "rgba(91, 84, 168, 0.35)",
+    bg: "rgba(91, 84, 168, 0.08)",
   },
 };
 

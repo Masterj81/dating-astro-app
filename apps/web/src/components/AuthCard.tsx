@@ -234,7 +234,7 @@ export function AuthCard({ mode }: AuthCardProps) {
         </div>
       </div>
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-accent/30 bg-accent/8 p-2 shadow-[0_0_30px_rgba(233,69,96,0.12)]">
+        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-accent/30 bg-accent/8 p-2 shadow-[0_0_30px_rgba(201,134,146,0.12)]">
           <Image
             src="/icon-192.png"
             alt="JUNO"
@@ -274,7 +274,7 @@ export function AuthCard({ mode }: AuthCardProps) {
 
       <div className="my-6 flex items-center gap-3">
         <div className="h-px flex-1 bg-border" />
-        <span className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <span className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("orContinueWithEmail")}
         </span>
         <div className="h-px flex-1 bg-border" />
@@ -383,7 +383,7 @@ export function AuthCard({ mode }: AuthCardProps) {
         <button
           type="submit"
           disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-accent px-5 py-3.5 text-sm font-semibold text-white transition-all hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-gold px-5 py-3.5 text-sm font-semibold text-bg transition-all hover:bg-gold-soft hover:shadow-[0_0_20px_rgba(201,134,146,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {loading ? (
             <>

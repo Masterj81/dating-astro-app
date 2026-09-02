@@ -170,7 +170,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    backgroundColor: 'rgba(232,93,117,0.15)',
+    backgroundColor: 'rgba(201, 134, 146, 0.15)',
     borderRadius: 14,
     gap: 4,
   },
@@ -190,7 +190,7 @@ const s = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
   },
   blockBody: {
     fontSize: 13,
@@ -214,12 +214,12 @@ const s = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 9,
     paddingVertical: 4,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 12,
     gap: 4,
   },
   chipShared: {
-    backgroundColor: 'rgba(218,181,109,0.18)',
+    backgroundColor: 'rgba(218, 181, 109, 0.18)',
     borderWidth: 1,
     borderColor: AppTheme.colors.gold,
   },
@@ -229,7 +229,7 @@ const s = StyleSheet.create({
 
   // Prompts
   promptCard: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     padding: 10,
     borderRadius: 10,
     marginTop: 4,
@@ -248,9 +248,9 @@ const s = StyleSheet.create({
 
   // Icebreaker
   icebreakerCard: {
-    backgroundColor: 'rgba(124,108,255,0.12)',
+    backgroundColor: 'rgba(91, 84, 168, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(124,108,255,0.35)',
+    borderColor: 'rgba(91, 84, 168, 0.35)',
     padding: 12,
     borderRadius: 12,
     marginTop: 4,

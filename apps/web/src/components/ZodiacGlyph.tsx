@@ -95,11 +95,13 @@ export const ZODIAC_KEYS: readonly ZodiacSignKey[] = [
   "sagittarius", "capricorn", "aquarius", "pisces",
 ];
 
-const GOLD = "#E9C873";
+// Was #E9C873 — the same third gold its mobile twin carried. One shade off
+// the palette's #E8C77E, which is exactly why neither was ever noticed.
+const GOLD = "#E8C77E";
 const NAVY = "#151522";
 const NAVY_INNER = "#1f1f2e";
 const MUTED_BG = "#1a1a26";
-const MUTED_GLYPH = "rgba(241,230,204,0.75)";
+const MUTED_GLYPH = "rgba(241, 230, 204, 0.75)";
 
 const SIZE_PX: Record<ZodiacGlyphSize, number> = {
   sm: 24,
@@ -173,7 +175,7 @@ export const LuminaryGlyph: FC<LuminaryGlyphProps> = ({
     height: outer,
     borderRadius: outer / 2,
     backgroundColor: NAVY_INNER,
-    border: "1px solid rgba(233,200,115,0.32)",
+    border: "1px solid rgba(233, 200, 115, 0.32)",
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
@@ -246,7 +248,7 @@ export function ZodiacGlyph({
         aria-hidden="true"
         style={{
           fontFamily: TEXT_FONT_STACK,
-          color: "rgba(255,255,255,0.4)",
+          color: "rgba(255, 255, 255, 0.4)",
         }}
       >
         ✦
@@ -306,11 +308,11 @@ export function ZodiacGlyph({
           }px`,
           borderRadius: outer,
           background: active
-            ? "rgba(233,200,115,0.14)"
-            : "rgba(255,255,255,0.06)",
+            ? "rgba(233, 200, 115, 0.14)"
+            : "rgba(255, 255, 255, 0.06)",
           border: active
-            ? "1px solid rgba(233,200,115,0.55)"
-            : "1px solid rgba(255,255,255,0.10)",
+            ? "1px solid rgba(233, 200, 115, 0.55)"
+            : "1px solid rgba(255, 255, 255, 0.10)",
           color: "#FFFFFF",
         }}
       >
@@ -357,7 +359,7 @@ export function ZodiacGlyph({
             height: outer,
             borderRadius: outer / 2,
             background: MUTED_BG,
-            border: "1px solid rgba(241,230,204,0.16)",
+            border: "1px solid rgba(241, 230, 204, 0.16)",
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",

@@ -282,7 +282,7 @@ export default function LoginScreen() {
                 )}
               >
                 <LinearGradient
-                  colors={['#e94560', '#c23a51']}
+                  colors={['#B76E79', '#9E5A66']}
                   style={styles.buttonGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
   },
   zodiacRing: {
     fontSize: 18,
-    color: '#e94560',
+    color: '#C98692',
     letterSpacing: 8,
     opacity: 0.6,
   },
@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1
   },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
     borderRadius: AppTheme.radius.md,
@@ -461,8 +461,8 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(233, 69, 96, 0.18)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderColor: 'rgba(201, 134, 146, 0.18)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -472,13 +472,13 @@ const styles = StyleSheet.create({
     marginTop: -8,
   },
   forgotPasswordText: {
-    color: '#e94560',
+    color: '#C98692',
     fontSize: 14,
   },
   button: {
     borderRadius: AppTheme.radius.md,
     overflow: 'hidden',
-    shadowColor: '#e94560',
+    shadowColor: '#C98692',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
   dividerText: {
     color: a11yColors.text.muted,
@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: AppTheme.radius.md,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
     borderColor: AppTheme.colors.borderStrong,
     justifyContent: 'center',
@@ -538,7 +538,7 @@ const styles = StyleSheet.create({
     fontSize: 14
   },
   linkText: {
-    color: '#e94560',
+    color: '#C98692',
     fontSize: 14,
     fontWeight: '600'
   },

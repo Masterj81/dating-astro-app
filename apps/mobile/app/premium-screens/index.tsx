@@ -92,7 +92,7 @@ export default function PremiumDashboard() {
         </div>
 
         <div style={{ marginBottom: 30 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, color: AppTheme.colors.textMuted, margin: '0 0 15px', textTransform: 'uppercase', letterSpacing: 1 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, color: AppTheme.colors.goldMuted, margin: '0 0 15px', textTransform: 'uppercase', letterSpacing: 1 }}>
             {t('celestialFeatures') || 'Celestial Features'}
           </h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
@@ -127,7 +127,7 @@ export default function PremiumDashboard() {
         </div>
 
         <div style={{ marginBottom: 30 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, color: AppTheme.colors.textMuted, margin: '0 0 15px', textTransform: 'uppercase', letterSpacing: 1 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, color: AppTheme.colors.goldMuted, margin: '0 0 15px', textTransform: 'uppercase', letterSpacing: 1 }}>
             {t('cosmicFeatures') || 'Cosmic Features'}
           </h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
@@ -164,7 +164,7 @@ export default function PremiumDashboard() {
                 <span style={{ color: AppTheme.colors.textPrimary, fontWeight: 600, textAlign: 'center', fontSize: 13 }}>
                   {t(feature.key) || feature.key}
                 </span>
-                {!isPremiumPlus ? <span style={{ position: 'absolute', top: 12, right: 12, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, color: '#9333ea' }}>{'LOCKED'}</span> : null}
+                {!isPremiumPlus ? <span style={{ position: 'absolute', top: 12, right: 12, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, color: '#8B87FF' }}>{'LOCKED'}</span> : null}
               </div>
             ))}
           </div>
@@ -176,10 +176,10 @@ export default function PremiumDashboard() {
           style={{
             display: 'flex',
             alignItems: 'center',
-            backgroundColor: 'rgba(255,255,255,0.04)',
+            backgroundColor: 'rgba(255, 255, 255, 0.04)',
             borderRadius: 16,
             padding: 16,
-            border: '1px solid rgba(255,255,255,0.10)',
+            border: '1px solid rgba(255, 255, 255, 0.10)',
             marginTop: 10,
             marginBottom: 10,
             cursor: 'pointer',
@@ -204,10 +204,10 @@ export default function PremiumDashboard() {
             style={{
               display: 'flex',
               alignItems: 'center',
-              backgroundColor: 'rgba(124, 108, 255, 0.14)',
+              backgroundColor: 'rgba(91, 84, 168, 0.14)',
               borderRadius: 16,
               padding: 16,
-              border: '1px solid rgba(124, 108, 255, 0.22)',
+              border: '1px solid rgba(91, 84, 168, 0.22)',
               marginTop: 10,
               cursor: 'pointer',
             }}
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...AppTheme.type.micro,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     marginBottom: AppTheme.spacing.lg,
     textTransform: 'uppercase',
     letterSpacing: 2,
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
   lockedCard: {
     opacity: 0.60,
     borderColor: AppTheme.colors.premiumCosmicBorder,
-    backgroundColor: 'rgba(124,108,255,0.05)',
+    backgroundColor: 'rgba(91, 84, 168, 0.05)',
   },
   cardIcon: {
     fontSize: 40,
@@ -431,12 +431,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: 'rgba(124, 108, 255, 0.18)',
+    backgroundColor: 'rgba(91, 84, 168, 0.18)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: AppTheme.radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(124, 108, 255, 0.30)',
+    borderColor: 'rgba(91, 84, 168, 0.30)',
   },
   lockBadgeText: {
     ...AppTheme.type.micro,
@@ -461,11 +461,11 @@ const styles = StyleSheet.create({
   adTimingBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: AppTheme.radius.xl,
     padding: AppTheme.spacing.xl,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: 'rgba(255, 255, 255, 0.10)',
     marginTop: AppTheme.spacing.md,
     gap: 14,
   },

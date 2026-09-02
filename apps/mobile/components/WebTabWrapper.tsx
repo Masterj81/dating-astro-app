@@ -21,7 +21,7 @@ interface WebTabWrapperProps {
  */
 export default function WebTabWrapper({
   children,
-  background = '#0f0f1a',
+  background = '#0B0B14',
   padding,
   paddingTop,
   overflowY = 'auto',

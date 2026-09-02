@@ -114,7 +114,7 @@ export default function AuthCallbackScreen() {
 
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color="#e94560" />
+      <ActivityIndicator size="large" color="#C98692" />
       <Text style={styles.text}>Completing sign in...</Text>
     </View>
   );
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0f0f1a',
+    backgroundColor: '#0B0B14',
   },
   text: {
     color: '#fff',

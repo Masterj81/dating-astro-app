@@ -154,7 +154,7 @@ export function DownloadButtons({
     <Link
       key="webapp"
       href="/app"
-      className={`inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 text-white font-medium backdrop-blur-sm transition-all hover:bg-accent/20 hover:border-accent/60 hover:shadow-[0_0_16px_rgba(232,93,117,0.2)] ${padding}`}
+      className={`inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 text-white font-medium backdrop-blur-sm transition-all hover:bg-accent/20 hover:border-accent/60 hover:shadow-[0_0_16px_rgba(201,134,146,0.2)] ${padding}`}
     >
       <WebIcon />
       {t("webApp")}

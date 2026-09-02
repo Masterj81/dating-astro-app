@@ -88,7 +88,7 @@ export default async function CelestialHubPage() {
     <AppShell title={t("celestialHubTitle")} subtitle={t("celestialHubWorkspaceBody")}>
       <div className="space-y-6">
         <section className="space-y-6">
-          <div className="rounded-[2.2rem] border border-border bg-[linear-gradient(180deg,rgba(77,159,255,0.16),rgba(255,255,255,0.04))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
+          <div className="rounded-[2.2rem] border border-border bg-[linear-gradient(180deg,rgba(232,199,126,0.14),rgba(169,130,61,0.06))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {featureCards.map((card) => (
                 card.available ? (
@@ -97,7 +97,7 @@ export default async function CelestialHubPage() {
                     href={card.href}
                     className={`rounded-[1.7rem] border p-5 transition-all duration-200 hover:-translate-y-1 hover:bg-card-hover ${
                       card.href === "/app/premium/celestial/natal-chart"
-                        ? "border-[rgba(232,93,117,0.24)] bg-[linear-gradient(180deg,rgba(232,93,117,0.14),rgba(255,255,255,0.03))]"
+                        ? "border-gold-border bg-[linear-gradient(180deg,rgba(232,199,126,0.12),rgba(255,255,255,0.03))]"
                         : "border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))]"
                     }`}
                   >
@@ -105,7 +105,7 @@ export default async function CelestialHubPage() {
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-white">
                         <PremiumGlyph name={card.glyph} />
                       </div>
-                      <span className="rounded-full border border-border bg-card px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
+                      <span className="rounded-full border border-gold-border bg-gold-wash px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">
                         {card.badge}
                       </span>
                     </div>
@@ -121,7 +121,7 @@ export default async function CelestialHubPage() {
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-white/60">
                         <PremiumGlyph name={card.glyph} />
                       </div>
-                      <span className="rounded-full border border-border bg-card px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
+                      <span className="rounded-full border border-gold-border bg-gold-wash px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">
                         {card.badge}
                       </span>
                     </div>

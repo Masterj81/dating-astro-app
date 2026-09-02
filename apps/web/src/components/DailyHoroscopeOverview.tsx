@@ -89,7 +89,7 @@ function EnergyDots({ level }: { level: Level }) {
           key={i}
           className={`h-2 w-2 rounded-full ${
             i < filled
-              ? "bg-[#e85d75]"
+              ? "bg-[#C98692]"
               : "bg-white/15"
           }`}
         />
@@ -199,8 +199,8 @@ export function DailyHoroscopeOverview() {
   if (state.tier === "free") {
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-8">
-        <div className="max-w-3xl rounded-[1.75rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <div className="max-w-3xl rounded-[1.75rem] border border-[rgba(91,84,168,0.24)] bg-[rgba(91,84,168,0.12)] p-6">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("premiumNav")}
           </p>
           <h2 className="mt-3 text-2xl font-semibold text-white">
@@ -212,7 +212,7 @@ export function DailyHoroscopeOverview() {
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/app/plans"
-              className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+              className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
             >
               {t("viewPlans")}
             </Link>
@@ -234,7 +234,7 @@ export function DailyHoroscopeOverview() {
   if (!isKnownSign(sunSign)) {
     return (
       <section className="rounded-[2rem] border border-border bg-card/90 p-8">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("dailyHoroscopeDateLabel")}
         </p>
         <h2 className="mt-3 text-2xl font-semibold text-white">
@@ -246,7 +246,7 @@ export function DailyHoroscopeOverview() {
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
             href="/app/profile"
-            className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+            className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
           >
             {t("openProfile")}
           </Link>
@@ -268,13 +268,13 @@ export function DailyHoroscopeOverview() {
     <div className="grid gap-6">
       {/* Block 1 — Hero. Date, glyph, sign, mood phrase. */}
       <section className="rounded-[2rem] border border-border bg-card/90 p-6">
-        <div className="rounded-[1.75rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <div className="rounded-[1.75rem] border border-[rgba(91,84,168,0.24)] bg-[rgba(91,84,168,0.12)] p-6">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("dailyHoroscopeDateLabel")}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-4">
             <div
-              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[rgba(232,93,117,0.22)] bg-[rgba(232,93,117,0.12)] text-3xl text-white"
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[rgba(201,134,146,0.22)] bg-[rgba(201,134,146,0.12)] text-3xl text-white"
               aria-hidden="true"
             >
               <ZodiacGlyph sign={sign} className="leading-none" />
@@ -287,7 +287,7 @@ export function DailyHoroscopeOverview() {
             </div>
           </div>
           <div className="mt-5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-gold-muted">
               {t("dailyHoroscopeV2Mood")}
             </p>
             <p className="mt-2 text-lg font-medium text-white">
@@ -299,7 +299,7 @@ export function DailyHoroscopeOverview() {
 
       {/* Block 2 — Today's lens. Short reflective paragraph. */}
       <section className="rounded-[2rem] border border-border bg-card/90 p-6">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("dailyHoroscopeV2LensTitle")}
         </p>
         <p className="mt-3 text-sm leading-7 text-white/90">
@@ -310,7 +310,7 @@ export function DailyHoroscopeOverview() {
       {/* Block 3 — Energy rhythm. 4 axes × qualitative label + dot meter.
           No percentages, no scores. Symbolic, not numeric. */}
       <section className="rounded-[2rem] border border-border bg-card/90 p-6">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("dailyHoroscopeV2EnergyTitle")}
         </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -338,7 +338,7 @@ export function DailyHoroscopeOverview() {
 
       {/* Block 4 — Dating lens. One relational sentence. Coral-tinted card
           to mirror the Natal Chart dating-lens styling. */}
-      <section className="rounded-[2rem] border border-[rgba(232,93,117,0.24)] bg-[rgba(232,93,117,0.10)] p-6">
+      <section className="rounded-[2rem] border border-[rgba(201,134,146,0.24)] bg-[rgba(201,134,146,0.10)] p-6">
         <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#ffb7c7]">
           {t("dailyHoroscopeV2DatingTitle")}
         </p>
@@ -349,7 +349,7 @@ export function DailyHoroscopeOverview() {
 
       {/* Block 5 — Conversation prompt. Concrete question to ask someone. */}
       <section className="rounded-[2rem] border border-border bg-card/90 p-6">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("dailyHoroscopeV2PromptTitle")}
         </p>
         <p className="mt-3 text-base leading-7 text-white">
@@ -359,7 +359,7 @@ export function DailyHoroscopeOverview() {
 
       {/* Block 6 — Reflect on. 1–2 reflection invitations. */}
       <section className="rounded-[2rem] border border-border bg-card/90 p-6">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("dailyHoroscopeV2ReflectTitle")}
         </p>
         <p className="mt-3 text-sm leading-7 text-text-muted">
@@ -369,7 +369,7 @@ export function DailyHoroscopeOverview() {
 
       {/* Block 7 — Disclaimer. Same pattern as Natal Chart. */}
       <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("dailyHoroscopeV2DisclaimerTitle")}
         </p>
         <p className="mt-2 text-sm leading-7 text-text-muted">

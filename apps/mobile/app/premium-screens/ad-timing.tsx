@@ -255,9 +255,9 @@ function StatusPill({
   compact?: boolean;
 }) {
   const palette = {
-    strong: { bg: 'rgba(101,196,103,0.18)', border: 'rgba(101,196,103,0.40)', fg: '#a4e2a4' },
-    usable: { bg: 'rgba(245,196,87,0.18)', border: 'rgba(245,196,87,0.40)', fg: '#f7d68b' },
-    avoid: { bg: 'rgba(220,93,93,0.16)', border: 'rgba(220,93,93,0.34)', fg: '#f3a8a8' },
+    strong: { bg: 'rgba(101, 196, 103, 0.18)', border: 'rgba(101, 196, 103, 0.40)', fg: '#a4e2a4' },
+    usable: { bg: 'rgba(245, 196, 87, 0.18)', border: 'rgba(245, 196, 87, 0.40)', fg: '#f7d68b' },
+    avoid: { bg: 'rgba(220, 93, 93, 0.16)', border: 'rgba(220, 93, 93, 0.34)', fg: '#f3a8a8' },
   } as const;
   const colors = palette[status];
   return (
@@ -342,9 +342,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     padding: 16,
     borderRadius: 14,
-    backgroundColor: 'rgba(124, 108, 255, 0.10)',
+    backgroundColor: 'rgba(91, 84, 168, 0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(124, 108, 255, 0.22)',
+    borderColor: 'rgba(91, 84, 168, 0.22)',
   },
   disclaimerCard: {
     marginHorizontal: 20,
@@ -352,13 +352,13 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     padding: 16,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: 'rgba(255, 255, 255, 0.10)',
   },
   disclaimerEyebrow: {
     fontSize: 11,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 2,
     marginBottom: 8,
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
   },
   sectionEyebrow: {
     fontSize: 11,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 2,
     marginBottom: 12,
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(101,196,103,0.25)',
+    borderColor: 'rgba(101, 196, 103, 0.25)',
   },
   favorableRow: {
     flexDirection: 'row',

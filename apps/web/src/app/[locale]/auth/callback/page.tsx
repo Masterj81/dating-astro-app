@@ -199,7 +199,7 @@ export default function AuthCallbackPage() {
                       : undefined,
                 })
               }
-              className="mt-5 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+              className="mt-5 rounded-full bg-gold px-5 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
             >
               {isRecoveryFlow ? t("forgotPassword") : t("signIn")}
             </button>

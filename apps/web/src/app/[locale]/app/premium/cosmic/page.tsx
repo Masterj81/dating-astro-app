@@ -71,10 +71,10 @@ export default async function CosmicHubPage() {
     <AppShell title={t("cosmicHubTitle")} subtitle={t("cosmicHubWorkspaceBody")}>
       <div className="space-y-6">
         <section className="space-y-6">
-          <div className="rounded-[2.2rem] border border-border bg-[linear-gradient(180deg,rgba(124,108,255,0.18),rgba(255,255,255,0.04))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
+          <div className="rounded-[2.2rem] border border-border bg-[linear-gradient(180deg,rgba(91,84,168,0.18),rgba(255,255,255,0.04))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
             <div>
               <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+                <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                   {t("cosmicHubIncluded")}
                 </p>
                 <h3 className="mt-3 text-2xl font-semibold text-white">
@@ -90,7 +90,7 @@ export default async function CosmicHubPage() {
                   href={card.href}
                   className={`rounded-[1.7rem] border p-5 transition-all duration-200 hover:-translate-y-1 hover:bg-card-hover ${
                     card.href === "/app/premium/cosmic/monthly-horoscope"
-                      ? "border-[rgba(232,93,117,0.24)] bg-[linear-gradient(180deg,rgba(232,93,117,0.14),rgba(255,255,255,0.03))]"
+                      ? "border-[rgba(201,134,146,0.24)] bg-[linear-gradient(180deg,rgba(201,134,146,0.14),rgba(255,255,255,0.03))]"
                       : "border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))]"
                   }`}
                 >

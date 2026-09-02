@@ -128,7 +128,7 @@ export default function VerifyEmailScreen() {
         )}
 
         <View style={styles.pollingIndicator}>
-          <ActivityIndicator color="#e94560" size="small" />
+          <ActivityIndicator color="#C98692" size="small" />
           <Text style={styles.pollingText}>{t('waitingForVerification') || 'Listening for your confirmation...'}</Text>
         </View>
 
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
   progressDotDone: {
     backgroundColor: AppTheme.colors.coral,
@@ -244,12 +244,12 @@ const styles = StyleSheet.create({
   tipBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 12,
     padding: 14,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     maxWidth: 340,
   },
   tipIcon: {
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   resendButton: {
-    backgroundColor: 'rgba(233, 69, 96, 0.15)',
+    backgroundColor: 'rgba(201, 134, 146, 0.15)',
     borderWidth: 1,
     borderColor: AppTheme.colors.coral,
     borderRadius: AppTheme.radius.md,
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   },
   resendButtonDisabled: {
     borderColor: '#444',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   resendText: {
     color: AppTheme.colors.textPrimary,

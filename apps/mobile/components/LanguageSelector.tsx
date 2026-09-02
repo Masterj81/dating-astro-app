@@ -80,7 +80,7 @@ export default function LanguageSelector({ onLanguageChange }: Props) {
                   {lang.name}
                 </Text>
                 {loadingLang === lang.code ? (
-                  <ActivityIndicator size="small" color="#e94560" />
+                  <ActivityIndicator size="small" color="#C98692" />
                 ) : language === lang.code ? (
                   <Text style={styles.checkmark}>{'\u2713'}</Text>
                 ) : null}
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#151A2B',
     borderRadius: 16,
     padding: 20,
     width: '85%',
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   langOptionActive: {
-    backgroundColor: 'rgba(233, 69, 96, 0.2)',
+    backgroundColor: 'rgba(201, 134, 146, 0.2)',
   },
   langFlag: {
     fontSize: 24,
@@ -164,11 +164,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   langTextActive: {
-    color: '#e94560',
+    color: '#C98692',
     fontWeight: '600',
   },
   checkmark: {
-    color: '#e94560',
+    color: '#C98692',
     fontSize: 18,
     fontWeight: 'bold',
   },

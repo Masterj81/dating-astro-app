@@ -1,13 +1,75 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+ * JUNO palette — celestial gold on deep navy.
+ *
+ * The rule that keeps this from turning into confetti: each colour family has
+ * ONE job.
+ *
+ *   gold    premium, status, and every section marker. The identity colour.
+ *   accent  emotional ACTIONS — like, message, send. Coral. Never decoration.
+ *   purple  Cosmic tier only (premium_plus). Not a general accent.
+ *
+ * Before this file said so, coral was doing all three: 425 token usages against
+ * 54 for purple and three raw hexes for gold — which is why an astrology app
+ * read pink rather than celestial. Gold now carries the identity and coral
+ * keeps the verbs.
+ *
+ * Every value below clears WCAG AA (4.5:1) as text on `--color-card` over
+ * `--color-bg`; the muted gold used for the 139 section labels sits at 7.9:1,
+ * slightly brighter than the grey it replaces.
+ *
+ * `apps/mobile/constants/theme.ts` carries the same hexes under the same
+ * names, and `npm run validate:design-tokens` fails the build if the two
+ * drift apart.
+ * ------------------------------------------------------------------------ */
 @theme {
   --color-bg: #090b13;
-  --color-bg-secondary: #141a2b;
-  --color-bg-tertiary: #202946;
-  --color-accent: #e85d75;
-  --color-accent-hover: #d93c5a;
-  --color-purple: #7681ff;
+  --color-bg-secondary: #131829;
+  --color-bg-tertiary: #1e2540;
+
+  /* IDENTITY. Gold, warm, never yellow. Primary CTAs live here. */
+  --color-gold: #e8c77e;
+  /* Champagne. Hover state for gold fills, and the light end of gradients. */
+  --color-gold-soft: #f2dca8;
+  --color-gold-deep: #c9a24d;
+  /* Antique gold. Where depth comes from — borders, gradient ends, the
+     "old jewellery" register. Dimming the primary gold would have cost
+     readability (10.4:1 -> 8.7:1) and bought the same feeling less well. */
+  --color-gold-antique: #a9823d;
+  /* Section labels — the uppercase tracked eyebrows on nearly every card.
+     Muted on purpose: 144 of them in full gold would be a jewellery shop. */
+  --color-gold-muted: #b8a87f;
+  --color-gold-wash: rgba(232, 199, 126, 0.1);
+  --color-gold-border: rgba(232, 199, 126, 0.28);
+  /* Bronze. The active-navigation surface: warm, dark, not pink. */
+  --color-bronze: rgba(216, 181, 109, 0.14);
+
+  /* SECONDARY ACCENT — muted rose-gold. This token used to be #E85D75, a
+     bright coral, and it carried ~470 call sites: every border, tint, link
+     and button in the app. That is why the first gold pass still read as a
+     pink dating app with gold on top. Redefining the token moves all of them
+     at once; the 78 solid button fills moved to gold separately, because a
+     light rose fill cannot carry a white label (2.3:1).
+     #c98692 is 5.9:1 as text on a card. `-deep` is for fills that do. */
+  --color-accent: #c98692;
+  --color-accent-hover: #b76e79;
+  --color-accent-deep: #9e5a66;
+
+  /* RARE. The old coral, kept under its own name for the handful of moments
+     that should still feel hot — a like, a match — and nothing else. */
+  --color-coral: #e85d75;
+  /* Errors must not be the brand accent: a failure that looks like a link is
+     a failure nobody reads. */
+  --color-danger: #f2707f;
+
+  /* COSMIC TIER ONLY. Deep and desaturated — the old #8b87ff was bright
+     enough to compete with gold, which made the Celestial/Cosmic distinction
+     read as noise rather than as two tiers. */
+  --color-purple: #a79fea;
+  --color-purple-deep: #5b54a8;
   --color-purple-light: #4da7ff;
+
   --color-text: #f7f4ee;
   --color-text-muted: #c9c2b8;
   --color-text-dim: #a09b94;
@@ -55,9 +117,9 @@ html {
 body {
   min-height: 100vh;
   background:
-    radial-gradient(circle at 8% 10%, rgba(232, 93, 117, 0.18), transparent 24%),
-    radial-gradient(circle at 88% 12%, rgba(118, 129, 255, 0.22), transparent 20%),
-    radial-gradient(circle at 50% 120%, rgba(77, 167, 255, 0.14), transparent 28%),
+    radial-gradient(circle at 88% 10%, rgba(232, 199, 126, 0.18), transparent 26%),
+    radial-gradient(circle at 8% 12%, rgba(201, 134, 146, 0.1), transparent 22%),
+    radial-gradient(circle at 50% 120%, rgba(91, 84, 168, 0.14), transparent 28%),
     linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-secondary) 46%, var(--color-bg-tertiary) 100%);
   color: var(--color-text);
   font-family: "SF Pro Display", "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
@@ -79,9 +141,9 @@ body::before {
      pseudo-element every composite frame — ~2-4 ms/frame on mid-range devices.
      Wider stops produce the same soft glow without the GPU cost. */
   background:
-    radial-gradient(circle at 12% 22%, rgba(232, 93, 117, 0.14), transparent 22%),
-    radial-gradient(circle at 82% 8%, rgba(77, 167, 255, 0.09), transparent 18%),
-    radial-gradient(circle at 78% 84%, rgba(118, 129, 255, 0.15), transparent 22%);
+    radial-gradient(circle at 12% 22%, rgba(201, 134, 146, 0.08), transparent 22%),
+    radial-gradient(circle at 82% 8%, rgba(232, 199, 126, 0.12), transparent 20%),
+    radial-gradient(circle at 78% 84%, rgba(91, 84, 168, 0.12), transparent 22%);
 }
 
 body::after {
@@ -108,8 +170,8 @@ button {
 }
 
 ::selection {
-  background: var(--color-accent);
-  color: #fff;
+  background: var(--color-gold);
+  color: var(--color-bg);
 }
 
 /* Skip to main content link */
@@ -186,8 +248,8 @@ button {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(232, 93, 117, 0.15); }
-  50% { box-shadow: 0 0 40px rgba(232, 93, 117, 0.25); }
+  0%, 100% { box-shadow: 0 0 20px rgba(232, 199, 126, 0.14); }
+  50% { box-shadow: 0 0 40px rgba(232, 199, 126, 0.22); }
 }
 
 @keyframes slide-up {

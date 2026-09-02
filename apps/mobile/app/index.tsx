@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     backgroundColor: 'rgba(15, 18, 33, 0.78)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: 'rgba(255, 255, 255, 0.10)',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 20 },
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
   divider: {
     width: 56,
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     marginTop: 24,
     marginBottom: 22,
   },

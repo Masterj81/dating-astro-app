@@ -20,7 +20,7 @@ export default function PremiumLayout() {
         animation: 'slide_from_right',
         contentStyle: {
           flex: 1,
-          backgroundColor: '#0f0f1a',
+          backgroundColor: '#0B0B14',
           ...webContentStyle,
         } as ViewStyle,
       }}

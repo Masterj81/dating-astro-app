@@ -99,7 +99,7 @@ export function VerifyEmailCard() {
             pathname: "/auth/login",
             query: pendingNext !== "/app" ? { next: pendingNext } : undefined,
           }}
-          className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+          className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
         >
           {t("signIn")}
         </Link>

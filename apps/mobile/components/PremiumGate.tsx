@@ -173,9 +173,9 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
   // `loading=true` with `tier='free'` does not briefly render the paywall.
   if (accessState === 'checking') {
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+      <LinearGradient colors={['#0B0B14', '#151A2B', '#1E2540']} style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#e94560" />
+          <ActivityIndicator size="large" color="#C98692" />
           <Text style={styles.loadingText}>
             {t('verifyingAccess') || 'Verifying access...'}
           </Text>
@@ -219,7 +219,7 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
     })();
 
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+      <LinearGradient colors={['#0B0B14', '#151A2B', '#1E2540']} style={styles.container}>
         <View style={styles.deniedContainer}>
           {/* Back button */}
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -257,7 +257,7 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
             testID="premium-paywall-cta"
           >
             <LinearGradient
-              colors={['#e94560', '#c23a51']}
+              colors={['#B76E79', '#9E5A66']}
               style={styles.ctaGradient}
             >
               <Text style={styles.ctaText}>
@@ -291,10 +291,10 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
       {isDataLoading && (
         <View style={styles.dataLoadingOverlay} pointerEvents="auto">
           <LinearGradient
-            colors={['#0f0f1a', '#1a1a2e', '#16213e']}
+            colors={['#0B0B14', '#151A2B', '#1E2540']}
             style={StyleSheet.absoluteFill}
           />
-          <ActivityIndicator size="large" color="#e94560" />
+          <ActivityIndicator size="large" color="#C98692" />
           <Text style={styles.loadingText}>
             {t('consultingStars') || 'Consulting the stars...'}
           </Text>
@@ -323,7 +323,7 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f0f1a', // Fallback color
+    backgroundColor: '#0B0B14', // Fallback color
     ...(Platform.OS === 'web' ? {
       height: '100vh' as any,
       width: '100vw' as any,
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(233, 69, 96, 0.15)',
+    backgroundColor: 'rgba(201, 134, 146, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
@@ -443,14 +443,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   tierBadge: {
-    backgroundColor: 'rgba(233, 69, 96, 0.2)',
+    backgroundColor: 'rgba(201, 134, 146, 0.2)',
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 16,
   },
   tierBadgeText: {
     fontSize: 12,
-    color: '#e94560',
+    color: '#C98692',
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -474,7 +474,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   secondaryText: {
-    color: '#9333ea',
+    color: '#8B87FF',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
   },
   trialBannerLink: {
     fontSize: 13,
-    color: '#9333ea',
+    color: '#8B87FF',
     fontWeight: '600',
   },
 });

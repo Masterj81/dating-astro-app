@@ -637,7 +637,7 @@ export function AccountSetupForm() {
         data-testid="setup-reveal"
       >
         <div className="max-w-2xl">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("revealLabel")}
           </p>
           <h2 className="mt-3 text-3xl font-semibold text-white">{t("revealTitle")}</h2>
@@ -685,7 +685,7 @@ export function AccountSetupForm() {
           <Link
             href="/app"
             data-testid="setup-reveal-open"
-            className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)]"
+            className="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-bg transition-all hover:bg-gold-soft hover:shadow-[0_0_20px_rgba(201,134,146,0.3)]"
           >
             {t("revealOpenApp")}
           </Link>
@@ -705,7 +705,7 @@ export function AccountSetupForm() {
   return (
     <section className="rounded-[2rem] border border-border bg-card/90 p-6 shadow-2xl shadow-black/20 backdrop-blur-md md:p-8">
       <div className="max-w-3xl">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("profileSummaryLabel")}
         </p>
         <h2 className="mt-3 text-3xl font-semibold text-white">{t("setupWorkspaceTitle")}</h2>
@@ -758,7 +758,7 @@ export function AccountSetupForm() {
 
       <div className="mt-8 space-y-6">
         <div className="rounded-[1.5rem] border border-border bg-bg/70 p-5">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("profileSummaryLabel")}
           </p>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -796,7 +796,7 @@ export function AccountSetupForm() {
         </div>
 
         <div className="rounded-[1.5rem] border border-border bg-bg/70 p-5">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("birthDetailsLabel")}
           </p>
           <h3 className="mt-3 text-xl font-semibold text-white">{t("profileBirthSectionTitle")}</h3>
@@ -809,7 +809,7 @@ export function AccountSetupForm() {
               </span>
               <div className="grid gap-3 md:grid-cols-3">
                 <label className="block">
-                  <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-text-dim">
+                  <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-gold-muted">
                     {t("birthDayLabel")}
                   </span>
                   <select
@@ -827,7 +827,7 @@ export function AccountSetupForm() {
                 </label>
 
                 <label className="block">
-                  <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-text-dim">
+                  <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-gold-muted">
                     {t("birthMonthLabel")}
                   </span>
                   <select
@@ -845,7 +845,7 @@ export function AccountSetupForm() {
                 </label>
 
                 <label className="block">
-                  <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-text-dim">
+                  <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-gold-muted">
                     {t("birthYearLabel")}
                   </span>
                   <select
@@ -867,13 +867,13 @@ export function AccountSetupForm() {
             <div className="block">
               <span className="mb-2 block text-sm font-medium text-text-muted">
                 {t("birthTimeLabel")}
-                <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-dim">
+                <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-gold-muted">
                   {t("setupOptionalTag")}
                 </span>
               </span>
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="block">
-                  <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-text-dim">
+                  <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-gold-muted">
                     {t("birthHourLabel")}
                   </span>
                   <select
@@ -891,7 +891,7 @@ export function AccountSetupForm() {
                 </label>
 
                 <label className="block">
-                  <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-text-dim">
+                  <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-gold-muted">
                     {t("birthMinuteLabel")}
                   </span>
                   <select
@@ -914,7 +914,7 @@ export function AccountSetupForm() {
           <label className="mt-4 block">
             <span className="mb-2 block text-sm font-medium text-text-muted">
               {t("birthCityLabel")}
-              <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-dim">
+              <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-gold-muted">
                 {t("setupOptionalTag")}
               </span>
             </span>
@@ -943,7 +943,7 @@ export function AccountSetupForm() {
         </div>
 
         <div className="rounded-[1.5rem] border border-border bg-bg/70 p-5">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("profilePreferencesLabel")}
           </p>
           <h3 className="mt-3 text-xl font-semibold text-white">{t("profilePreferencesTitle")}</h3>
@@ -1095,7 +1095,7 @@ export function AccountSetupForm() {
           type="button"
           onClick={handleSubmit}
           disabled={saving}
-          className="flex shrink-0 items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
+          className="flex shrink-0 items-center gap-2 rounded-full bg-gold px-6 py-3 text-sm font-semibold text-bg transition-all hover:bg-gold-soft hover:shadow-[0_0_20px_rgba(201,134,146,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {saving ? (
             <>

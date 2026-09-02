@@ -142,7 +142,7 @@ export function AccountDeletionFlow() {
             <div
               className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
                 step === s
-                  ? "bg-accent text-white"
+                  ? "bg-gold text-bg"
                   : i < (["email", "verify", "done"] as const).indexOf(step)
                     ? "bg-purple text-white"
                     : "bg-bg text-text-dim"
@@ -172,7 +172,7 @@ export function AccountDeletionFlow() {
           <button
             type="submit"
             disabled={loading || !email || !userId}
-            className="w-full rounded-full bg-accent py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+            className="w-full rounded-full bg-gold py-2.5 text-sm font-medium text-bg transition-colors hover:bg-gold-soft disabled:opacity-50"
           >
             {loading ? t("sendingCode") : t("sendCode")}
           </button>
@@ -215,7 +215,7 @@ export function AccountDeletionFlow() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-full bg-accent py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+            className="w-full rounded-full bg-gold py-2.5 text-sm font-medium text-bg transition-colors hover:bg-gold-soft disabled:opacity-50"
           >
             {loading ? t("deleting") : t("confirmDelete")}
           </button>

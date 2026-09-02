@@ -20,7 +20,7 @@ export default function LocaleError({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%)",
+        background: "linear-gradient(135deg, #0B0B14 0%, #151A2B 100%)",
         color: "#e0e0e0",
         fontFamily:
           '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
@@ -30,7 +30,7 @@ export default function LocaleError({
         <h1
           style={{
             fontSize: "2rem",
-            color: "#e94560",
+            color: "#E85D75",
             marginBottom: "0.5rem",
           }}
         >
@@ -42,8 +42,8 @@ export default function LocaleError({
         {process.env.NODE_ENV === "development" && (
           <pre
             style={{
-              background: "rgba(233,69,96,0.1)",
-              border: "1px solid rgba(233,69,96,0.3)",
+              background: "rgba(201, 134, 146, 0.1)",
+              border: "1px solid rgba(201, 134, 146, 0.3)",
               borderRadius: 8,
               padding: "1rem",
               fontSize: "0.8rem",
@@ -59,7 +59,7 @@ export default function LocaleError({
         <button
           onClick={reset}
           style={{
-            background: "linear-gradient(135deg, #e94560 0%, #c23152 100%)",
+            background: "linear-gradient(135deg, #E85D75 0%, #D93C5A 100%)",
             color: "#fff",
             border: "none",
             borderRadius: 8,

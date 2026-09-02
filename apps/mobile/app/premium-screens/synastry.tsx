@@ -1019,21 +1019,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     paddingVertical: 12,
     paddingHorizontal: 6,
     gap: 2,
   },
   frameCardLead: {
-    borderColor: 'rgba(232, 93, 117, 0.35)',
-    backgroundColor: 'rgba(232, 93, 117, 0.10)',
+    borderColor: 'rgba(201, 134, 146, 0.35)',
+    backgroundColor: 'rgba(201, 134, 146, 0.10)',
   },
   frameLabel: {
     fontSize: 10,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
   },
   frameScore: {
     fontSize: 22,
@@ -1053,7 +1053,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     marginBottom: 4,
   },
   aspectRow: {
@@ -1063,7 +1063,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
   aspectBodies: {
     flex: 1,
@@ -1157,7 +1157,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     marginBottom: 10,
   },
   pickerList: {
@@ -1176,7 +1176,7 @@ const styles = StyleSheet.create({
   },
   pickerItemSelected: {
     borderColor: AppTheme.colors.coral,
-    backgroundColor: 'rgba(232, 93, 117, 0.12)',
+    backgroundColor: 'rgba(201, 134, 146, 0.12)',
   },
   pickerAvatar: {
     width: 52,
@@ -1250,9 +1250,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     padding: 20,
     borderRadius: 20,
-    backgroundColor: 'rgba(124, 108, 255, 0.12)',
+    backgroundColor: 'rgba(91, 84, 168, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(124, 108, 255, 0.22)',
+    borderColor: 'rgba(91, 84, 168, 0.22)',
   },
   heroProfilesRow: {
     flexDirection: 'row',
@@ -1290,7 +1290,7 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: 'rgba(232, 93, 117, 0.14)',
+    backgroundColor: 'rgba(201, 134, 146, 0.14)',
     borderWidth: 3,
     borderColor: AppTheme.colors.coral,
     justifyContent: 'center',
@@ -1313,7 +1313,7 @@ const styles = StyleSheet.create({
   },
   heroScoreEyebrow: {
     fontSize: 10,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 2,
     marginBottom: 4,
@@ -1347,7 +1347,7 @@ const styles = StyleSheet.create({
   },
   sectionEyebrow: {
     fontSize: 11,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 2,
     marginBottom: 10,
@@ -1376,7 +1376,7 @@ const styles = StyleSheet.create({
   },
   factorSigns: {
     fontSize: 11,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 1.5,
   },
@@ -1428,7 +1428,7 @@ const styles = StyleSheet.create({
   },
   zoneBandLabel: {
     fontSize: 11,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 1.5,
     marginBottom: 6,
@@ -1447,7 +1447,7 @@ const styles = StyleSheet.create({
   },
   zoneFallback: {
     fontSize: 10.5,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 1.5,
     marginTop: 8,
@@ -1458,9 +1458,9 @@ const styles = StyleSheet.create({
   talkCard: {
     padding: 14,
     borderRadius: 14,
-    backgroundColor: 'rgba(232, 93, 117, 0.10)',
+    backgroundColor: 'rgba(201, 134, 146, 0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(232, 93, 117, 0.24)',
+    borderColor: 'rgba(201, 134, 146, 0.24)',
   },
   talkLensLabel: {
     fontSize: 11,
@@ -1545,7 +1545,7 @@ const styles = StyleSheet.create({
   },
   disclaimerEyebrow: {
     fontSize: 11,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 2,
     marginBottom: 6,
@@ -1589,16 +1589,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
   frameTogglePillActive: {
-    backgroundColor: 'rgba(233, 69, 96, 0.18)',
-    borderColor: 'rgba(233, 69, 96, 0.55)',
+    backgroundColor: 'rgba(201, 134, 146, 0.18)',
+    borderColor: 'rgba(201, 134, 146, 0.55)',
   },
   frameTogglePillText: {
-    color: 'rgba(255,255,255,0.78)',
+    color: 'rgba(255, 255, 255, 0.78)',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1607,7 +1607,7 @@ const styles = StyleSheet.create({
   },
   frameCaption: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.55)',
+    color: 'rgba(255, 255, 255, 0.55)',
     fontStyle: 'italic',
     marginBottom: 12,
   },

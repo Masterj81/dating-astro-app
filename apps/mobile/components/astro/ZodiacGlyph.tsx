@@ -67,6 +67,10 @@ export interface ZodiacGlyphProps {
   showLabel?: boolean;
   /** When true and `variant === 'premium'`, draws a 2px gold ring. */
   active?: boolean;
+  /** Overrides the glyph colour. The inline variant is white by default,
+   *  which is right mid-sentence and wrong in a picker where the glyph is
+   *  the mark rather than the text. */
+  color?: string;
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
 }
@@ -148,12 +152,15 @@ const SIZE_PX: Record<ZodiacGlyphSize, number> = {
   lg: 80,
 };
 
-const GOLD = '#E9C873';
-const GOLD_DOT = '#E9C873';
+// Was #E9C873 — a third gold, one shade off the palette's #E8C77E and
+// invisible next to it. Same class of drift as the shadow coral: plausible,
+// so nobody looked twice.
+const GOLD = '#E8C77E';
+const GOLD_DOT = '#E8C77E';
 const NAVY = '#151522';
 const NAVY_INNER = '#1f1f2e';
 const MUTED_BG = '#1a1a26';
-const MUTED_GLYPH = 'rgba(241,230,204,0.75)'; // #F1E6CC @ 75 %
+const MUTED_GLYPH = 'rgba(241, 230, 204, 0.75)'; // #F1E6CC @ 75 %
 
 // ── Public utilities ────────────────────────────────────────────────
 
@@ -241,6 +248,7 @@ export const ZodiacGlyph: FC<ZodiacGlyphProps> = ({
   showLabel = false,
   active = false,
   accessibilityLabel,
+  color,
   style,
 }) => {
   const outer = SIZE_PX[size];
@@ -267,6 +275,7 @@ export const ZodiacGlyph: FC<ZodiacGlyphProps> = ({
             {
               fontSize,
               lineHeight: outer,
+              ...(color ? { color } : null),
               transform: opticalOffset
                 ? [{ translateY: opticalOffset }]
                 : undefined,
@@ -484,13 +493,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: 'rgba(255, 255, 255, 0.10)',
   },
   chipActive: {
-    backgroundColor: 'rgba(233,200,115,0.14)',
-    borderColor: 'rgba(233,200,115,0.55)',
+    backgroundColor: 'rgba(233, 200, 115, 0.14)',
+    borderColor: 'rgba(233, 200, 115, 0.55)',
   },
   chipText: {
     color: '#FFFFFF',
@@ -508,7 +517,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(241,230,204,0.16)',
+    borderColor: 'rgba(241, 230, 204, 0.16)',
   },
   mutedText: {
     color: MUTED_GLYPH,
@@ -559,7 +568,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(233,200,115,0.32)',
+    borderColor: 'rgba(233, 200, 115, 0.32)',
   },
   luminaryText: {
     color: GOLD,

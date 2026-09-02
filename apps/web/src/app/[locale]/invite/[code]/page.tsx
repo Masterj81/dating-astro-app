@@ -26,7 +26,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
           </p>
           <Link
             href="/"
-            className="mt-8 inline-flex items-center justify-center rounded-full bg-accent px-6 py-4 text-base font-semibold text-white transition-colors hover:bg-accent-hover"
+            className="mt-8 inline-flex items-center justify-center rounded-full bg-gold px-6 py-4 text-base font-semibold text-bg transition-colors hover:bg-gold-soft"
           >
             {t("goToHomepage")}
           </Link>
@@ -59,7 +59,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
         <div className="mt-8 space-y-3">
           <a
             href={`${SITE.links.playStore}&referrer=utm_source%3Dreferral%26utm_content%3D${upperCode}`}
-            className="flex items-center justify-center gap-2 rounded-full bg-accent px-6 py-4 text-base font-semibold text-white transition-colors hover:bg-accent-hover"
+            className="flex items-center justify-center gap-2 rounded-full bg-gold px-6 py-4 text-base font-semibold text-bg transition-colors hover:bg-gold-soft"
           >
             📱 {t("downloadGooglePlay")}
           </a>

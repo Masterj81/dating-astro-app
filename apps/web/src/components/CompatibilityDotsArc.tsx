@@ -62,7 +62,7 @@ export function CompatibilityDotsArc({
       cx: size / 2 + x,
       cy: size / 2 + y,
       isFilled,
-      color: isFilled ? interpolateColor(dotPct) : "rgba(255,255,255,0.15)",
+      color: isFilled ? interpolateColor(dotPct) : "rgba(255, 255, 255, 0.15)",
       delayMs: i * 60,
       targetOpacity: isFilled ? 1 : 0.25,
     };
@@ -72,7 +72,7 @@ export function CompatibilityDotsArc({
   const scoreColor =
     filledCount > 0
       ? interpolateColor(((filledCount - 1) / (DOT_COUNT - 1)) * 100)
-      : "rgba(255,255,255,0.4)";
+      : "rgba(255, 255, 255, 0.4)";
 
   return (
     <div
@@ -117,7 +117,7 @@ export function CompatibilityDotsArc({
         )}
       </svg>
       {label && (
-        <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-text-dim">
+        <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-gold-muted">
           {label}
         </p>
       )}

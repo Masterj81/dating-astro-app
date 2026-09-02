@@ -294,7 +294,15 @@ export default function ConversationGuideScreen() {
               accessibilityLabel={t(option) || option}
               testID={`coach-sign-${option}`}
             >
-              <ZodiacGlyph sign={option} variant="inline" size="sm" />
+              {/* Muted gold for the twelve, full gold for the chosen one.
+                  Same two intensities as the web picker — and the mark now
+                  matches the wheel, which draws these same twelve in gold. */}
+              <ZodiacGlyph
+                sign={option}
+                variant="inline"
+                size="sm"
+                color={selected ? AppTheme.colors.gold : AppTheme.colors.goldMuted}
+              />
               <Text style={[styles.signCellText, selected && styles.signCellTextSelected]}>
                 {t(option) || option}
               </Text>
@@ -399,7 +407,7 @@ export default function ConversationGuideScreen() {
               testID="coach-upgrade-cta"
             >
               <LinearGradient
-                colors={[AppTheme.colors.coral, AppTheme.colors.cosmic]}
+                colors={[...AppTheme.gradients.ctaGold]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.primaryButtonGradient}
@@ -431,7 +439,7 @@ export default function ConversationGuideScreen() {
           testID="coach-unlock-cta"
         >
           <LinearGradient
-            colors={[AppTheme.colors.coral, AppTheme.colors.cosmic]}
+            colors={[...AppTheme.gradients.ctaGold]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.primaryButtonGradient}
@@ -585,7 +593,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 1,
     textTransform: 'uppercase',
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     marginBottom: 10,
   },
   signGrid: {
@@ -761,12 +769,18 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: AppTheme.colors.textOnAccent,
+    // Near-black on gold: 12:1. White here would be 1.6:1 — the button would
+    // look expensive and be unreadable.
+    color: AppTheme.colors.textOnGold,
   },
-  // The gradient variant already pads; the plain variant has to pad itself.
+  // The gradient variant already pads; the plain variant has to pad itself —
+  // and has to undo the colour. `primaryButtonText` is near-black because it
+  // normally sits on gold; this variant ("Try again") has no fill at all and
+  // sits straight on the dark card, where near-black is invisible.
   primaryButtonTextPlain: {
     paddingHorizontal: 22,
     paddingVertical: 12,
+    color: AppTheme.colors.textPrimary,
   },
   previewBanner: {
     marginTop: 16,

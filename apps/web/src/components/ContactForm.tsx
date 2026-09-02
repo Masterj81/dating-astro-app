@@ -140,7 +140,7 @@ export function ContactForm() {
       <button
         type="submit"
         disabled={status === "loading"}
-        className="w-full rounded-full bg-accent py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+        className="w-full rounded-full bg-gold py-2.5 text-sm font-medium text-bg transition-colors hover:bg-gold-soft disabled:opacity-50"
       >
         {status === "loading" ? tc("sending") : tc("sendMessage")}
       </button>

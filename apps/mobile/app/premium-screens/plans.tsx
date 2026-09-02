@@ -494,7 +494,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: AppTheme.spacing.md,
     marginBottom: AppTheme.spacing.xxl,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
     borderRadius: AppTheme.radius.xl,
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   planTabActive: {
-    backgroundColor: 'rgba(124,108,255,0.16)',
+    backgroundColor: 'rgba(91, 84, 168, 0.16)',
   },
   planTabLabel: {
     ...AppTheme.type.meta,
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
     borderRadius: AppTheme.radius.xl,
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     gap: AppTheme.spacing.sm,
   },
   promoTitle: {
@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: AppTheme.spacing.lg,
     paddingVertical: AppTheme.spacing.md,
     color: AppTheme.colors.textPrimary,
-    backgroundColor: 'rgba(11,11,20,0.28)',
+    backgroundColor: 'rgba(11, 11, 20, 0.28)',
   },
   promoButton: {
     paddingHorizontal: AppTheme.spacing.lg,
@@ -582,8 +582,8 @@ const styles = StyleSheet.create({
   planCardHighlight: {
     marginBottom: AppTheme.spacing.lg,
     overflow: 'hidden',
-    borderColor: 'rgba(124,108,255,0.35)',
-    backgroundColor: 'rgba(124,108,255,0.10)',
+    borderColor: 'rgba(91, 84, 168, 0.35)',
+    backgroundColor: 'rgba(91, 84, 168, 0.10)',
   },
   planHeader: {
     marginBottom: AppTheme.spacing.lg,
@@ -606,14 +606,14 @@ const styles = StyleSheet.create({
   pricePanel: {
     padding: AppTheme.spacing.lg,
     borderRadius: AppTheme.radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
     marginBottom: AppTheme.spacing.lg,
   },
   pricePanelHighlight: {
-    backgroundColor: 'rgba(124,108,255,0.12)',
-    borderColor: 'rgba(124,108,255,0.28)',
+    backgroundColor: 'rgba(91, 84, 168, 0.12)',
+    borderColor: 'rgba(91, 84, 168, 0.28)',
   },
   planPrice: {
     fontSize: 32,
@@ -622,7 +622,7 @@ const styles = StyleSheet.create({
   },
   planCycle: {
     ...AppTheme.type.meta,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginTop: AppTheme.spacing.xs,
@@ -634,7 +634,7 @@ const styles = StyleSheet.create({
   featurePanel: {
     padding: AppTheme.spacing.lg,
     borderRadius: AppTheme.radius.lg,
-    backgroundColor: 'rgba(11,11,20,0.28)',
+    backgroundColor: 'rgba(11, 11, 20, 0.28)',
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
   },

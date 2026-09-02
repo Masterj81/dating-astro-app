@@ -237,15 +237,15 @@ export function DashboardOverview() {
 
   const getCardToneClassName = (card: DashboardCard) => {
     if (card.tone === "rose") {
-      return "border-[rgba(232,93,117,0.26)] bg-[linear-gradient(180deg,rgba(232,93,117,0.18),rgba(255,255,255,0.04))] shadow-[0_24px_60px_rgba(232,93,117,0.10)]";
+      return "border-[rgba(201,134,146,0.26)] bg-[linear-gradient(180deg,rgba(201,134,146,0.18),rgba(255,255,255,0.04))] shadow-[0_24px_60px_rgba(201,134,146,0.10)]";
     }
 
     if (card.tone === "cosmic") {
-      return "border-[rgba(124,108,255,0.28)] bg-[linear-gradient(180deg,rgba(124,108,255,0.18),rgba(255,255,255,0.04))] shadow-[0_24px_60px_rgba(124,108,255,0.10)]";
+      return "border-[rgba(91,84,168,0.28)] bg-[linear-gradient(180deg,rgba(91,84,168,0.18),rgba(255,255,255,0.04))] shadow-[0_24px_60px_rgba(91,84,168,0.10)]";
     }
 
     if (card.tone === "celestial") {
-      return "border-[rgba(77,159,255,0.24)] bg-[linear-gradient(180deg,rgba(77,159,255,0.15),rgba(255,255,255,0.04))] shadow-[0_24px_60px_rgba(77,159,255,0.08)]";
+      return "border-[rgba(232,199,126,0.24)] bg-[linear-gradient(180deg,rgba(232,199,126,0.15),rgba(255,255,255,0.04))] shadow-[0_24px_60px_rgba(232,199,126,0.08)]";
     }
 
     return "border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))]";
@@ -337,7 +337,7 @@ export function DashboardOverview() {
     <div className="space-y-6">
       {/* Welcome strip with time-based greeting */}
       {state && (
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-[linear-gradient(135deg,rgba(232,93,117,0.08),rgba(124,108,255,0.08))] px-6 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-[linear-gradient(135deg,rgba(201,134,146,0.08),rgba(91,84,168,0.08))] px-6 py-4">
           <div>
             <h2 className="text-xl font-semibold text-white">
               {t(getTimeGreetingKey(), { name: state.displayName })}
@@ -348,7 +348,7 @@ export function DashboardOverview() {
           </div>
           <div className="flex items-center gap-3">
             {tierLabel && (
-              <span className="rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.18em] text-text-muted">
+              <span className="rounded-full border border-gold-border bg-gold-wash px-4 py-2 text-xs uppercase tracking-[0.18em] text-gold">
                 {t("dashboardTierPill", { tier: tierLabel })}
               </span>
             )}
@@ -363,9 +363,9 @@ export function DashboardOverview() {
       {state && !isFree && (
         <Link
           href="/app/premium/celestial/daily-horoscope"
-          className="group flex items-center gap-5 rounded-2xl border border-[rgba(124,108,255,0.2)] bg-[linear-gradient(135deg,rgba(124,108,255,0.1),rgba(77,159,255,0.06))] px-6 py-4 transition-all hover:-translate-y-0.5 hover:border-[rgba(124,108,255,0.35)] hover:shadow-[0_12px_30px_rgba(124,108,255,0.12)]"
+          className="group flex items-center gap-5 rounded-2xl border border-[rgba(91,84,168,0.2)] bg-[linear-gradient(135deg,rgba(91,84,168,0.1),rgba(232,199,126,0.06))] px-6 py-4 transition-all hover:-translate-y-0.5 hover:border-[rgba(91,84,168,0.35)] hover:shadow-[0_12px_30px_rgba(91,84,168,0.12)]"
         >
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[rgba(124,108,255,0.15)] text-[#c4bcff]">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[rgba(91,84,168,0.15)] text-[#c4bcff]">
             <PremiumGlyph name="daily" className="h-6 w-6" />
           </div>
           <div className="min-w-0 flex-1">
@@ -375,7 +375,7 @@ export function DashboardOverview() {
             <p className="mt-1 text-sm font-medium text-white">{t("dashboardDailyInsightTitle")}</p>
             <p className="mt-1 text-xs text-text-muted">{t("dashboardDailyInsightBody")}</p>
           </div>
-          <span className="hidden shrink-0 rounded-full border border-[rgba(124,108,255,0.3)] bg-[rgba(124,108,255,0.12)] px-4 py-2 text-xs font-semibold text-[#c4bcff] transition-colors group-hover:bg-[rgba(124,108,255,0.2)] sm:inline-flex">
+          <span className="hidden shrink-0 rounded-full border border-[rgba(91,84,168,0.3)] bg-[rgba(91,84,168,0.12)] px-4 py-2 text-xs font-semibold text-[#c4bcff] transition-colors group-hover:bg-[rgba(91,84,168,0.2)] sm:inline-flex">
             {t("dashboardDailyInsightCta")} →
           </span>
         </Link>
@@ -385,7 +385,7 @@ export function DashboardOverview() {
       {state && isFree && (
         <Link
           href="/app/plans"
-          className="group flex items-center gap-5 rounded-2xl border border-[rgba(232,93,117,0.18)] bg-[linear-gradient(135deg,rgba(232,93,117,0.08),rgba(124,108,255,0.06))] px-6 py-4 transition-all hover:-translate-y-0.5 hover:border-[rgba(232,93,117,0.3)] hover:shadow-[0_12px_30px_rgba(232,93,117,0.1)]"
+          className="group flex items-center gap-5 rounded-2xl border border-[rgba(201,134,146,0.18)] bg-[linear-gradient(135deg,rgba(201,134,146,0.08),rgba(91,84,168,0.06))] px-6 py-4 transition-all hover:-translate-y-0.5 hover:border-[rgba(201,134,146,0.3)] hover:shadow-[0_12px_30px_rgba(201,134,146,0.1)]"
         >
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent/12 text-accent">
             <PremiumGlyph name="natal" className="h-6 w-6" />
@@ -394,7 +394,7 @@ export function DashboardOverview() {
             <p className="text-sm font-medium text-white">{t("dashboardFreeUpsellTitle")}</p>
             <p className="mt-1 text-xs text-text-muted">{t("dashboardFreeUpsellBody")}</p>
           </div>
-          <span className="hidden shrink-0 rounded-full bg-accent/90 px-4 py-2 text-xs font-semibold text-white transition-colors group-hover:bg-accent sm:inline-flex">
+          <span className="hidden shrink-0 rounded-full bg-accent/90 px-4 py-2 text-xs font-semibold text-bg transition-colors group-hover:bg-gold sm:inline-flex">
             {t("dashboardFreeUpsellCta")} →
           </span>
         </Link>
@@ -417,7 +417,7 @@ export function DashboardOverview() {
                     </div>
                   )}
                   {card.eyebrow && (
-                    <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim">
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-gold-muted">
                       {card.eyebrow}
                     </p>
                   )}
@@ -434,7 +434,7 @@ export function DashboardOverview() {
                 </p>
                 {card.premiumNote && (
                   <div className="mt-3">
-                    <span className="inline-flex items-center rounded-full border border-white/12 bg-black/20 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white/70">
+                    <span className="inline-flex items-center rounded-full border border-gold-border bg-gold-wash px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-gold">
                       {card.premiumNote}
                     </span>
                   </div>
@@ -465,7 +465,7 @@ export function DashboardOverview() {
                 pathname: "/auth/login",
                 query: { next: "/app" },
               }}
-              className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+              className="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
             >
               {t("signIn")}
             </Link>

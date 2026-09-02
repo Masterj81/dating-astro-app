@@ -899,6 +899,32 @@ for (const key of ['webWheel', 'mobileWheel']) {
     /unavailableNote/.test(code[key]),
   );
 }
+
+// Sign glyphs must be forced into TEXT presentation.
+//
+// U+2648-U+2653, plus Venus and Mars, carry an emoji presentation that most
+// phones and Windows prefer. When the platform picks it the glyph stops being
+// text: it ignores `fill`, arrives in the platform's own colour, and sits in a
+// tile that fights the ring behind it. Both `ZodiacGlyph` components have
+// carried U+FE0E since they were written; the wheels were built without them
+// and shipped the bare characters, which is how a gold ring ended up ringed
+// with purple emoji boxes.
+for (const key of ['webWheel', 'mobileWheel']) {
+  check(
+    `${FILES[key]}: forces text presentation on its glyphs`,
+    // The DECLARATION, not the file. A first version searched the raw source
+    // for "FE0E" and passed on the comment above it — so emptying the constant
+    // went undetected. Comment-stripped code, and the escape has to be in the
+    // assignment itself.
+    new RegExp(String.raw`const VS_TEXT\s*=\s*['"\`]\\u\{?FE0E\}?['"\`]`, 'i').test(code[key]),
+    'without U+FE0E the platform may render the signs as colour emoji, which ignores the fill entirely',
+  );
+  check(
+    `${FILES[key]}: every glyph goes through the helper`,
+    !/(SIGN_)?GLYPHS\[[^\]]+\]\s*\?\?/.test(code[key]),
+    'a glyph read straight from the map skips the selector — one missed site is one emoji tile in a gold wheel',
+  );
+}
 // The wheel is the chart; the accordion, the angles and the houses are readings
 // of it. Shipped once below the planet list, where a desktop reader had to
 // scroll past a hundred lines of prose to reach the picture — which is how a

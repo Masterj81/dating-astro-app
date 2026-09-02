@@ -33,11 +33,11 @@ export default function PremiumSuccessScreen() {
   }, []);
 
   return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+    <LinearGradient colors={['#0B0B14', '#151A2B', '#1E2540']} style={styles.container}>
       <View style={[styles.content, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 }]}>
         {loading ? (
           <>
-            <ActivityIndicator size="large" color="#e94560" />
+            <ActivityIndicator size="large" color="#C98692" />
             <Text style={styles.loadingText}>{t('processingPayment') || 'Processing your payment...'}</Text>
           </>
         ) : (
@@ -57,7 +57,7 @@ export default function PremiumSuccessScreen() {
               onPress={() => router.replace('/(tabs)/discover')}
             >
               <LinearGradient
-                colors={['#e94560', '#c23a51']}
+                colors={['#B76E79', '#9E5A66']}
                 style={styles.buttonGradient}
               >
                 <Text style={styles.buttonText}>{t('startExploring') || 'Start Exploring'}</Text>
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   features: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 16,
     padding: 20,
     marginBottom: 32,

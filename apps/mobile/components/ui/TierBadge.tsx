@@ -25,12 +25,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   celestialBadge: {
-    backgroundColor: 'rgba(218,181,109,0.12)',
-    borderColor: 'rgba(218,181,109,0.30)',
+    backgroundColor: 'rgba(218, 181, 109, 0.12)',
+    borderColor: 'rgba(218, 181, 109, 0.30)',
   },
   cosmicBadge: {
-    backgroundColor: 'rgba(124,108,255,0.14)',
-    borderColor: 'rgba(124,108,255,0.34)',
+    backgroundColor: 'rgba(91, 84, 168, 0.14)',
+    borderColor: 'rgba(91, 84, 168, 0.34)',
   },
   text: {
     fontSize: 11,

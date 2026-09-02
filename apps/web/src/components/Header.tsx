@@ -81,7 +81,7 @@ export function Header() {
 
           <Link
             href="/#download"
-            className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition-all hover:bg-accent-hover hover:shadow-[0_0_16px_rgba(232,93,117,0.35)]"
+            className="rounded-full bg-gold px-4 py-2 text-sm font-medium text-bg transition-all hover:bg-gold-soft hover:shadow-[0_0_16px_rgba(201,134,146,0.35)]"
           >
             {tCommon("download")}
           </Link>
@@ -130,7 +130,7 @@ export function Header() {
                   }}
                   className={`rounded-full px-3 py-1 text-sm ${
                     loc === locale
-                      ? "bg-accent text-white"
+                      ? "bg-gold text-bg"
                       : "bg-bg-secondary text-text-muted"
                   }`}
                 >
@@ -143,7 +143,7 @@ export function Header() {
           <Link
             href="/#download"
             onClick={() => setMenuOpen(false)}
-            className="mt-2 block rounded-full bg-accent px-4 py-2 text-center text-sm font-medium text-white"
+            className="mt-2 block rounded-full bg-gold px-4 py-2 text-center text-sm font-medium text-bg"
           >
             {tCommon("download")}
           </Link>

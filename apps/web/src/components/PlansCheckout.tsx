@@ -218,7 +218,7 @@ export function PlansCheckout() {
           onClick={() => setBillingPeriod("monthly")}
           className={`rounded-full px-6 py-2.5 text-sm font-medium transition-all ${
             billingPeriod === "monthly"
-              ? "bg-accent text-white shadow-sm"
+              ? "bg-gold text-bg shadow-sm"
               : "text-text-dim hover:text-white"
           }`}
         >
@@ -231,7 +231,7 @@ export function PlansCheckout() {
           onClick={() => setBillingPeriod("yearly")}
           className={`relative rounded-full px-6 py-2.5 text-sm font-medium transition-all ${
             billingPeriod === "yearly"
-              ? "bg-accent text-white shadow-sm"
+              ? "bg-gold text-bg shadow-sm"
               : "text-text-dim hover:text-white"
           }`}
         >
@@ -248,7 +248,7 @@ export function PlansCheckout() {
       <section className="rounded-[2rem] border border-border bg-card/90 p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
           <div className="flex-1">
-            <label htmlFor="promo-code" className="text-xs uppercase tracking-[0.24em] text-text-dim">
+            <label htmlFor="promo-code" className="text-xs uppercase tracking-[0.24em] text-gold-muted">
               {t("promoCodeLabel")}
             </label>
             <input
@@ -319,7 +319,7 @@ export function PlansCheckout() {
               key={planKey}
               className={`relative rounded-[2rem] border p-6 transition-all ${
                 isRecommended
-                  ? "border-accent bg-accent/8 shadow-[0_0_40px_rgba(232,93,117,0.06)]"
+                  ? "border-accent bg-accent/8 shadow-[0_0_40px_rgba(201,134,146,0.06)]"
                   : "border-border bg-card/90"
               }`}
             >
@@ -329,7 +329,7 @@ export function PlansCheckout() {
               <div className="relative">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+                    <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                       {t(`tier_${tier}`)}
                     </p>
                     <h2 className="mt-2 text-2xl font-semibold text-white">
@@ -338,7 +338,7 @@ export function PlansCheckout() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {isRecommended ? (
-                      <span className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-white">
+                      <span className="rounded-full bg-gold px-3 py-1 text-xs font-semibold text-bg">
                         {tPremium("mostPopular")}
                       </span>
                     ) : null}
@@ -410,8 +410,8 @@ export function PlansCheckout() {
                   disabled={submittingPlan !== null}
                   className={`mt-6 w-full rounded-full px-5 py-3.5 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-70 ${
                     isRecommended
-                      ? "bg-accent text-white hover:bg-accent-hover hover:shadow-[0_0_20px_rgba(232,93,117,0.3)]"
-                      : "bg-accent text-white hover:bg-accent-hover"
+                      ? "bg-gold text-bg hover:bg-gold-soft hover:shadow-[0_0_20px_rgba(201,134,146,0.3)]"
+                      : "bg-gold text-bg hover:bg-gold-soft"
                   }`}
                 >
                   {isSubmitting ? (
