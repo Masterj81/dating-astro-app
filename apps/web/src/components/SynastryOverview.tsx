@@ -501,7 +501,7 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
   return (
     <div className="grid gap-6 xl:grid-cols-[0.72fr_1.28fr]">
       <aside className="rounded-[2rem] border border-border bg-card/90 p-6">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("synastryMatchListLabel")}
         </p>
         <h2 className="mt-3 text-xl font-semibold text-white">{t("synastryMatchListTitle")}</h2>
@@ -605,7 +605,7 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
                     <p className="mt-2 text-sm leading-7 text-text-muted">
                       {t(`synastryScoreBody_${band}`)}
                     </p>
-                    <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-text-dim">
+                    <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-gold-muted">
                       {t("synastryV2HeroDisclaimer")}
                     </p>
                   </div>
@@ -625,7 +625,7 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
             sign-based number wearing the aspect label. */}
         {aspectView ? (
           <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-            <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+            <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
               {t("synastryAspectBasedTitle")}
             </p>
             <p className="mt-3 text-sm leading-7 text-text-muted">
@@ -643,7 +643,7 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
                       : "border-border bg-bg/70"
                   }`}
                 >
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-text-dim">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-gold-muted">
                     {t(`synastryFrame_${frame.frame}`)}
                   </span>
                   <span className="text-2xl font-bold text-white">{frame.score}</span>
@@ -658,7 +658,7 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
                 7.8° from exact are not the same contact. */}
             {aspectView.headline.topAspects.length > 0 ? (
               <div className="mt-6">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-text-dim">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-gold-muted">
                   {t("synastryTopAspectsTitle")}
                 </p>
                 <ul className="mt-2 divide-y divide-white/[0.06]">
@@ -695,7 +695,7 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
           </div>
         ) : (
           <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-            <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+            <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
               {t("synastrySignRhythmTitle")}
             </p>
             <p className="mt-3 text-sm leading-7 text-text-muted">
@@ -737,7 +737,7 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
                         aria-hidden="true"
                       />
                     </div>
-                    <p className="mt-2 text-xs uppercase tracking-[0.18em] text-text-dim">
+                    <p className="mt-2 text-xs uppercase tracking-[0.18em] text-gold-muted">
                       {factor.selfSign ? translateSign(factor.selfSign, locale) : "?"}
                       {" • "}
                       {factor.targetSign ? translateSign(factor.targetSign, locale) : "?"}
@@ -817,7 +817,7 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
                     {t(`synastryV2Cue_${zone.key}`)}
                   </p>
                   {zone.source === "sun-fallback" ? (
-                    <p className="mt-3 text-[11px] uppercase tracking-[0.18em] text-text-dim">
+                    <p className="mt-3 text-[11px] uppercase tracking-[0.18em] text-gold-muted">
                       {t("synastryV2DimensionFallbackNote")}
                     </p>
                   ) : null}

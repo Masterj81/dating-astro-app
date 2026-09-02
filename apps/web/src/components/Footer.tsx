@@ -19,7 +19,7 @@ export function Footer() {
 
         {/* Links */}
         <div>
-          <h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-text-dim">
+          <h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-gold-muted">
             {t("links")}
           </h4>
           <ul className="space-y-2.5 text-sm">
@@ -58,7 +58,7 @@ export function Footer() {
 
         {/* Download */}
         <div>
-          <h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-text-dim">
+          <h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-gold-muted">
             {t("download")}
           </h4>
           <DownloadButtons size="sm" />

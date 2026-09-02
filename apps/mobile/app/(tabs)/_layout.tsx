@@ -28,14 +28,16 @@ const TabIcon = React.memo(function TabIcon({
     <MotiView
       style={styles.iconContainer}
       animate={{
-        backgroundColor: focused ? 'rgba(233, 69, 96, 0.2)' : 'transparent',
+        // Was rgba(233,69,96,.2) — the legacy coral, in rgba form, which the
+        // hex sweep could not see. Gold wash, matching the active tint.
+        backgroundColor: focused ? AppTheme.colors.goldWash : 'transparent',
         scale: focused ? 1.1 : 1,
       }}
       transition={{ type: 'timing', duration: 200 }}
     >
       <Glyph
         size={22}
-        color={glyphColor ?? (focused ? AppTheme.colors.coral : AppTheme.colors.textSecondary)}
+        color={glyphColor ?? (focused ? AppTheme.colors.gold : AppTheme.colors.textSecondary)}
       />
     </MotiView>
   );
@@ -50,7 +52,7 @@ export default function TabsLayout() {
   };
 
   const tabBarStyle: ViewStyle = {
-    backgroundColor: '#0f0f1a',
+    backgroundColor: '#0B0B14',
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
     borderTopWidth: 1,
     height: Platform.OS === 'web' ? 70 : 60 + insets.bottom,
@@ -76,8 +78,12 @@ export default function TabsLayout() {
         tabBarItemStyle: {
           flex: 1,
         },
-        tabBarActiveTintColor: '#e94560',
-        tabBarInactiveTintColor: '#888',
+        // Gold, not coral. The tab bar is the one piece of chrome that is on
+        // screen in every session, so it is where the identity either lands or
+        // does not. Coral stays the colour of ACTIONS inside the screens —
+        // like, message, send — and the app stops reading pink at rest.
+        tabBarActiveTintColor: AppTheme.colors.gold,
+        tabBarInactiveTintColor: AppTheme.colors.textMuted,
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '500',

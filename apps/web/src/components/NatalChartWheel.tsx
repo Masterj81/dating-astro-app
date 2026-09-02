@@ -102,7 +102,7 @@ export function NatalChartWheel({
   return (
     <div className="rounded-[2rem] border border-border bg-card/90 p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("natalWheelTitle")}
         </p>
         {wheel.aspects.length > 0 || showAspects ? (
@@ -136,14 +136,14 @@ export function NatalChartWheel({
             cy={center.y}
             r={geometry.zodiacOuter}
             fill="none"
-            stroke="rgba(255,255,255,0.14)"
+            stroke="rgba(232,199,126,0.26)"
           />
           <circle
             cx={center.x}
             cy={center.y}
             r={geometry.zodiacInner}
             fill="none"
-            stroke="rgba(255,255,255,0.10)"
+            stroke="rgba(232,199,126,0.16)"
           />
           <circle
             cx={center.x}
@@ -161,7 +161,7 @@ export function NatalChartWheel({
                 y1={sector.divider.inner.y}
                 x2={sector.divider.outer.x}
                 y2={sector.divider.outer.y}
-                stroke="rgba(255,255,255,0.12)"
+                stroke="rgba(232,199,126,0.18)"
               />
               <text
                 x={sector.label.x}
@@ -170,7 +170,7 @@ export function NatalChartWheel({
                 dominantBaseline="central"
                 className="select-none"
                 fontSize={geometry.size * 0.042}
-                fill="rgba(255,255,255,0.55)"
+                fill="rgba(232,199,126,0.72)"
               >
                 {SIGN_GLYPHS[sector.sign] ?? sector.sign.slice(0, 2)}
               </text>

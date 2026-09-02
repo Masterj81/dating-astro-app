@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
   },
   disclaimerEyebrow: {
     fontSize: 11,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 2,
     marginBottom: 8,
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
   },
   sectionEyebrow: {
     fontSize: 11,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 2,
     marginBottom: 12,

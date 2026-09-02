@@ -154,7 +154,7 @@ const progressStyles = StyleSheet.create({
     paddingTop: 16,
   },
   label: {
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     fontSize: 12,
     letterSpacing: 1,
     textTransform: 'uppercase',
@@ -344,7 +344,7 @@ const revealStyles = StyleSheet.create({
     padding: 28,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(233, 69, 96, 0.25)',
+    borderColor: 'rgba(232, 93, 117, 0.25)',
     shadowColor: AppTheme.colors.coral,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
@@ -386,7 +386,7 @@ const revealStyles = StyleSheet.create({
     flex: 1,
   },
   placementLabel: {
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -1032,7 +1032,7 @@ export default function BirthInfoScreen() {
                             onValueChange={handleBirthMonthChange}
                             mode={pickerMode}
                             style={styles.picker}
-                            dropdownIconColor="#e94560"
+                            dropdownIconColor="#E85D75"
                             itemStyle={styles.pickerItem}
                           >
                             <Picker.Item label={t('month')} value="" style={styles.pickerItemPlaceholder} />
@@ -1050,7 +1050,7 @@ export default function BirthInfoScreen() {
                             onValueChange={handleBirthDayChange}
                             mode={pickerMode}
                             style={styles.picker}
-                            dropdownIconColor="#e94560"
+                            dropdownIconColor="#E85D75"
                             itemStyle={styles.pickerItem}
                           >
                             <Picker.Item label={t('day')} value="" style={styles.pickerItemPlaceholder} />
@@ -1070,7 +1070,7 @@ export default function BirthInfoScreen() {
                             onValueChange={handleBirthYearChange}
                             mode={pickerMode}
                             style={styles.picker}
-                            dropdownIconColor="#e94560"
+                            dropdownIconColor="#E85D75"
                             itemStyle={styles.pickerItem}
                           >
                             <Picker.Item label={t('year')} value="" style={styles.pickerItemPlaceholder} />
@@ -1130,7 +1130,7 @@ export default function BirthInfoScreen() {
                           onValueChange={setBirthHour}
                           mode={pickerMode}
                           style={styles.picker}
-                          dropdownIconColor="#e94560"
+                          dropdownIconColor="#E85D75"
                           itemStyle={styles.pickerItem}
                         >
                           <Picker.Item label={t('hour')} value="" style={styles.pickerItemPlaceholder} />
@@ -1145,7 +1145,7 @@ export default function BirthInfoScreen() {
                           onValueChange={setBirthMinute}
                           mode={pickerMode}
                           style={styles.picker}
-                          dropdownIconColor="#e94560"
+                          dropdownIconColor="#E85D75"
                           itemStyle={styles.pickerItem}
                         >
                           <Picker.Item label={t('min')} value="" style={styles.pickerItemPlaceholder} />
@@ -1445,7 +1445,7 @@ const styles = StyleSheet.create({
   },
   zodiacRing: {
     fontSize: 14,
-    color: '#e94560',
+    color: '#E85D75',
     marginBottom: 12,
     letterSpacing: 4,
     opacity: 0.7,
@@ -1515,7 +1515,7 @@ const styles = StyleSheet.create({
     flex: 0.82,
   },
   pickerFieldLabel: {
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     fontSize: 11,
     marginBottom: 6,
     textTransform: 'uppercase',
@@ -1598,8 +1598,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   preferenceOptionActive: {
-    backgroundColor: 'rgba(233, 69, 96, 0.16)',
-    borderColor: 'rgba(233, 69, 96, 0.55)',
+    backgroundColor: 'rgba(232, 93, 117, 0.16)',
+    borderColor: 'rgba(232, 93, 117, 0.55)',
   },
   preferenceOptionText: {
     color: '#d3d0da',
@@ -1623,7 +1623,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   fieldError: {
-    color: '#e94560',
+    color: '#E85D75',
     fontSize: 13,
     marginTop: 8,
     marginBottom: 4,
@@ -1632,12 +1632,12 @@ const styles = StyleSheet.create({
   infoBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(233, 69, 96, 0.08)',
+    backgroundColor: 'rgba(232, 93, 117, 0.08)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: 'rgba(233, 69, 96, 0.15)',
+    borderColor: 'rgba(232, 93, 117, 0.15)',
   },
   infoBoxSubtle: {
     backgroundColor: 'rgba(255,255,255,0.04)',
@@ -1728,8 +1728,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.12)',
   },
   intentionOptionActive: {
-    backgroundColor: 'rgba(233, 69, 96, 0.14)',
-    borderColor: 'rgba(233, 69, 96, 0.55)',
+    backgroundColor: 'rgba(232, 93, 117, 0.14)',
+    borderColor: 'rgba(232, 93, 117, 0.55)',
   },
   intentionOptionLabel: {
     color: '#d3d0da',

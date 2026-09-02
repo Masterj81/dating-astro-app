@@ -348,7 +348,7 @@ export function DashboardOverview() {
           </div>
           <div className="flex items-center gap-3">
             {tierLabel && (
-              <span className="rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.18em] text-text-muted">
+              <span className="rounded-full border border-gold-border bg-gold-wash px-4 py-2 text-xs uppercase tracking-[0.18em] text-gold">
                 {t("dashboardTierPill", { tier: tierLabel })}
               </span>
             )}
@@ -417,7 +417,7 @@ export function DashboardOverview() {
                     </div>
                   )}
                   {card.eyebrow && (
-                    <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim">
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-gold-muted">
                       {card.eyebrow}
                     </p>
                   )}
@@ -434,7 +434,7 @@ export function DashboardOverview() {
                 </p>
                 {card.premiumNote && (
                   <div className="mt-3">
-                    <span className="inline-flex items-center rounded-full border border-white/12 bg-black/20 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white/70">
+                    <span className="inline-flex items-center rounded-full border border-gold-border bg-gold-wash px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-gold">
                       {card.premiumNote}
                     </span>
                   </div>

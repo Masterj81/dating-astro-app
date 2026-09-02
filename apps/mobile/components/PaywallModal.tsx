@@ -118,7 +118,7 @@ export default function PaywallModal() {
           accessibilityLiveRegion="polite"
         >
           <LinearGradient
-            colors={['#1a1a2e', '#16213e']}
+            colors={['#151A2B', '#1E2540']}
             style={styles.content}
           >
             {/* Close button */}
@@ -191,7 +191,7 @@ export default function PaywallModal() {
               {...getButtonA11yProps(t('a11y.upgradeButton'))}
             >
               <LinearGradient
-                colors={['#e94560', '#7C6CFF']}
+                colors={['#E85D75', '#7C6CFF']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.ctaGradient}
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(233, 69, 96, 0.15)',
+    backgroundColor: 'rgba(232, 93, 117, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
   },
   paywallSocialProofText: {
     fontSize: 12,
-    color: '#DAB56D',
+    color: '#E8C77E',
     textAlign: 'center',
     fontWeight: '600',
     letterSpacing: 0.3,
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   secondaryText: {
-    color: '#9333ea',
+    color: '#8B87FF',
     fontSize: 15,
     fontWeight: '600',
   },

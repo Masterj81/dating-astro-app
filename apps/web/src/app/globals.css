@@ -1,13 +1,51 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+ * JUNO palette — celestial gold on deep navy.
+ *
+ * The rule that keeps this from turning into confetti: each colour family has
+ * ONE job.
+ *
+ *   gold    premium, status, and every section marker. The identity colour.
+ *   accent  emotional ACTIONS — like, message, send. Coral. Never decoration.
+ *   purple  Cosmic tier only (premium_plus). Not a general accent.
+ *
+ * Before this file said so, coral was doing all three: 425 token usages against
+ * 54 for purple and three raw hexes for gold — which is why an astrology app
+ * read pink rather than celestial. Gold now carries the identity and coral
+ * keeps the verbs.
+ *
+ * Every value below clears WCAG AA (4.5:1) as text on `--color-card` over
+ * `--color-bg`; the muted gold used for the 139 section labels sits at 7.9:1,
+ * slightly brighter than the grey it replaces.
+ *
+ * `apps/mobile/constants/theme.ts` carries the same hexes under the same
+ * names, and `npm run validate:design-tokens` fails the build if the two
+ * drift apart.
+ * ------------------------------------------------------------------------ */
 @theme {
   --color-bg: #090b13;
-  --color-bg-secondary: #141a2b;
-  --color-bg-tertiary: #202946;
+  --color-bg-secondary: #131829;
+  --color-bg-tertiary: #1e2540;
+
+  /* Identity. Gold, warm, never yellow. */
+  --color-gold: #e8c77e;
+  --color-gold-soft: #f2dca8;
+  --color-gold-deep: #c9a24d;
+  /* Section labels — the uppercase tracked eyebrows on nearly every card.
+     Muted on purpose: 139 of them in full gold would be a jewellery shop. */
+  --color-gold-muted: #b8a87f;
+  --color-gold-wash: rgba(232, 199, 126, 0.1);
+  --color-gold-border: rgba(232, 199, 126, 0.28);
+
+  /* Actions. */
   --color-accent: #e85d75;
   --color-accent-hover: #d93c5a;
-  --color-purple: #7681ff;
+
+  /* Cosmic tier only. */
+  --color-purple: #8b87ff;
   --color-purple-light: #4da7ff;
+
   --color-text: #f7f4ee;
   --color-text-muted: #c9c2b8;
   --color-text-dim: #a09b94;
@@ -55,9 +93,9 @@ html {
 body {
   min-height: 100vh;
   background:
-    radial-gradient(circle at 8% 10%, rgba(232, 93, 117, 0.18), transparent 24%),
-    radial-gradient(circle at 88% 12%, rgba(118, 129, 255, 0.22), transparent 20%),
-    radial-gradient(circle at 50% 120%, rgba(77, 167, 255, 0.14), transparent 28%),
+    radial-gradient(circle at 88% 10%, rgba(232, 199, 126, 0.16), transparent 26%),
+    radial-gradient(circle at 8% 12%, rgba(232, 93, 117, 0.12), transparent 22%),
+    radial-gradient(circle at 50% 120%, rgba(139, 135, 255, 0.12), transparent 28%),
     linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-secondary) 46%, var(--color-bg-tertiary) 100%);
   color: var(--color-text);
   font-family: "SF Pro Display", "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
@@ -79,9 +117,9 @@ body::before {
      pseudo-element every composite frame — ~2-4 ms/frame on mid-range devices.
      Wider stops produce the same soft glow without the GPU cost. */
   background:
-    radial-gradient(circle at 12% 22%, rgba(232, 93, 117, 0.14), transparent 22%),
-    radial-gradient(circle at 82% 8%, rgba(77, 167, 255, 0.09), transparent 18%),
-    radial-gradient(circle at 78% 84%, rgba(118, 129, 255, 0.15), transparent 22%);
+    radial-gradient(circle at 12% 22%, rgba(232, 93, 117, 0.1), transparent 22%),
+    radial-gradient(circle at 82% 8%, rgba(232, 199, 126, 0.1), transparent 20%),
+    radial-gradient(circle at 78% 84%, rgba(139, 135, 255, 0.12), transparent 22%);
 }
 
 body::after {

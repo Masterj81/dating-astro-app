@@ -248,7 +248,7 @@ export function PlansCheckout() {
       <section className="rounded-[2rem] border border-border bg-card/90 p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
           <div className="flex-1">
-            <label htmlFor="promo-code" className="text-xs uppercase tracking-[0.24em] text-text-dim">
+            <label htmlFor="promo-code" className="text-xs uppercase tracking-[0.24em] text-gold-muted">
               {t("promoCodeLabel")}
             </label>
             <input
@@ -329,7 +329,7 @@ export function PlansCheckout() {
               <div className="relative">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+                    <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                       {t(`tier_${tier}`)}
                     </p>
                     <h2 className="mt-2 text-2xl font-semibold text-white">

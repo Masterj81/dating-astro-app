@@ -117,7 +117,7 @@ export function CompatibilityDotsArc({
         )}
       </svg>
       {label && (
-        <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-text-dim">
+        <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-gold-muted">
           {label}
         </p>
       )}

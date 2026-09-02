@@ -83,7 +83,7 @@ export function PlacementCard({
         </div>
         <div className="min-w-0 flex-1">
           {eyebrow ? (
-            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-gold-muted">
               {eyebrow}
             </p>
           ) : null}

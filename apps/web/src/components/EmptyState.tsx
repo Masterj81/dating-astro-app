@@ -47,7 +47,7 @@ export function EmptyState({
         </div>
       ) : null}
       {eyebrow ? (
-        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {eyebrow}
         </p>
       ) : null}

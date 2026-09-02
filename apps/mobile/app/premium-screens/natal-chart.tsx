@@ -1141,7 +1141,7 @@ const styles = StyleSheet.create({
   },
   birthInfoTitle: {
     fontSize: 14,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 12,
@@ -1245,7 +1245,7 @@ const styles = StyleSheet.create({
   },
   interpretationTitle: {
     fontSize: 14,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -1260,7 +1260,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   interpretationContent: {
-    backgroundColor: 'rgba(233, 69, 96, 0.08)',
+    backgroundColor: 'rgba(232, 93, 117, 0.08)',
     borderRadius: 0,
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
@@ -1268,7 +1268,7 @@ const styles = StyleSheet.create({
     marginTop: -8,
     borderWidth: 1,
     borderTopWidth: 0,
-    borderColor: 'rgba(233, 69, 96, 0.2)',
+    borderColor: 'rgba(232, 93, 117, 0.2)',
   },
   interpretationLabel: {
     fontSize: 12,
@@ -1303,14 +1303,14 @@ const styles = StyleSheet.create({
   },
   elementBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(233, 69, 96, 0.2)',
+    backgroundColor: 'rgba(232, 93, 117, 0.2)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
   },
   elementBadgeText: {
     fontSize: 12,
-    color: '#e94560',
+    color: '#E85D75',
     fontWeight: '600',
     textTransform: 'capitalize',
   },
@@ -1372,7 +1372,7 @@ const styles = StyleSheet.create({
   },
   elementCardDominant: {
     borderColor: AppTheme.colors.coral,
-    backgroundColor: 'rgba(233, 69, 96, 0.1)',
+    backgroundColor: 'rgba(232, 93, 117, 0.1)',
   },
   elementEmoji: {
     fontSize: 24,
@@ -1419,11 +1419,11 @@ const styles = StyleSheet.create({
     color: AppTheme.colors.textPrimary,
   },
   summaryCard: {
-    backgroundColor: 'rgba(233, 69, 96, 0.1)',
+    backgroundColor: 'rgba(232, 93, 117, 0.1)',
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(233, 69, 96, 0.2)',
+    borderColor: 'rgba(232, 93, 117, 0.2)',
   },
   summaryTitle: {
     fontSize: 18,
@@ -1460,7 +1460,7 @@ const styles = StyleSheet.create({
   },
   disclaimerTitle: {
     fontSize: 12,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 6,
@@ -1523,7 +1523,7 @@ const styles = StyleSheet.create({
   },
   panelLabel: {
     fontSize: 11,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -1639,7 +1639,7 @@ const styles = StyleSheet.create({
   },
   angleLabel: {
     fontSize: 11,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -1687,7 +1687,7 @@ const styles = StyleSheet.create({
   },
   houseCuspReadingLabel: {
     fontSize: 10,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },

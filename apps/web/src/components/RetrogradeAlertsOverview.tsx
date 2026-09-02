@@ -113,7 +113,7 @@ export function RetrogradeAlertsOverview() {
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-8">
         <div className="max-w-3xl rounded-[1.75rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("premiumNav")}
           </p>
           <h2 className="mt-3 text-2xl font-semibold text-white">
@@ -165,7 +165,7 @@ export function RetrogradeAlertsOverview() {
       <section className="space-y-6">
         {/* Hero */}
         <div className="rounded-[2rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("retrogradeReflectionV2HeroEyebrow")}
           </p>
           <h2 className="mt-3 text-3xl font-semibold text-white">
@@ -183,7 +183,7 @@ export function RetrogradeAlertsOverview() {
             tells its full story without a click. Vertical stack keeps 360px
             safe and matches the Daily/Monthly V2 reading pattern. */}
         <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("retrogradeReflectionV2CurrentTitle")}
           </p>
           <div className="mt-5 space-y-4">
@@ -219,7 +219,7 @@ export function RetrogradeAlertsOverview() {
 
                   <div className="mt-5 space-y-4">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+                      <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                         {t("retrogradeReflectionV2ReviewTitle")}
                       </p>
                       <p className="mt-2 text-sm leading-7 text-text-muted">
@@ -247,7 +247,7 @@ export function RetrogradeAlertsOverview() {
                     </div>
 
                     <div className="rounded-[1.25rem] border border-border bg-card/70 p-4">
-                      <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+                      <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                         {t("retrogradeReflectionV2RelationshipTitle")}
                       </p>
                       <p className="mt-2 text-sm leading-7 text-text-muted">
@@ -256,7 +256,7 @@ export function RetrogradeAlertsOverview() {
                     </div>
 
                     <div className="rounded-[1.25rem] border border-border bg-bg/50 p-4">
-                      <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+                      <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                         {t("retrogradeReflectionV2PromptTitle")}
                       </p>
                       <p className="mt-2 text-sm leading-7 text-text-muted">
@@ -272,7 +272,7 @@ export function RetrogradeAlertsOverview() {
 
         {/* Disclaimer */}
         <div className="rounded-[2rem] border border-border bg-card/70 p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("retrogradeReflectionV2DisclaimerTitle")}
           </p>
           <p className="mt-3 text-sm leading-7 text-text-muted">
@@ -289,7 +289,7 @@ export function RetrogradeAlertsOverview() {
 
       <aside className="space-y-6">
         <div className="rounded-[2rem] border border-[rgba(74,222,128,0.24)] bg-[rgba(74,222,128,0.10)] p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("retrogradeReflectionV2GuideTitle")}
           </p>
           <div className="mt-4 space-y-3 text-sm leading-7 text-text-muted">

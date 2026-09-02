@@ -1033,7 +1033,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
   },
   frameScore: {
     fontSize: 22,
@@ -1053,7 +1053,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     marginBottom: 4,
   },
   aspectRow: {
@@ -1157,7 +1157,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     marginBottom: 10,
   },
   pickerList: {
@@ -1313,7 +1313,7 @@ const styles = StyleSheet.create({
   },
   heroScoreEyebrow: {
     fontSize: 10,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 2,
     marginBottom: 4,
@@ -1347,7 +1347,7 @@ const styles = StyleSheet.create({
   },
   sectionEyebrow: {
     fontSize: 11,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 2,
     marginBottom: 10,
@@ -1376,7 +1376,7 @@ const styles = StyleSheet.create({
   },
   factorSigns: {
     fontSize: 11,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 1.5,
   },
@@ -1428,7 +1428,7 @@ const styles = StyleSheet.create({
   },
   zoneBandLabel: {
     fontSize: 11,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 1.5,
     marginBottom: 6,
@@ -1447,7 +1447,7 @@ const styles = StyleSheet.create({
   },
   zoneFallback: {
     fontSize: 10.5,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 1.5,
     marginTop: 8,
@@ -1545,7 +1545,7 @@ const styles = StyleSheet.create({
   },
   disclaimerEyebrow: {
     fontSize: 11,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 2,
     marginBottom: 6,
@@ -1594,8 +1594,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.12)',
   },
   frameTogglePillActive: {
-    backgroundColor: 'rgba(233, 69, 96, 0.18)',
-    borderColor: 'rgba(233, 69, 96, 0.55)',
+    backgroundColor: 'rgba(232, 93, 117, 0.18)',
+    borderColor: 'rgba(232, 93, 117, 0.55)',
   },
   frameTogglePillText: {
     color: 'rgba(255,255,255,0.78)',

@@ -204,8 +204,8 @@ export default function NatalChartWheel({
       <Text style={styles.body}>{labels.body}</Text>
 
       <View style={{ width: size, height: size, alignSelf: 'center', marginTop: 14 }}>
-        <View style={ring(geometry.zodiacOuter, 'rgba(255,255,255,0.14)')} />
-        <View style={ring(geometry.zodiacInner, 'rgba(255,255,255,0.10)')} />
+        <View style={ring(geometry.zodiacOuter, 'rgba(232,199,126,0.26)')} />
+        <View style={ring(geometry.zodiacInner, 'rgba(232,199,126,0.16)')} />
         <View style={ring(geometry.hubRadius, 'rgba(255,255,255,0.07)', 'rgba(255,255,255,0.02)')} />
 
         {/* Zodiac dividers and glyphs. */}
@@ -214,11 +214,11 @@ export default function NatalChartWheel({
             <Segment
               from={sector.divider.inner}
               to={sector.divider.outer}
-              color="rgba(255,255,255,0.12)"
+              color="rgba(232,199,126,0.18)"
             />
             <Mark
               at={sector.label}
-              color="rgba(255,255,255,0.55)"
+              color="rgba(232,199,126,0.72)"
               fontSize={size * 0.042}
             >
               {SIGN_GLYPHS[sector.sign] ?? sector.sign.slice(0, 2)}
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     flexShrink: 1,
   },
   toggle: {

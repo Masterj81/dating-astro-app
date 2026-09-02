@@ -106,7 +106,7 @@ function TarotScreenContent() {
     return (
       <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#e94560" />
+          <ActivityIndicator size="large" color="#E85D75" />
         </View>
       </LinearGradient>
     );
@@ -346,8 +346,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.12)',
   },
   modeButtonActive: {
-    backgroundColor: 'rgba(233,69,96,0.2)',
-    borderColor: 'rgba(233,69,96,0.5)',
+    backgroundColor: 'rgba(232, 93, 117,0.2)',
+    borderColor: 'rgba(232, 93, 117,0.5)',
   },
   modeText: {
     fontSize: 15,
@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
   },
   interpretationCardName: {
     fontSize: 14,
-    color: '#e94560',
+    color: '#E85D75',
     fontWeight: '600',
   },
   interpretationText: {
@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 12,
-    color: '#9333ea',
+    color: '#8B87FF',
     fontWeight: '600',
   },
 });

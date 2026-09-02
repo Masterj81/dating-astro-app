@@ -299,7 +299,7 @@ export function ConversationGuideOverview() {
 
   const renderSignPicker = () => (
     <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-      <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+      <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
         {t("conversationGuideChooseSign")}
       </p>
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
@@ -332,7 +332,7 @@ export function ConversationGuideOverview() {
 
   const renderSituationPicker = () => (
     <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-      <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+      <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
         {t("conversationGuideChooseSituation")}
       </p>
       <div className="mt-4 space-y-2">
@@ -425,7 +425,7 @@ export function ConversationGuideOverview() {
             <Link
               href="/app/plans"
               data-testid="coach-upgrade-cta"
-              className="mt-5 inline-block rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+              className="mt-5 inline-block rounded-full bg-gold px-5 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
             >
               {t("conversationGuideUpgradeCta")}
             </Link>
@@ -447,7 +447,7 @@ export function ConversationGuideOverview() {
           type="button"
           onClick={() => void requestUnlock()}
           data-testid="coach-unlock-cta"
-          className="mt-5 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+          className="mt-5 rounded-full bg-gold px-5 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
         >
           {t("conversationGuideUnlockCta")}
         </button>
@@ -477,7 +477,7 @@ export function ConversationGuideOverview() {
         <div className="mt-6 space-y-5">
           {card.sections.map((section) => (
             <div key={section.id}>
-              <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-gold-muted">
                 {t(section.labelKey)}
               </p>
               {section.copyable ? (

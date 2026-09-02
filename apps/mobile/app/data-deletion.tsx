@@ -4,7 +4,7 @@ import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 export default function DataDeletionScreen() {
   return (
     <LinearGradient
-      colors={['#0f0f1a', '#1a1a2e', '#16213e']}
+      colors={['#0B0B14', '#151A2B', '#1E2540']}
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#e94560',
+    color: '#E85D75',
     marginBottom: 12,
   },
   sectionText: {

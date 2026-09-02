@@ -27,7 +27,7 @@ export default function PasswordResetSentScreen() {
 
   return (
     <LinearGradient
-      colors={['#0f0f1a', '#1a1a2e', '#16213e']}
+      colors={['#0B0B14', '#151A2B', '#1E2540']}
       style={styles.container}
     >
       <Animated.View style={[styles.content, { opacity: fadeAnim }]} testID="password-reset-sent-screen">
@@ -47,7 +47,7 @@ export default function PasswordResetSentScreen() {
           onPress={() => router.replace('/auth/login')}
         >
           <LinearGradient
-            colors={['#e94560', '#c23a51']}
+            colors={['#E85D75', '#D93C5A']}
             style={styles.buttonGradient}
           >
             <Text style={styles.buttonText}>{t('backToLogin')}</Text>
@@ -91,12 +91,12 @@ const styles = StyleSheet.create({
   },
   email: {
     fontSize: 16,
-    color: '#e94560',
+    color: '#E85D75',
     fontWeight: '600',
     marginBottom: 24,
   },
   infoBox: {
-    backgroundColor: 'rgba(233, 69, 96, 0.1)',
+    backgroundColor: 'rgba(232, 93, 117, 0.1)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 32,

@@ -234,7 +234,7 @@ export function AuthCard({ mode }: AuthCardProps) {
         </div>
       </div>
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-accent/30 bg-accent/8 p-2 shadow-[0_0_30px_rgba(233,69,96,0.12)]">
+        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-accent/30 bg-accent/8 p-2 shadow-[0_0_30px_rgba(232, 93, 117,0.12)]">
           <Image
             src="/icon-192.png"
             alt="JUNO"
@@ -274,7 +274,7 @@ export function AuthCard({ mode }: AuthCardProps) {
 
       <div className="my-6 flex items-center gap-3">
         <div className="h-px flex-1 bg-border" />
-        <span className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <span className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("orContinueWithEmail")}
         </span>
         <div className="h-px flex-1 bg-border" />

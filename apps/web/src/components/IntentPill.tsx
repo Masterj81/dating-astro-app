@@ -18,7 +18,7 @@ const TONES: Record<IntentTone, { dot: string; ring: string; bg: string }> = {
     bg: "rgba(232,93,117,0.08)",
   },
   casual: {
-    dot: "#DAB56D",
+    dot: "#E8C77E",
     ring: "rgba(218,181,109,0.35)",
     bg: "rgba(218,181,109,0.08)",
   },

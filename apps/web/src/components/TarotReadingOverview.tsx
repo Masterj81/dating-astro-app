@@ -156,7 +156,7 @@ export function TarotReadingOverview() {
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-8">
         <div className="max-w-3xl rounded-[1.75rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("premiumNav")}
           </p>
           <h2 className="mt-3 text-2xl font-semibold text-white">
@@ -255,7 +255,7 @@ export function TarotReadingOverview() {
       <section className="rounded-[2rem] border border-border bg-card/90 p-6">
         {/* Hero */}
         <div className="rounded-[1.75rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-5">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t(periodLabelKey)}
           </p>
           <h2 className="mt-3 text-3xl font-semibold text-white">
@@ -324,7 +324,7 @@ export function TarotReadingOverview() {
                     <div className="text-3xl">
                       {mode === "love" ? "♥" : "★"}
                     </div>
-                    <p className="text-center px-2 text-xs uppercase tracking-[0.24em] text-text-dim">
+                    <p className="text-center px-2 text-xs uppercase tracking-[0.24em] text-gold-muted">
                       {positionLabel}
                     </p>
                     <p className="text-[10px] text-text-dim/60">
@@ -344,7 +344,7 @@ export function TarotReadingOverview() {
                       loading="lazy"
                     />
                     <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                      <p className="text-[10px] uppercase tracking-[0.16em] text-text-dim">
+                      <p className="text-[10px] uppercase tracking-[0.16em] text-gold-muted">
                         {positionLabel}
                       </p>
                       <p className="text-xs font-semibold text-white truncate">
@@ -363,7 +363,7 @@ export function TarotReadingOverview() {
         {allRevealed && (
           <div className="mt-6 space-y-4">
             <div className="rounded-[1.75rem] border border-[rgba(232,93,117,0.24)] bg-[rgba(232,93,117,0.10)] p-5">
-              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+              <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                 {t("tarotV2InterpretationTitle")}
               </p>
               <p className="mt-3 text-lg font-medium text-white">
@@ -378,7 +378,7 @@ export function TarotReadingOverview() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+                    <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                       {t(POSITION_KEY[entry.position])}
                     </p>
                     <h3 className="mt-2 text-xl font-semibold text-white">
@@ -396,7 +396,7 @@ export function TarotReadingOverview() {
                   {getCardMeaning(entry.card, mode)}
                 </p>
                 <div className="mt-4 rounded-2xl border border-border bg-card/70 p-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+                  <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                     {t(lensLabelKey)}
                   </p>
                   <p className="mt-2 text-sm leading-7 text-text-muted">
@@ -408,7 +408,7 @@ export function TarotReadingOverview() {
 
             {/* Journal prompts */}
             <div className="rounded-[1.5rem] border border-border bg-bg/70 p-5">
-              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+              <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                 {t("tarotV2JournalTitle")}
               </p>
               <ul className="mt-3 space-y-2 text-sm leading-7 text-text-muted">
@@ -423,7 +423,7 @@ export function TarotReadingOverview() {
 
             {/* Disclaimer */}
             <div className="rounded-[1.5rem] border border-border bg-bg/50 p-5">
-              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+              <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                 {t("tarotV2DisclaimerTitle")}
               </p>
               <p className="mt-2 text-sm leading-7 text-text-muted">
@@ -442,7 +442,7 @@ export function TarotReadingOverview() {
 
       {/* Sidebar */}
       <aside className="rounded-[2rem] border border-border bg-card/90 p-6">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("tarotV2ReadingDetailsLabel")}
         </p>
         <h3 className="mt-3 text-xl font-semibold text-white">
@@ -451,7 +451,7 @@ export function TarotReadingOverview() {
 
         <div className="mt-5 space-y-4">
           <div className="rounded-2xl border border-border bg-bg/70 p-4">
-            <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+            <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
               {t("tarotV2ModeLabel")}
             </p>
             <p className="mt-3 text-lg font-semibold text-white">
@@ -460,7 +460,7 @@ export function TarotReadingOverview() {
           </div>
 
           <div className="rounded-2xl border border-border bg-bg/70 p-4">
-            <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+            <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
               {t("tarotV2PeriodLabel")}
             </p>
             <p className="mt-3 text-lg font-semibold text-white">
@@ -469,7 +469,7 @@ export function TarotReadingOverview() {
           </div>
 
           <div className="rounded-2xl border border-border bg-bg/70 p-4">
-            <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+            <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
               {t("tarotV2CardsLabel")}
             </p>
             <p className="mt-3 text-lg font-semibold text-white">
@@ -478,7 +478,7 @@ export function TarotReadingOverview() {
           </div>
 
           <div className="rounded-2xl border border-border bg-bg/70 p-4">
-            <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+            <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
               {t("tarotV2TierLabel")}
             </p>
             <p className="mt-3 text-lg font-semibold text-white">
@@ -491,7 +491,7 @@ export function TarotReadingOverview() {
 
           {state.tier === "premium" && (
             <div className="rounded-2xl border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+              <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                 {t("tarotV2UpgradeLabel")}
               </p>
               <p className="mt-3 text-sm leading-7 text-text-muted">

@@ -622,7 +622,7 @@ const styles = StyleSheet.create({
   },
   planCycle: {
     ...AppTheme.type.meta,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginTop: AppTheme.spacing.xs,

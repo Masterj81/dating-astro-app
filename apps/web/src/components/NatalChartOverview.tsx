@@ -469,7 +469,7 @@ export function NatalChartOverview() {
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-8">
         <div className="max-w-3xl rounded-[1.75rem] border border-[rgba(232,93,117,0.22)] bg-[rgba(232,93,117,0.10)] p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("premiumNav")}
           </p>
           <h2 className="mt-3 text-2xl font-semibold text-white">
@@ -519,7 +519,7 @@ export function NatalChartOverview() {
     <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
       <section className="space-y-6">
         <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("natalChartBirthLabel")}
           </p>
           <h2 className="mt-3 text-3xl font-semibold text-white">
@@ -527,7 +527,7 @@ export function NatalChartOverview() {
           </h2>
           <div className="mt-5 grid gap-3 md:grid-cols-3">
             <div className="rounded-2xl border border-border bg-bg/70 p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+              <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                 {t("birthDateLabel")}
               </p>
               <p className="mt-2 text-sm font-medium text-white">
@@ -535,7 +535,7 @@ export function NatalChartOverview() {
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-bg/70 p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+              <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                 {t("birthTimeLabel")}
               </p>
               <p className="mt-2 text-sm font-medium text-white">
@@ -543,7 +543,7 @@ export function NatalChartOverview() {
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-bg/70 p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+              <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                 {t("birthCityLabel")}
               </p>
               <p className="mt-2 text-sm font-medium text-white">
@@ -577,7 +577,7 @@ export function NatalChartOverview() {
         {/* Editorial reminder — sits just above the Planetary Positions card
             so the user reads the framing before tapping into each placement. */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("natalChartDisclaimerTitle")}
           </p>
           <p className="mt-2 text-sm leading-7 text-text-muted">
@@ -591,7 +591,7 @@ export function NatalChartOverview() {
             (4) dating lens. Reads 2 + 4 only render when an i18n entry
             exists for that planet × sign tuple. */}
         <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("planetaryPositions")}
           </p>
           <ul className="mt-5 space-y-3">
@@ -694,7 +694,7 @@ export function NatalChartOverview() {
                           own block; it only becomes the body when nothing
                           more specific exists. */}
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-gold-muted">
                           {formatPlanetInSignLabel(position.label, signLabel, locale)}
                         </p>
                         <p className="mt-2 text-sm leading-7 text-white/90">
@@ -712,7 +712,7 @@ export function NatalChartOverview() {
 
                       {hasHouse ? (
                         <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-gold-muted">
                             {hasPlanetInHouse
                               ? formatPlanetInHouseLabel(position.label, t(`natalHouseName_${houseNumber}`), locale)
                               : t(`natalHouseName_${houseNumber}`)}
@@ -756,7 +756,7 @@ export function NatalChartOverview() {
             makes no claim, `…Body` is used only when the signs are really
             there. */}
         <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("natalChartHousesTitle")}
           </p>
           <p className="mt-3 text-sm leading-7 text-text-muted">
@@ -828,7 +828,7 @@ export function NatalChartOverview() {
                       with the page's voice. */}
                   {houseCuspReadings ? (
                     <div className="mt-3 rounded-[1rem] border border-white/[0.07] bg-white/[0.03] p-3">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-text-dim">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-gold-muted">
                         {t("natalHouseCuspColorsTitle")}
                       </p>
                       <p
@@ -884,7 +884,7 @@ export function NatalChartOverview() {
             `xl` up they sit level with it and name what the reader is looking
             at, instead of arriving one screen later. */}
         <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("natalAnglesTitle")}
           </p>
           <p className="mt-3 text-sm leading-7 text-text-muted">{t("natalAnglesBody")}</p>
@@ -892,7 +892,7 @@ export function NatalChartOverview() {
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             {/* Rising */}
             <div className="rounded-[1.4rem] border border-border bg-bg/70 p-4">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-text-dim">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-gold-muted">
                 {t("natalPlanet_rising")}
               </p>
               {risingAngle ? (
@@ -914,7 +914,7 @@ export function NatalChartOverview() {
 
             {/* Midheaven */}
             <div className="rounded-[1.4rem] border border-border bg-bg/70 p-4">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-text-dim">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-gold-muted">
                 {t("natalMidheavenLabel")}
               </p>
               {mc ? (
@@ -967,7 +967,7 @@ export function NatalChartOverview() {
         ) : null}
 
         <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("elementsModalities")}
           </p>
           <h3 className="mt-3 text-xl font-semibold text-white">
@@ -975,7 +975,7 @@ export function NatalChartOverview() {
           </h3>
           <div className="mt-5 space-y-4">
             <div className="rounded-2xl border border-border bg-bg/70 p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+              <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                 {t("natalChartDominantElement")}
               </p>
               <p className="mt-2 text-lg font-semibold capitalize text-white">
@@ -986,7 +986,7 @@ export function NatalChartOverview() {
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-bg/70 p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+              <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                 {t("natalChartDominantModality")}
               </p>
               <p className="mt-2 text-lg font-semibold capitalize text-white">
@@ -1000,7 +1000,7 @@ export function NatalChartOverview() {
         </div>
 
         <div className="rounded-[2rem] border border-border bg-card/90 p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("cosmicSummary")}
           </p>
           <p className="mt-3 text-sm leading-7 text-text-muted">

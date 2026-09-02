@@ -447,7 +447,7 @@ export function ChatThread({ conversationId, initialPrefill }: ChatThreadProps) 
       <aside className="hidden rounded-[2rem] border border-border bg-card/90 p-6 xl:block">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+            <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
               {t("chatRecentLabel")}
             </p>
             <h2 className="mt-2 text-xl font-semibold text-white">{t("chatRecentTitle")}</h2>
@@ -795,7 +795,7 @@ function DayDivider({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-3 py-2">
       <span className="h-px flex-1 bg-white/8" aria-hidden="true" />
-      <span className="rounded-full border border-white/8 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-text-dim">
+      <span className="rounded-full border border-white/8 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-gold-muted">
         {label}
       </span>
       <span className="h-px flex-1 bg-white/8" aria-hidden="true" />

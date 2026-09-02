@@ -60,7 +60,7 @@ export function ForgotPasswordCard() {
   return (
     <div className="mx-auto w-full max-w-md rounded-[2rem] border border-border bg-card/90 p-8 shadow-2xl shadow-black/30 backdrop-blur-md">
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-accent/30 bg-accent/8 text-3xl text-white shadow-[0_0_30px_rgba(233,69,96,0.12)]">
+        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-accent/30 bg-accent/8 text-3xl text-white shadow-[0_0_30px_rgba(232, 93, 117,0.12)]">
           &#9993;
         </div>
         <h1 className="text-3xl font-semibold text-white">

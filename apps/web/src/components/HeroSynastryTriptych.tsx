@@ -152,7 +152,7 @@ export function HeroSynastryTriptych() {
 
       {/* Caption — single line that names what the visual is actually
           showing. Stays small so it never competes with the h1 above. */}
-      <p className="mt-6 text-center text-xs uppercase tracking-[0.24em] text-text-dim">
+      <p className="mt-6 text-center text-xs uppercase tracking-[0.24em] text-gold-muted">
         {intents("badge")} · {intents("loveTitle")} · {intents("friendshipTitle")} · {intents("businessTitle")}
       </p>
     </div>

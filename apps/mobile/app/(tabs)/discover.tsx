@@ -1489,8 +1489,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.12)',
   },
   intentionFilterPillActive: {
-    backgroundColor: 'rgba(233, 69, 96, 0.18)',
-    borderColor: 'rgba(233, 69, 96, 0.55)',
+    backgroundColor: 'rgba(232, 93, 117, 0.18)',
+    borderColor: 'rgba(232, 93, 117, 0.55)',
   },
   intentionFilterPillText: {
     color: 'rgba(255,255,255,0.78)',

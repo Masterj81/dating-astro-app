@@ -336,7 +336,7 @@ export default function SignupScreen() {
                 )}
               >
                 <LinearGradient
-                  colors={['#e94560', '#c23a51']}
+                  colors={['#E85D75', '#D93C5A']}
                   style={styles.buttonGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
   },
   zodiacRing: {
     fontSize: 18,
-    color: '#e94560',
+    color: '#E85D75',
     letterSpacing: 8,
     opacity: 0.6,
   },
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
     marginBottom: 20
   },
   label: {
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     fontSize: 14,
     marginBottom: 8,
     textTransform: 'uppercase',
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(233, 69, 96, 0.18)',
+    borderColor: 'rgba(232, 93, 117, 0.18)',
     backgroundColor: 'rgba(255,255,255,0.04)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -552,10 +552,10 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   inputError: {
-    borderColor: '#e94560',
+    borderColor: '#E85D75',
   },
   fieldError: {
-    color: '#e94560',
+    color: '#E85D75',
     fontSize: 12,
     marginTop: 6,
     fontStyle: 'italic',
@@ -575,8 +575,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   preferenceOptionActive: {
-    backgroundColor: 'rgba(233, 69, 96, 0.16)',
-    borderColor: 'rgba(233, 69, 96, 0.55)',
+    backgroundColor: 'rgba(232, 93, 117, 0.16)',
+    borderColor: 'rgba(232, 93, 117, 0.55)',
   },
   preferenceOptionText: {
     color: '#d3d0da',
@@ -645,7 +645,7 @@ const styles = StyleSheet.create({
     fontSize: 14
   },
   linkText: {
-    color: '#e94560',
+    color: '#E85D75',
     fontSize: 14,
     fontWeight: '600'
   },

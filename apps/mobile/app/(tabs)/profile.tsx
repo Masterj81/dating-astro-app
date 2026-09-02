@@ -404,7 +404,7 @@ export default function ProfileScreen() {
                 border: `1px solid ${AppTheme.colors.border}`
               }}>
                 <div style={{ fontSize: 24, marginBottom: 8 }}>{sign.emoji}</div>
-                <div style={{ fontSize: 12, color: AppTheme.colors.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>{sign.label}</div>
+                <div style={{ fontSize: 12, color: AppTheme.colors.goldMuted, textTransform: 'uppercase', marginBottom: 4 }}>{sign.label}</div>
                 <div style={{ fontSize: 16, color: AppTheme.colors.textPrimary, fontWeight: 600 }}>{sign.value ? t(sign.value.toLowerCase()) : '?'}</div>
               </div>
             ))}
@@ -1020,7 +1020,7 @@ const styles = StyleSheet.create({
   },
   signLabel: {
     fontSize: 12,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 4,
@@ -1074,8 +1074,8 @@ const styles = StyleSheet.create({
     borderColor: AppTheme.colors.border,
   },
   premiumAction: {
-    backgroundColor: 'rgba(233, 69, 96, 0.1)',
-    borderColor: 'rgba(233, 69, 96, 0.3)',
+    backgroundColor: 'rgba(232, 93, 117, 0.1)',
+    borderColor: 'rgba(232, 93, 117, 0.3)',
   },
   actionIcon: {
     fontSize: 24,
@@ -1087,7 +1087,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   premiumActionText: {
-    color: '#e94560',
+    color: '#E85D75',
   },
   settingsRow: {
     flexDirection: 'row',

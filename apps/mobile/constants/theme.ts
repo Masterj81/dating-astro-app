@@ -37,11 +37,29 @@ export const AppTheme = {
     textSecondary: '#C9C2B8',
     textMuted: '#8E8A84',
     textOnAccent: '#FFFFFF',
+    /** Foreground for anything sitting ON gold. White on gold is 1.6:1. */
+    textOnGold: '#0B0B14',
 
+    // ACTIONS. Coral is a verb — like, message, send. Not decoration.
     coral: '#E85D75',
     coralStrong: '#D93C5A',
-    gold: '#DAB56D',
-    cosmic: '#7C6CFF',
+
+    // IDENTITY. Gold carries premium, status, and every section marker.
+    // Before this, `gold` was #DAB56D with 32 usages against coral's 129, and
+    // `premiumGold` had zero — so an astrology app read pink. Warmed and
+    // brightened to #E8C77E: 12:1 on the canvas, unmistakably gold, never
+    // yellow.
+    gold: '#E8C77E',
+    goldSoft: '#F2DCA8',
+    goldDeep: '#C9A24D',
+    /** Section labels. Muted on purpose — a screen of full-gold eyebrows
+     *  reads as a jewellery shop rather than a night sky. 7.9:1. */
+    goldMuted: '#B8A87F',
+    goldWash: 'rgba(232, 199, 126, 0.10)',
+    goldBorder: 'rgba(232, 199, 126, 0.28)',
+
+    // COSMIC TIER ONLY (premium_plus). Not a general-purpose accent.
+    cosmic: '#8B87FF',
     cosmicSoft: '#4D9FFF',
 
     success: '#59C28B',
@@ -55,12 +73,13 @@ export const AppTheme = {
     ctaStart: '#E85D75',
     ctaEnd: '#7C6CFF',
 
-    // Premium tier accents
-    premiumGold: '#DAB56D',
-    premiumGoldSoft: 'rgba(218, 181, 109, 0.15)',
-    premiumGoldBorder: 'rgba(218, 181, 109, 0.30)',
-    premiumCosmicSoft: 'rgba(124, 108, 255, 0.12)',
-    premiumCosmicBorder: 'rgba(124, 108, 255, 0.25)',
+    // Premium tier accents. Aliases of the gold scale above, kept because
+    // screens read better naming the intent than the swatch.
+    premiumGold: '#E8C77E',
+    premiumGoldSoft: 'rgba(232, 199, 126, 0.15)',
+    premiumGoldBorder: 'rgba(232, 199, 126, 0.30)',
+    premiumCosmicSoft: 'rgba(139, 135, 255, 0.12)',
+    premiumCosmicBorder: 'rgba(139, 135, 255, 0.25)',
 
     // Elevated surfaces
     cardBg: 'rgba(255,255,255,0.05)',
@@ -159,8 +178,15 @@ export const AppTheme = {
       shadowRadius: 16,
       elevation: 8,
     },
+    goldGlow: {
+      shadowColor: '#E8C77E',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.28,
+      shadowRadius: 16,
+      elevation: 8,
+    },
     cosmicGlow: {
-      shadowColor: '#7C6CFF',
+      shadowColor: '#8B87FF',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.35,
       shadowRadius: 16,
@@ -175,10 +201,21 @@ export const AppTheme = {
     },
   },
   gradients: {
-    screen: ['#0B0B14', '#16192A', '#1E2740'] as const,
-    cta: ['#E85D75', '#7C6CFF'] as const,
-    premium: ['#DAB56D', '#C49A4E'] as const,
-    cosmicCard: ['rgba(124,108,255,0.08)', 'rgba(124,108,255,0.02)'] as const,
+    screen: ['#0B0B14', '#151A2B', '#1E2540'] as const,
+    /** The ordinary call to action stays coral, and it stays DARK enough to
+     *  carry white text. A first attempt ramped coral into gold; white on
+     *  #E8C77E is 1.63:1, which is not a style problem, it is unreadable.
+     *  The old ramp ended on purple #7C6CFF (3.4:1 with white) — barely
+     *  better. Ending on coralStrong is the honest version: 4.4:1. */
+    cta: ['#E85D75', '#D93C5A'] as const,
+    /** The PREMIUM call to action — unlock, upgrade, see plans. Gold with
+     *  near-black text: 12:1, the most readable button in the app, and the
+     *  place the identity belongs. Pair it with `textOnGold`, never with
+     *  `textOnAccent`. */
+    ctaGold: ['#F2DCA8', '#E8C77E'] as const,
+    premium: ['#F2DCA8', '#C9A24D'] as const,
+    goldCard: ['rgba(232,199,126,0.10)', 'rgba(232,199,126,0.02)'] as const,
+    cosmicCard: ['rgba(139,135,255,0.08)', 'rgba(139,135,255,0.02)'] as const,
   },
 } as const;
 

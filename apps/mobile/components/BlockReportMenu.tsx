@@ -190,7 +190,7 @@ export default function BlockReportMenu({
                     {reason.label}
                   </Text>
                   {selectedReason === reason.key && (
-                    <Ionicons name="checkmark-circle" size={22} color="#E94560" />
+                    <Ionicons name="checkmark-circle" size={22} color="#E85D75" />
                   )}
                 </TouchableOpacity>
               ))}
@@ -219,7 +219,7 @@ export default function BlockReportMenu({
       {/* Loading Overlay */}
       {loading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#E94560" />
+          <ActivityIndicator size="large" color="#E85D75" />
         </View>
       )}
     </>
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   menuContainer: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#151A2B',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   reportContainer: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#151A2B',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -302,20 +302,20 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   reasonItemSelected: {
-    backgroundColor: 'rgba(233, 69, 96, 0.2)',
+    backgroundColor: 'rgba(232, 93, 117, 0.2)',
     borderWidth: 1,
-    borderColor: '#E94560',
+    borderColor: '#E85D75',
   },
   reasonText: {
     color: '#fff',
     fontSize: 16,
   },
   reasonTextSelected: {
-    color: '#E94560',
+    color: '#E85D75',
     fontWeight: '600',
   },
   submitButton: {
-    backgroundColor: '#E94560',
+    backgroundColor: '#E85D75',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',

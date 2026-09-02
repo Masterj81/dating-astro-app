@@ -624,7 +624,7 @@ const s = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     marginTop: 16,
     marginBottom: 4,
   },

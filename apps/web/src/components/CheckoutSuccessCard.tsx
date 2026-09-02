@@ -209,7 +209,7 @@ export function CheckoutSuccessCard() {
               }`
         }`}
       >
-        <h3 className="mb-4 text-center text-sm font-medium uppercase tracking-[0.24em] text-text-dim">
+        <h3 className="mb-4 text-center text-sm font-medium uppercase tracking-[0.24em] text-gold-muted">
           {t("successNextSteps")}
         </h3>
         <div className="grid gap-3 sm:grid-cols-3">

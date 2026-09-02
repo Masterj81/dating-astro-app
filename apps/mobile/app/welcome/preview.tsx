@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
   header: { marginBottom: 28 },
   eyebrow: {
     ...AppTheme.type.meta,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     textTransform: 'uppercase',
     letterSpacing: 2.4,
     marginBottom: 14,

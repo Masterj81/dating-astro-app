@@ -864,7 +864,7 @@ export function AccountProfileWorkspace({
     <section className="rounded-[2rem] border border-border bg-card/90 p-6">
       {isSetupMode ? (
         <div className="mb-6 rounded-[1.5rem] border border-accent/25 bg-accent/10 p-5">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("profileSummaryLabel")}
           </p>
           <h2 className="mt-3 text-2xl font-semibold text-white">
@@ -876,7 +876,7 @@ export function AccountProfileWorkspace({
         </div>
       ) : (
         <div className="mb-6 rounded-[1.5rem] border border-purple/25 bg-purple/8 p-5">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("ownProfileTagLabel")}
           </p>
           <h2 className="mt-3 text-2xl font-semibold text-white">
@@ -939,7 +939,7 @@ export function AccountProfileWorkspace({
             </button>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+            <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
               {t("profileSummaryLabel")}
             </p>
             <h2 className="mt-2 text-2xl font-semibold text-white">
@@ -1017,7 +1017,7 @@ export function AccountProfileWorkspace({
       <div className="mt-6 rounded-[1.5rem] border border-border bg-bg/70 p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+            <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
               {t("profileSummaryTitle")}
             </p>
             {!isEditingSummary ? (
@@ -1107,7 +1107,7 @@ export function AccountProfileWorkspace({
       <div className="mt-6 rounded-[1.5rem] border border-border bg-bg/70 p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+            <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
               {t("birthDetailsLabel")}
             </p>
             {!isEditingBirth ? (
@@ -1151,7 +1151,7 @@ export function AccountProfileWorkspace({
                 </span>
                 <div className="grid gap-3 md:grid-cols-3">
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-text-dim">
+                    <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-gold-muted">
                       {t("birthDayLabel")}
                     </span>
                     <select
@@ -1169,7 +1169,7 @@ export function AccountProfileWorkspace({
                   </label>
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-text-dim">
+                    <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-gold-muted">
                       {t("birthMonthLabel")}
                     </span>
                     <select
@@ -1187,7 +1187,7 @@ export function AccountProfileWorkspace({
                   </label>
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-text-dim">
+                    <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-gold-muted">
                       {t("birthYearLabel")}
                     </span>
                     <select
@@ -1212,7 +1212,7 @@ export function AccountProfileWorkspace({
                 </span>
                 <div className="grid gap-3 md:grid-cols-2">
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-text-dim">
+                    <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-gold-muted">
                       {t("birthHourLabel")}
                     </span>
                     <select
@@ -1232,7 +1232,7 @@ export function AccountProfileWorkspace({
                   </label>
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-text-dim">
+                    <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-gold-muted">
                       {t("birthMinuteLabel")}
                     </span>
                     <select
@@ -1284,7 +1284,7 @@ export function AccountProfileWorkspace({
         <div className="rounded-[1.5rem] border border-border bg-bg/70 p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+              <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                 {t("profilePreferencesLabel")}
               </p>
               {!isEditingPreferences ? (
@@ -1463,7 +1463,7 @@ export function AccountProfileWorkspace({
         <div className="rounded-[1.5rem] border border-border bg-bg/70 p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+              <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                 {t("profileMvpSectionLabel")}
               </p>
               <h3 className="mt-3 text-xl font-semibold text-white">
@@ -1529,7 +1529,7 @@ export function AccountProfileWorkspace({
         <div className="rounded-[1.5rem] border border-border bg-bg/70 p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+              <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                 {t("profileSecurityLabel")}
               </p>
               <h3 className="mt-3 text-xl font-semibold text-white">{t("profilePasswordTitle")}</h3>
@@ -1610,7 +1610,7 @@ export function AccountProfileWorkspace({
 
         {!isSetupMode ? (
         <div className="rounded-[1.5rem] border border-border bg-bg/70 p-5">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("profileSupportLabel")}
           </p>
           <h3 className="mt-3 text-xl font-semibold text-white">{t("profileSupportTitle")}</h3>
@@ -1646,8 +1646,8 @@ export function AccountProfileWorkspace({
 
         {/* Referral Section */}
         {!isSetupMode ? (
-          <div className="mt-6 rounded-[1.5rem] border border-accent/20 bg-[linear-gradient(135deg,rgba(233,69,96,0.06),rgba(124,108,255,0.06))] p-5">
-            <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <div className="mt-6 rounded-[1.5rem] border border-accent/20 bg-[linear-gradient(135deg,rgba(232, 93, 117,0.06),rgba(124,108,255,0.06))] p-5">
+            <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
               {t("inviteFriends") || "Invite Friends"}
             </p>
             <h3 className="mt-2 text-lg font-semibold text-white">

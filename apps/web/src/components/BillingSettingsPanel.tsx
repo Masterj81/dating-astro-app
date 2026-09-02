@@ -75,7 +75,7 @@ export function BillingSettingsPanel() {
 
   return (
     <section className="rounded-[1.5rem] border border-border bg-bg/70 p-5">
-      <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+      <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
         {t("billingSection")}
       </p>
       <h3 className="mt-3 text-xl font-semibold text-white">{t("currentPlan")}</h3>
@@ -139,7 +139,7 @@ export function BillingSettingsPanel() {
           {/* Feature comparison for free users -- conversion nudge */}
           {state.tier === "free" && (
             <div className="rounded-2xl border border-[rgba(232,93,117,0.15)] bg-[linear-gradient(135deg,rgba(232,93,117,0.06),rgba(124,108,255,0.04))] p-4">
-              <p className="text-xs font-medium uppercase tracking-[0.2em] text-text-dim">
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-gold-muted">
                 {t("billingFeatureCompareTitle")}
               </p>
               <div className="mt-3 space-y-2">

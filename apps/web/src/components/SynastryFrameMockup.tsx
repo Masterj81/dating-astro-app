@@ -55,8 +55,8 @@ const FRAME_THEMES: Record<FrameKey, FrameTheme> = {
   },
   business: {
     glow: "rgba(218,181,109,0.20)",
-    accent: "#DAB56D",
-    dot: "#DAB56D",
+    accent: "#E8C77E",
+    dot: "#E8C77E",
     pillBg: "rgba(218,181,109,0.10)",
     pillBorder: "rgba(218,181,109,0.36)",
   },

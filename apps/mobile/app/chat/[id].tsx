@@ -394,15 +394,15 @@ export default function ChatScreen() {
 
   if (loading) {
     return (
-      <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={[styles.container, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color="#e94560" />
+      <LinearGradient colors={['#0B0B14', '#151A2B', '#1E2540']} style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#E85D75" />
         <Text style={styles.loadingText}>{t('loading')}</Text>
       </LinearGradient>
     );
   }
 
   return (
-    <LinearGradient colors={['#0f0f1a', '#1a1a2e', '#16213e']} style={styles.container}>
+    <LinearGradient colors={['#0B0B14', '#151A2B', '#1E2540']} style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: 12 + insets.top }]}>
         <View style={styles.headerRow}>
@@ -686,7 +686,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   headerCompatText: {
-    color: '#e94560',
+    color: '#E85D75',
     fontSize: 10,
     fontWeight: '600',
   },
@@ -715,7 +715,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 4,
   },
   messageBubbleMe: {
-    backgroundColor: '#e94560',
+    backgroundColor: '#E85D75',
     borderBottomRightRadius: 4,
   },
   messageBubblePending: {
@@ -723,7 +723,7 @@ const styles = StyleSheet.create({
   },
   messageBubbleFailed: {
     backgroundColor: '#6b2a37',
-    borderColor: '#e94560',
+    borderColor: '#E85D75',
     borderWidth: 1,
   },
   messageMetaRow: {
@@ -882,7 +882,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#e94560',
+    backgroundColor: '#E85D75',
     justifyContent: 'center',
     alignItems: 'center',
   },

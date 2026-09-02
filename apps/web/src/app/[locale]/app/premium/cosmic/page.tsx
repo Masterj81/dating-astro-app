@@ -74,7 +74,7 @@ export default async function CosmicHubPage() {
           <div className="rounded-[2.2rem] border border-border bg-[linear-gradient(180deg,rgba(124,108,255,0.18),rgba(255,255,255,0.04))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
             <div>
               <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+                <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                   {t("cosmicHubIncluded")}
                 </p>
                 <h3 className="mt-3 text-2xl font-semibold text-white">

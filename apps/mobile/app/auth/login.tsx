@@ -282,7 +282,7 @@ export default function LoginScreen() {
                 )}
               >
                 <LinearGradient
-                  colors={['#e94560', '#c23a51']}
+                  colors={['#E85D75', '#D93C5A']}
                   style={styles.buttonGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
   },
   zodiacRing: {
     fontSize: 18,
-    color: '#e94560',
+    color: '#E85D75',
     letterSpacing: 8,
     opacity: 0.6,
   },
@@ -461,7 +461,7 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(233, 69, 96, 0.18)',
+    borderColor: 'rgba(232, 93, 117, 0.18)',
     backgroundColor: 'rgba(255,255,255,0.04)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -472,13 +472,13 @@ const styles = StyleSheet.create({
     marginTop: -8,
   },
   forgotPasswordText: {
-    color: '#e94560',
+    color: '#E85D75',
     fontSize: 14,
   },
   button: {
     borderRadius: AppTheme.radius.md,
     overflow: 'hidden',
-    shadowColor: '#e94560',
+    shadowColor: '#E85D75',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -538,7 +538,7 @@ const styles = StyleSheet.create({
     fontSize: 14
   },
   linkText: {
-    color: '#e94560',
+    color: '#E85D75',
     fontSize: 14,
     fontWeight: '600'
   },

@@ -256,7 +256,7 @@ export default function LandingPage({
             </GlassCard>
 
             <GlassCard className="p-6">
-              <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-text-dim">
+              <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-gold-muted">
                 {intents("businessTitle")}
               </p>
               <h3 className="text-lg font-semibold text-white">

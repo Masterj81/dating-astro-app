@@ -128,7 +128,7 @@ export default function VerifyEmailScreen() {
         )}
 
         <View style={styles.pollingIndicator}>
-          <ActivityIndicator color="#e94560" size="small" />
+          <ActivityIndicator color="#E85D75" size="small" />
           <Text style={styles.pollingText}>{t('waitingForVerification') || 'Listening for your confirmation...'}</Text>
         </View>
 
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   resendButton: {
-    backgroundColor: 'rgba(233, 69, 96, 0.15)',
+    backgroundColor: 'rgba(232, 93, 117, 0.15)',
     borderWidth: 1,
     borderColor: AppTheme.colors.coral,
     borderRadius: AppTheme.radius.md,

@@ -214,7 +214,7 @@ export function LuckyDaysOverview() {
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-8">
         <div className="max-w-3xl rounded-[1.75rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("premiumNav")}
           </p>
           <h2 className="mt-3 text-2xl font-semibold text-white">
@@ -246,7 +246,7 @@ export function LuckyDaysOverview() {
   if (!isKnownSign(sunSign)) {
     return (
       <section className="rounded-[2rem] border border-border bg-card/90 p-8">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("luckyDaysV2HeroEyebrow")}
         </p>
         <h2 className="mt-3 text-2xl font-semibold text-white">
@@ -279,7 +279,7 @@ export function LuckyDaysOverview() {
       {/* Block 1 — Hero. Month + sign glyph + qualitative monthly theme. */}
       <section className="rounded-[2rem] border border-border bg-card/90 p-6">
         <div className="rounded-[1.75rem] border border-[rgba(124,108,255,0.24)] bg-[rgba(124,108,255,0.12)] p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+          <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
             {t("luckyDaysV2HeroEyebrow")}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-4">
@@ -302,7 +302,7 @@ export function LuckyDaysOverview() {
             {t("luckyDaysV2Subtitle")}
           </p>
           <div className="mt-5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-gold-muted">
               {t("luckyDaysV2ThemeLabel")}
             </p>
             <p className="mt-2 text-lg font-medium text-white">
@@ -317,7 +317,7 @@ export function LuckyDaysOverview() {
           / Close) and a sign-specific paragraph. No precise dates, no
           times, no scores. */}
       <section className="rounded-[2rem] border border-border bg-card/90 p-6">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("luckyDaysV2WindowsTitle")}
         </p>
         <div className="mt-5 grid gap-4 md:grid-cols-3">
@@ -328,7 +328,7 @@ export function LuckyDaysOverview() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-dim">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-gold-muted">
                     {t(w.labelKey)}
                   </p>
                   <p className="mt-1 text-xs text-text-muted">{t(w.rangeKey)}</p>
@@ -352,7 +352,7 @@ export function LuckyDaysOverview() {
           These paragraphs are NOT pinned to any specific date — they're
           frames for the whole month. */}
       <section className="rounded-[2rem] border border-border bg-card/90 p-6">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("luckyDaysV2LensesTitle")}
         </p>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -383,7 +383,7 @@ export function LuckyDaysOverview() {
 
       {/* Block 5 — Reflection prompts. Journal-style invitations. */}
       <section className="rounded-[2rem] border border-border bg-card/90 p-6">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("luckyDaysV2ReflectTitle")}
         </p>
         <p className="mt-3 text-sm leading-7 text-text-muted">
@@ -393,7 +393,7 @@ export function LuckyDaysOverview() {
 
       {/* Block 6 — Disclaimer. */}
       <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("luckyDaysV2DisclaimerTitle")}
         </p>
         <p className="mt-2 text-sm leading-7 text-text-muted">

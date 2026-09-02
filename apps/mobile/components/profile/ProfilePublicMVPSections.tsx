@@ -190,7 +190,7 @@ const s = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
   },
   blockBody: {
     fontSize: 13,

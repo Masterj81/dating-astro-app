@@ -106,7 +106,7 @@ export default function PremiumScreen() {
     if (Platform.OS === 'web') {
       return (
         <WebTabWrapper
-          background="linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%)"
+          background="linear-gradient(180deg, #0B0B14 0%, #151A2B 50%, #1E2540 100%)"
           padding={20}
           centered
           style={{ textAlign: 'center' }}
@@ -120,7 +120,7 @@ export default function PremiumScreen() {
           <p style={{ fontSize: 16, color: '#888', margin: '0 0 16px', maxWidth: 340 }}>
             {t('paywallHeroSubtitle') || 'Unlock the cosmic insights that lead to deeper, more meaningful connections'}
           </p>
-          <p style={{ fontSize: 12, color: '#DAB56D', margin: '0 0 32px' }}>
+          <p style={{ fontSize: 12, color: '#E8C77E', margin: '0 0 32px' }}>
             {t('paywallSocialProofLineV2') || 'Designed for deeper dating, real compatibility, and better conversations'}
           </p>
 
@@ -142,7 +142,7 @@ export default function PremiumScreen() {
           <button
             onClick={() => router.push('/premium-screens/plans' as any)}
             style={{
-              background: 'linear-gradient(90deg, #e94560, #9333ea)',
+              background: 'linear-gradient(90deg, #E85D75, #8B87FF)',
               border: 'none',
               borderRadius: 16,
               padding: '16px 48px',
@@ -251,7 +251,7 @@ export default function PremiumScreen() {
             activeOpacity={0.85}
           >
             <LinearGradient
-              colors={[AppTheme.colors.coral, AppTheme.colors.cosmic]}
+              colors={[...AppTheme.gradients.ctaGold]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.subscribeGradient}
@@ -272,7 +272,7 @@ export default function PremiumScreen() {
   if (Platform.OS === 'web') {
     return (
       <WebTabWrapper
-        background="linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%)"
+        background="linear-gradient(180deg, #0B0B14 0%, #151A2B 50%, #1E2540 100%)"
         padding={20}
       >
         <div style={{ maxWidth: 920, margin: '0 auto', width: '100%' }}>
@@ -281,7 +281,7 @@ export default function PremiumScreen() {
           <h1 style={{ fontSize: 32, fontWeight: 'bold', color: '#fff', marginBottom: 8, margin: 0 }}>
             {t('cosmicHub') || 'Cosmic Hub'}
           </h1>
-          <p style={{ fontSize: 16, color: '#e94560', fontWeight: 600, margin: 0 }}>
+          <p style={{ fontSize: 16, color: '#E85D75', fontWeight: 600, margin: 0 }}>
             {isPremiumPlus ? (t('cosmicMember') || 'Cosmic Member') : (t('celestialMember') || 'Celestial Member')}
           </p>
           <button
@@ -375,7 +375,7 @@ export default function PremiumScreen() {
                   {t(feature.key) || feature.key}
                 </span>
                 {!isPremiumPlus && (
-                  <span style={{ position: 'absolute', top: 12, right: 12, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, color: '#9333ea' }}>{'LOCKED'}</span>
+                  <span style={{ position: 'absolute', top: 12, right: 12, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, color: '#8B87FF' }}>{'LOCKED'}</span>
                 )}
               </div>
             ))}
@@ -408,7 +408,7 @@ export default function PremiumScreen() {
                 {t('unlockAllFeatures') || 'Unlock daily horoscopes, transits & more'}
               </div>
             </div>
-            <span style={{ color: '#9333ea', fontSize: 20, fontWeight: 'bold' }}>→</span>
+            <span style={{ color: '#8B87FF', fontSize: 20, fontWeight: 'bold' }}>→</span>
           </div>
         )}
         </div>
@@ -566,14 +566,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 52,
   },
   subscribeButtonText: {
-    color: '#FFFFFF',
+    // The paywall button is gold now; white on it is 1.6:1. Near-black is 12:1
+    // and makes this the most readable button in the app, which is the right
+    // place for that to be true.
+    color: AppTheme.colors.textOnGold,
     fontSize: 18,
     fontWeight: '800',
     textAlign: 'center',
     letterSpacing: 0.5,
   },
   subscribeButtonSubtext: {
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(11,11,20,0.72)',
     fontSize: 13,
     fontWeight: '500',
     textAlign: 'center',
@@ -758,7 +761,7 @@ const styles = StyleSheet.create({
   },
   sectionEyebrow: {
     ...AppTheme.type.micro,
-    color: AppTheme.colors.textMuted,
+    color: AppTheme.colors.goldMuted,
     marginBottom: AppTheme.spacing.lg,
     textTransform: 'uppercase',
     letterSpacing: 2,

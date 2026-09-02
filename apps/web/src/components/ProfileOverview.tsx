@@ -218,7 +218,7 @@ export function ProfileOverview({ profileId }: ProfileOverviewProps) {
       </section>
 
       <section className="rounded-[2rem] border border-border bg-card/90 p-6">
-        <p className="text-xs uppercase tracking-[0.24em] text-text-dim">
+        <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("profileSummaryLabel")}
         </p>
         <h2 className="mt-3 text-2xl font-semibold text-white">
