@@ -64,6 +64,13 @@ jobs:
       - name: Validate web onboarding guards
         run: npm run validate:web-onboarding
 
+      # The column list a client selects from discoverable_profiles is a string
+      # on one side and DDL on the other, and nothing else in this pipeline
+      # reads both. When they drifted on 23 May 2026, opening a profile answered
+      # 400 on both platforms for three months while Discover kept working.
+      - name: Validate profile read contract
+        run: npm run validate:profile-reads
+
       - name: Lint
         run: npm run lint
 
