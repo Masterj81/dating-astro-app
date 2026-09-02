@@ -26,7 +26,6 @@ import {
   signsOnCusps,
   type BirthDataState,
 } from '@astro/shared/astrology';
-import AuthBrandMark from '../../components/AuthBrandMark';
 import NatalChartWheel from '../../components/NatalChartWheel';
 import PremiumGate from '../../components/PremiumGate';
 import PlanetGlyph from '../../components/ui/PlanetGlyph';
@@ -571,28 +570,6 @@ function NatalChartScreenContent() {
           </View>
         </View>
       )}
-
-      {/* Chart Wheel Visual.
-          Each sign glyph is followed by U+FE0E (text variation selector)
-          so the codepoint is forced into text presentation, not colored
-          emoji. Bounding box is identical across all twelve symbols. */}
-      <View style={styles.chartWheel}>
-        <View style={styles.wheelOuter}>
-          <View style={styles.wheelInner}>
-            <AuthBrandMark size={58} />
-          </View>
-          <Text accessibilityLabel="Aries" style={[styles.wheelSign, { top: 5, left: '45%' }]}>{'♈︎'}</Text>
-          <Text accessibilityLabel="Taurus" style={[styles.wheelSign, { top: '15%', right: '10%' }]}>{'♉︎'}</Text>
-          <Text accessibilityLabel="Gemini" style={[styles.wheelSign, { top: '40%', right: 0 }]}>{'♊︎'}</Text>
-          <Text accessibilityLabel="Cancer" style={[styles.wheelSign, { bottom: '40%', right: 0 }]}>{'♋︎'}</Text>
-          <Text accessibilityLabel="Leo" style={[styles.wheelSign, { bottom: '15%', right: '10%' }]}>{'♌︎'}</Text>
-          <Text accessibilityLabel="Virgo" style={[styles.wheelSign, { bottom: 5, left: '45%' }]}>{'♍︎'}</Text>
-          <Text accessibilityLabel="Libra" style={[styles.wheelSign, { bottom: '15%', left: '10%' }]}>{'♎︎'}</Text>
-          <Text accessibilityLabel="Scorpio" style={[styles.wheelSign, { bottom: '40%', left: 0 }]}>{'♏︎'}</Text>
-          <Text accessibilityLabel="Sagittarius" style={[styles.wheelSign, { top: '40%', left: 0 }]}>{'♐︎'}</Text>
-          <Text accessibilityLabel="Capricorn" style={[styles.wheelSign, { top: '15%', left: '10%' }]}>{'♑︎'}</Text>
-        </View>
-      </View>
 
       {/* Editorial reminder — sits above the Planetary Positions list so
           the user reads the framing before tapping into a placement. */}
@@ -1158,36 +1135,6 @@ const styles = StyleSheet.create({
   birthInfoValue: {
     fontSize: 15,
     color: AppTheme.colors.textSecondary,
-  },
-  chartWheel: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  wheelOuter: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    borderWidth: 2,
-    borderColor: 'rgba(201, 134, 146, 0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  wheelInner: {
-    width: 108,
-    height: 108,
-    borderRadius: 54,
-    backgroundColor: 'rgba(201, 134, 146, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(201, 134, 146, 0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  wheelSign: {
-    position: 'absolute',
-    fontSize: 16,
-    color: AppTheme.colors.coral,
-    opacity: 0.7,
   },
   section: {
     paddingHorizontal: 20,
