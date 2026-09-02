@@ -204,7 +204,7 @@ Thank you for the review. To clarify: JUNO is a synastry-led relationship discov
 |---|---|---|
 | Canonical public website | `https://www.junosynastry.com` | The JUNO brand domain. Used as the App Store / Play Store **Marketing URL**, **Support URL** (`/contact`) and **Privacy Policy URL** (`/privacy`). Apex `junosynastry.com` must 301-redirect to `www`. |
 | Legacy public website | `astrodatingapp.com` | Kept live as a **301 transition redirect** to `www.junosynastry.com`. No longer the canonical domain in any store/marketing surface. |
-| Web-app subdomain (PWA) | `app.astrodatingapp.com` | **Operational identifier — unchanged.** This is the host users load the PWA from; the OAuth redirect allowlist, Supabase edge-function CORS allowlist and middleware `APP_HOSTS` are all keyed to it. Moving it requires DNS + provider-config changes and is tracked as a separate manual action. |
+| Web-app subdomain (PWA) | `https://app.junosynastry.com` | Canonical host users load the PWA from. `app.astrodatingapp.com` remains allowed during the transition so existing users and links keep working. |
 
 App Store Connect URLs to use at submission:
 

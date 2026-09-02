@@ -25,12 +25,20 @@ const sourceDir = path.join(root, "apps", "web", "public", "screenshots");
 const outputDir = path.join(root, "apps", "mobile", "store-assets", "app-store-real", "iphone-6-9");
 const iconPath = path.join(root, "apps", "mobile", "assets", "images", "icon.png");
 
-const WIDTH = 1320;
-const HEIGHT = 2868;
+const WIDTH = 1284;
+const HEIGHT = 2778;
 
-const GOLD = "#e9c873";
-const BLUE = "#7aa7ff";
-const IVORY = "#e7e9ee";
+const BG = "#090b13";
+const BG_SECONDARY = "#141a2b";
+const BG_TERTIARY = "#202946";
+const PANEL = "#101522";
+const BORDER = "#343a52";
+const CORAL = "#e85d75";
+const PURPLE = "#7681ff";
+const BLUE = "#4da7ff";
+const IVORY = "#f7f4ee";
+const MUTED = "#c9c2b8";
+const DIM = "#a09b94";
 
 const shots = [
   {
@@ -38,21 +46,21 @@ const shots = [
     output: "01-synastry-insight.png",
     title: "Explore connection through synastry",
     subtitle: "See the synastry between two birth charts before any conversation begins.",
-    accent: GOLD,
+    accent: CORAL,
   },
   {
     source: "premium-cosmic.png",
     output: "02-chart-context.png",
     title: "Turn your chart into daily guidance",
     subtitle: "Explore horoscopes, transit reflections and planning windows in one calm workspace.",
-    accent: BLUE,
+    accent: PURPLE,
   },
   {
     source: "discover.png",
     output: "03-browse-with-intention.png",
     title: "Browse relationship profiles with intention",
     subtitle: "One relationship profile at a time, with calm and deliberate navigation.",
-    accent: GOLD,
+    accent: CORAL,
   },
   {
     source: "chat.png",
@@ -66,7 +74,7 @@ const shots = [
     output: "05-relationship-dynamics.png",
     title: "Unlock your full astrology toolkit",
     subtitle: "Open your full natal chart, advanced synastry and daily horoscope in one place.",
-    accent: GOLD,
+    accent: PURPLE,
   },
 ];
 
@@ -107,9 +115,9 @@ function frameSvg(shot, number) {
 <svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#11141b"/>
-      <stop offset="0.5" stop-color="#0c0e13"/>
-      <stop offset="1" stop-color="#08090b"/>
+      <stop offset="0" stop-color="${BG}"/>
+      <stop offset="0.52" stop-color="${BG_SECONDARY}"/>
+      <stop offset="1" stop-color="${BG_TERTIARY}"/>
     </linearGradient>
     <radialGradient id="glow" cx="50%" cy="28%" r="70%">
       <stop offset="0" stop-color="${shot.accent}" stop-opacity="0.24"/>
@@ -129,15 +137,15 @@ function frameSvg(shot, number) {
   <text x="1244" y="132" text-anchor="end" fill="${shot.accent}" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="800">${String(number).padStart(2, "0")}</text>
 
   ${textBlock(shot.title, 76, 245, 1168, 76, IVORY, 1.08, 900)}
-  ${textBlock(shot.subtitle, 76, subtitleY, 1080, 37, "#cdd0d9", 1.24, 500)}
+  ${textBlock(shot.subtitle, 76, subtitleY, 1080, 37, MUTED, 1.24, 500)}
 
   <g filter="url(#shadow)">
-    <rect x="260" y="875" width="800" height="1748" rx="94" fill="#0a0a12" stroke="#2c2a3e" stroke-width="5"/>
-    <rect x="300" y="940" width="720" height="1558" rx="54" fill="#05050a"/>
+    <rect x="260" y="875" width="800" height="1748" rx="94" fill="${PANEL}" stroke="${BORDER}" stroke-width="5"/>
+    <rect x="300" y="940" width="720" height="1558" rx="54" fill="${BG}"/>
     <rect x="550" y="904" width="220" height="36" rx="18" fill="#030309"/>
   </g>
 
-  <text x="${WIDTH / 2}" y="2778" text-anchor="middle" fill="#8b8f9c" font-family="Inter, Arial, sans-serif" font-size="25">Explore connection through synastry</text>
+  <text x="${WIDTH / 2}" y="2778" text-anchor="middle" fill="${DIM}" font-family="Inter, Arial, sans-serif" font-size="25">Explore connection through synastry</text>
 </svg>`;
 }
 
