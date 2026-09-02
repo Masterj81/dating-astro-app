@@ -2164,5 +2164,14 @@
   "natalWheelAriaLabel": "出生図のホイール：星座、天体、アングル、ハウス。",
   "natalWheelNeedBirthTime": "出生時刻と出生地を追加すると、ハウスとアングルが表示されます。",
   "natalWheelNeedBirthPlace": "出生時刻は保存されています。出生地を追加すると、ハウスとアングルが表示されます。",
-  "natalWheelNoChart": "このアカウントのチャートはまだ読み取れていません。"
+  "natalWheelNoChart": "このアカウントのチャートはまだ読み取れていません。",
+  "tarotV2EnglishCorpusNote": "カードの名前と意味は、今のところ英語で書かれています。それ以外の部分はあなたの言語で表示されます。",
+  "tarotV2PositionPresent": "いま在るもの",
+  "tarotV2PositionAttention": "注意を求めるもの",
+  "tarotV2PositionConnection": "つながりを支えるもの",
+  "tarotV2PositionAdvice": "Cosmic アドバイス",
+  "tarotV2Title": "あなたのタロットリフレクション",
+  "tarotV2Subtitle": "予言ではなく、リフレクションのための象徴的なスプレッド。",
+  "tarotV2ReversedSuffix": "逆位置",
+  "tarotV2TapToReveal": "タップして表示"
 }

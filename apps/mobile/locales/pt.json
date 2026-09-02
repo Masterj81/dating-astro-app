@@ -2164,5 +2164,14 @@
   "natalWheelAriaLabel": "A roda do seu mapa natal: signos, planetas, ângulos e casas.",
   "natalWheelNeedBirthTime": "Adicione a sua hora e cidade de nascimento para ver as casas e os ângulos.",
   "natalWheelNeedBirthPlace": "A sua hora de nascimento está guardada. Adicione a sua cidade de nascimento para ver as casas e os ângulos.",
-  "natalWheelNoChart": "Ainda não conseguimos ler um mapa para esta conta."
+  "natalWheelNoChart": "Ainda não conseguimos ler um mapa para esta conta.",
+  "tarotV2EnglishCorpusNote": "Os nomes e significados das cartas estão escritos em inglês por enquanto. O resto da leitura segue o teu idioma.",
+  "tarotV2PositionPresent": "O que está presente",
+  "tarotV2PositionAttention": "O que pede atenção",
+  "tarotV2PositionConnection": "O que sustenta a conexão",
+  "tarotV2PositionAdvice": "Conselho cósmico",
+  "tarotV2Title": "Sua reflexão de tarô",
+  "tarotV2Subtitle": "Uma tiragem simbólica para reflexão, não previsão.",
+  "tarotV2ReversedSuffix": "Invertida",
+  "tarotV2TapToReveal": "Toque para revelar"
 }

@@ -2164,5 +2164,14 @@
   "natalWheelAriaLabel": "عجلة خريطتك الفلكية: الأبراج والكواكب والزوايا والبيوت.",
   "natalWheelNeedBirthTime": "أضِف ساعة ميلادك ومدينته لرؤية البيوت والزوايا.",
   "natalWheelNeedBirthPlace": "وقت ميلادك محفوظ. أضِف مدينة ميلادك لرؤية البيوت والزوايا.",
-  "natalWheelNoChart": "لم نتمكّن بعد من قراءة خريطة لهذا الحساب."
+  "natalWheelNoChart": "لم نتمكّن بعد من قراءة خريطة لهذا الحساب.",
+  "tarotV2EnglishCorpusNote": "أسماء البطاقات ومعانيها مكتوبة بالإنجليزية في الوقت الحالي، أما بقية القراءة فتتبع لغتك.",
+  "tarotV2PositionPresent": "ما هو حاضر",
+  "tarotV2PositionAttention": "ما يطلب الانتباه",
+  "tarotV2PositionConnection": "ما يدعم التواصل",
+  "tarotV2PositionAdvice": "نصيحة كونية",
+  "tarotV2Title": "تأمّلك بالتاروت",
+  "tarotV2Subtitle": "توزيع رمزي للتأمّل، لا للتنبؤ.",
+  "tarotV2ReversedSuffix": "معكوس",
+  "tarotV2TapToReveal": "انقر للكشف"
 }

@@ -1906,6 +1906,7 @@
     "tarotLockedBody": "Tarot readings are available with Celestial (monthly) or Cosmic (weekly) plans.",
     "tarotV2Title": "Your Tarot Reflection",
     "tarotV2Subtitle": "A symbolic spread for reflection, not prediction.",
+    "tarotV2EnglishCorpusNote": "Card names and meanings are written in English for now. The rest of the reading follows your language.",
     "tarotV2WeeklyPeriodLabel": "Weekly tarot reflection",
     "tarotV2MonthlyPeriodLabel": "Monthly tarot reflection",
     "tarotV2ModeLove": "Love",
