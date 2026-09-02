@@ -86,7 +86,10 @@ export const AppTheme = {
 
     success: '#59C28B',
     warning: '#F0B35A',
-    danger: '#FF6B6B',
+    // Was #FF6B6B, a hot orange-red left over from the pink era, against
+    // #F2707F on web. Both read fine on the canvas (7.1:1 and 6.9:1), so
+    // this is coherence, not legibility: one product, one danger.
+    danger: '#F2707F',
 
     heroStart: '#0B0B14',
     heroMid: '#16192A',

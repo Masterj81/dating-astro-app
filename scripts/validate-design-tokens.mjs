@@ -81,6 +81,11 @@ const SHARED_COLORS = {
   coral: ['--color-coral', 'coralVivid'],
   purple: ['--color-purple', 'cosmic'],
   purpleDeep: ['--color-purple-deep', 'cosmicDeep'],
+  // Unasserted until 2 Sep 2026, and duly divergent: #F2707F against
+  // #FF6B6B. Web declares it and uses it nowhere — its 32 error messages
+  // are a raw #ffd0d7 literal on an accent-tinted card, so the platforms
+  // disagree about what an error looks like as well as what red is.
+  danger: ['--color-danger', 'danger'],
 };
 
 function cssHex(prop) {
@@ -214,7 +219,7 @@ function contrast(a, b) {
 // on top can be read, not whether the fill can.
 const MIN = 4.5;
 /** Tokens rendered as TEXT, measured against the card they sit on. */
-const AS_TEXT = ['gold', 'goldSoft', 'goldMuted', 'goldAntique', 'accent', 'purple'];
+const AS_TEXT = ['gold', 'goldSoft', 'goldMuted', 'goldAntique', 'accent', 'purple', 'danger'];
 /** Tokens rendered as a FILL, measured against the label that sits on them. */
 // `goldDeep` is only ever the far end of the premium gradient, which is a
 // gold surface: its label is near-black like the rest of that button, not
