@@ -43,6 +43,20 @@ type NatalChartWheelProps = {
   size?: number;
 };
 
+/**
+ * U+FE0E after every glyph — the text variation selector.
+ *
+ * Without it, most phones and Windows render U+2648-U+2653 (and Venus and
+ * Mars) as colour emoji: the glyph ignores `fill`, arrives in the platform's
+ * palette, and sits in a tile that fights the ring. `ZodiacGlyph.tsx` has
+ * carried this fix since it was written; this wheel did not use that component
+ * and so shipped the bare characters.
+ *
+ * Applied to the maps, not to the render sites: 22 characters across four
+ * call sites, and one missed site is a single emoji tile in a gold wheel.
+ */
+const VS_TEXT = "\u{FE0E}";
+
 const GLYPHS: Record<string, string> = {
   sun: "☉",
   moon: "☽",
@@ -78,6 +92,11 @@ const ASPECT_STROKE: Record<WheelAspect["kind"], string> = {
   challenging: "rgba(201, 134, 146, 0.50)",
   intense: "rgba(240, 214, 160, 0.55)",
 };
+
+/** A glyph in text presentation, or the fallback untouched. */
+function textGlyph(glyph: string | undefined, fallback: string): string {
+  return glyph ? `${glyph}${VS_TEXT}` : fallback;
+}
 
 export function NatalChartWheel({
   chart,
@@ -172,7 +191,7 @@ export function NatalChartWheel({
                 fontSize={geometry.size * 0.042}
                 fill="rgba(232, 199, 126, 0.72)"
               >
-                {SIGN_GLYPHS[sector.sign] ?? sector.sign.slice(0, 2)}
+                {textGlyph(SIGN_GLYPHS[sector.sign], sector.sign.slice(0, 2))}
               </text>
             </g>
           ))}
@@ -281,7 +300,7 @@ export function NatalChartWheel({
                   fontSize={geometry.size * 0.05}
                   fill="#ffffff"
                 >
-                  {GLYPHS[planet.key] ?? "·"}
+                  {textGlyph(GLYPHS[planet.key], "·")}
                   <title>
                     {`${t(`natalPlanet_${planet.key}`)} — ${planet.sign} ${planet.degree}°`}
                   </title>

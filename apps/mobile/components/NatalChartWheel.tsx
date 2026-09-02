@@ -59,6 +59,15 @@ type NatalChartWheelProps = {
   };
 };
 
+/**
+ * U+FE0E after every glyph — the text variation selector. Without it, Android
+ * renders the sign characters (and Venus and Mars) as colour emoji, which
+ * ignores the `color` style entirely. The web wheel carries the same fix; on
+ * mobile it matters more, because a React Native `Text` gives no font
+ * fallback to control.
+ */
+const VS_TEXT = '\u{FE0E}';
+
 const GLYPHS: Record<string, string> = {
   sun: '☉', moon: '☽', mercury: '☿', venus: '♀', mars: '♂',
   jupiter: '♃', saturn: '♄', uranus: '♅', neptune: '♆', pluto: '♇',
@@ -152,6 +161,11 @@ function Mark({
   );
 }
 
+/** A glyph in text presentation, or the fallback untouched. */
+function textGlyph(glyph: string | undefined, fallback: string): string {
+  return glyph ? `${glyph}${VS_TEXT}` : fallback;
+}
+
 export default function NatalChartWheel({
   chart,
   rising,
@@ -221,7 +235,7 @@ export default function NatalChartWheel({
               color="rgba(232, 199, 126, 0.72)"
               fontSize={size * 0.042}
             >
-              {SIGN_GLYPHS[sector.sign] ?? sector.sign.slice(0, 2)}
+              {textGlyph(SIGN_GLYPHS[sector.sign], sector.sign.slice(0, 2))}
             </Mark>
           </View>
         ))}
@@ -282,7 +296,7 @@ export default function NatalChartWheel({
                 />
               ) : null}
               <Mark at={planet.glyph} color="#ffffff" fontSize={size * 0.05}>
-                {GLYPHS[planet.key] ?? '·'}
+                {textGlyph(GLYPHS[planet.key], '·')}
               </Mark>
             </View>
           );
