@@ -22,11 +22,16 @@ import { usePremium } from '../../contexts/PremiumContext';
 import {
   generateReading,
   getCardImageUrl,
-  getCardMeaning,
-  getPositionLabel,
+  tarotBucketUrl,
   type ReadingMode,
+  type SpreadPosition,
   type TarotReading,
-} from '../../services/tarotEngine';
+} from '@astro/shared/tarot';
+
+// The bucket root, built once. The old engine read EXPO_PUBLIC_SUPABASE_URL
+// itself; the shared package takes it as an argument so it holds no project's
+// URL of its own.
+const ART_BASE = tarotBucketUrl(process.env.EXPO_PUBLIC_SUPABASE_URL || '');
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = Math.min((SCREEN_WIDTH - 80) / 3, 120);
@@ -40,7 +45,20 @@ function TarotScreenContent() {
   const [allRevealed, setAllRevealed] = useState(false);
   const { user } = useAuth();
   const { tier } = usePremium();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+
+  // The canonical positions replace past/present/future. Their labels are the
+  // same sentences the web has shipped since V2, so both platforms describe
+  // the same spread in the same words — and neither claims to show a future.
+  const positionLabel = (position: SpreadPosition): string => {
+    const key = {
+      present: 'tarotV2PositionPresent',
+      attention: 'tarotV2PositionAttention',
+      connection: 'tarotV2PositionConnection',
+      advice: 'tarotV2PositionAdvice',
+    }[position];
+    return t(key) || key;
+  };
   const insets = useSafeAreaInsets();
 
   const isCosmic = tier === 'premium_plus';
@@ -59,7 +77,7 @@ function TarotScreenContent() {
       setLoading(false);
       return;
     }
-    const result = generateReading(user.id, mode, period);
+    const result = generateReading({ userId: user.id, mode, period, locale: language });
     setReading(result);
     setRevealedCards(new Set());
     setAllRevealed(false);
@@ -100,7 +118,10 @@ function TarotScreenContent() {
     return `${t(months[now.getMonth()]) || months[now.getMonth()]} ${now.getFullYear()}`;
   };
 
-  const cardsToShow = reading?.cards.slice(0, isCosmic ? 4 : 3) ?? [];
+  // Cosmic draws four, Celestial three. That rule now lives in the shared
+  // engine (`CARDS_PER_PERIOD`) rather than being re-derived from `isCosmic`
+  // here and, separately, from the tier on web.
+  const cardsToShow = reading?.cards ?? [];
 
   if (loading) {
     return (
@@ -167,7 +188,7 @@ function TarotScreenContent() {
         {/* Cards Row */}
         <View style={styles.cardsRow}>
           {cardsToShow.map((entry, index) => {
-            const posInfo = getPositionLabel(entry.position);
+            const label = positionLabel(entry.position);
             const frontInterpolate = flipAnims[index].interpolate({
               inputRange: [0, 0.5, 1],
               outputRange: ['0deg', '90deg', '0deg'],
@@ -184,7 +205,7 @@ function TarotScreenContent() {
             return (
               <View key={entry.position} style={styles.cardSlot}>
                 <Text style={styles.positionLabel}>
-                  {posInfo.emoji} {t(`tarot_${entry.position}`) || posInfo.label}
+                  {label}
                 </Text>
                 <TouchableOpacity
                   activeOpacity={0.8}
@@ -215,7 +236,7 @@ function TarotScreenContent() {
                       style={[styles.cardFace, styles.cardFront, { opacity: frontOpacity }]}
                     >
                       <Image
-                        source={{ uri: getCardImageUrl(entry.card.imageFile) }}
+                        source={{ uri: getCardImageUrl(ART_BASE, entry.card.imageFile) }}
                         style={[
                           styles.cardImage,
                           entry.card.reversed && styles.cardReversed,
@@ -242,14 +263,19 @@ function TarotScreenContent() {
             <Text style={styles.sectionTitle}>
               {t('yourReading') || 'Your Reading'}
             </Text>
+            {reading.isFallback ? (
+              <Text style={styles.corpusNote}>
+                {t('tarotV2EnglishCorpusNote')}
+              </Text>
+            ) : null}
             {cardsToShow.map((entry) => {
-              const posInfo = getPositionLabel(entry.position);
-              const meaning = getCardMeaning(entry.card, mode);
+              const label = positionLabel(entry.position);
+              const meaning = entry.card.meaning;
               return (
                 <View key={entry.position} style={styles.interpretationCard}>
                   <View style={styles.interpretationHeader}>
                     <Text style={styles.interpretationPosition}>
-                      {posInfo.emoji} {t(`tarot_${entry.position}`) || posInfo.label}
+                      {label}
                     </Text>
                     <Text style={styles.interpretationCardName}>
                       {entry.card.name}
@@ -443,6 +469,21 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 16,
     textAlign: 'center',
+  },
+  // Shown only when the card corpus falls back to English, which is every
+  // locale except EN and FR. Muted on purpose: it is an honest footnote, not
+  // an error.
+  corpusNote: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: AppTheme.colors.textMuted,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.goldBorder,
+    backgroundColor: AppTheme.colors.goldWash,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 12,
   },
   interpretationCard: {
     backgroundColor: AppTheme.colors.panel,

@@ -1,30 +1,33 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
 import {
   generateReading,
   getCardImageUrl,
-  getCardMeaning,
+  tarotBucketUrl,
+  type DrawnCard,
   type ReadingMode,
   type SpreadPosition,
-  type TarotCard,
   type TarotReading,
   type TarotSuit,
-} from "@/lib/tarotEngine";
+} from "@astro/shared/tarot";
 
 type RevealState = Record<number, boolean>;
 
-// The seed order in tarotEngine is past/present/future/advice. V2 re-labels
-// those positions editorially without touching the engine — same draw, new
-// language. Maps the legacy SpreadPosition to the V2 i18n key suffix.
+// The canonical positions now say what they mean, so this map is a plain
+// lookup rather than the old translation from past/present/future. That
+// indirection existed because the engine still called the first slot "past"
+// while the chrome called it "what is present" — two names for one thing,
+// which is how a reader ends up being shown a prediction the product does not
+// make.
 const POSITION_KEY: Record<SpreadPosition, string> = {
-  past: "tarotV2PositionPresent",
-  present: "tarotV2PositionAttention",
-  future: "tarotV2PositionConnection",
+  present: "tarotV2PositionPresent",
+  attention: "tarotV2PositionAttention",
+  connection: "tarotV2PositionConnection",
   advice: "tarotV2PositionAdvice",
 };
 
@@ -33,10 +36,10 @@ const POSITION_KEY: Record<SpreadPosition, string> = {
 // to a different question. Splitting per position keeps the lens framing
 // reflective without writing 78 card-specific lenses.
 const LENS_KEY: Record<SpreadPosition, Record<ReadingMode, string>> = {
-  past:    { love: "tarotV2DatingLensPresent",    general: "tarotV2ReflectionLensPresent" },
-  present: { love: "tarotV2DatingLensAttention",  general: "tarotV2ReflectionLensAttention" },
-  future:  { love: "tarotV2DatingLensConnection", general: "tarotV2ReflectionLensConnection" },
-  advice:  { love: "tarotV2DatingLensAdvice",     general: "tarotV2ReflectionLensAdvice" },
+  present:    { love: "tarotV2DatingLensPresent",    general: "tarotV2ReflectionLensPresent" },
+  attention:  { love: "tarotV2DatingLensAttention",  general: "tarotV2ReflectionLensAttention" },
+  connection: { love: "tarotV2DatingLensConnection", general: "tarotV2ReflectionLensConnection" },
+  advice:     { love: "tarotV2DatingLensAdvice",     general: "tarotV2ReflectionLensAdvice" },
 };
 
 const SUIT_KEY: Record<TarotSuit, string> = {
@@ -51,6 +54,7 @@ type ServerGate = { allowed: boolean; reason: string | null };
 
 export function TarotReadingOverview() {
   const t = useTranslations("webApp");
+  const locale = useLocale();
   const [state, setState] = useState<WebAccountState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -116,8 +120,8 @@ export function TarotReadingOverview() {
 
   const reading = useMemo<TarotReading | null>(() => {
     if (!state?.userId || !period) return null;
-    return generateReading(state.userId, mode, period);
-  }, [state?.userId, mode, period]);
+    return generateReading({ userId: state.userId, mode, period, locale });
+  }, [state?.userId, mode, period, locale]);
 
   useEffect(() => {
     setRevealed({});
@@ -208,11 +212,10 @@ export function TarotReadingOverview() {
   // --- Premium reading ---
   if (!reading) return null;
 
-  // Celestial (premium) sees 3 cards (no advice). Cosmic (premium_plus) sees all 4.
-  const visibleCards =
-    state.tier === "premium_plus"
-      ? reading.cards
-      : reading.cards.filter((c) => c.position !== "advice");
+  // Celestial (premium) draws 3, Cosmic (premium_plus) draws 4. That rule now
+  // lives in the shared engine (`CARDS_PER_PERIOD`) instead of being applied
+  // once here and again, differently spelled, in the mobile screen.
+  const visibleCards = reading.cards;
 
   const tierLabelKey =
     state.tier === "premium_plus" ? "tarotV2TierCosmic" : "tarotV2TierCelestial";
@@ -247,7 +250,10 @@ export function TarotReadingOverview() {
       ? "grid-cols-2 md:grid-cols-4"
       : "grid-cols-1 sm:grid-cols-3";
 
-  const suitLabel = (card: TarotCard) => t(SUIT_KEY[card.suit]);
+  const suitLabel = (card: DrawnCard) => t(SUIT_KEY[card.suit]);
+  // The bucket root used to be a hard-coded project URL inside the engine,
+  // which would have been silently wrong against any other environment.
+  const artBase = tarotBucketUrl(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "");
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
@@ -336,7 +342,7 @@ export function TarotReadingOverview() {
                   <div className="absolute inset-0 rounded-2xl border border-border overflow-hidden [backface-visibility:hidden] [transform:rotateY(180deg)]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={getCardImageUrl(entry.card.imageFile)}
+                      src={getCardImageUrl(artBase, entry.card.imageFile)}
                       alt={entry.card.name}
                       className={`h-full w-full object-cover ${
                         entry.card.reversed ? "rotate-180" : ""
@@ -362,6 +368,17 @@ export function TarotReadingOverview() {
         {/* Interpretations — shown after all cards revealed */}
         {allRevealed && (
           <div className="mt-6 space-y-4">
+            {reading.isFallback ? (
+              // Say it rather than quietly serving English under a Japanese
+              // interface. `lang` is set on the card text itself so a screen
+              // reader switches voice instead of reading English with the
+              // page's pronunciation — the same treatment the Conversation
+              // Guide corpus gets.
+              <p className="rounded-2xl border border-gold-border bg-gold-wash px-4 py-3 text-xs leading-6 text-text-muted">
+                {t("tarotV2EnglishCorpusNote")}
+              </p>
+            ) : null}
+
             <div className="rounded-[1.75rem] border border-[rgba(201,134,146,0.24)] bg-[rgba(201,134,146,0.10)] p-5">
               <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                 {t("tarotV2InterpretationTitle")}
@@ -382,7 +399,9 @@ export function TarotReadingOverview() {
                       {t(POSITION_KEY[entry.position])}
                     </p>
                     <h3 className="mt-2 text-xl font-semibold text-white">
-                      {entry.card.name}
+                      <span lang={entry.card.isFallback ? "en" : undefined}>
+                        {entry.card.name}
+                      </span>
                       {entry.card.reversed
                         ? ` (${t("tarotV2ReversedSuffix")})`
                         : ""}
@@ -392,8 +411,11 @@ export function TarotReadingOverview() {
                     {suitLabel(entry.card)}
                   </div>
                 </div>
-                <p className="mt-4 text-sm leading-7 text-text-muted">
-                  {getCardMeaning(entry.card, mode)}
+                <p
+                  className="mt-4 text-sm leading-7 text-text-muted"
+                  lang={entry.card.isFallback ? "en" : undefined}
+                >
+                  {entry.card.meaning}
                 </p>
                 <div className="mt-4 rounded-2xl border border-border bg-card/70 p-4">
                   <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">

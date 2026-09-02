@@ -2164,5 +2164,14 @@
   "natalWheelAriaLabel": "你的本命盘轮：星座、行星、轴点与宫位。",
   "natalWheelNeedBirthTime": "补充出生时间与出生城市，即可看到宫位与轴点。",
   "natalWheelNeedBirthPlace": "出生时间已保存。补充出生城市即可看到宫位与轴点。",
-  "natalWheelNoChart": "我们尚未能读取此账户的星盘。"
+  "natalWheelNoChart": "我们尚未能读取此账户的星盘。",
+  "tarotV2EnglishCorpusNote": "牌名与牌义目前以英文撰写，其余内容会跟随你的语言显示。",
+  "tarotV2PositionPresent": "当下呈现",
+  "tarotV2PositionAttention": "需要留意",
+  "tarotV2PositionConnection": "支持联结",
+  "tarotV2PositionAdvice": "宇宙建议",
+  "tarotV2Title": "你的塔罗反思",
+  "tarotV2Subtitle": "一组用于反思而非预测的象征性牌阵。",
+  "tarotV2ReversedSuffix": "逆位",
+  "tarotV2TapToReveal": "点击翻开"
 }

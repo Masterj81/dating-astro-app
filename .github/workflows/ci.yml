@@ -71,6 +71,13 @@ jobs:
       - name: Validate profile read contract
         run: npm run validate:profile-reads
 
+      # The 78-card deck lived twice until 2 Sep 2026 and the two copies had
+      # already drifted apart in prose. This guards the single corpus, its
+      # reflective voice in both written languages, and the fact that neither
+      # app has grown a private deck back.
+      - name: Validate tarot corpus and voice
+        run: npm run validate:tarot-content
+
       - name: Lint
         run: npm run lint
 

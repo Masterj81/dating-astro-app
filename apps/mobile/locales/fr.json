@@ -2164,5 +2164,14 @@
   "natalWheelAriaLabel": "La roue de votre thème natal : signes du zodiaque, planètes, angles et maisons.",
   "natalWheelNeedBirthTime": "Ajoutez votre heure et votre ville de naissance pour voir les maisons et les angles.",
   "natalWheelNeedBirthPlace": "Votre heure de naissance est enregistrée. Ajoutez votre ville de naissance pour voir les maisons et les angles.",
-  "natalWheelNoChart": "Nous n'avons pas encore pu lire de thème pour ce compte."
+  "natalWheelNoChart": "Nous n'avons pas encore pu lire de thème pour ce compte.",
+  "tarotV2EnglishCorpusNote": "Les noms et significations des cartes sont écrits en français. Le reste du tirage suit ta langue.",
+  "tarotV2PositionPresent": "Ce qui est présent",
+  "tarotV2PositionAttention": "Ce qui demande ton attention",
+  "tarotV2PositionConnection": "Ce qui soutient la connexion",
+  "tarotV2PositionAdvice": "Conseil cosmique",
+  "tarotV2Title": "Ton tirage symbolique",
+  "tarotV2Subtitle": "Un tirage symbolique pour réfléchir, pas prédire.",
+  "tarotV2ReversedSuffix": "Inversée",
+  "tarotV2TapToReveal": "Touche pour révéler"
 }

@@ -2164,5 +2164,14 @@
   "natalWheelAriaLabel": "Your natal chart wheel: zodiac signs, planets, angles and houses.",
   "natalWheelNeedBirthTime": "Add your birth time and city to see houses and angles.",
   "natalWheelNeedBirthPlace": "Your birth time is saved. Add your birth city to see houses and angles.",
-  "natalWheelNoChart": "We could not read a chart for this account yet."
+  "natalWheelNoChart": "We could not read a chart for this account yet.",
+  "tarotV2EnglishCorpusNote": "Card names and meanings are written in English for now. The rest of the reading follows your language.",
+  "tarotV2PositionPresent": "What is present",
+  "tarotV2PositionAttention": "What asks for attention",
+  "tarotV2PositionConnection": "What supports connection",
+  "tarotV2PositionAdvice": "Cosmic advice",
+  "tarotV2Title": "Your Tarot Reflection",
+  "tarotV2Subtitle": "A symbolic spread for reflection, not prediction.",
+  "tarotV2ReversedSuffix": "Reversed",
+  "tarotV2TapToReveal": "Tap to reveal"
 }

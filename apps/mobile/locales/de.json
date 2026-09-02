@@ -2164,5 +2164,14 @@
   "natalWheelAriaLabel": "Das Rad deines Geburtshoroskops: Tierkreiszeichen, Planeten, Achsen und Häuser.",
   "natalWheelNeedBirthTime": "Ergänze Geburtszeit und Geburtsort, um Häuser und Achsen zu sehen.",
   "natalWheelNeedBirthPlace": "Deine Geburtszeit ist gespeichert. Ergänze deinen Geburtsort, um Häuser und Achsen zu sehen.",
-  "natalWheelNoChart": "Für dieses Konto konnten wir noch kein Horoskop lesen."
+  "natalWheelNoChart": "Für dieses Konto konnten wir noch kein Horoskop lesen.",
+  "tarotV2EnglishCorpusNote": "Die Kartennamen und ihre Bedeutungen sind vorerst auf Englisch verfasst. Der Rest der Lesung folgt deiner Sprache.",
+  "tarotV2PositionPresent": "Was gegenwärtig ist",
+  "tarotV2PositionAttention": "Was Aufmerksamkeit verlangt",
+  "tarotV2PositionConnection": "Was die Verbindung stützt",
+  "tarotV2PositionAdvice": "Kosmischer Rat",
+  "tarotV2Title": "Deine Tarot-Reflexion",
+  "tarotV2Subtitle": "Eine symbolische Legung zur Reflexion, keine Vorhersage.",
+  "tarotV2ReversedSuffix": "Umgekehrt",
+  "tarotV2TapToReveal": "Tippen zum Aufdecken"
 }
