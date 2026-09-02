@@ -86,6 +86,7 @@ marketingagent/posts.json
 marketingagent/schedule.json
 marketingagent/video-scripts.json
 marketingagent/training-feedback.json
+marketingagent/tiktok-analytics.json
 
 # Stray root artifacts — expo / tsc run from the monorepo root drops these
 # stubs; the real files live in apps/mobile/ and tsconfig.base.json. Anchored
@@ -93,10 +94,25 @@ marketingagent/training-feedback.json
 /app.json
 /tsconfig.json
 
-# Local research / release notes kept outside the repo
-/BigAd/docs/
+# Local research / release notes kept outside the repo.
+#
+# `/BigAd/` is 393 MB on disk. The rules below used to start at
+# `/BigAd/docs/`, so everything AROUND docs/ was still eligible for
+# `git add .` — and git cannot re-include a file whose parent directory is
+# excluded, which is why this ignores `/BigAd/*` and then walks back down to
+# the two guides rather than ignoring `/BigAd/` outright.
+/BigAd/*
 !/BigAd/docs/
 /BigAd/docs/*
 !/BigAd/docs/user-guide.md
 !/BigAd/docs/pricing-guide.md
 /Release-Checklist-48h.doc
+
+# Local working directories and business data that have no reason to be in a
+# git history. The spreadsheets are inventory pricing and a WooCommerce stock
+# export — nothing in JUNO reads them, and a commit is permanent in a way a
+# later `git rm` is not. Same list already excluded from the EAS build archive
+# in apps/mobile/.easignore, for the same reasons.
+/.tmp/
+/.tools/
+/*.xlsx

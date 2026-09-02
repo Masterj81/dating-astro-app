@@ -24,16 +24,26 @@ const root = process.cwd();
 const outputRoot = path.join(root, "apps", "mobile", "store-assets", "app-store");
 const iconPath = path.join(root, "apps", "mobile", "assets", "images", "icon.png");
 
-const GOLD = "#e9c873";
-const BLUE = "#7aa7ff";
-const IVORY = "#e7e9ee";
+const BG = "#090b13";
+const BG_SECONDARY = "#141a2b";
+const BG_TERTIARY = "#202946";
+const PANEL = "#101522";
+const CARD = "#171c2d";
+const CARD_DARK = "#0d111d";
+const BORDER = "#343a52";
+const CORAL = "#e85d75";
+const PURPLE = "#7681ff";
+const BLUE = "#4da7ff";
+const IVORY = "#f7f4ee";
+const MUTED = "#c9c2b8";
+const DIM = "#a09b94";
 
 const shots = [
   {
     slug: "01-synastry",
     title: "Explore connection through synastry",
     subtitle: "See the synastry between two birth charts before any conversation begins.",
-    accent: GOLD,
+    accent: CORAL,
     screen: "synastry",
     screenTitle: "Synastry insight",
   },
@@ -41,7 +51,7 @@ const shots = [
     slug: "02-chart-context",
     title: "See chart context before the conversation",
     subtitle: "Review birth-chart context — Sun, Moon and Rising — on every relationship profile.",
-    accent: BLUE,
+    accent: PURPLE,
     screen: "chart",
     screenTitle: "Chart context",
   },
@@ -49,7 +59,7 @@ const shots = [
     slug: "03-browse-with-intention",
     title: "Browse relationship profiles with intention",
     subtitle: "One relationship profile at a time, with calm and deliberate navigation.",
-    accent: GOLD,
+    accent: CORAL,
     screen: "browse",
     screenTitle: "Discover",
   },
@@ -65,7 +75,7 @@ const shots = [
     slug: "05-relationship-dynamics",
     title: "Understand relationship dynamics, not generic profiles",
     subtitle: "A relationship-dynamics breakdown framed by the synastry insight.",
-    accent: GOLD,
+    accent: PURPLE,
     screen: "dynamics",
     screenTitle: "Relationship dynamics",
   },
@@ -107,9 +117,9 @@ function renderShot(target, shot, number) {
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#11141b"/>
-      <stop offset="0.5" stop-color="#0c0e13"/>
-      <stop offset="1" stop-color="#08090b"/>
+      <stop offset="0" stop-color="${BG}"/>
+      <stop offset="0.52" stop-color="${BG_SECONDARY}"/>
+      <stop offset="1" stop-color="${BG_TERTIARY}"/>
     </linearGradient>
     <radialGradient id="glow" cx="50%" cy="24%" r="65%">
       <stop offset="0" stop-color="${shot.accent}" stop-opacity="0.26"/>
@@ -143,10 +153,10 @@ function renderShot(target, shot, number) {
       headlineFont * 1.08 * (headlineLines - 1) +
       (isPad ? 110 : 105);
     return `${headline(shot.title, margin, titleY, width - margin * 2, headlineFont)}
-  ${paragraph(shot.subtitle, margin, subtitleY, width - margin * 2, isPad ? 40 : 38, "#cdd0d9")}`;
+  ${paragraph(shot.subtitle, margin, subtitleY, width - margin * 2, isPad ? 40 : 38, MUTED)}`;
   })()}
   ${phoneFrame(phoneX, phoneY, phoneW, phoneH, shot)}
-  <text x="${width / 2}" y="${height - (isPad ? 82 : 92)}" text-anchor="middle" fill="#8b8f9c" font-family="Inter, Arial, sans-serif" font-size="${isPad ? 28 : 24}">Explore connection through synastry</text>
+  <text x="${width / 2}" y="${height - (isPad ? 82 : 92)}" text-anchor="middle" fill="${DIM}" font-family="Inter, Arial, sans-serif" font-size="${isPad ? 28 : 24}">Explore connection through synastry</text>
 </svg>`;
 }
 
@@ -157,8 +167,8 @@ function phoneFrame(x, y, w, h, shot) {
   const screenH = h - 116;
   return `
   <g filter="url(#shadow)">
-    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="92" fill="#11111d" stroke="#2c2a3e" stroke-width="5"/>
-    <rect x="${screenX}" y="${screenY}" width="${screenW}" height="${screenH}" rx="62" fill="#0b0b12"/>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="92" fill="${PANEL}" stroke="${BORDER}" stroke-width="5"/>
+    <rect x="${screenX}" y="${screenY}" width="${screenW}" height="${screenH}" rx="62" fill="${BG}"/>
     <rect x="${x + w / 2 - 110}" y="${y + 24}" width="220" height="34" rx="17" fill="#05050b"/>
     ${screenContent(screenX, screenY, screenW, screenH, shot)}
   </g>`;
@@ -173,9 +183,9 @@ function screenContent(x, y, w, h, shot) {
   const accent = shot.accent;
   const header = `
     <text x="${left}" y="${top}" fill="${IVORY}" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800" letter-spacing="0.04em">JUNO</text>
-    <text x="${left}" y="${top + 44}" fill="#8b8f9c" font-family="Inter, Arial, sans-serif" font-size="22">${esc(shot.screenTitle)}</text>
+    <text x="${left}" y="${top + 44}" fill="${DIM}" font-family="Inter, Arial, sans-serif" font-size="22">${esc(shot.screenTitle)}</text>
     <circle cx="${right - 26}" cy="${top - 10}" r="26" fill="${accent}" opacity="0.92"/>
-    <text x="${right - 26}" y="${top}" text-anchor="middle" fill="#151226" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="900">J</text>`;
+    <text x="${right - 26}" y="${top}" text-anchor="middle" fill="${BG}" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="900">J</text>`;
 
   const bodyTop = top + 95;
   const footer = navBar(x + 30, y + h - 132, w - 60, accent);
@@ -195,12 +205,12 @@ function synastryScreen(x, y, w, accent) {
   return `
     ${card(x, y, w, 1000, `
       <text x="${x + 38}" y="${y + 60}" fill="${IVORY}" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="800">Synastry insight</text>
-      <text x="${x + 38}" y="${y + 100}" fill="#8b8f9c" font-family="Inter, Arial, sans-serif" font-size="22">Your chart and theirs, read together</text>
+      <text x="${x + 38}" y="${y + 100}" fill="${DIM}" font-family="Inter, Arial, sans-serif" font-size="22">Your chart and theirs, read together</text>
       ${rings(x + w / 2, y + 290, 150)}
       <text x="${x + w / 2}" y="${y + 470}" text-anchor="middle" fill="${IVORY}" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700">Two birth charts in relation</text>
       ${scoreBar(x + 42, y + 555, w - 84, "Emotional rhythm", 0.84, accent)}
       ${scoreBar(x + 42, y + 665, w - 84, "Communication", 0.78, BLUE)}
-      ${scoreBar(x + 42, y + 775, w - 84, "Shared values", 0.88, GOLD)}
+      ${scoreBar(x + 42, y + 775, w - 84, "Shared values", 0.88, PURPLE)}
       ${miniTagline(x + 42, y + 875, w - 84, "Read before the conversation", "Context first, message second.")}
     `)}`;
 }
@@ -210,14 +220,14 @@ function chartScreen(x, y, w, accent) {
   return `
     ${card(x, y, w, 1005, `
       <text x="${x + 38}" y="${y + 60}" fill="${IVORY}" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="800">Chart context</text>
-      <text x="${x + 38}" y="${y + 100}" fill="#8b8f9c" font-family="Inter, Arial, sans-serif" font-size="22">The birth-chart context on every profile</text>
+      <text x="${x + 38}" y="${y + 100}" fill="${DIM}" font-family="Inter, Arial, sans-serif" font-size="22">The birth-chart context on every profile</text>
       ${planetRow(x + 40, y + 165, w - 80, "Sun", "Leo", "How they show up")}
       ${planetRow(x + 40, y + 300, w - 80, "Moon", "Cancer", "What feels safe")}
       ${planetRow(x + 40, y + 435, w - 80, "Rising", "Libra", "First impression")}
       ${planetRow(x + 40, y + 570, w - 80, "Venus", "Virgo", "How they connect")}
-      <rect x="${x + 38}" y="${y + 730}" width="${w - 76}" height="190" rx="28" fill="#15131f" stroke="#2a2740"/>
+      <rect x="${x + 38}" y="${y + 730}" width="${w - 76}" height="190" rx="28" fill="${CARD}" stroke="${BORDER}"/>
       <text x="${x + 70}" y="${y + 788}" fill="${accent}" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800">Why chart context</text>
-      ${paragraph("You review the chart context before deciding whether to start a conversation.", x + 70, y + 838, w - 140, 24, "#e2e3e9")}
+      ${paragraph("You review the chart context before deciding whether to start a conversation.", x + 70, y + 838, w - 140, 24, IVORY)}
     `)}`;
 }
 
@@ -226,20 +236,20 @@ function browseScreen(x, y, w, accent) {
   return `
     ${card(x, y, w, 1000, `
       ${pill(x + 38, y + 36, "Browse with intention", accent)}
-      <rect x="${x + 36}" y="${y + 110}" width="${w - 72}" height="330" rx="30" fill="#1a1826"/>
-      <circle cx="${x + w / 2}" cy="${y + 250}" r="92" fill="#23202f"/>
+      <rect x="${x + 36}" y="${y + 110}" width="${w - 72}" height="330" rx="30" fill="${CARD}"/>
+      <circle cx="${x + w / 2}" cy="${y + 250}" r="92" fill="${BG_TERTIARY}"/>
       <circle cx="${x + w / 2}" cy="${y + 250}" r="92" fill="none" stroke="${accent}" stroke-width="3" opacity="0.5"/>
       <text x="${x + 60}" y="${y + 510}" fill="${IVORY}" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800">Maya, 29</text>
-      <text x="${x + 60}" y="${y + 552}" fill="#9a9eab" font-family="Inter, Arial, sans-serif" font-size="23">Libra Sun · Taurus Moon · Leo Rising</text>
+      <text x="${x + 60}" y="${y + 552}" fill="${MUTED}" font-family="Inter, Arial, sans-serif" font-size="23">Libra Sun · Taurus Moon · Leo Rising</text>
       ${pill(x + 60, y + 588, "Looking for something real", BLUE)}
-      ${pill(x + 60, y + 660, "Values: honesty, growth", GOLD)}
+      ${pill(x + 60, y + 660, "Values: honesty, growth", PURPLE)}
       <g>
         ${roundBtn(x + 60, y + 770, "Previous")}
         ${roundBtn(x + w - 60 - 150, y + 770, "Next")}
         <rect x="${x + 60 + 178}" y="${y + 770}" width="${w - 120 - 356}" height="84" rx="42" fill="${accent}"/>
-        <text x="${x + w / 2}" y="${y + 819}" text-anchor="middle" fill="#151226" font-family="Inter, Arial, sans-serif" font-size="25" font-weight="800">Message</text>
+        <text x="${x + w / 2}" y="${y + 819}" text-anchor="middle" fill="${BG}" font-family="Inter, Arial, sans-serif" font-size="25" font-weight="800">Message</text>
       </g>
-      ${miniTagline(x + 42, y + 888, w - 84, "Navigation only", "Previous and Next page the browser — no like, no pass.")}
+      ${miniTagline(x + 42, y + 888, w - 84, "Intentional browsing", "Previous and Next keep the pace calm and deliberate.")}
     `)}`;
 }
 
@@ -248,15 +258,15 @@ function introScreen(x, y, w, accent) {
   return `
     ${card(x, y, w, 1000, `
       <text x="${x + 38}" y="${y + 60}" fill="${IVORY}" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="800">Guided intro</text>
-      <text x="${x + 38}" y="${y + 100}" fill="#8b8f9c" font-family="Inter, Arial, sans-serif" font-size="22">An opener shaped by your charts</text>
-      <rect x="${x + 38}" y="${y + 150}" width="${w - 76}" height="250" rx="28" fill="#15131f" stroke="#2a2740"/>
+      <text x="${x + 38}" y="${y + 100}" fill="${DIM}" font-family="Inter, Arial, sans-serif" font-size="22">An opener shaped by your charts</text>
+      <rect x="${x + 38}" y="${y + 150}" width="${w - 76}" height="250" rx="28" fill="${CARD}" stroke="${BORDER}"/>
       <text x="${x + 72}" y="${y + 210}" fill="${accent}" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800">Chart-shaped prompt</text>
       ${paragraph("Your Moon placements both lean toward calm routines — ask about a small ritual that feels like home.", x + 72, y + 260, w - 144, 25, IVORY)}
-      <rect x="${x + 38}" y="${y + 440}" width="${w - 76}" height="150" rx="28" fill="#15131f" stroke="#2a2740"/>
+      <rect x="${x + 38}" y="${y + 440}" width="${w - 76}" height="150" rx="28" fill="${CARD}" stroke="${BORDER}"/>
       <circle cx="${x + 98}" cy="${y + 515}" r="34" fill="${accent}"/>
-      <path d="M${x + 88} ${y + 500} L${x + 88} ${y + 530} L${x + 112} ${y + 515} Z" fill="#151226"/>
+      <path d="M${x + 88} ${y + 500} L${x + 88} ${y + 530} L${x + 112} ${y + 515} Z" fill="${BG}"/>
       <text x="${x + 156}" y="${y + 505}" fill="${IVORY}" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700">Voice intro</text>
-      <text x="${x + 156}" y="${y + 538}" fill="#9a9eab" font-family="Inter, Arial, sans-serif" font-size="19">Hear them before the first message</text>
+      <text x="${x + 156}" y="${y + 538}" fill="${MUTED}" font-family="Inter, Arial, sans-serif" font-size="19">Hear them before the first message</text>
       ${miniInsight(x, y + 640, w, "Why guided", "A guided intro replaces the cold first message with shared context.", accent)}
       ${miniInsight(x, y + 820, w, "At your pace", "Start an intentional conversation when the context feels right.", BLUE)}
     `)}`;
@@ -267,10 +277,10 @@ function dynamicsScreen(x, y, w, accent) {
   return `
     ${card(x, y, w, 1000, `
       <text x="${x + 38}" y="${y + 60}" fill="${IVORY}" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="800">Relationship dynamics</text>
-      <text x="${x + 38}" y="${y + 100}" fill="#8b8f9c" font-family="Inter, Arial, sans-serif" font-size="22">Not a generic profile — a real read</text>
+      <text x="${x + 38}" y="${y + 100}" fill="${DIM}" font-family="Inter, Arial, sans-serif" font-size="22">Not a generic profile — a real read</text>
       ${dynamicCard(x + 38, y + 150, w - 76, "Emotional rhythm", "How you settle, repair, and feel at ease together.", accent)}
       ${dynamicCard(x + 38, y + 326, w - 76, "Communication", "Where conversation flows and where it needs patience.", BLUE)}
-      ${dynamicCard(x + 38, y + 502, w - 76, "Long-term", "The themes that ask for steady, intentional effort.", GOLD)}
+      ${dynamicCard(x + 38, y + 502, w - 76, "Long-term", "The themes that ask for steady, intentional effort.", PURPLE)}
       ${miniTagline(x + 42, y + 700, w - 84, "Framed by synastry", "Every read is grounded in two real birth charts.")}
       ${miniTagline(x + 42, y + 828, w - 84, "No predictions", "Astrology as a reflective language — never a forecast.")}
     `)}`;
@@ -282,37 +292,37 @@ function rings(cx, cy, r) {
   return `
     <circle cx="${cx - off}" cy="${cy}" r="${r}" fill="none" stroke="${IVORY}" stroke-width="14"/>
     <circle cx="${cx + off}" cy="${cy}" r="${r}" fill="none" stroke="${IVORY}" stroke-width="14"/>
-    <circle cx="${cx}" cy="${cy}" r="22" fill="${GOLD}"/>
-    <circle cx="${cx}" cy="${cy}" r="8" fill="#fdf6e0"/>`;
+    <circle cx="${cx}" cy="${cy}" r="22" fill="${CORAL}"/>
+    <circle cx="${cx}" cy="${cy}" r="8" fill="${IVORY}"/>`;
 }
 
 function roundBtn(x, y, label) {
-  return `<rect x="${x}" y="${y}" width="150" height="84" rx="42" fill="#1f1d2b" stroke="#332f47"/>
+  return `<rect x="${x}" y="${y}" width="150" height="84" rx="42" fill="${CARD}" stroke="${BORDER}"/>
     <text x="${x + 75}" y="${y + 52}" text-anchor="middle" fill="${IVORY}" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">${esc(label)}</text>`;
 }
 
 function dynamicCard(x, y, w, title, body, color) {
-  return `<rect x="${x}" y="${y}" width="${w}" height="156" rx="26" fill="#15131f" stroke="#2a2740"/>
+  return `<rect x="${x}" y="${y}" width="${w}" height="156" rx="26" fill="${CARD}" stroke="${BORDER}"/>
     <rect x="${x}" y="${y}" width="8" height="156" rx="4" fill="${color}"/>
     <text x="${x + 34}" y="${y + 52}" fill="${IVORY}" font-family="Inter, Arial, sans-serif" font-size="25" font-weight="800">${esc(title)}</text>
-    ${paragraph(body, x + 34, y + 90, w - 68, 22, "#b6b9c4")}`;
+    ${paragraph(body, x + 34, y + 90, w - 68, 22, MUTED)}`;
 }
 
 function card(x, y, w, h, inner) {
-  return `<g filter="url(#softShadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="42" fill="#0f0e17" stroke="#23212f" stroke-width="2"/>${inner}</g>`;
+  return `<g filter="url(#softShadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="42" fill="${CARD_DARK}" stroke="${BORDER}" stroke-width="2"/>${inner}</g>`;
 }
 
 function miniInsight(x, y, w, label, text, accent) {
   return card(x, y, w, 160, `
     <text x="${x + 36}" y="${y + 55}" fill="${accent}" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800">${esc(label)}</text>
-    ${paragraph(text, x + 36, y + 96, w - 72, 23, "#e2e3e9")}
+    ${paragraph(text, x + 36, y + 96, w - 72, 23, IVORY)}
   `);
 }
 
 function miniTagline(x, y, w, label, text) {
-  return `<rect x="${x}" y="${y}" width="${w}" height="112" rx="26" fill="#15131f" stroke="#2a2740"/>
-    <text x="${x + 28}" y="${y + 42}" fill="#8b8f9c" font-family="Inter, Arial, sans-serif" font-size="20">${esc(label)}</text>
-    <text x="${x + 28}" y="${y + 79}" fill="${IVORY}" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="700">${esc(text)}</text>`;
+  return `<rect x="${x}" y="${y}" width="${w}" height="112" rx="26" fill="${CARD}" stroke="${BORDER}"/>
+    <text x="${x + 28}" y="${y + 42}" fill="${DIM}" font-family="Inter, Arial, sans-serif" font-size="20">${esc(label)}</text>
+    ${paragraph(text, x + 28, y + 79, w - 56, 21, IVORY)}`;
 }
 
 function pill(x, y, text, color) {
@@ -321,28 +331,28 @@ function pill(x, y, text, color) {
 }
 
 function planetRow(x, y, w, name, sign, label) {
-  return `<rect x="${x}" y="${y}" width="${w}" height="108" rx="28" fill="#15131f" stroke="#2a2740"/>
+  return `<rect x="${x}" y="${y}" width="${w}" height="108" rx="28" fill="${CARD}" stroke="${BORDER}"/>
     <text x="${x + 30}" y="${y + 46}" fill="${IVORY}" font-family="Inter, Arial, sans-serif" font-size="27" font-weight="800">${esc(name)}</text>
-    <text x="${x + 30}" y="${y + 80}" fill="#8b8f9c" font-family="Inter, Arial, sans-serif" font-size="20">${esc(label)}</text>
-    <text x="${x + w - 30}" y="${y + 65}" text-anchor="end" fill="${GOLD}" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="800">${esc(sign)}</text>`;
+    <text x="${x + 30}" y="${y + 80}" fill="${DIM}" font-family="Inter, Arial, sans-serif" font-size="20">${esc(label)}</text>
+    <text x="${x + w - 30}" y="${y + 65}" text-anchor="end" fill="${CORAL}" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="800">${esc(sign)}</text>`;
 }
 
 function scoreBar(x, y, w, label, value, color) {
   return `<text x="${x}" y="${y}" fill="${IVORY}" font-family="Inter, Arial, sans-serif" font-size="25" font-weight="800">${esc(label)}</text>
-    <text x="${x + w}" y="${y}" text-anchor="end" fill="#b6b9c4" font-family="Inter, Arial, sans-serif" font-size="22">${Math.round(value * 100)}</text>
-    <rect x="${x}" y="${y + 28}" width="${w}" height="20" rx="10" fill="#23212f"/>
+    <text x="${x + w}" y="${y}" text-anchor="end" fill="${MUTED}" font-family="Inter, Arial, sans-serif" font-size="22">${Math.round(value * 100)}</text>
+    <rect x="${x}" y="${y + 28}" width="${w}" height="20" rx="10" fill="${BORDER}"/>
     <rect x="${x}" y="${y + 28}" width="${Math.round(w * value)}" height="20" rx="10" fill="${color}"/>`;
 }
 
 function navBar(x, y, w, accent) {
   const items = ["Home", "Discover", "Messages", "You"];
   const gap = w / items.length;
-  return `<rect x="${x}" y="${y}" width="${w}" height="92" rx="46" fill="#13121c" stroke="#23212f"/>
+  return `<rect x="${x}" y="${y}" width="${w}" height="92" rx="46" fill="${CARD_DARK}" stroke="${BORDER}"/>
     ${items.map((item, i) => {
       const cx = x + gap * i + gap / 2;
       const active = i === 1;
-      return `<circle cx="${cx}" cy="${y + 33}" r="10" fill="${active ? accent : "#4f4d5e"}"/>
-        <text x="${cx}" y="${y + 67}" text-anchor="middle" fill="${active ? IVORY : "#7c7a8a"}" font-family="Inter, Arial, sans-serif" font-size="18">${item}</text>`;
+      return `<circle cx="${cx}" cy="${y + 33}" r="10" fill="${active ? accent : BORDER}"/>
+        <text x="${cx}" y="${y + 67}" text-anchor="middle" fill="${active ? IVORY : DIM}" font-family="Inter, Arial, sans-serif" font-size="18">${item}</text>`;
     }).join("")}`;
 }
 
@@ -396,3 +406,4 @@ function esc(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
