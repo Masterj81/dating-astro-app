@@ -120,6 +120,7 @@ const BANNED = [
   ['#16213e', 'the legacy end stop. Use gradients.screen.'],
   ['#9333ea', 'raw tailwind purple-600. Cosmic is #A79FEA / #5B54A8.'],
   ['#dab56d', 'the old dim gold. The scale starts at #E8C77E.'],
+  ['#e9c873', 'a THIRD gold, one shade off #E8C77E and invisible beside it. Same drift as the shadow coral.'],
 ];
 
 const SOURCE_DIRS = ['apps/mobile/app', 'apps/mobile/components', 'apps/web/src'];

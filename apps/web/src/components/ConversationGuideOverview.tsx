@@ -321,7 +321,10 @@ export function ConversationGuideOverview() {
                   : "border-border bg-bg/70 text-text-muted hover:border-white/20 hover:text-white"
               }`}
             >
-              <ZodiacGlyph sign={option} className="text-base leading-none text-accent" />
+              <ZodiacGlyph
+                sign={option}
+                className={`text-base leading-none ${selected ? "text-gold" : "text-gold-muted"}`}
+              />
               <span className="truncate">{translateSign(option, locale)}</span>
             </button>
           );

@@ -95,7 +95,9 @@ export const ZODIAC_KEYS: readonly ZodiacSignKey[] = [
   "sagittarius", "capricorn", "aquarius", "pisces",
 ];
 
-const GOLD = "#E9C873";
+// Was #E9C873 — the same third gold its mobile twin carried. One shade off
+// the palette's #E8C77E, which is exactly why neither was ever noticed.
+const GOLD = "#E8C77E";
 const NAVY = "#151522";
 const NAVY_INNER = "#1f1f2e";
 const MUTED_BG = "#1a1a26";

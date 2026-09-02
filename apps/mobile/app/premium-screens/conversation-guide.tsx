@@ -294,7 +294,15 @@ export default function ConversationGuideScreen() {
               accessibilityLabel={t(option) || option}
               testID={`coach-sign-${option}`}
             >
-              <ZodiacGlyph sign={option} variant="inline" size="sm" />
+              {/* Muted gold for the twelve, full gold for the chosen one.
+                  Same two intensities as the web picker — and the mark now
+                  matches the wheel, which draws these same twelve in gold. */}
+              <ZodiacGlyph
+                sign={option}
+                variant="inline"
+                size="sm"
+                color={selected ? AppTheme.colors.gold : AppTheme.colors.goldMuted}
+              />
               <Text style={[styles.signCellText, selected && styles.signCellTextSelected]}>
                 {t(option) || option}
               </Text>
