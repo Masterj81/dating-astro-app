@@ -197,6 +197,12 @@ export function AppShell({
     { href: "/app", label: t("sidebarDashboard"), icon: "dashboard" },
     { href: "/app/discover", label: t("discoverNav"), icon: "discover", accent: "rose" },
     { href: "/app/chat", label: t("chatNav"), icon: "chat" },
+    {
+      href: "/app/premium/conversation-guide",
+      label: t("conversationGuide"),
+      icon: "guide",
+      accent: "rose",
+    },
     { href: "/app/premium/cosmic", label: t("premiumNav"), icon: "cosmic", accent: "cosmic" },
     { href: "/app/premium/celestial", label: t("natalChartNav"), icon: "celestial", accent: "celestial" },
     { href: "/app/profile", label: t("profileNav"), icon: "profile" },

@@ -17,6 +17,7 @@ export type NavIconName =
   | "dashboard"
   | "discover"
   | "chat"
+  | "guide"
   | "cosmic"
   | "celestial"
   | "profile"
@@ -63,6 +64,16 @@ export function NavIcon({ name, className = "h-5 w-5" }: NavIconProps) {
         <svg {...baseProps}>
           <path d="M5 6.5h14A2.5 2.5 0 0 1 21.5 9v6A2.5 2.5 0 0 1 19 17.5H11l-4.5 3v-3H5A2.5 2.5 0 0 1 2.5 15V9A2.5 2.5 0 0 1 5 6.5Z" />
           <path d="M8 11.5h8M8 14.5h5" />
+        </svg>
+      );
+    case "guide":
+      // A small prompt card with a star: the Conversation Guide is a practical
+      // "what do I say?" surface, not another premium hub.
+      return (
+        <svg {...baseProps}>
+          <path d="M5 5.5h14A2.5 2.5 0 0 1 21.5 8v7A2.5 2.5 0 0 1 19 17.5H11l-4.5 3v-3H5A2.5 2.5 0 0 1 2.5 15V8A2.5 2.5 0 0 1 5 5.5Z" />
+          <path d="M8 10h6M8 13h4" />
+          <path d="M17 8l.55 1.45L19 10l-1.45.55L17 12l-.55-1.45L15 10l1.45-.55L17 8Z" />
         </svg>
       );
     case "cosmic":

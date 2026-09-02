@@ -1435,6 +1435,33 @@ dominant). Le code n'est pas le chemin critique.
 
 **Objectif :** transformer l'habitude en abonnement, et couvrir le canal iOS.
 
+> **Statut au 2 septembre 2026 — la moitié « parité web » est livrée.**
+>
+> La feature n'est plus Android-only. Le canal iOS passe par la PWA, donc
+> tant que le web n'existait pas, aucun utilisateur iOS n'y avait accès —
+> c'est le point 4 des questions ouvertes ci-dessous, tranché en livrant.
+>
+> Livré : `apps/web/src/components/ConversationGuideOverview.tsx`,
+> `apps/web/src/app/[locale]/app/premium/conversation-guide/page.tsx`,
+> 34 clés × 8 locales sous `webApp`, et trois entrées hors hub premium
+> (tableau de bord, fil de discussion, profil).
+>
+> **Route différente de celle prévue ici.** Le plan annonçait
+> `premium/celestial/conversation-guide`. La route livrée est
+> `premium/conversation-guide`, sans segment de palier : la situation
+> gratuite est lisible par un compte gratuit, et ranger l'URL sous
+> `celestial/` aurait suggéré l'inverse à la première lecture.
+>
+> **Pas encore livré de P1 :** les couches L1–L3 personnalisées
+> (`buildCoachResult`, lecture `get-profile-chart`), le socle analytics
+> `apps/mobile/services/analytics.ts`, et le lien de navigation dans
+> `AppShell`. Le corpus reste anglais.
+>
+> Le garde-fou de §4.3 vaut désormais pour les deux plateformes :
+> `scripts/validate-coach-content.mjs` vérifie, sur le web comme sur le
+> mobile, l'absence de gate au montage, l'appel unique dans un
+> `useCallback`, la clé de rejeu, et l'existence d'une entrée hors hub.
+
 **Fichiers**
 
 ```
@@ -1697,11 +1724,11 @@ vérifier.
 3. **Volume de l'aperçu `natal_chart`.** Le dénominateur de la requête n° 4 de
    §11.2. À relever **avant** la mise en production pour disposer d'une base
    de comparaison.
-4. **Le canal iOS.** `CLAUDE.md` indique que l'iOS passe par la PWA, mais
-   `apps/mobile/app.json` porte encore des `intentFilters`/config iOS et
-   `docs/app-store/juno-metadata.md` parle d'une soumission App Store. **À
-   confirmer avec le propriétaire du produit** : si l'iOS est bien la PWA, la
-   parité web de P1 n'est pas un confort, c'est la moitié de l'audience.
+4. ~~**Le canal iOS.**~~ **Tranché le 2 septembre 2026 :** la parité web est
+   livrée, donc la question ne bloque plus rien. L'iOS passe bien par la PWA
+   et le Conversation Guide y est désormais accessible. `apps/mobile/app.json`
+   porte toujours de la config iOS résiduelle — sans effet sur cette feature,
+   à nettoyer ailleurs.
 5. **Le budget de traduction.** ≈ 1 974 chaînes traduites au terme de P1
    (§7.4). Traduction machine relue ? Traducteurs ? Le mode retenu change le
    planning de P0 plus que le code.

@@ -24,7 +24,8 @@ export type PremiumGlyphName =
   | "natal"
   | "synastry"
   | "likes"
-  | "priorityMessages";
+  | "priorityMessages"
+  | "coach";
 
 type PremiumGlyphProps = {
   name: PremiumGlyphName;
@@ -123,6 +124,15 @@ export function PremiumGlyph({ name, className = "h-5 w-5" }: PremiumGlyphProps)
         <svg {...stroke}>
           <circle cx="9" cy="12" r="5" />
           <circle cx="15" cy="12" r="5" />
+        </svg>
+      );
+    case "coach":
+      // A speech bubble with a star above it — words, with the chart behind
+      // them. Kept distinct from the plain chat bubble used in navigation.
+      return (
+        <svg {...stroke}>
+          <path d="M4 6.5h13A2.5 2.5 0 0 1 19.5 9v5a2.5 2.5 0 0 1-2.5 2.5h-6l-4 3v-3H4A2.5 2.5 0 0 1 1.5 14V9A2.5 2.5 0 0 1 4 6.5Z" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M20 2.5l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2Z" />
         </svg>
       );
     case "likes":

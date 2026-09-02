@@ -8,6 +8,7 @@ import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { ChatThreadSkeleton } from "@/components/Skeleton";
+import { resolveCoachSign } from "@astro/shared/coach";
 import { ZodiacGlyph } from "@/components/ZodiacGlyph";
 
 type ChatThreadProps = {
@@ -592,6 +593,27 @@ export function ChatThread({ conversationId, initialPrefill }: ChatThreadProps) 
               </Link>
 
               <div className="flex shrink-0 gap-2">
+                {/* Conversation Guide, at the moment of need. Shown to every
+                    account, free included: the "Start a conversation" situation
+                    is free for all twelve signs and asks the server nothing, and
+                    this — not a premium hub — is where someone actually does not
+                    know what to say. `resolveCoachSign` returns null rather than
+                    guessing when the other profile has no usable Sun sign; the
+                    guide then opens on its own picker instead of putting someone
+                    else's advice under this person's name. */}
+                <Link
+                  href={
+                    resolveCoachSign(conversationInfo.otherUserSunSign)
+                      ? `/app/premium/conversation-guide?sign=${resolveCoachSign(
+                          conversationInfo.otherUserSunSign
+                        )}`
+                      : "/app/premium/conversation-guide"
+                  }
+                  data-testid="chat-conversation-guide-chip"
+                  className="rounded-full border border-accent/30 bg-accent/10 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent/20 sm:px-4 sm:text-sm"
+                >
+                  {t("conversationGuideChatChip")}
+                </Link>
                 <Link
                   href="/app/chat"
                   className="rounded-full border border-border px-3 py-2 text-xs font-semibold text-text-muted transition-colors hover:bg-card-hover hover:text-white sm:px-4 sm:text-sm xl:hidden"

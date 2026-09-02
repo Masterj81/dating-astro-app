@@ -39,6 +39,9 @@ const CONTENT_TS = path.join(SHARED, 'content.ts');
 const SITUATIONS_TS = path.join(SHARED, 'situations.ts');
 const SELECT_TS = path.join(SHARED, 'select.ts');
 const SCREEN = path.join(MOBILE, 'app/premium-screens/conversation-guide.tsx');
+const WEB = path.join(ROOT, 'apps/web');
+const WEB_COMPONENT = path.join(WEB, 'src/components/ConversationGuideOverview.tsx');
+const WEB_PAGE = path.join(WEB, 'src/app/[locale]/app/premium/conversation-guide/page.tsx');
 
 const LOCALES = ['en', 'fr', 'es', 'pt', 'de', 'ja', 'ar', 'zh'];
 
@@ -430,6 +433,177 @@ for (const locale of LOCALES) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 8 — the web/PWA port keeps the same two promises
+// ---------------------------------------------------------------------------
+// iOS reaches JUNO through the PWA (Apple rejected the native binary), so
+// without a web build this feature is Android-only. The port has to hold the
+// SAME gate, and it is easier to break on web than on mobile: every other
+// premium component there calls `enforce_premium_feature` inside its mount
+// effect, so the wrong pattern is the one a reader of this codebase copies.
+const WEB_ROUTE = '/app/premium/conversation-guide';
+
+if (!existsSync(WEB_PAGE)) {
+  fail(
+    'No web route at apps/web/src/app/[locale]/app/premium/conversation-guide/page.tsx. ' +
+      'iOS goes through the PWA, so without it the Conversation Guide is Android-only.',
+  );
+}
+
+if (!existsSync(WEB_COMPONENT)) {
+  fail('No web component at apps/web/src/components/ConversationGuideOverview.tsx.');
+} else {
+  const webRaw = read(WEB_COMPONENT);
+  // Same comment-stripping rationale as the mobile screen: the header explains
+  // at length why the gate is where it is, and that explanation must not be
+  // what trips the check.
+  const webCode = webRaw
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .filter((line) => !/^\s*(?:\/\/|\*)/.test(line))
+    .join('\n');
+
+  if (!/@astro\/shared\/coach/.test(webCode)) {
+    fail(
+      'The web component does not import @astro/shared/coach. The situation table, the free/locked ' +
+        'split and the card builder must come from the shared module — a second copy is how the two ' +
+        'platforms start disagreeing about which situation is free.',
+    );
+  }
+  for (const symbol of ['buildCoachCard', 'COACH_SITUATIONS', 'COACH_SIGNS', 'resolveCoachSign']) {
+    if (!new RegExp(`\\b${symbol}\\b`).test(webCode)) {
+      fail(`The web component does not use ${symbol} from the shared module.`);
+    }
+  }
+
+  if (/\bPremiumGate\b/.test(webCode)) {
+    fail(
+      'ConversationGuideOverview.tsx references PremiumGate. Anything that gates at MOUNT spends the ' +
+        "reader's daily free preview before they read a word and hides the free situation for the rest of the day.",
+    );
+  }
+
+  const webGateCalls = [...webCode.matchAll(/enforce_premium_feature/g)];
+  if (webGateCalls.length === 0) {
+    fail('The web component never calls enforce_premium_feature — locked situations would be ungated.');
+  } else if (webGateCalls.length > 1) {
+    fail(
+      `The web component names enforce_premium_feature ${webGateCalls.length} times. One call site only: ` +
+        'a second is exactly how the free preview got double-consumed before migration 20260823000001.',
+    );
+  } else {
+    const beforeWeb = webCode.slice(0, webGateCalls[0].index);
+    const lastEffectWeb = beforeWeb.lastIndexOf('useEffect(');
+    const lastCallbackWeb = beforeWeb.lastIndexOf('useCallback(');
+    if (lastCallbackWeb < 0 || lastCallbackWeb < lastEffectWeb) {
+      fail(
+        'enforce_premium_feature is not inside a useCallback in ConversationGuideOverview.tsx — it appears ' +
+          'to run from an effect. It must fire only on the first click of a locked situation, never on mount.',
+      );
+    }
+    // The RPC form, not the bare name: this file's header discusses
+    // `enforce_premium_feature` at length, and indexOf would land there.
+    const rawAtWeb = webRaw.indexOf('rpc("enforce_premium_feature"');
+    if (!/GATE:[^\n]*first click/i.test(webRaw.slice(Math.max(0, rawAtWeb - 1400), rawAtWeb))) {
+      fail(
+        'The web enforce_premium_feature call site has lost its "GATE: ... first click ..." marker comment. ' +
+          'That comment is what tells the next reader (and this check) that the call must never move to mount.',
+      );
+    }
+  }
+
+  if (!/coach:preview-date/.test(webCode)) {
+    fail(
+      'ConversationGuideOverview.tsx does not use the "coach:preview-date" replay key. The server replay ' +
+        'window is 15 minutes; without it a reader who returns two hours later is refused a preview they used.',
+    );
+  }
+
+  // The corpus is English in P0. Saying so is a product promise, and marking it
+  // up is what stops a screen reader pronouncing English with the page voice.
+  if (!/lang="en"/.test(webCode)) {
+    fail(
+      'The web component renders corpus text without lang="en". The guidance is English in every locale; ' +
+        'unmarked, a screen reader reads it with the page language.',
+    );
+  }
+  if (!/conversationGuideEnglishNote/.test(webCode)) {
+    fail(
+      'The web component does not show conversationGuideEnglishNote. English content in a non-English ' +
+        'locale has to be admitted on screen, not left for the reader to work out.',
+    );
+  }
+}
+
+// Discoverable outside the premium hubs, for the same reason as on mobile: the
+// free half of this feature is the conversion path, so it cannot live only
+// behind the paid surfaces.
+const WEB_NON_HUB_ENTRIES = [
+  'src/components/DashboardOverview.tsx',
+  'src/components/ChatThread.tsx',
+  'src/components/ChatInbox.tsx',
+  'src/components/AccountProfileWorkspace.tsx',
+];
+const webEntries = WEB_NON_HUB_ENTRIES.filter((rel) => {
+  const file = path.join(WEB, rel);
+  return existsSync(file) && readFileSync(file, 'utf8').includes(WEB_ROUTE);
+});
+if (webEntries.length === 0) {
+  fail(
+    `No entry point to ${WEB_ROUTE} outside the premium hubs. Add one in: ` +
+      WEB_NON_HUB_ENTRIES.join(', '),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Check 9 — the web chrome exists in every locale
+// ---------------------------------------------------------------------------
+// `conversationGuideChecking` is web-only: mobile reuses its generic
+// `verifyingAccess`, which the web app does not have.
+// Once the preview is accepted, the feature also needs a permanent way back.
+// The non-hub cards create discovery; AppShell creates recall.
+const WEB_SHELL = path.join(WEB, 'src/components/AppShell.tsx');
+if (!existsSync(WEB_SHELL)) {
+  fail('No web AppShell at apps/web/src/components/AppShell.tsx.');
+} else {
+  const shell = readFileSync(WEB_SHELL, 'utf8');
+  if (!shell.includes(WEB_ROUTE)) {
+    fail(
+      `AppShell does not include a permanent navigation link to ${WEB_ROUTE}. ` +
+        'The non-hub cards make the feature discoverable, but a previewed feature should also be reachable again.',
+    );
+  }
+  if (!/label:\s*t\(["']conversationGuide["']\)/.test(shell)) {
+    fail('AppShell conversation-guide nav item does not use the translated conversationGuide label.');
+  }
+}
+
+const WEB_CHROME_KEYS = [...CHROME_KEYS, 'conversationGuideChecking'];
+for (const locale of LOCALES) {
+  const file = path.join(WEB, 'messages', `${locale}.json`);
+  if (!existsSync(file)) {
+    fail(`Missing locale file apps/web/messages/${locale}.json.`);
+    continue;
+  }
+  let webJson;
+  try {
+    webJson = JSON.parse(readFileSync(file, 'utf8')).webApp;
+  } catch (err) {
+    fail(`apps/web/messages/${locale}.json is not valid JSON: ${err.message}`);
+    continue;
+  }
+  if (!webJson) {
+    fail(`apps/web/messages/${locale}.json has no "webApp" namespace.`);
+    continue;
+  }
+  for (const key of WEB_CHROME_KEYS) {
+    const value = webJson[key];
+    if (typeof value !== 'string' || value.trim() === '') {
+      fail(`i18n: "${key}" is missing or empty in apps/web/messages/${locale}.json (webApp).`);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 if (issues.length === 0) {
@@ -439,7 +613,8 @@ if (issues.length === 0) {
       `(${situationRows.filter((r) => r.access === 'free').length} free, ` +
       `${situationRows.filter((r) => r.access === 'locked').length} locked), ` +
       `${strings.length} corpus strings, ${CHROME_KEYS.length} chrome keys x ${LOCALES.length} locales, ` +
-      `${found.length} non-hub entry point(s), gate asserted off the mount path.`,
+      `${found.length} mobile + ${webEntries.length} web non-hub entry point(s), ` +
+      `gate asserted off the mount path on both platforms.`,
   );
   process.exit(0);
 }

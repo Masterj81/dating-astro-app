@@ -888,6 +888,35 @@ export function AccountProfileWorkspace({
         </div>
       )}
 
+      {/* Conversation Guide, from the profile. The third non-hub entry point,
+          and the one a reader reaches while thinking about themselves rather
+          than about a specific match. Shown in both modes and to every tier:
+          the free situation costs nothing and asks the server nothing, and the
+          premium hubs are exactly where a free account will not go looking. */}
+      <Link
+        href="/app/premium/conversation-guide"
+        data-testid="profile-conversation-guide-entry"
+        className="group mb-6 flex items-center gap-4 rounded-[1.5rem] border border-accent/20 bg-accent/[0.06] p-5 transition-colors hover:border-accent/35 hover:bg-accent/10"
+      >
+        <span aria-hidden="true" className="text-2xl leading-none">
+          &#128488;
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-white">
+            {t("conversationGuideEntryTitle")}
+          </span>
+          <span className="mt-1 block text-xs text-text-muted">
+            {t("conversationGuideEntrySubtitle")}
+          </span>
+        </span>
+        <span
+          aria-hidden="true"
+          className="shrink-0 text-text-dim transition-colors group-hover:text-white"
+        >
+          &rarr;
+        </span>
+      </Link>
+
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="relative h-24 w-24 overflow-hidden rounded-3xl bg-bg-secondary">

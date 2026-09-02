@@ -34,6 +34,18 @@ export default async function CelestialHubPage() {
       available: true,
     },
     {
+      // Free accounts reach this from the dashboard and from a chat thread —
+      // this hub entry is for people who already subscribed and are browsing
+      // what they have, not the discovery path. See the header of
+      // ConversationGuideOverview.tsx.
+      href: "/app/premium/conversation-guide",
+      title: t("conversationGuide"),
+      body: t("conversationGuideEntrySubtitle"),
+      badge: t("hubBadge_match"),
+      glyph: "coach",
+      available: true,
+    },
+    {
       href: "/app/premium/celestial/synastry",
       title: t("celestialHubOpenSynastry"),
       body: t("celestialHubItem_synastry"),

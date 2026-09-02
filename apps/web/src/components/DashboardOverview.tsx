@@ -29,7 +29,7 @@ type DashboardCard = {
   premiumNote?: string;
   featured?: boolean;
   tone?: "rose" | "cosmic" | "celestial" | "neutral";
-  icon?: "discover" | "cosmic" | "celestial" | "matches" | "chat" | "profile";
+  icon?: "discover" | "cosmic" | "celestial" | "matches" | "chat" | "profile" | "guide";
   span?: string;
 };
 
@@ -75,6 +75,16 @@ function CardGlyph({ icon }: { icon: NonNullable<DashboardCard["icon"]> }) {
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
           <circle cx="12" cy="8" r="3.25" />
           <path d="M5 19.5c1.5-3 4-4.5 7-4.5s5.5 1.5 7 4.5" strokeLinecap="round" />
+        </svg>
+      );
+    case "guide":
+      // A speech bubble with a small star: saying something, with the chart
+      // behind it. Deliberately not the plain "chat" bubble above — these two
+      // cards sit in the same grid and must not read as the same thing.
+      return (
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+          <path d="M4 6.5h13A2.5 2.5 0 0 1 19.5 9v5a2.5 2.5 0 0 1-2.5 2.5h-6l-4 3v-3H4A2.5 2.5 0 0 1 1.5 14V9A2.5 2.5 0 0 1 4 6.5Z" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M20 2.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" fill="currentColor" stroke="none" />
         </svg>
       );
   }
@@ -197,6 +207,20 @@ export function DashboardOverview() {
           eyebrow: t("chatNav"),
           tone: "neutral",
           icon: "chat",
+        },
+        {
+          // Conversation Guide, on the dashboard and NOT only in the premium
+          // hubs. The free situation ("Start a conversation", all twelve
+          // signs) costs nothing and asks the server nothing, so this card is
+          // shown to every signed-in account including free ones — they are
+          // exactly who the feature is meant to reach. No `premiumNote`: the
+          // first thing a free reader can do here is free.
+          href: "/app/premium/conversation-guide",
+          title: t("conversationGuideEntryTitle"),
+          body: t("conversationGuideEntrySubtitle"),
+          eyebrow: t("conversationGuide"),
+          tone: "neutral",
+          icon: "guide",
         },
         {
           href: "/app/profile",
