@@ -38,7 +38,7 @@ export function PhoneMockupPlaceholder({
       className={`relative mx-auto aspect-[195/422] w-full ${maxWidthClassName} ${className ?? ""}`}
     >
       {/* Phone frame */}
-      <div className="absolute inset-0 rounded-[42px] border border-white/15 bg-gradient-to-b from-[#1a1825] to-[#0e0c14] shadow-[0_30px_80px_-20px_rgba(201, 134, 146, 0.25)]">
+      <div className="absolute inset-0 rounded-[42px] border border-white/15 bg-gradient-to-b from-[#1a1825] to-[#0e0c14] shadow-[0_30px_80px_-20px_rgba(201,134,146,0.25)]">
         {/* Notch */}
         <div
           className="absolute left-1/2 top-2 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-black"
@@ -60,7 +60,7 @@ export function PhoneMockupPlaceholder({
 
       {/* Soft ambient glow behind the phone */}
       <div
-        className="pointer-events-none absolute -inset-8 -z-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(201, 134, 146, 0.18),transparent_70%)] blur-2xl"
+        className="pointer-events-none absolute -inset-8 -z-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(201,134,146,0.18),transparent_70%)] blur-2xl"
         aria-hidden="true"
       />
     </div>

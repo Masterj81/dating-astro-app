@@ -414,6 +414,41 @@ check(
 );
 
 // ---------------------------------------------------------------------------
+// 7. Arbitrary values must not contain a space
+// ---------------------------------------------------------------------------
+// A class attribute is split on whitespace. So a space inside a Tailwind
+// arbitrary value does not widen the class, it ENDS it:
+//
+//   bg-[linear-gradient(180deg,rgba(91, 84, 168, 0.18),...)]
+//
+// reaches the DOM as the classes `bg-[linear-gradient(180deg,rgba(91,` then
+// `84,` then `168,` — none of which exist. The element is simply unpainted,
+// with no error anywhere: not in tsc, not in eslint, not in the build.
+//
+// This is not hypothetical. Normalising rgba spacing during the gold repaint
+// put a space into 191 arbitrary values across 37 files, and the Cosmic hub's
+// violet gradient, the tinted feature cards and a batch of shadows silently
+// stopped rendering. The compiled stylesheet lost 12.7 KB and every check
+// stayed green. Same family as the shadow palette this file was written for:
+// the source says the colour is there, the screen disagrees.
+console.log('arbitrary values actually compile');
+
+const ARBITRARY = /[A-Za-z][\w.-]*-\[[^\[\]]*\]/g;
+const spaced = [];
+for (const rel of files) {
+  if (!rel.startsWith('apps/web/') || rel.endsWith('.css')) continue;
+  const src = readFileSync(path.join(ROOT, rel), 'utf8');
+  for (const tok of src.match(ARBITRARY) ?? []) {
+    if (tok.includes(' ')) spaced.push(`${rel}: ${tok.slice(0, 72)}`);
+  }
+}
+check(
+  'no Tailwind arbitrary value contains a space',
+  spaced.length === 0,
+  `${spaced.length} dead class(es), starting with: ${spaced.slice(0, 3).join('; ')}`,
+);
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 if (failures === 0) {

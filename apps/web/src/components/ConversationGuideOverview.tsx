@@ -363,7 +363,7 @@ export function ConversationGuideOverview() {
                 className={`shrink-0 rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${
                   openToReader
                     ? "border-gold-border bg-gold-wash text-gold"
-                    : "border-[rgba(169, 130, 61, 0.35)] bg-black/20 text-gold-muted"
+                    : "border-[rgba(169,130,61,0.35)] bg-black/20 text-gold-muted"
                 }`}
               >
                 {openToReader
@@ -395,7 +395,7 @@ export function ConversationGuideOverview() {
       // were never offered is how a paywall loses trust.
       return (
         <div
-          className="rounded-[2rem] border border-[rgba(201, 134, 146, 0.3)] bg-[rgba(201, 134, 146, 0.08)] p-8"
+          className="rounded-[2rem] border border-[rgba(201,134,146,0.3)] bg-[rgba(201,134,146,0.08)] p-8"
           data-testid="coach-locked-card"
         >
           <h2 className="text-xl font-semibold text-white">

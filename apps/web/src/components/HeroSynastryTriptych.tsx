@@ -104,7 +104,7 @@ export function HeroSynastryTriptych() {
           composition into the hero's existing radial-gradient. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-4 top-12 bottom-12 -z-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(201, 134, 146, 0.10),transparent_70%)] blur-3xl"
+        className="pointer-events-none absolute inset-x-4 top-12 bottom-12 -z-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(201,134,146,0.10),transparent_70%)] blur-3xl"
       />
 
       {/* Triptych row — flexbox with negative margins to overlap. Each

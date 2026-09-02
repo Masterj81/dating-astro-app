@@ -1646,7 +1646,7 @@ export function AccountProfileWorkspace({
 
         {/* Referral Section */}
         {!isSetupMode ? (
-          <div className="mt-6 rounded-[1.5rem] border border-accent/20 bg-[linear-gradient(135deg,rgba(201, 134, 146, 0.06),rgba(91, 84, 168, 0.06))] p-5">
+          <div className="mt-6 rounded-[1.5rem] border border-accent/20 bg-[linear-gradient(135deg,rgba(201,134,146,0.06),rgba(91,84,168,0.06))] p-5">
             <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
               {t("inviteFriends") || "Invite Friends"}
             </p>

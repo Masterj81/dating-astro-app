@@ -639,7 +639,7 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
                   key={frame.frame}
                   className={`flex flex-col items-center gap-1 rounded-[1.2rem] border p-4 ${
                     frame.frame === aspectView.headline.frame
-                      ? "border-[rgba(201, 134, 146, 0.35)] bg-[rgba(201, 134, 146, 0.10)]"
+                      ? "border-[rgba(201,134,146,0.35)] bg-[rgba(201,134,146,0.10)]"
                       : "border-border bg-bg/70"
                   }`}
                 >

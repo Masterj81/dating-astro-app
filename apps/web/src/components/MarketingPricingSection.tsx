@@ -271,7 +271,7 @@ function PricingCard({
     <div
       className={`relative overflow-hidden rounded-2xl border p-7 transition-all duration-300 ${
         highlighted
-          ? "scale-[1.02] border-accent/40 bg-accent/5 shadow-[0_0_40px_rgba(201, 134, 146, 0.12)]"
+          ? "scale-[1.02] border-accent/40 bg-accent/5 shadow-[0_0_40px_rgba(201,134,146,0.12)]"
           : "border-border bg-card hover:border-white/15"
       }`}
     >
@@ -320,7 +320,7 @@ function PricingCard({
           onClick={onCtaClick}
           className={`w-full rounded-full py-3 text-sm font-semibold transition-all ${
             highlighted
-              ? "bg-gold text-bg hover:bg-gold-soft hover:shadow-[0_0_20px_rgba(201, 134, 146, 0.3)]"
+              ? "bg-gold text-bg hover:bg-gold-soft hover:shadow-[0_0_20px_rgba(201,134,146,0.3)]"
               : "border border-border text-white hover:bg-card-hover"
           }`}
         >

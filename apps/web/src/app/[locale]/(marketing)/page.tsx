@@ -73,7 +73,7 @@ export default function LandingPage({
       {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-b from-bg via-bg-secondary to-bg-tertiary py-20 sm:py-28">
         <StarField />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_40%,rgba(201, 134, 146, 0.12),transparent)]" aria-hidden="true" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_40%,rgba(201,134,146,0.12),transparent)]" aria-hidden="true" />
 
         {/* Hero — single-column composition. Copy block centered on top,
             then the three-frame triptych below as the visual focal point.
@@ -443,7 +443,7 @@ export default function LandingPage({
             {STEPS.map(({ key, Icon }, i) => (
               <div key={key} className="group text-center">
                 <div className="relative mx-auto mb-5">
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-accent/20 bg-accent/8 text-accent shadow-[0_0_30px_rgba(201, 134, 146, 0.1)] transition-transform group-hover:scale-105" aria-hidden="true">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-accent/20 bg-accent/8 text-accent shadow-[0_0_30px_rgba(201,134,146,0.1)] transition-transform group-hover:scale-105" aria-hidden="true">
                     <Icon size={28} />
                   </div>
                   <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-gold text-xs font-bold text-bg">
@@ -468,7 +468,7 @@ export default function LandingPage({
         id="download"
         className="relative overflow-hidden bg-gradient-to-b from-bg-secondary to-bg py-24"
       >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_50%_60%_at_50%_50%,rgba(91, 84, 168, 0.1),transparent)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_50%_60%_at_50%_50%,rgba(91,84,168,0.1),transparent)]" />
         <div className="relative mx-auto max-w-3xl px-4 text-center">
           <h2 className="mb-4 text-3xl font-bold text-white sm:text-4xl">
             {cta("title")}

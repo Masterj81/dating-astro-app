@@ -319,7 +319,7 @@ export function PlansCheckout() {
               key={planKey}
               className={`relative rounded-[2rem] border p-6 transition-all ${
                 isRecommended
-                  ? "border-accent bg-accent/8 shadow-[0_0_40px_rgba(201, 134, 146, 0.06)]"
+                  ? "border-accent bg-accent/8 shadow-[0_0_40px_rgba(201,134,146,0.06)]"
                   : "border-border bg-card/90"
               }`}
             >
@@ -410,7 +410,7 @@ export function PlansCheckout() {
                   disabled={submittingPlan !== null}
                   className={`mt-6 w-full rounded-full px-5 py-3.5 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-70 ${
                     isRecommended
-                      ? "bg-gold text-bg hover:bg-gold-soft hover:shadow-[0_0_20px_rgba(201, 134, 146, 0.3)]"
+                      ? "bg-gold text-bg hover:bg-gold-soft hover:shadow-[0_0_20px_rgba(201,134,146,0.3)]"
                       : "bg-gold text-bg hover:bg-gold-soft"
                   }`}
                 >

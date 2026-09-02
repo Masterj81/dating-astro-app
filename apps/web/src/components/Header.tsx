@@ -81,7 +81,7 @@ export function Header() {
 
           <Link
             href="/#download"
-            className="rounded-full bg-gold px-4 py-2 text-sm font-medium text-bg transition-all hover:bg-gold-soft hover:shadow-[0_0_16px_rgba(201, 134, 146, 0.35)]"
+            className="rounded-full bg-gold px-4 py-2 text-sm font-medium text-bg transition-all hover:bg-gold-soft hover:shadow-[0_0_16px_rgba(201,134,146,0.35)]"
           >
             {tCommon("download")}
           </Link>

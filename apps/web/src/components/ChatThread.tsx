@@ -652,10 +652,10 @@ export function ChatThread({ conversationId, initialPrefill }: ChatThreadProps) 
                         )}
                         <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
                           <article
-                            className={`max-w-[85%] rounded-2xl border p-4 shadow-[0_8px_24px_rgba(201, 134, 146, 0.12)] ${
+                            className={`max-w-[85%] rounded-2xl border p-4 shadow-[0_8px_24px_rgba(201,134,146,0.12)] ${
                               isMine
-                                ? "rounded-br-md border-accent/35 bg-[linear-gradient(135deg,rgba(201, 134, 146, 0.18),rgba(201, 134, 146, 0.08))]"
-                                : "rounded-bl-md border-accent/30 bg-[linear-gradient(135deg,rgba(201, 134, 146, 0.12),rgba(255, 255, 255, 0.02))]"
+                                ? "rounded-br-md border-accent/35 bg-[linear-gradient(135deg,rgba(201,134,146,0.18),rgba(201,134,146,0.08))]"
+                                : "rounded-bl-md border-accent/30 bg-[linear-gradient(135deg,rgba(201,134,146,0.12),rgba(255,255,255,0.02))]"
                             }`}
                           >
                             <p className="mb-1.5 inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-accent/90">
@@ -766,7 +766,7 @@ export function ChatThread({ conversationId, initialPrefill }: ChatThreadProps) 
                 onClick={handleSend}
                 disabled={sending || !draft.trim()}
                 aria-label={t("chatSend")}
-                className="inline-flex h-12 shrink-0 items-center gap-2 rounded-full bg-gold px-5 text-sm font-semibold text-bg transition-all hover:bg-gold-soft hover:shadow-[0_8px_20px_rgba(201, 134, 146, 0.3)] disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none"
+                className="inline-flex h-12 shrink-0 items-center gap-2 rounded-full bg-gold px-5 text-sm font-semibold text-bg transition-all hover:bg-gold-soft hover:shadow-[0_8px_20px_rgba(201,134,146,0.3)] disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none"
               >
                 <SendIcon className="h-4 w-4" />
                 <span className="hidden sm:inline">{sending ? t("loading") : t("chatSend")}</span>

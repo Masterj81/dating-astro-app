@@ -554,9 +554,14 @@ const styles = StyleSheet.create({
     borderRadius: AppTheme.radius.pill,
     overflow: 'hidden',
     marginBottom: 16,
-    shadowColor: AppTheme.colors.coral,
+    // The button is filled with `gradients.ctaGold`; its halo was still
+    // rose-gold, so the paywall's one CTA was a gold button glowing pink.
+    // shadowColor reaches Android from API 28, so this rendered. Opacity drops
+    // to goldGlow's 0.28 because gold is a far brighter hue than the rose-gold
+    // it replaces, and 0.50 of it would bloom past the button's edge.
+    shadowColor: AppTheme.colors.gold,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.50,
+    shadowOpacity: 0.28,
     shadowRadius: 24,
     elevation: 12,
     minWidth: 280,

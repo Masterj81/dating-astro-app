@@ -153,7 +153,7 @@ export function SynastryFrameMockup({
       {/* Phone frame — same chrome as PhoneMockupPlaceholder so the triptych
           reads consistent with the rest of the marketing page if any
           PNG-backed mockup ever appears alongside it. */}
-      <div className="absolute inset-0 rounded-[42px] border border-white/15 bg-gradient-to-b from-[#1a1825] to-[#0e0c14] shadow-[0_30px_80px_-20px_rgba(201, 134, 146, 0.25)]">
+      <div className="absolute inset-0 rounded-[42px] border border-white/15 bg-gradient-to-b from-[#1a1825] to-[#0e0c14] shadow-[0_30px_80px_-20px_rgba(201,134,146,0.25)]">
         {/* Notch */}
         <div
           className="absolute left-1/2 top-2 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-black"

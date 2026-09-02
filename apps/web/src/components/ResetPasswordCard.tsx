@@ -201,7 +201,7 @@ export function ResetPasswordCard() {
   return (
     <div className="mx-auto w-full max-w-md rounded-[2rem] border border-border bg-card/90 p-8 shadow-2xl shadow-black/30 backdrop-blur-md">
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-accent/30 bg-accent/8 text-3xl text-white shadow-[0_0_30px_rgba(201, 134, 146, 0.12)]">
+        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-accent/30 bg-accent/8 text-3xl text-white shadow-[0_0_30px_rgba(201,134,146,0.12)]">
           &#128274;
         </div>
         <h1 className="text-3xl font-semibold text-white">{t("resetPassword")}</h1>
@@ -295,7 +295,7 @@ export function ResetPasswordCard() {
         <button
           type="submit"
           disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-gold px-5 py-3.5 text-sm font-semibold text-bg transition-all hover:bg-gold-soft hover:shadow-[0_0_20px_rgba(201, 134, 146, 0.3)] disabled:cursor-not-allowed disabled:opacity-70"
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-gold px-5 py-3.5 text-sm font-semibold text-bg transition-all hover:bg-gold-soft hover:shadow-[0_0_20px_rgba(201,134,146,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {loading ? (
             <>
