@@ -74,6 +74,7 @@ export function sanitizeProviderQuery(query: BirthCityQuery): BirthCityQuery | n
   const text = String(query.text ?? '')
     // Control characters, not punctuation: a newline typed into a city
     // field is how a log line or an HTTP header gets split downstream.
+    // eslint-disable-next-line no-control-regex -- stripping them is the point
     .replace(/[\u0000-\u001f\u007f]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()

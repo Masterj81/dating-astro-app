@@ -49,6 +49,7 @@ describe('sanitizeProviderQuery — what may leave for a third party', () => {
   it('strips control characters, which is how a header gets split', () => {
     const clean = sanitizeProviderQuery({ text: 'Sofia\r\nX-Injected: 1' });
     expect(clean?.text).toBe('Sofia X-Injected: 1');
+    // eslint-disable-next-line no-control-regex -- asserting their absence
     expect(clean?.text).not.toMatch(/[\u0000-\u001f]/);
   });
 
