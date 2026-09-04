@@ -232,6 +232,20 @@ describe('createRemoteBirthCityProvider', () => {
     expect(url).not.toMatch(/geoapify|locationiq|nominatim/i);
   });
 
+  it('passes per-request auth headers to the proxy', async () => {
+    const fetchImpl = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(
+      async () => new Response(JSON.stringify({ suggestions: [] }), { status: 200 }),
+    );
+    const provider = createRemoteBirthCityProvider({ endpoint, fetchImpl: fetchImpl as never });
+    await provider({ text: 'Sofia' }, undefined, { Authorization: 'Bearer session-token' });
+
+    const [, init] = fetchImpl.mock.calls[0]!;
+    expect(init.headers).toMatchObject({
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer session-token',
+    });
+  });
+
   it('refuses a short query without hitting the network', async () => {
     const fetchImpl = vi.fn();
     const provider = createRemoteBirthCityProvider({ endpoint, fetchImpl: fetchImpl as never });

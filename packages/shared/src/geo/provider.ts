@@ -59,6 +59,7 @@ export type BirthCityProviderResult =
 export type BirthCityProvider = (
   query: BirthCityQuery,
   signal?: AbortSignal,
+  headers?: Record<string, string>,
 ) => Promise<BirthCityProviderResult>;
 
 /** ISO 639-1 only. Anything else is dropped rather than forwarded. */
@@ -219,14 +220,14 @@ export function createRemoteBirthCityProvider(
 ): BirthCityProvider {
   const doFetch = options.fetchImpl ?? fetch;
 
-  return async (query, signal) => {
+  return async (query, signal, headers) => {
     const clean = sanitizeProviderQuery(query);
     if (!clean) return { ok: false, reason: 'invalid_query' };
 
     try {
       const response = await doFetch(options.endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(options.headers ?? {}) },
+        headers: { 'Content-Type': 'application/json', ...(options.headers ?? {}), ...(headers ?? {}) },
         body: JSON.stringify(clean),
         ...(signal ? { signal } : {}),
       });

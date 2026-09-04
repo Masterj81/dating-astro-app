@@ -116,6 +116,7 @@ export function BirthCityPicker({
           // identifying: `BirthCityQuery` has nowhere to put it.
           { text: value, lang: locale.slice(0, 2), limit: MAX_SUGGESTIONS },
           controller.signal,
+          token ? { Authorization: `Bearer ${token}` } : undefined,
         );
         if (cancelled) return;
         if (result.ok) {
@@ -128,7 +129,6 @@ export function BirthCityPicker({
           setRemote(null);
           setRemoteError("unavailable");
         }
-        void token;
       } catch {
         if (!cancelled) setRemoteError("unavailable");
       } finally {
