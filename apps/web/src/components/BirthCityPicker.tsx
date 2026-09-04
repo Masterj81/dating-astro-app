@@ -239,7 +239,7 @@ export function BirthCityPicker({
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-20 mt-2 w-full overflow-hidden rounded-[1.25rem] border border-gold-border bg-card shadow-[0_24px_60px_rgba(0,0,0,0.45)]"
+          className="absolute z-50 mt-2 w-full overflow-hidden rounded-[1.25rem] border border-gold-border bg-[#080b14] shadow-[0_28px_80px_rgba(0,0,0,0.72)] ring-1 ring-white/10"
         >
           {suggestions.map((suggestion, index) => (
             <li key={suggestion.id} role="presentation">

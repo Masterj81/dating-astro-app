@@ -10,7 +10,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -1080,7 +1079,8 @@ export default function BirthInfoScreen() {
                             onValueChange={handleBirthMonthChange}
                             mode={pickerMode}
                             style={styles.picker}
-                            dropdownIconColor="#C98692"
+                            dropdownIconColor={AppTheme.colors.goldMuted}
+                            dropdownIconRippleColor="rgba(232, 199, 126, 0.18)"
                             itemStyle={styles.pickerItem}
                           >
                             <Picker.Item label={t('month')} value="" style={styles.pickerItemPlaceholder} />
@@ -1098,7 +1098,8 @@ export default function BirthInfoScreen() {
                             onValueChange={handleBirthDayChange}
                             mode={pickerMode}
                             style={styles.picker}
-                            dropdownIconColor="#C98692"
+                            dropdownIconColor={AppTheme.colors.goldMuted}
+                            dropdownIconRippleColor="rgba(232, 199, 126, 0.18)"
                             itemStyle={styles.pickerItem}
                           >
                             <Picker.Item label={t('day')} value="" style={styles.pickerItemPlaceholder} />
@@ -1118,7 +1119,8 @@ export default function BirthInfoScreen() {
                             onValueChange={handleBirthYearChange}
                             mode={pickerMode}
                             style={styles.picker}
-                            dropdownIconColor="#C98692"
+                            dropdownIconColor={AppTheme.colors.goldMuted}
+                            dropdownIconRippleColor="rgba(232, 199, 126, 0.18)"
                             itemStyle={styles.pickerItem}
                           >
                             <Picker.Item label={t('year')} value="" style={styles.pickerItemPlaceholder} />
@@ -1178,7 +1180,8 @@ export default function BirthInfoScreen() {
                           onValueChange={setBirthHour}
                           mode={pickerMode}
                           style={styles.picker}
-                          dropdownIconColor="#C98692"
+                          dropdownIconColor={AppTheme.colors.goldMuted}
+                          dropdownIconRippleColor="rgba(232, 199, 126, 0.18)"
                           itemStyle={styles.pickerItem}
                         >
                           <Picker.Item label={t('hour')} value="" style={styles.pickerItemPlaceholder} />
@@ -1193,7 +1196,8 @@ export default function BirthInfoScreen() {
                           onValueChange={setBirthMinute}
                           mode={pickerMode}
                           style={styles.picker}
-                          dropdownIconColor="#C98692"
+                          dropdownIconColor={AppTheme.colors.goldMuted}
+                          dropdownIconRippleColor="rgba(232, 199, 126, 0.18)"
                           itemStyle={styles.pickerItem}
                         >
                           <Picker.Item label={t('min')} value="" style={styles.pickerItemPlaceholder} />
@@ -1564,23 +1568,23 @@ const styles = StyleSheet.create({
   },
   pickerWrapper: {
     flex: 1,
-    backgroundColor: '#f6f1ea',
+    backgroundColor: '#080B14',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
+    borderColor: AppTheme.colors.goldBorder,
     borderRadius: 12,
     overflow: 'hidden',
   },
   pickerWrapperSmall: {
     flex: 0.82,
-    backgroundColor: '#f6f1ea',
+    backgroundColor: '#080B14',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
+    borderColor: AppTheme.colors.goldBorder,
     borderRadius: 12,
     overflow: 'hidden',
   },
   picker: {
-    color: '#1c1a24',
-    backgroundColor: 'transparent',
+    color: AppTheme.colors.textPrimary,
+    backgroundColor: '#080B14',
     ...(Platform.OS === 'android' && {
       minHeight: 54,
     }),
@@ -1589,18 +1593,18 @@ const styles = StyleSheet.create({
       paddingHorizontal: 12,
       border: 'none',
       cursor: 'pointer',
-      backgroundColor: '#f6f1ea',
-      color: '#1c1a24',
+      backgroundColor: '#080B14',
+      color: AppTheme.colors.textPrimary,
       fontSize: 14,
       width: '100%',
       borderRadius: 12,
     }),
   } as any,
   pickerItem: {
-    color: '#1c1a24',
+    color: AppTheme.colors.textPrimary,
   },
   pickerItemPlaceholder: {
-    color: '#7f6f77',
+    color: AppTheme.colors.goldMuted,
   },
   preferenceHint: {
     color: AppTheme.colors.textSecondary,

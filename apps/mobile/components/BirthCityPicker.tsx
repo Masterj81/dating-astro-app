@@ -103,13 +103,17 @@ export default function BirthCityPicker({
       try {
         const { data } = await supabase.auth.getSession();
         const token = data.session?.access_token;
-        const result = await provider({
-          // The body carries the city text and the interface language. There is
-          // nowhere in `BirthCityQuery` to put anything identifying.
-          text: value,
-          lang: String(language ?? 'en').slice(0, 2),
-          limit: MAX_SUGGESTIONS,
-        });
+        const result = await provider(
+          {
+            // The body carries the city text and the interface language. There is
+            // nowhere in `BirthCityQuery` to put anything identifying.
+            text: value,
+            lang: String(language ?? 'en').slice(0, 2),
+            limit: MAX_SUGGESTIONS,
+          },
+          undefined,
+          token ? { Authorization: `Bearer ${token}` } : undefined,
+        );
         if (cancelled) return;
         if (result.ok) {
           setRemote(result.suggestions);
@@ -121,7 +125,6 @@ export default function BirthCityPicker({
           setRemote(null);
           setUnavailable(true);
         }
-        void token;
       } catch {
         if (!cancelled) setUnavailable(true);
       } finally {
@@ -241,7 +244,7 @@ export default function BirthCityPicker({
 const styles = StyleSheet.create({
   inputRow: { position: 'relative', justifyContent: 'center' },
   input: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: '#080B14',
     borderWidth: 1,
     borderColor: AppTheme.colors.border,
     borderRadius: 14,
@@ -259,9 +262,20 @@ const styles = StyleSheet.create({
     borderColor: AppTheme.colors.goldBorder,
     borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: AppTheme.colors.canvasAlt,
+    backgroundColor: '#080B14',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.45,
+    shadowRadius: 18,
+    elevation: 12,
+    zIndex: 30,
   },
-  option: { paddingHorizontal: 16, paddingVertical: 13 },
+  option: {
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(232, 199, 126, 0.16)',
+  },
   optionText: { fontSize: 15, color: AppTheme.colors.textPrimary },
   resolved: { marginTop: 8, fontSize: 12, color: AppTheme.colors.goldMuted },
   hint: { marginTop: 8, fontSize: 12, lineHeight: 18, color: AppTheme.colors.textMuted },

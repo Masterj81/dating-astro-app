@@ -45,6 +45,7 @@ function read(rel) {
 const layout = read('app/_layout.tsx');
 const notifications = read('services/notifications.ts');
 const birthInfo = read('app/onboarding/birth-info.tsx');
+const birthCityPicker = read('components/BirthCityPicker.tsx');
 const authCallback = read('app/auth/callback.tsx');
 const discover = read('app/(tabs)/discover.tsx');
 const activity = read('services/activity.ts');
@@ -148,6 +149,8 @@ const codeOf = (source) =>
     .join('\n');
 
 const serviceCode = codeOf(astrologyService);
+const birthInfoCode = codeOf(birthInfo);
+const birthCityPickerCode = codeOf(birthCityPicker);
 const callbackCode = codeOf(authCallback);
 const layoutCode = codeOf(layout);
 
@@ -249,6 +252,36 @@ check('callback verifies token_hash links when Supabase sends one',
   /verifyOtp\(\{[\s\S]{0,120}?token_hash: tokenHash/.test(callbackCode));
 check('callback can store hash token sessions',
   /setSession\(\{[\s\S]{0,120}?access_token: accessToken[\s\S]{0,80}?refresh_token: refreshToken/.test(callbackCode));
+
+// --- P0-7 · readable native birth inputs ------------------------------------
+// Android's native picker popup does not inherit our web glass layer. If the
+// items are styled dark while the system popup is dark gray, the month/day/time
+// menus become almost unreadable on a real device. Guard the boring values:
+// opaque dark fields, light item text, muted-gold placeholders, visible icons.
+console.log('P0-7  readable native birth inputs');
+
+check('birth date/time pickers are not painted with the old light shell',
+  !/#f6f1ea/i.test(birthInfoCode),
+  'the native popup needs light item text; a light collapsed shell would make that unreadable');
+check('birth date/time pickers use an opaque dark shell',
+  /pickerWrapper:\s*\{[\s\S]{0,180}?backgroundColor:\s*['"]#080B14['"]/.test(birthInfoCode) &&
+    /pickerWrapperSmall:\s*\{[\s\S]{0,180}?backgroundColor:\s*['"]#080B14['"]/.test(birthInfoCode));
+check('picker item text is light enough for Android popups',
+  /pickerItem:\s*\{[\s\S]{0,80}?color:\s*AppTheme\.colors\.textPrimary/.test(birthInfoCode));
+check('picker placeholders use muted gold instead of low-contrast gray',
+  /pickerItemPlaceholder:\s*\{[\s\S]{0,80}?color:\s*AppTheme\.colors\.goldMuted/.test(birthInfoCode));
+check('all five birth pickers have a visible muted-gold dropdown icon',
+  (birthInfoCode.match(/dropdownIconColor=\{AppTheme\.colors\.goldMuted\}/g) || []).length === 5);
+check('all five birth pickers have a restrained gold ripple',
+  (birthInfoCode.match(/dropdownIconRippleColor="rgba\(232, 199, 126, 0\.18\)"/g) || []).length === 5);
+check('mobile city search sends the Supabase bearer to the proxy',
+  /Authorization:\s*`Bearer \$\{token\}`/.test(birthCityPickerCode),
+  'without it the edge function returns unavailable and the city field feels broken');
+check('mobile city suggestions are opaque, not glass-on-glass',
+  /list:\s*\{[\s\S]{0,220}?backgroundColor:\s*['"]#080B14['"]/.test(birthCityPickerCode));
+check('mobile city suggestions are raised above the form',
+  /list:\s*\{[\s\S]{0,360}?elevation:\s*12/.test(birthCityPickerCode) &&
+    /list:\s*\{[\s\S]{0,380}?zIndex:\s*30/.test(birthCityPickerCode));
 
 // Surfaces showing SOMEONE ELSE's chart. None of these queries return
 // birth_time or birth_chart, so none of them can prove an ascendant is real —
