@@ -930,6 +930,7 @@
   "birthTimeOptional": "可选，但能让你的星盘更加精准",
   "birthCityOptionalHint": "帮助精确确定你的上升星座",
   "birthCityFormatHint": "如果城市名很常见，请加上国家（例如：\"Springfield, IL, USA\"）",
+  "birthCityRequiredError": "请添加出生城市，以便准确计算你的星盘。",
   "iDontKnowMyBirthTime": "我不知道我的出生时间",
   "thatsOk": "没关系！我们会计算你的太阳星座并估算其余部分。",
   "almostDone": "你快完成了！",
@@ -945,7 +946,7 @@
   "stepTwoTitle": "完善你的星盘",
   "stepTwoSubtitle": "这些信息将解锁你的月亮和上升星座，获得更精准的匹配",
   "stepTwoBirthTimeHint": "你的出生时间能揭示月亮和上升星座。大概时间也有帮助！",
-  "stepTwoEncouragement": "不确定也没关系——我们会用你现有的信息做出很棒的星盘。",
+  "stepTwoEncouragement": "出生时间可以是大概时间，也可以未知。出生城市会把星盘锚定到真实地点。",
   "stepThreeTitle": "最后一件事",
   "stepThreeSubtitle": "帮我们为你找到合适的人",
   "back": "返回",
@@ -2173,5 +2174,12 @@
   "tarotV2Title": "你的塔罗反思",
   "tarotV2Subtitle": "一组用于反思而非预测的象征性牌阵。",
   "tarotV2ReversedSuffix": "逆位",
-  "tarotV2TapToReveal": "点击翻开"
+  "tarotV2TapToReveal": "点击翻开",
+  "birthCitySearching": "正在搜索城市…",
+  "birthCityUnavailable": "城市搜索暂时不可用，请稍后再试。",
+  "birthCityAttribution": "城市搜索由 Geoapify 提供 · 数据 © OpenStreetMap 贡献者",
+  "birthCityResolved": "出生地已确认，宫位与轴点将使用该坐标。",
+  "birthCityAmbiguous": "有多个同名城市。请选择正确的一个——坐标并不相同。",
+  "birthCityNotFound": "找不到这座城市。请尝试加上国家或地区。",
+  "birthCityRequiredHint": "请从列表中选择城市。没有精确坐标，我们无法定位宫位或上升点。"
 }

@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { calculateNatalChart } from '../../services/astrology';
-import { geocodeCity } from '../../services/geocoding';
+import { validateBirthCitySuggestion } from '@astro/shared/geo';
 import { loadPreSignupDraft } from '../../utils/onboardingDraft';
 import { buttonPress } from '../../services/haptics';
 import {
@@ -167,18 +167,23 @@ export default function WelcomePreview() {
         let lat: number | null = null;
         let lng: number | null = null;
         let iana: string | null = null;
-        const cityStr = String(draft.birthCity || '').trim();
-        if (cityStr.length >= 2) {
-          try {
-            const geo = await geocodeCity(cityStr);
-            if (geo && typeof geo.latitude === 'number' && typeof geo.longitude === 'number') {
-              lat = geo.latitude;
-              lng = geo.longitude;
-              iana = geo.iana;
-            }
-          } catch {
-            // network / geocode failure — keep null; sun/moon stay accurate.
-          }
+
+        // The city the reader RESOLVED during onboarding, re-validated because
+        // a draft is client storage. It is the only source: there is no
+        // geocoder here to re-resolve the string with, and that is the point —
+        // resolving it a second time could land on a different city than the
+        // one saved two screens later, and the preview would show an ascendant
+        // from somewhere else entirely.
+        //
+        // A legacy draft, written before the picker existed, carries only a
+        // string. It gets null coordinates, so the angles are withheld and the
+        // sun and moon stay exact — the same honest degradation as a reader
+        // who never gave a birthplace.
+        const chosen = validateBirthCitySuggestion(draft.birthCitySelection);
+        if (chosen) {
+          lat = chosen.latitude;
+          lng = chosen.longitude;
+          iana = chosen.timezone ?? null;
         }
 
         const local = calculateNatalChart(date, time ?? null, lat, lng, iana);

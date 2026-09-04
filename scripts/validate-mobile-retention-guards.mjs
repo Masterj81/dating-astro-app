@@ -45,6 +45,7 @@ function read(rel) {
 const layout = read('app/_layout.tsx');
 const notifications = read('services/notifications.ts');
 const birthInfo = read('app/onboarding/birth-info.tsx');
+const authCallback = read('app/auth/callback.tsx');
 const discover = read('app/(tabs)/discover.tsx');
 const activity = read('services/activity.ts');
 
@@ -147,6 +148,8 @@ const codeOf = (source) =>
     .join('\n');
 
 const serviceCode = codeOf(astrologyService);
+const callbackCode = codeOf(authCallback);
+const layoutCode = codeOf(layout);
 
 check('the engine facade has no Aries literal at all',
   !/['"]Aries['"]/.test(serviceCode),
@@ -217,6 +220,35 @@ check('discover hides an unprovable rising pill',
 check('synastry refuses an unprovable ascendant on both sides',
   (codeOf(synastry).match(/resolveTrustedRisingSign\(/g) || []).length >= 2,
   'the "first impressions" factor must not score an invented placement');
+
+// --- P0-6 · native email confirmation callback ------------------------------
+// Supabase signup emails redirect to `astrodating://auth/callback`. Android
+// parses that as host=`auth`, pathname=`/callback`. Two separate mistakes
+// made the link look like it worked while doing nothing useful: the layout
+// rejected `auth` as an untrusted host, and the callback screen returned
+// immediately on native because OAuth uses expo-web-browser. Email
+// confirmation links are opened from Gmail/Chrome, so native must consume the
+// URL itself.
+console.log('P0-6  native email confirmation callback');
+
+check('custom scheme allows the Supabase auth host',
+  /host !== 'auth'/.test(layoutCode),
+  '`astrodating://auth/callback` is parsed with hostname "auth"');
+check('custom auth host is normalized back to /auth/callback',
+  /effectivePath[\s\S]{0,160}?`\/auth\$\{parsed\.pathname\}`/.test(layoutCode),
+  'otherwise the allowed path check sees only /callback and drops the link');
+check('native callback reads the initial deep link URL',
+  /Linking\.getInitialURL\(\)/.test(callbackCode),
+  'email confirmation does not arrive through expo-web-browser');
+check('native callback does not return before handling auth data',
+  !/Platform\.OS !== 'web'[\s\S]{0,160}?router\.replace\('\/'\)[\s\S]{0,80}?return;/.test(callbackCode),
+  'this was the blank-page bug: native opened the route and immediately left');
+check('callback exchanges PKCE code when Supabase sends one',
+  /exchangeCodeForSession\(code\)/.test(callbackCode));
+check('callback verifies token_hash links when Supabase sends one',
+  /verifyOtp\(\{[\s\S]{0,120}?token_hash: tokenHash/.test(callbackCode));
+check('callback can store hash token sessions',
+  /setSession\(\{[\s\S]{0,120}?access_token: accessToken[\s\S]{0,80}?refresh_token: refreshToken/.test(callbackCode));
 
 // Surfaces showing SOMEONE ELSE's chart. None of these queries return
 // birth_time or birth_chart, so none of them can prove an ascendant is real —

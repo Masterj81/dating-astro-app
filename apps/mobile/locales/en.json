@@ -1071,6 +1071,7 @@
   "birthTimeOptional": "Optional, but it makes your chart way more accurate",
   "birthCityOptionalHint": "Helps pinpoint your rising sign with precision",
   "birthCityFormatHint": "Include country if the city name is common (e.g., \"Springfield, IL, USA\")",
+  "birthCityRequiredError": "Add your birth city to calculate your chart accurately.",
   "iDontKnowMyBirthTime": "I don't know my birth time",
   "thatsOk": "No worries! We'll calculate your Sun sign and estimate the rest.",
   "almostDone": "You're almost done!",
@@ -1086,7 +1087,7 @@
   "stepTwoTitle": "Refine Your Chart",
   "stepTwoSubtitle": "These details unlock your Moon and Rising signs for deeper, more accurate connections",
   "stepTwoBirthTimeHint": "Your birth time reveals your Moon and Rising signs. Even an approximate time helps!",
-  "stepTwoEncouragement": "Don't worry if you're not sure -- we'll still build a great chart with what you have.",
+  "stepTwoEncouragement": "Your birth time can be approximate or unknown. Your birth city anchors the chart to a real place.",
   "stepThreeTitle": "One Last Thing",
   "stepThreeSubtitle": "Help us find the right people for you",
   "back": "Back",
@@ -2173,5 +2174,12 @@
   "tarotV2Title": "Your Tarot Reflection",
   "tarotV2Subtitle": "A symbolic spread for reflection, not prediction.",
   "tarotV2ReversedSuffix": "Reversed",
-  "tarotV2TapToReveal": "Tap to reveal"
+  "tarotV2TapToReveal": "Tap to reveal",
+  "birthCitySearching": "Searching cities…",
+  "birthCityUnavailable": "City search is unavailable. Try again in a moment.",
+  "birthCityAttribution": "City search powered by Geoapify · data © OpenStreetMap contributors.",
+  "birthCityResolved": "Birthplace confirmed — your houses and angles use these coordinates.",
+  "birthCityAmbiguous": "Several cities share this name. Pick the right one — the coordinates differ.",
+  "birthCityNotFound": "We couldn't find that city. Try adding the country or region.",
+  "birthCityRequiredHint": "Choose a city from the list. Without exact coordinates we cannot place your houses or your ascendant."
 }

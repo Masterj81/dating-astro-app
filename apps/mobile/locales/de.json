@@ -930,6 +930,7 @@
   "birthTimeOptional": "Optional, aber es macht dein Horoskop viel genauer",
   "birthCityOptionalHint": "Hilft, deinen Aszendenten präzise zu bestimmen",
   "birthCityFormatHint": "Füge das Land hinzu, wenn der Stadtname häufig vorkommt (z.B. \"Springfield, IL, USA\")",
+  "birthCityRequiredError": "Füge deinen Geburtsort hinzu, damit dein Horoskop genau berechnet werden kann.",
   "iDontKnowMyBirthTime": "Ich kenne meine Geburtszeit nicht",
   "thatsOk": "Kein Problem! Wir berechnen dein Sonnenzeichen und schätzen den Rest.",
   "almostDone": "Du bist fast fertig!",
@@ -945,7 +946,7 @@
   "stepTwoTitle": "Verfeinere dein Horoskop",
   "stepTwoSubtitle": "Diese Details schalten deine Mond- und Aszendenten-Zeichen für genauere Verbindungen frei",
   "stepTwoBirthTimeHint": "Deine Geburtszeit enthüllt deine Mond- und Aszendenten-Zeichen. Auch eine ungefähre Zeit hilft!",
-  "stepTwoEncouragement": "Keine Sorge, wenn du unsicher bist — wir erstellen trotzdem ein tolles Horoskop mit dem, was du hast.",
+  "stepTwoEncouragement": "Deine Geburtszeit kann ungefähr oder unbekannt sein. Dein Geburtsort verankert das Horoskop an einem realen Ort.",
   "stepThreeTitle": "Noch eine Sache",
   "stepThreeSubtitle": "Hilf uns, die richtigen Leute für dich zu finden",
   "back": "Zurück",
@@ -2173,5 +2174,12 @@
   "tarotV2Title": "Deine Tarot-Reflexion",
   "tarotV2Subtitle": "Eine symbolische Legung zur Reflexion, keine Vorhersage.",
   "tarotV2ReversedSuffix": "Umgekehrt",
-  "tarotV2TapToReveal": "Tippen zum Aufdecken"
+  "tarotV2TapToReveal": "Tippen zum Aufdecken",
+  "birthCitySearching": "Städte werden gesucht …",
+  "birthCityUnavailable": "Die Städtesuche ist nicht verfügbar. Versuche es gleich noch einmal.",
+  "birthCityAttribution": "Städtesuche powered by Geoapify · Daten © OpenStreetMap-Mitwirkende.",
+  "birthCityResolved": "Geburtsort bestätigt – deine Häuser und Achsen verwenden diese Koordinaten.",
+  "birthCityAmbiguous": "Mehrere Städte tragen diesen Namen. Wähle die richtige – die Koordinaten unterscheiden sich.",
+  "birthCityNotFound": "Wir konnten diese Stadt nicht finden. Ergänze Land oder Region.",
+  "birthCityRequiredHint": "Wähle eine Stadt aus der Liste. Ohne genaue Koordinaten lassen sich Häuser und Aszendent nicht bestimmen."
 }

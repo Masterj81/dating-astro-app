@@ -1,40 +1,71 @@
 import { useEffect } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import type { EmailOtpType } from '@supabase/supabase-js';
 import { supabase } from '../../services/supabase';
 
 /**
- * OAuth callback handler for web platform.
- * Handles the redirect from OAuth providers (Google, Apple, Facebook)
- * and extracts tokens from the URL hash.
+ * Auth callback handler.
+ *
+ * OAuth opened from inside the app is handled by `expo-web-browser`, but email
+ * confirmations are different: the reader taps a link in Gmail/Chrome and
+ * Android opens this route through the `astrodating://auth/callback` scheme.
+ * Native must therefore consume the callback URL itself. Returning early here
+ * leaves the browser on about:blank and the app listening forever on the
+ * verify-email screen.
  */
 export default function AuthCallbackScreen() {
   useEffect(() => {
-    const handleCallback = async () => {
-      if (Platform.OS !== 'web') {
-        // On native, the deep link is handled by expo-web-browser
-        router.replace('/');
-        return;
+    const finishInApp = () => {
+      router.replace('/');
+    };
+
+    const failInApp = () => {
+      router.replace('/auth/login');
+    };
+
+    const getCallbackUrl = async (): Promise<string | null> => {
+      if (Platform.OS === 'web') {
+        return window.location.href;
       }
 
-      try {
-        // Get the hash from the URL (contains access_token, refresh_token, etc.)
-        const hash = window.location.hash.substring(1);
-        const params = new URLSearchParams(hash);
+      return Linking.getInitialURL();
+    };
 
-        const accessToken = params.get('access_token');
-        const refreshToken = params.get('refresh_token');
-        const error = params.get('error');
-        const errorDescription = params.get('error_description');
+    const readParams = (url: string) => {
+      const parsed = new URL(url);
+      const searchParams = new URLSearchParams(parsed.search);
+      const hashParams = new URLSearchParams(parsed.hash.replace(/^#/, ''));
+
+      return { searchParams, hashParams };
+    };
+
+    const handleCallback = async () => {
+      try {
+        const callbackUrl = await getCallbackUrl();
+
+        if (!callbackUrl) {
+          console.error('No callback URL available');
+          failInApp();
+          return;
+        }
+
+        const { searchParams, hashParams } = readParams(callbackUrl);
+
+        const accessToken = hashParams.get('access_token') || searchParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token') || searchParams.get('refresh_token');
+        const error = hashParams.get('error') || searchParams.get('error');
+        const errorDescription =
+          hashParams.get('error_description') || searchParams.get('error_description');
 
         if (error) {
           console.error('OAuth error:', error, errorDescription);
           // If in popup, close it and redirect opener
-          if (window.opener) {
+          if (Platform.OS === 'web' && window.opener) {
             window.opener.location.href = '/auth/login';
             window.close();
           } else {
-            router.replace('/auth/login');
+            failInApp();
           }
           return;
         }
@@ -48,63 +79,85 @@ export default function AuthCallbackScreen() {
 
           if (sessionError) {
             console.error('Session error:', sessionError);
-            if (window.opener) {
+            if (Platform.OS === 'web' && window.opener) {
               window.opener.location.href = '/auth/login';
               window.close();
             } else {
-              router.replace('/auth/login');
+              failInApp();
             }
             return;
           }
 
           // Successfully authenticated - redirect main window and close popup
-          if (window.opener) {
+          if (Platform.OS === 'web' && window.opener) {
             window.opener.location.href = '/';
             window.close();
           } else {
-            router.replace('/');
+            finishInApp();
           }
           return;
         }
 
         // Check for code exchange flow
-        const code = params.get('code') || new URLSearchParams(window.location.search).get('code');
+        const code = hashParams.get('code') || searchParams.get('code');
         if (code) {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           if (exchangeError) {
             console.error('Code exchange error:', exchangeError);
-            if (window.opener) {
+            if (Platform.OS === 'web' && window.opener) {
               window.opener.location.href = '/auth/login';
               window.close();
             } else {
-              router.replace('/auth/login');
+              failInApp();
             }
             return;
           }
-          if (window.opener) {
+          if (Platform.OS === 'web' && window.opener) {
             window.opener.location.href = '/';
             window.close();
           } else {
-            router.replace('/');
+            finishInApp();
           }
+          return;
+        }
+
+        const tokenHash = hashParams.get('token_hash') || searchParams.get('token_hash');
+        const otpType = hashParams.get('type') || searchParams.get('type') || 'signup';
+        if (tokenHash) {
+          const validTypes: EmailOtpType[] = ['signup', 'magiclink', 'recovery', 'invite', 'email_change'];
+          const verifyType: EmailOtpType = validTypes.includes(otpType as EmailOtpType)
+            ? (otpType as EmailOtpType)
+            : 'signup';
+
+          const { error: otpError } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: verifyType,
+          });
+          if (otpError) {
+            console.error('OTP verification error:', otpError.message);
+            failInApp();
+            return;
+          }
+
+          finishInApp();
           return;
         }
 
         // No tokens or code found
         console.error('No authentication data in callback');
-        if (window.opener) {
+        if (Platform.OS === 'web' && window.opener) {
           window.opener.location.href = '/auth/login';
           window.close();
         } else {
-          router.replace('/auth/login');
+          failInApp();
         }
       } catch (err) {
         console.error('Callback error:', err);
-        if (window.opener) {
+        if (Platform.OS === 'web' && window.opener) {
           window.opener.location.href = '/auth/login';
           window.close();
         } else {
-          router.replace('/auth/login');
+          failInApp();
         }
       }
     };
