@@ -66,6 +66,30 @@ export const COACH_SITUATION_FRAMES = {
     reflect:
       'Is this a boundary about you, or a request that they change? Naming which one it is often changes the wording.',
   },
+  feelings: {
+    intent:
+      "You're naming something tender without asking the other person to manage it. Keep it true, simple, and yours.",
+    reflect:
+      'What part of the feeling belongs to you before they answer?',
+  },
+  plan: {
+    intent:
+      "You're turning interest into a real next step. A concrete option usually makes it easier to answer honestly.",
+    reflect:
+      'Are you offering a plan you can follow through on, or asking them to carry the shape of it?',
+  },
+  flirt: {
+    intent:
+      "You're adding warmth, not pressure. The line works best when it leaves room for them to smile or step back.",
+    reflect:
+      'Would this still feel kind if they showed it to a friend?',
+  },
+  slow: {
+    intent:
+      "You're reducing speed without disappearing. Say what is changing, and name what is still true if it is true.",
+    reflect:
+      'Are you slowing the pace to protect the connection, or to avoid saying a harder thing?',
+  },
 };
 
 /**
@@ -92,6 +116,14 @@ export const COACH_SIGN_CONTENT = {
         'That came out sharper than I meant it. Can we rewind a step?',
       boundary:
         "I want to be straight with you: I can't do this week. I'd still like to find a time that works.",
+      feelings:
+        'I like you, and I wanted to say it plainly instead of acting cooler than I feel.',
+      plan:
+        "Let's make this easy: a quick drink Thursday, and if it feels good we can stay longer.",
+      flirt:
+        'You have a way of making the room feel awake. I noticed.',
+      slow:
+        'I like the spark here, and I need to take the pace down a notch so I can stay present.',
     },
   },
   taurus: {
@@ -110,6 +142,14 @@ export const COACH_SIGN_CONTENT = {
         "I think I rushed you, and I'd rather slow down than push. Can we take that again?",
       boundary:
         "I need to keep this week light. It isn't a step back from you — it's just my week.",
+      feelings:
+        "I feel good around you in a way that feels steady, and I wanted you to know.",
+      plan:
+        'Would you like to choose a place we can actually settle into for a bit?',
+      flirt:
+        'You make ordinary things feel calmer and better than they should.',
+      slow:
+        "I like this, and I'd rather let it grow slowly than rush it into something brittle.",
     },
   },
   gemini: {
@@ -128,6 +168,14 @@ export const COACH_SIGN_CONTENT = {
         'I think we talked past each other. Can I hear your version before I explain mine?',
       boundary:
         "I'm going to be quiet for a couple of days — that's my head, not you. Talk soon?",
+      feelings:
+        "I keep wanting to tell you little things from my day. That's usually a sign for me.",
+      plan:
+        'Want to pick one small adventure this week and leave the rest open?',
+      flirt:
+        'Talking with you is dangerously easy, in the best possible way.',
+      slow:
+        "I like the momentum, and I need a little space so I don't turn it into noise.",
     },
   },
   cancer: {
@@ -146,6 +194,14 @@ export const COACH_SIGN_CONTENT = {
         "I think I read that wrong, and I'd rather fix it than let it sit. What did you actually mean?",
       boundary:
         "I need a slower week, and I want you to know it isn't about you. I'd still like to see you Sunday.",
+      feelings:
+        'I feel close to you in small moments, and I wanted to say that gently.',
+      plan:
+        'Would a quiet evening feel good this week, something simple with room to talk?',
+      flirt:
+        'There is something about your softness that keeps staying with me.',
+      slow:
+        "I care about this, and I need to move slowly enough that it still feels safe.",
     },
   },
   leo: {
@@ -164,6 +220,14 @@ export const COACH_SIGN_CONTENT = {
         "I think I was careless with something that mattered to you, and I'd like to make it right.",
       boundary:
         'I care about this, and I also need a quieter week. Both are true — could we plan for next week instead?',
+      feelings:
+        "I like you, and I don't want to hide that behind being casual.",
+      plan:
+        "I want to plan something that actually feels fun for both of us. What's your kind of night?",
+      flirt:
+        'You have a bright way of being that is hard not to notice.',
+      slow:
+        "I like the warmth here, and I need to slow the pace without dimming it.",
     },
   },
   virgo: {
@@ -182,6 +246,14 @@ export const COACH_SIGN_CONTENT = {
         "I got that wrong, and I'd rather say so than explain it away. Can we start over on it?",
       boundary:
         "I can't make evenings work this week. I'd still like to — could we look at the weekend?",
+      feelings:
+        'I feel more comfortable with you than I expected, and I wanted to name that clearly.',
+      plan:
+        'I can do Friday after 7 or Sunday afternoon. Would either of those work for you?',
+      flirt:
+        'I like how carefully you notice things. It makes me want to pay attention too.',
+      slow:
+        "I like where this is going, and I need to slow down enough to stay honest with it.",
     },
   },
   libra: {
@@ -200,6 +272,14 @@ export const COACH_SIGN_CONTENT = {
         "I'd like to understand both sides of what happened, without either of us being the villain. Can we talk?",
       boundary:
         "I need to say no to this one, and I'd rather say it plainly than go quiet. I'd still like to see you.",
+      feelings:
+        "I like you, and I'm saying it because I would rather be clear than elegant.",
+      plan:
+        "Would you like to make a plan that feels easy for both of us, not squeezed in?",
+      flirt:
+        'You make conversation feel lighter without making it shallow.',
+      slow:
+        "I like this, and I need the pace to feel mutual rather than automatic.",
     },
   },
   scorpio: {
@@ -218,6 +298,14 @@ export const COACH_SIGN_CONTENT = {
         "I wasn't fully straight with you, and I'd rather own that than smooth it over.",
       boundary:
         "There's a line here I need to hold. It's mine, and it isn't a judgement of you.",
+      feelings:
+        "I feel something real here, and I'd rather say it simply than dress it up.",
+      plan:
+        "I'd like to see you somewhere quiet enough that we can actually talk.",
+      flirt:
+        'You have a presence that makes small talk feel unnecessary.',
+      slow:
+        "I like the depth here, and I need to move at a pace where trust can keep up.",
     },
   },
   sagittarius: {
@@ -236,6 +324,14 @@ export const COACH_SIGN_CONTENT = {
         'I think I made that heavier than it needed to be. Can we reset?',
       boundary:
         "I need some room this week. It isn't a retreat — I'd just rather say it than go quiet.",
+      feelings:
+        "I like being around you, and I wanted to say it without making it heavy.",
+      plan:
+        "Want to do something with a little movement in it, then see where the night goes?",
+      flirt:
+        'You make me curious, which is my favorite kind of trouble.',
+      slow:
+        "I like this, and I need a little room around it so it keeps feeling free.",
     },
   },
   capricorn: {
@@ -254,6 +350,14 @@ export const COACH_SIGN_CONTENT = {
         "I dropped that, and I'd rather name it than let it pass. Can I make it up on Sunday?",
       boundary:
         "I need slower evenings this week — it's about my capacity, not about you. Sunday still stands if you want it.",
+      feelings:
+        "I don't say this lightly: I like you, and I respect what this could become.",
+      plan:
+        'I can make Thursday work if we choose a time now. Would 7 be realistic?',
+      flirt:
+        'There is something quietly impressive about you, and I keep noticing it.',
+      slow:
+        "I value this enough to not rush it. I'd rather move carefully than carelessly.",
     },
   },
   aquarius: {
@@ -272,6 +376,14 @@ export const COACH_SIGN_CONTENT = {
         "I think I crowded you. I'd rather say that than pretend I didn't notice.",
       boundary:
         "I need a few days on my own. Nothing is wrong — it's just how I reset.",
+      feelings:
+        "I like the way your mind meets mine, and that's not a small thing for me.",
+      plan:
+        'Want to do something a little odd and low-pressure this week?',
+      flirt:
+        'You are interesting in a way that makes normal flirting feel underqualified.',
+      slow:
+        "I like the connection, and I need enough space around it to keep choosing it freely.",
     },
   },
   pisces: {
@@ -290,6 +402,14 @@ export const COACH_SIGN_CONTENT = {
         'I think something got lost between us. Can I ask what it felt like from your side?',
       boundary:
         "I want to be honest without being cold: I can't do this week. I'd still like to see you soon.",
+      feelings:
+        'I feel tender about this, and I wanted to say it without asking you to fix it.',
+      plan:
+        'Would something quiet and unhurried feel good to you this week?',
+      flirt:
+        'You have a softness that makes the world feel a little less loud.',
+      slow:
+        "I like this, and I need to slow down so I don't disappear into the feeling.",
     },
   },
 };

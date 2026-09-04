@@ -18,7 +18,7 @@ astrologiques du profil, `packages/shared`, edge functions, navigation
 
 ---
 
-## État d'implémentation — P0 livré le 28 août 2026
+## État d'implémentation — P0 livré le 28 août 2026, situations P1 livrées le 4 septembre 2026
 
 Le P0 est **codé et validé**. Trois décisions ont dévié du plan tel qu'écrit
 plus bas ; elles sont listées ici pour qu'aucun agent ne parte du plan sans
@@ -30,10 +30,13 @@ savoir ce que le code fait réellement.
 | **Ligne premium par ton** | `coachLineTone_<situation>_<element>` (§7.2) | non livré | Couche premium = P1. Le P0 ne contient aucune personnalisation planétaire. |
 | **Clé de fonctionnalité** | `conversation-guide` / `conversation_guide` (§3.3) | identique | — |
 
-Ce qui a été livré, en une ligne : **12 signes × 4 situations, dont une
-gratuite et illimitée, un gate serveur qui ne se déclenche qu'au tap, deux
-entrées hors du hub premium, 20 tests unitaires, un validateur de contenu à 8
-modes d'échec vérifiés, et un flow Maestro.**
+Ce qui est livré, en une ligne : **12 signes × 8 situations, dont une
+gratuite et illimitée, un gate serveur qui ne se déclenche qu'au tap, des
+entrées hors du hub premium, 20 tests unitaires, et un validateur de contenu
+qui vérifie le corpus, le chrome i18n, les entrées et le gating sur web et
+mobile.** Les 4 situations P1 prévues (`feelings`, `plan`, `flirt`, `slow`)
+sont maintenant dans le corpus partagé; la personnalisation planétaire reste
+hors scope.
 
 Télémétrie : voir [conversation-guide-telemetry.md](./conversation-guide-telemetry.md)
 — aucun SDK d'analytics n'a été ajouté, le repli SQL via `premium_usage` est
