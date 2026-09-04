@@ -390,7 +390,10 @@ function RootLayout() {
         }
         if (isCustomScheme) {
           const host = parsed.hostname;
-          if (host && !ALLOWED_DEEP_LINK_HOSTS.includes(host)) {
+          // `astrodating://auth/callback` is the Supabase email-confirmation
+          // redirect. In URL terms `auth` is parsed as the host, not as the
+          // first path segment, so it must be allowed explicitly.
+          if (host && host !== 'auth' && !ALLOWED_DEEP_LINK_HOSTS.includes(host)) {
             return;
           }
         }
@@ -408,8 +411,12 @@ function RootLayout() {
         // 4. Path must start with one of the allowed prefixes.
         //    Recovery tokens may arrive on a root path — allow that ONLY
         //    when the host check above has already passed.
+        const effectivePath =
+          isCustomScheme && parsed.hostname === 'auth'
+            ? `/auth${parsed.pathname}`
+            : parsed.pathname;
         const pathAllowed = ALLOWED_DEEP_LINK_PATHS.some((prefix) =>
-          parsed.pathname.startsWith(prefix)
+          effectivePath.startsWith(prefix)
         );
         if (!pathAllowed && !recoveryFlag) {
           return;
