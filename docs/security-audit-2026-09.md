@@ -38,7 +38,7 @@ avec celle des tables sensibles (une partie du n° 6).
 | vue `discoverable_profiles` (n° 5) | contrôle D → `dml_grants: 0` |
 | `product_events` (n° 6, partie RLS) | contrôle E → RLS active, 0 privilège client |
 | `TRUNCATE` (n° 7) | contrôle C → 0 grant pour `anon`/`authenticated` |
-| RLS des 13 tables sensibles | contrôle F → 0 sans RLS |
+| RLS sur **toutes** les tables `public` | contrôle F, balayage sans liste → `rls_enabled = true` partout (4 sep) |
 
 **Le P0 a demandé deux tentatives, et c'est l'enseignement le plus utile de cet
 audit.** `20260903000002` a émis les bons `REVOKE SELECT (colonne)` et n'a rien
@@ -79,7 +79,7 @@ produit.
 | 3 | 10 des 12 fonctionnalités premium mobiles sont gatées **côté client seulement** | **P1** | ouvert |
 | 4 | `conversations` : un participant peut réécrire l'autre participant | ~~P1~~ | **FERMÉ** — contrôle B : `dml_grants: 0` |
 | 5 | DML sur la vue auto-updatable `discoverable_profiles` | ~~P2~~ | **FERMÉ** — `discoverable_profiles_select_only = true` |
-| 6 | 9 migrations non enregistrées côté distant, **plus 4 correctifs du 3 sep non committés** | **P2** | ouvert — c'est ce qui a rendu le P0 invisible un jour |
+| 6 | 9 migrations non enregistrées côté distant | **P2** | ouvert — c'est ce qui a rendu le P0 invisible un jour. Les 4 correctifs du 3 sep sont committés depuis (PR #23). |
 | 7 | `TRUNCATE` accordé aux rôles client — RLS ne le filtre pas | ~~P2~~ | **FERMÉ** — `no_truncate_for_client_roles = true` |
 
 **Ce qui va bien** et mérite d'être dit, parce que l'essentiel du modèle tient :
@@ -604,7 +604,7 @@ contrôle, puis un `overall_verdict` global.
 | C | `no_truncate_for_client_roles` | **OK** |
 | D | `discoverable_profiles_select_only` | **OK** |
 | E | `product_events_locked_down` | **OK** — RLS on, 0 privilège client |
-| F | `sensitive_tables_have_rls` | **CONTESTÉ** — mon contrôle rend OK sur 13 tables nommées ; un second bloc rend `false`. En cours de résolution : voir §Vérifications, note F. |
+| F | `sensitive_tables_have_rls` | **OK — fermé le 4 sep.** Balayage sans liste codée : toutes les tables de `public` ont `rls_enabled = true`. |
 | G | `conversations_update_policy_permissive` | **REVIEW** — non bloquant, B est OK |
 
 **A et B sont ceux qui manquaient.** Le bloc précédent ne les contenait pas, et
@@ -660,20 +660,25 @@ porte est à un `EXECUTE format(...)` négligent près dans une future fonction
 tables demande de vérifier table par table que rien de légitime n'en dépend. Le
 contrôle n° 3 du bloc de vérification donne la portée exacte pour décider.
 
-### Note sur le contrôle F — un désaccord entre deux blocs (3 sep)
+### Contrôle F — résolu le 4 septembre 2026
 
-Mon contrôle F rend `without_rls: 0, tables_present: 13` ; un second bloc de
-vérification rend `sensitive_tables_have_rls: false` sur la même base, quelques
-minutes plus tard.
+Deux blocs se contredisaient le 3 sep : le mien rendait `without_rls: 0` sur
+treize tables **nommées en dur**, un second rendait `sensitive_tables_have_rls:
+false`. Un balayage sans liste a tranché : **toutes** les tables de `public`
+portent `rls_enabled = true`. Le contrôle est fermé.
 
-**Mon F est étroit par construction** : il n'interroge que treize noms de tables
-codés en dur. Toute table sensible hors de cette liste — y compris une table
-créée après la rédaction de l'audit, comme `security_posture_alerts` — lui est
-invisible. Un contrôle qui ne peut pas voir un problème rend `OK` pour la
-mauvaise raison, ce qui est exactement le défaut que le contrôle A avait avant
-d'interroger deux sources.
+`rls_forced = false` n'est pas un défaut ici. `FORCE ROW LEVEL SECURITY` sert à
+soumettre le **propriétaire** de la table à ses propres policies ; pour des
+appelants PostgREST en `anon` / `authenticated`, ce qui compte est
+`rls_enabled = true` avec des policies et des grants corrects — ce qui est le
+cas.
 
-Requête qui tranche, sans liste codée en dur :
+**Ce que l'épisode dit de mon contrôle, et qui vaut plus que le résultat :** il
+n'interrogeait que treize noms écrits à la main. Une table sensible créée après
+la rédaction de l'audit lui était invisible, et il aurait rendu `OK` faute de
+la voir. Un contrôle incapable de voir un problème n'est pas vert, il est
+aveugle — le même défaut que le contrôle A avait avant d'interroger deux
+sources. La requête sans liste est celle à garder :
 
 ```sql
 select t.tablename, t.rowsecurity as rls_active,
@@ -683,9 +688,6 @@ from pg_tables t
 where t.schemaname='public'
 order by t.rowsecurity, t.tablename;
 ```
-
-Tant que ce n'est pas résolu, **F est ouvert** et le verdict global ne peut pas
-être déclaré vert.
 
 ---
 
