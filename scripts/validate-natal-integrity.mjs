@@ -74,7 +74,6 @@ const FILES = {
   mobileScreen: 'apps/mobile/app/premium-screens/natal-chart.tsx',
   webScreen: 'apps/web/src/components/NatalChartOverview.tsx',
   mobileFacade: 'apps/mobile/services/astrology.ts',
-  mobileGeocoding: 'apps/mobile/services/geocoding.ts',
   mobileOnboarding: 'apps/mobile/app/onboarding/birth-info.tsx',
   mobilePreview: 'apps/mobile/app/welcome/preview.tsx',
   engine: 'packages/shared/src/astrology/chart.ts',
@@ -281,7 +280,7 @@ function stripCityGazetteer(source) {
   return source.replace(/^\s*['"][a-z\s'’.-]+['"]\s*:\s*\{[^}]*\},?\s*$/gim, '');
 }
 
-for (const key of ['calcChart', 'profileChart', 'mobileFacade', 'mobileGeocoding']) {
+for (const key of ['calcChart', 'profileChart', 'mobileFacade']) {
   const withoutGazetteer = stripCityGazetteer(code[key]);
   for (const [label, pattern] of INVENTED_PLACES) {
     check(
@@ -309,10 +308,6 @@ check(
 check(
   'get-profile-chart withholds the ascendant without a place',
   /hasBirthTime && hasBirthPlace/.test(code.profileChart),
-);
-check(
-  'geocodeCity may return null rather than a stand-in city',
-  /Promise<GeoResult \| null>/.test(code.mobileGeocoding),
 );
 check(
   'onboarding no longer geocodes the string "Montreal" for a blank city',
@@ -468,32 +463,11 @@ check(
 // 43-entry cache was refused and fell through to Montréal. 67 readers named
 // Sofia, Varna, Vienna, Verona, Lima or Tampa and were stored in Quebec.
 check(
-  'the mobile geocoder identifies itself to Nominatim',
-  /nominatim/i.test(code.mobileGeocoding) &&
-    /'User-Agent':\s*'JUNO/.test(code.mobileGeocoding),
-  'without it Nominatim answers 403 and every non-cached city silently becomes the fallback',
-);
-check(
-  'a refused geocode is logged, not swallowed',
-  /if \(!response\.ok\)[\s\S]{0,300}?console\.warn/.test(code.mobileGeocoding),
-  'a 403 affecting every non-cached city looked exactly like "city not found"',
-);
-check(
-  'a two-letter input cannot match a metropolis',
-  /normalized\.length >= 4 && name\.includes\(normalized\)/.test(code.mobileGeocoding),
-  '`name.includes("on")` matches london; `"a"` matches almost everything',
-);
-check(
   'the edge geocoder still identifies itself too',
   /'User-Agent':/.test(code.calcChart),
 );
 
 // The fallback that created them must stay gone.
-check(
-  'geocodeCity still returns null instead of a stand-in city',
-  /Promise<GeoResult \| null>/.test(code.mobileGeocoding) &&
-    !/buildResult\(45\.5017/.test(stripCityGazetteer(code.mobileGeocoding)),
-);
 
 // --- every column read must be a column selected ------------------------------
 // This is a CLASS of bug, not an instance. `get-profile-chart` read
@@ -1288,6 +1262,137 @@ for (const locale of LOCALIZED_CUSP_LOCALES) {
 // closing trips a libuv assertion on Windows: the run exits 127 with every
 // check green, roughly every other time. Setting the code and letting the event
 // loop drain is both correct and deterministic.
+// ---------------------------------------------------------------------------
+// A birth city is a RESOLVED city, on both platforms
+// ---------------------------------------------------------------------------
+// Birth longitude enters local sidereal time degree for degree, so a
+// substituted city relocates every angle in the chart. That is not theory
+// here: a Montreal fallback wrote its exact coordinates onto 69 profiles whose
+// owners had typed Sofia, Varna, Vienna, Verona, Lima or Tampa.
+//
+// The rule therefore has to hold identically on web and mobile — they write
+// the same columns and compute the same ascendant. A divergence is a bug even
+// when each half looks reasonable alone.
+console.log('a birth city is a resolved city');
+
+
+
+
+const webForm = read('apps/web/src/components/AccountSetupForm.tsx');
+const webPicker = read('apps/web/src/components/BirthCityPicker.tsx');
+const mobileForm = read('apps/mobile/app/onboarding/birth-info.tsx');
+const mobilePicker = read('apps/mobile/components/BirthCityPicker.tsx');
+const mobilePreview = read('apps/mobile/app/welcome/preview.tsx');
+
+// The on-device geocoder is gone, and that absence is the guarantee.
+//
+// `apps/mobile/services/geocoding.ts` held a 44-city coordinate table, a
+// substring matcher and a direct Nominatim call, and it ended in a Montreal
+// fallback that wrote its exact coordinates onto 69 real profiles. Several
+// checks here used to police its behaviour — an identifying User-Agent, a
+// visible refusal on a 403, no stand-in city. Deleting the file removes the
+// behaviour to police: a city is resolved by the provider through our own
+// endpoint, or it is not resolved at all.
+check(
+  'the on-device geocoder no longer exists',
+  !existsSync(path.join(ROOT, 'apps/mobile/services/geocoding.ts')),
+  'a second resolution path is a second set of coordinates for the same city',
+);
+check(
+  'nothing imports the deleted geocoder',
+  !/services\/geocoding/.test(mobileForm + mobilePreview + mobilePicker),
+  'a stale import is a build error at best and a resurrected fallback at worst',
+);
+
+for (const [label, source] of [
+  ['web', webForm],
+  ['mobile', mobileForm],
+]) {
+  check(
+    `${label}: the gate blocks on a resolved city, not on text`,
+    /birthCitySelection/.test(source),
+    'a typed name carries no coordinates; houses, MC and ascendant cannot be computed from it',
+  );
+}
+
+check(
+  'mobile does not accept birthCity.trim() as proof of a birthplace',
+  !/birthCity\.trim\(\)\.length\s*<\s*2/.test(stripComments(mobileForm)),
+  'that check passed any two characters straight through to the chart',
+);
+
+check(
+  'web and mobile agree that a resolved city is required',
+  /birthCitySelection !== null/.test(webForm) && /!birthCitySelection/.test(mobileForm),
+  'one platform requiring a resolved city and the other accepting a string is two ' +
+    'different truths for the column both of them write',
+);
+
+for (const [label, source] of [
+  ['web', webPicker],
+  ['mobile', mobilePicker],
+]) {
+  check(
+    `${label}: editing the field clears the resolved city`,
+    /if \(selected\) onSelect\(null\)/.test(stripComments(source)),
+    'a field reading "Paris, Texas" while holding the coordinates of Paris, France ' +
+      'is a different ascendant, not a cosmetic mismatch',
+  );
+  check(
+    `${label}: the picker uses the shared module`,
+    /@astro\/shared\/geo/.test(source),
+    'a private copy of the selection rule is how the platforms drift',
+  );
+  check(
+    `${label}: the provider is never called directly from the client`,
+    !/api\.geoapify\.com|locationiq\.com|nominatim\.openstreetmap\.org/i.test(
+      stripComments(source),
+    ),
+    'the key lives in the edge function; a key in a bundle is public, and on a ' +
+      '3,000/day free tier a lifted key is an off switch for onboarding',
+  );
+}
+
+check(
+  'no client bundles a provider key',
+  !/EXPO_PUBLIC_GEOAPIFY|NEXT_PUBLIC_GEOAPIFY/.test(mobilePicker + webPicker + mobileForm + webForm),
+  'neither provider can meaningfully restrict a key shipped in an app bundle',
+);
+
+check(
+  'mobile takes its coordinates only from the resolved city',
+  /latitude: birthCitySelection\?\.latitude \?\? null/.test(mobileForm) &&
+    /longitude: birthCitySelection\?\.longitude \?\? null/.test(mobileForm),
+  'there is no second source left — no on-device geocoder, no bundled table. ' +
+    'A coordinate that does not come from the selection did not come from anywhere.',
+);
+
+check(
+  'the mobile preview uses the resolved city rather than re-geocoding',
+  /validateBirthCitySuggestion\(draft\.birthCitySelection\)/.test(mobilePreview),
+  'a preview resolved separately can show an ascendant from a different city ' +
+    'than the chart saved two screens later',
+);
+
+for (const [label, source] of [
+  ['web', webForm],
+  ['mobile', mobileForm],
+  ['mobile preview', mobilePreview],
+]) {
+  check(
+    `${label}: no coordinate is coalesced to zero`,
+    !/(latitude|longitude|lat|lng)\s*[:=][^;\n]{0,120}\?\?\s*0\b/.test(stripComments(source)) &&
+      !/(latitude|longitude)\s*[:=][^;\n]{0,120}\|\|\s*0\b/.test(stripComments(source)),
+    '0,0 is a real point in the Gulf of Guinea; it only ever arrives as a coalesced null',
+  );
+  check(
+    `${label}: no city fallback has grown back`,
+    !/(Montreal|Montréal|Greenwich)/.test(stripComments(source)) ||
+      !/(45\.50|51\.47|51\.50)/.test(stripComments(source)),
+    'the Montreal and Greenwich fallbacks are the reason this validator exists',
+  );
+}
+
 if (failures === 0) {
   console.log(`\nNatal chart integrity guards look clean: ${checks} checks passed.`);
   process.exitCode = 0;

@@ -930,6 +930,7 @@
   "birthTimeOptional": "任意だけど、チャートの精度がグッと上がるよ",
   "birthCityOptionalHint": "アセンダントを正確に特定するのに役立ちます",
   "birthCityFormatHint": "よくある都市名の場合は国名も入れてね（例：「Springfield, IL, USA」）",
+  "birthCityRequiredError": "正確なチャートを計算するために出生地を追加してください。",
   "iDontKnowMyBirthTime": "出生時間がわかりません",
   "thatsOk": "大丈夫！太陽星座を計算して、残りは推定するよ。",
   "almostDone": "もうすぐ完了！",
@@ -945,7 +946,7 @@
   "stepTwoTitle": "チャートを詳しく",
   "stepTwoSubtitle": "これらの詳細で月とアセンダントの星座が解放され、より正確なマッチングに",
   "stepTwoBirthTimeHint": "出生時間で月とアセンダントの星座がわかります。大体の時間でもOK！",
-  "stepTwoEncouragement": "わからなくても心配しないで — 今ある情報で素敵なチャートを作るよ。",
+  "stepTwoEncouragement": "出生時間はおおよそでも不明でも大丈夫です。出生地はチャートを実際の場所に結びつけます。",
   "stepThreeTitle": "最後にもうひとつ",
   "stepThreeSubtitle": "あなたにぴったりの人を見つけるお手伝いをさせてね",
   "back": "戻る",
@@ -2173,5 +2174,12 @@
   "tarotV2Title": "あなたのタロットリフレクション",
   "tarotV2Subtitle": "予言ではなく、リフレクションのための象徴的なスプレッド。",
   "tarotV2ReversedSuffix": "逆位置",
-  "tarotV2TapToReveal": "タップして表示"
+  "tarotV2TapToReveal": "タップして表示",
+  "birthCitySearching": "都市を検索しています…",
+  "birthCityUnavailable": "都市検索を利用できません。少し経ってからもう一度お試しください。",
+  "birthCityAttribution": "都市検索は Geoapify 提供 · データ © OpenStreetMap コントリビューター",
+  "birthCityResolved": "出生地を確認しました。ハウスとアングルはこの座標を使用します。",
+  "birthCityAmbiguous": "同じ名前の都市が複数あります。座標が異なるため、正しいものを選んでください。",
+  "birthCityNotFound": "その都市が見つかりませんでした。国や地域を追加してみてください。",
+  "birthCityRequiredHint": "リストから都市を選んでください。正確な座標がないと、ハウスやアセンダントを特定できません。"
 }

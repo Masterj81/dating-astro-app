@@ -8,7 +8,9 @@
     "./profile": "./src/profile/index.ts",
     "./astrology": "./src/astrology/index.ts",
     "./coach": "./src/coach/index.ts",
-    "./tarot": "./src/tarot/index.ts"
+    "./tarot": "./src/tarot/index.ts",
+    "./geo": "./src/geo/index.ts",
+    "./geo/provider": "./src/geo/provider.ts"
   },
   "scripts": {
     "lint": "eslint src/",

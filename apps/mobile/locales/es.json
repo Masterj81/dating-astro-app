@@ -930,6 +930,7 @@
   "birthTimeOptional": "Opcional, pero hace tu carta mucho más precisa",
   "birthCityOptionalHint": "Ayuda a determinar tu ascendente con precisión",
   "birthCityFormatHint": "Incluye el país si el nombre de la ciudad es común (ej: \"Springfield, IL, USA\")",
+  "birthCityRequiredError": "Agrega tu ciudad de nacimiento para calcular tu carta con precisión.",
   "iDontKnowMyBirthTime": "No sé mi hora de nacimiento",
   "thatsOk": "¡No te preocupes! Calcularemos tu signo solar y estimaremos el resto.",
   "almostDone": "¡Ya casi terminas!",
@@ -945,7 +946,7 @@
   "stepTwoTitle": "Refina tu carta",
   "stepTwoSubtitle": "Estos detalles desbloquean tus signos Luna y Ascendente para conexiones más precisas",
   "stepTwoBirthTimeHint": "Tu hora de nacimiento revela tus signos Luna y Ascendente. ¡Incluso una hora aproximada ayuda!",
-  "stepTwoEncouragement": "No te preocupes si no estás seguro — igual haremos una gran carta con lo que tengas.",
+  "stepTwoEncouragement": "Tu hora puede ser aproximada o desconocida. Tu ciudad de nacimiento ancla la carta a un lugar real.",
   "stepThreeTitle": "Una última cosa",
   "stepThreeSubtitle": "Ayúdanos a encontrar las personas indicadas para ti",
   "back": "Atrás",
@@ -2173,5 +2174,12 @@
   "tarotV2Title": "Tu reflexión de tarot",
   "tarotV2Subtitle": "Una tirada simbólica para reflexionar, no para predecir.",
   "tarotV2ReversedSuffix": "Invertida",
-  "tarotV2TapToReveal": "Toca para revelar"
+  "tarotV2TapToReveal": "Toca para revelar",
+  "birthCitySearching": "Buscando ciudades…",
+  "birthCityUnavailable": "La búsqueda de ciudades no está disponible. Inténtalo de nuevo en un momento.",
+  "birthCityAttribution": "Búsqueda de ciudades con tecnología de Geoapify · datos © colaboradores de OpenStreetMap.",
+  "birthCityResolved": "Lugar de nacimiento confirmado: tus casas y ángulos usan estas coordenadas.",
+  "birthCityAmbiguous": "Varias ciudades comparten este nombre. Elige la correcta: las coordenadas cambian.",
+  "birthCityNotFound": "No encontramos esa ciudad. Prueba añadiendo el país o la región.",
+  "birthCityRequiredHint": "Elige una ciudad de la lista. Sin coordenadas exactas no podemos situar tus casas ni tu ascendente."
 }

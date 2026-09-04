@@ -6,6 +6,11 @@ import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { ZodiacGlyph } from "@/components/ZodiacGlyph";
 import { translateSign } from "@/lib/astrology-labels";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
+import { BirthCityPicker } from "@/components/BirthCityPicker";
+import {
+  isUsableBirthCoordinate,
+  type BirthCitySuggestion,
+} from "@astro/shared/geo";
 import type { Session } from "@supabase/supabase-js";
 
 type AccountProfile = {
@@ -277,6 +282,10 @@ export function AccountSetupForm() {
 
   const [profileId, setProfileId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // The resolved birthplace. `null` means the text in the field is not a
+  // place we can compute with — houses, MC and ascendant all depend on it.
+  const [birthCitySelection, setBirthCitySelection] =
+    useState<BirthCitySuggestion | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Replaces the old `success` string: the reveal IS the success state now.
@@ -422,7 +431,12 @@ export function AccountSetupForm() {
     // sure"); the web asking MORE than the native app is backwards, especially
     // as the web is the iOS channel. See docs/retention-day2-audit-2026-08.md
     // §4 on how late this pushes the Aha moment.
-    const requiredFieldsPresent = form.name.trim() && form.gender && form.birthDate;
+    // birthCity blocks on the RESOLVED city, not on the text. A name with no
+    // coordinates cannot produce houses or an ascendant, and this app does not
+    // substitute a plausible city for an unresolved one — that is exactly how
+    // 69 profiles ended up stored at Montréal's coordinates.
+    const requiredFieldsPresent =
+      form.name.trim() && form.gender && form.birthDate && birthCitySelection !== null;
 
     if (!requiredFieldsPresent) {
       setError(t("fillAllFields"));
@@ -447,7 +461,12 @@ export function AccountSetupForm() {
       const birthTime = form.birthTime.trim();
       const birthCity = form.birthCity.trim();
       const hasBirthTime = birthTime.length > 0;
-      const hasBirthCity = birthCity.length > 0;
+      // A city is "had" only when it resolved to coordinates. Everything
+      // downstream — the edge function's geocode, the houses, the angles —
+      // keys off this rather than off the string.
+      const hasBirthCity =
+        birthCitySelection !== null &&
+        isUsableBirthCoordinate(birthCitySelection.latitude, birthCitySelection.longitude);
 
       // With no birth city the edge function falls back to Greenwich, which is
       // a worse guess than the device's own zone for almost everybody. Passing
@@ -467,6 +486,18 @@ export function AccountSetupForm() {
           // exist at all, and an empty string is the honest "unknown".
           ...(hasBirthTime ? { birthTime } : {}),
           ...(hasBirthCity ? { birthCity } : {}),
+          // Send the coordinates the reader actually chose. Without them the
+          // edge function geocodes the string itself and is free to pick a
+          // different Paris — 7,700 km and a different ascendant away.
+          ...(hasBirthCity && birthCitySelection
+            ? {
+                latitude: birthCitySelection.latitude,
+                longitude: birthCitySelection.longitude,
+                ...(birthCitySelection.timezone
+                  ? { birthTimezone: birthCitySelection.timezone }
+                  : {}),
+              }
+            : {}),
           ...(deviceTimezone ? { birthTimezone: deviceTimezone } : {}),
         },
       });
@@ -512,8 +543,16 @@ export function AccountSetupForm() {
         // a column named birth_latitude. get-profile-chart already applies the
         // same fallback for a null (index.ts:289), so null costs nothing
         // downstream and stores "unknown" instead of a made-up fact.
-        birth_latitude: hasBirthCity ? chart.coordinates?.latitude ?? null : null,
-        birth_longitude: hasBirthCity ? chart.coordinates?.longitude ?? null : null,
+        // The reader's own choice, not whatever the edge function resolved.
+        // `?? null` rather than `?? 0`: a coalesced zero is a real point in the
+        // Gulf of Guinea and has been stored as a birthplace in this codebase
+        // before. Absent stays absent.
+        birth_latitude: hasBirthCity
+          ? birthCitySelection?.latitude ?? chart.coordinates?.latitude ?? null
+          : null,
+        birth_longitude: hasBirthCity
+          ? birthCitySelection?.longitude ?? chart.coordinates?.longitude ?? null
+          : null,
         sun_sign: chart.sun?.sign ?? null,
         moon_sign: chart.moon?.sign ?? null,
         rising_sign: risingSign,
@@ -584,11 +623,14 @@ export function AccountSetupForm() {
       { key: "gender", done: !!form.gender, required: true },
       { key: "birthDate", done: !!form.birthDate, required: true },
       { key: "birthTime", done: !!form.birthTime, required: false },
-      { key: "birthCity", done: !!form.birthCity.trim(), required: false },
+      { key: "birthCity", done: birthCitySelection !== null, required: true },
       { key: "elements", done: form.elementFilter.length > 0, required: false },
     ];
     return steps;
-  }, [form]);
+    // birthCitySelection belongs here: the birthCity step is now "done" when a
+    // city RESOLVED, not when the field has text, so the progress bar goes
+    // stale without it.
+  }, [form, birthCitySelection]);
 
   const canSubmit = useMemo(
     () => completionSteps.filter((step) => step.required).every((step) => step.done),
@@ -914,18 +956,20 @@ export function AccountSetupForm() {
           <label className="mt-4 block">
             <span className="mb-2 block text-sm font-medium text-text-muted">
               {t("birthCityLabel")}
-              <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-gold-muted">
-                {t("setupOptionalTag")}
-              </span>
             </span>
-            <input
+            <BirthCityPicker
               value={form.birthCity}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, birthCity: event.target.value }))
+              onValueChange={(next) =>
+                setForm((current) => ({ ...current, birthCity: next }))
               }
-              placeholder={t("birthCityPlaceholder")}
-              className="w-full rounded-[1.25rem] border border-border bg-bg px-4 py-3 text-white outline-none transition-colors placeholder:text-text-dim focus:border-accent"
+              selected={birthCitySelection}
+              onSelect={setBirthCitySelection}
             />
+            {!birthCitySelection && form.birthCity.trim().length > 0 ? (
+              <p className="mt-2 text-xs leading-6 text-text-dim">
+                {t("birthCityRequiredHint")}
+              </p>
+            ) : null}
           </label>
 
           <p className="mt-3 text-xs leading-6 text-text-dim">{t("profileBirthSectionHint")}</p>

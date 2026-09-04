@@ -930,6 +930,7 @@
   "birthTimeOptional": "اختياري، لكنه يجعل خريطتك أكثر دقة بكثير",
   "birthCityOptionalHint": "يساعد في تحديد طالعك بدقة",
   "birthCityFormatHint": "أضف اسم البلد إذا كان اسم المدينة شائعاً (مثال: \"Springfield, IL, USA\")",
+  "birthCityRequiredError": "أضف مدينة ميلادك لحساب خريطتك بدقة.",
   "iDontKnowMyBirthTime": "لا أعرف وقت ولادتي",
   "thatsOk": "لا مشكلة! سنحسب برجك الشمسي ونقدّر الباقي.",
   "almostDone": "أنت على وشك الانتهاء!",
@@ -945,7 +946,7 @@
   "stepTwoTitle": "حسّن خريطتك",
   "stepTwoSubtitle": "هذه التفاصيل تفتح أبراج القمر والطالع لتوافقات أدق",
   "stepTwoBirthTimeHint": "وقت ولادتك يكشف أبراج القمر والطالع. حتى الوقت التقريبي يساعد!",
-  "stepTwoEncouragement": "لا تقلق إن لم تكن متأكداً — سنصنع خريطة رائعة بما لديك.",
+  "stepTwoEncouragement": "يمكن أن يكون وقت ميلادك تقريبياً أو غير معروف. مدينة ميلادك تثبت الخريطة في مكان حقيقي.",
   "stepThreeTitle": "شيء أخير",
   "stepThreeSubtitle": "ساعدنا في إيجاد الأشخاص المناسبين لك",
   "back": "رجوع",
@@ -2173,5 +2174,12 @@
   "tarotV2Title": "تأمّلك بالتاروت",
   "tarotV2Subtitle": "توزيع رمزي للتأمّل، لا للتنبؤ.",
   "tarotV2ReversedSuffix": "معكوس",
-  "tarotV2TapToReveal": "انقر للكشف"
+  "tarotV2TapToReveal": "انقر للكشف",
+  "birthCitySearching": "جارٍ البحث عن المدن…",
+  "birthCityUnavailable": "البحث عن المدن غير متاح حاليًا. حاول مرة أخرى بعد قليل.",
+  "birthCityAttribution": "البحث عن المدن مدعوم من Geoapify · البيانات © مساهمو OpenStreetMap.",
+  "birthCityResolved": "تم تأكيد مكان الميلاد — تستخدم البيوت والزوايا هذه الإحداثيات.",
+  "birthCityAmbiguous": "توجد عدة مدن بهذا الاسم. اختر المدينة الصحيحة — فالإحداثيات مختلفة.",
+  "birthCityNotFound": "لم نتمكن من العثور على هذه المدينة. جرّب إضافة البلد أو المنطقة.",
+  "birthCityRequiredHint": "اختر مدينة من القائمة. بدون إحداثيات دقيقة لا يمكننا تحديد البيوت أو الطالع."
 }

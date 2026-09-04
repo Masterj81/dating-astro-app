@@ -1070,6 +1070,7 @@
   "birthTimeOptional": "Optionnel, mais ça rend ton thème bien plus précis",
   "birthCityOptionalHint": "Aide à déterminer ton ascendant avec précision",
   "birthCityFormatHint": "Inclus le pays si le nom de ville est courant (ex : « Springfield, IL, USA »)",
+  "birthCityRequiredError": "Ajoute ta ville de naissance pour calculer ton thème avec précision.",
   "iDontKnowMyBirthTime": "Je ne connais pas mon heure de naissance",
   "thatsOk": "Pas de souci ! On va calculer ton signe solaire et estimer le reste.",
   "almostDone": "Tu as presque fini !",
@@ -1085,7 +1086,7 @@
   "stepTwoTitle": "Affine ton thème",
   "stepTwoSubtitle": "Ces détails débloquent tes signes Lune et Ascendant pour des connexions plus précises",
   "stepTwoBirthTimeHint": "Ton heure de naissance révèle tes signes Lune et Ascendant. Même une heure approximative aide !",
-  "stepTwoEncouragement": "T'inquiète pas si tu n'es pas sûr — on construira quand même un super thème avec ce que tu as.",
+  "stepTwoEncouragement": "Ton heure peut être approximative ou inconnue. Ta ville de naissance ancre le thème à un vrai lieu.",
   "stepThreeTitle": "Une dernière chose",
   "stepThreeSubtitle": "Aide-nous à trouver les bonnes personnes pour toi",
   "back": "Retour",
@@ -2173,5 +2174,12 @@
   "tarotV2Title": "Ton tirage symbolique",
   "tarotV2Subtitle": "Un tirage symbolique pour réfléchir, pas prédire.",
   "tarotV2ReversedSuffix": "Inversée",
-  "tarotV2TapToReveal": "Touche pour révéler"
+  "tarotV2TapToReveal": "Touche pour révéler",
+  "birthCitySearching": "Recherche de villes…",
+  "birthCityUnavailable": "La recherche de ville est indisponible. Réessaie dans un instant.",
+  "birthCityAttribution": "Recherche de villes propulsée par Geoapify · données © les contributeurs OpenStreetMap.",
+  "birthCityResolved": "Lieu de naissance confirmé — tes maisons et tes angles utilisent ces coordonnées.",
+  "birthCityAmbiguous": "Plusieurs villes portent ce nom. Choisis la bonne : les coordonnées diffèrent.",
+  "birthCityNotFound": "Nous n'avons pas trouvé cette ville. Ajoute le pays ou la région.",
+  "birthCityRequiredHint": "Choisis une ville dans la liste. Sans coordonnées exactes, nous ne pouvons placer ni tes maisons ni ton ascendant."
 }

@@ -99,14 +99,21 @@ if (required) {
   check('gender is still required', /form\.gender/.test(body));
   check('birthDate is still required', /form\.birthDate/.test(body));
   check(
+    'birthCity is required, and required as a RESOLVED city',
+    /birthCitySelection !== null/.test(body),
+    'a typed name is not a birthplace: the gate must block on the resolved city, ' +
+      'because houses, MC and ascendant are computed from its coordinates',
+  );
+  check(
+    'the submit gate does not accept raw text as a birthplace',
+    !/form\.name\.trim\(\) && form\.gender && form\.birthDate && form\.birthCity/.test(body),
+    'blocking on form.birthCity.trim() lets an unresolved string through, ' +
+      'which is how 69 profiles were stored at Montreal coordinates',
+  );
+  check(
     'birthTime does NOT block submit',
     !/form\.birthTime/.test(body),
     'Android treats birth time as optional and says so; the web must not ask for more',
-  );
-  check(
-    'birthCity does NOT block submit',
-    !/form\.birthCity/.test(body),
-    'the chart is computed without it; the reveal says what that costs',
   );
   check(
     'elementFilter does NOT block submit',
@@ -150,9 +157,66 @@ check(
 );
 check(
   'birth coordinates are null when no city was given',
-  /birth_latitude:\s*hasBirthCity \?/.test(setupForm) &&
-    /birth_latitude:\s*hasBirthCity \?/.test(workspace),
+  /birth_latitude:\s*hasBirthCity[\s\S]{0,120}?\?/.test(setupForm) &&
+    /birth_latitude:\s*hasBirthCity[\s\S]{0,120}?\?/.test(workspace),
   'storing the Greenwich fallback records a birthplace nobody supplied',
+);
+check(
+  'the stored coordinates come from the city the reader picked',
+  /birth_latitude:[\s\S]{0,160}?birthCitySelection\?\.latitude/.test(setupForm) &&
+    /birth_longitude:[\s\S]{0,160}?birthCitySelection\?\.longitude/.test(setupForm),
+  'the picked suggestion must be the source of the coordinates, not decoration: ' +
+    'letting the edge function re-geocode the string lets it choose a different Paris',
+);
+check(
+  'no coordinate is coalesced to zero',
+  !/birth_l(atitude|ongitude):[^;]{0,200}\?\?\s*0\b/.test(setupForm) &&
+    !/latitude[^;\n]{0,80}\|\|\s*0\b/.test(setupForm),
+  '0,0 is a real point in the Gulf of Guinea and has been stored as a birthplace here before',
+);
+
+// --- the city picker --------------------------------------------------------
+console.log('birth city suggestions');
+
+const picker = read('src/components/BirthCityPicker.tsx');
+
+check(
+  'the picker exists and uses the shared catalog',
+  /@astro\/shared\/geo/.test(picker) && /createRemoteBirthCityProvider/.test(picker),
+  'web and mobile must share one selection rule and one provider; a private copy is how they diverge',
+);
+// Comments are stripped first: this file's own header explains WHY Nominatim is
+// not called from the client, and a guard that fails on the explanation is a
+// guard that gets the explanation deleted.
+const withoutComments = (code) =>
+  code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+check(
+  'the web never calls Nominatim for suggestions',
+  !/nominatim/i.test(withoutComments(picker)) &&
+    !/nominatim/i.test(withoutComments(setupForm)),
+  "Nominatim's usage policy names autocomplete as a forbidden use of the public endpoint",
+);
+check(
+  'editing the field after choosing clears the resolved city',
+  /if \(selected\) onSelect\(null\)/.test(picker),
+  'a field reading "Paris, Texas" while holding the coordinates of Paris, France ' +
+    'is not a cosmetic mismatch, it is a different ascendant',
+);
+check(
+  'an unresolved city is told to the reader rather than guessed',
+  /birthCityNotFound/.test(picker),
+  'the brief: no fallback to Montreal, Greenwich or 0,0 — ask for the country instead',
+);
+check(
+  'homonyms are surfaced instead of silently resolved',
+  /ambiguous/.test(picker) && /birthCityAmbiguous/.test(picker),
+  'Paris France and Paris Texas are 7,700 km apart',
+);
+check(
+  'OpenStreetMap is credited where its coordinates are used',
+  /birthCityAttribution/.test(picker),
+  'ODbL attribution rides with the field that uses the data',
 );
 
 // --- the reveal -------------------------------------------------------------

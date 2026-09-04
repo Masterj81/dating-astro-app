@@ -18,7 +18,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showAlert } from '../../utils/alert';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { calculateNatalChart } from '../../services/astrology';
-import { geocodeCity } from '../../services/geocoding';
+import BirthCityPicker from '../../components/BirthCityPicker';
+import {
+  isUsableBirthCoordinate,
+  validateBirthCitySuggestion,
+  type BirthCitySuggestion,
+} from '@astro/shared/geo';
 import { supabase } from '../../services/supabase';
 import { registerAndSavePushToken } from '../../services/notifications';
 import { AppTheme } from '../../constants/theme';
@@ -462,6 +467,11 @@ export default function BirthInfoScreen() {
   const [showReveal, setShowReveal] = useState(false);
   const [revealChart, setRevealChart] = useState<{ sun: { sign: string }; moon: { sign: string }; rising: { sign: string } | null } | null>(null);
   const [birthDateError, setBirthDateError] = useState('');
+  const [birthCityError, setBirthCityError] = useState('');
+  // The RESOLVED birthplace. Null means the text in the field is not a place
+  // we can compute with — houses, MC and ascendant all depend on it.
+  const [birthCitySelection, setBirthCitySelection] =
+    useState<BirthCitySuggestion | null>(null);
   const [genderError, setGenderError] = useState('');
   const { user, refreshProfile } = useAuth();
   const insets = useSafeAreaInsets();
@@ -582,6 +592,10 @@ export default function BirthInfoScreen() {
           if (draft.birthHour) setBirthHour(String(draft.birthHour));
           if (draft.birthMinute) setBirthMinute(String(draft.birthMinute));
           if (typeof draft.birthCity === 'string') setBirthCity(draft.birthCity);
+          // Re-validated rather than trusted: a draft is client storage, and
+          // a suggestion without finite coordinates is not a place.
+          const restored = validateBirthCitySuggestion(draft.birthCitySelection);
+          if (restored) setBirthCitySelection(restored);
           if (typeof draft.gender === 'string') setGender(draft.gender);
           if (
             draft.showMe === 'men' ||
@@ -617,6 +631,7 @@ export default function BirthInfoScreen() {
       birthHour,
       birthMinute,
       birthCity,
+      birthCitySelection,
       gender,
       showMe,
     });
@@ -630,6 +645,7 @@ export default function BirthInfoScreen() {
     birthHour,
     birthMinute,
     birthCity,
+    birthCitySelection,
     gender,
     showMe,
   ]);
@@ -638,6 +654,7 @@ export default function BirthInfoScreen() {
   const handleBirthMonthChange = (v: string) => { setBirthMonth(v); if (birthDateError) setBirthDateError(''); };
   const handleBirthDayChange = (v: string) => { setBirthDay(v); if (birthDateError) setBirthDateError(''); };
   const handleBirthYearChange = (v: string) => { setBirthYear(v); if (birthDateError) setBirthDateError(''); };
+  const handleBirthCityChange = (v: string) => { setBirthCity(v); if (birthCityError) setBirthCityError(''); };
   const handleGenderChange = (v: string) => { setGender(v); if (genderError) setGenderError(''); };
 
   // Calculate age from birth date
@@ -674,8 +691,27 @@ export default function BirthInfoScreen() {
     animateStepTransition();
   };
 
-  // Step 2 validation: time + city (optional, can skip)
+  // Step 2 validation: birth time is optional; birth city is not. Without a
+  // birthplace, houses and angles are either absent or guessed, and JUNO no
+  // longer stores guessed locations.
   const handleStep2Next = () => {
+    // A typed name is not a birthplace. The gate blocks on the RESOLVED city,
+    // exactly as the web does — `birthCity.trim()` would let an unresolved
+    // string through, which is how 69 profiles were stored at Montreal's
+    // coordinates. `scripts/validate-natal-integrity.mjs` fails the build if
+    // the two platforms drift on this.
+    if (
+      !birthCitySelection ||
+      !isUsableBirthCoordinate(birthCitySelection.latitude, birthCitySelection.longitude)
+    ) {
+      setBirthCityError(
+        t('birthCityRequiredError') ||
+          'Choose your birth city from the list so your houses and angles are real.',
+      );
+      errorNotification();
+      return;
+    }
+    setBirthCityError('');
     buttonPress();
     setStep(3);
     animateStepTransition();
@@ -769,11 +805,18 @@ export default function BirthInfoScreen() {
       // full ascendant and twelve house cusps for a place they had never
       // named. Null coordinates instead: the planets still compute, the
       // angles honestly do not.
-      const geoResult = birthCity ? await geocodeCity(birthCity) : null;
+      // The reader's own choice is the ONLY source of coordinates. There is no
+      // on-device geocoder any more and no bundled table to consult: the step
+      // cannot be reached without a resolved city, so there is nothing to fall
+      // back to and nothing to invent.
+      //
+      // `?? null`, never `?? 0`: a coalesced zero is a real point in the Gulf
+      // of Guinea and has been stored as a birthplace in this codebase before.
       const cityCoords = {
-        latitude: geoResult?.latitude ?? null,
-        longitude: geoResult?.longitude ?? null,
+        latitude: birthCitySelection?.latitude ?? null,
+        longitude: birthCitySelection?.longitude ?? null,
       };
+      const birthIana = birthCitySelection?.timezone ?? null;
 
       // Pass the IANA timezone explicitly so the chart is anchored to the
       // birth location's tz — not the device's local timezone (legacy bug).
@@ -782,7 +825,7 @@ export default function BirthInfoScreen() {
         birthTime,
         cityCoords.latitude,
         cityCoords.longitude,
-        geoResult?.iana ?? null,
+        birthIana,
       );
 
       // Transform local chart to match BirthChart format for synastry.
@@ -806,7 +849,7 @@ export default function BirthInfoScreen() {
           pluto: chart.pluto,
         },
         coordinates: cityCoords,
-        timezone: chart.timezone ?? geoResult?.iana ?? null,
+        timezone: chart.timezone ?? birthIana,
         confidence: chart.confidence,
         chartVersion: 2,
       };
@@ -818,7 +861,11 @@ export default function BirthInfoScreen() {
         .update({
           birth_date: formattedDate,
           birth_time: birthTime,
-          birth_city: birthCity || null,
+          // The chosen label, so the stored city and the stored coordinates
+          // describe the same place.
+          birth_city: birthCitySelection
+            ? `${birthCitySelection.name}${birthCitySelection.admin1 ? `, ${birthCitySelection.admin1}` : ''}, ${birthCitySelection.country}`
+            : birthCity || null,
           gender,
           looking_for: mapShowMeToLookingFor(showMe),
           birth_latitude: cityCoords.latitude,
@@ -1167,18 +1214,17 @@ export default function BirthInfoScreen() {
                   <SectionHeader
                     icon={'\uD83C\uDF0D'}
                     title={t('birthPlaceSectionTitle') || 'Where It All Began'}
-                    subtitle={t('birthCityOptionalHint') || 'Helps pinpoint your rising sign'}
+                    subtitle={t('birthCityHint') || 'Used to calculate your rising sign accurately'}
                   />
 
                   <View style={styles.inputContainer}>
                     <Text style={styles.label}>{t('birthCity')}</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="e.g., Paris, France"
-                      placeholderTextColor="#666"
+                    <BirthCityPicker
                       value={birthCity}
-                      onChangeText={setBirthCity}
-                      autoCapitalize="words"
+                      onValueChange={handleBirthCityChange}
+                      selected={birthCitySelection}
+                      onSelect={setBirthCitySelection}
+                      errorText={birthCityError}
                       testID="onboarding-birth-city-input"
                     />
                     <Text style={styles.hint}>
@@ -1213,12 +1259,6 @@ export default function BirthInfoScreen() {
                     </TouchableOpacity>
                   </View>
 
-                  <TouchableOpacity
-                    style={styles.skipLink}
-                    onPress={handleStep2Next}
-                  >
-                    <Text style={styles.skipLinkText}>{t('skipForNow') || 'Skip for now'}</Text>
-                  </TouchableOpacity>
                 </>
               )}
 
