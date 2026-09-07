@@ -22,23 +22,18 @@ import type {
   NatalChart,
   Placement,
   PlanetKey,
-  ZodiacSign,
 } from './types';
 
-export const ZODIAC_SIGNS: readonly ZodiacSign[] = [
-  'Aries',
-  'Taurus',
-  'Gemini',
-  'Cancer',
-  'Leo',
-  'Virgo',
-  'Libra',
-  'Scorpio',
-  'Sagittarius',
-  'Capricorn',
-  'Aquarius',
-  'Pisces',
-] as const;
+// The zodiac table and its two conversions live in ./signs since 2026-09-07 so
+// that hydrating a stored chart no longer drags astronomy-engine, luxon and
+// tz-lookup in behind it — which is what lets `scripts/build-edge-astrology.mjs`
+// emit a dependency-free Deno bundle of the synastry engine (JUNO-01).
+// Re-exported here so every existing importer keeps working unchanged.
+import { longitudeToPlacement, normalize360 } from './signs';
+
+// Re-exported, not re-imported: `ZODIAC_SIGNS` and `placementToLongitude` are
+// used by other modules THROUGH this one, never by the code below.
+export { ZODIAC_SIGNS, longitudeToPlacement, placementToLongitude } from './signs';
 
 const PLANET_BODIES: Record<Exclude<PlanetKey, 'sun' | 'moon'>, Astronomy.Body> = {
   mercury: Astronomy.Body.Mercury,
@@ -53,27 +48,6 @@ const PLANET_BODIES: Record<Exclude<PlanetKey, 'sun' | 'moon'>, Astronomy.Body> 
   neptune: Astronomy.Body.Neptune,
   pluto: Astronomy.Body.Pluto,
 };
-
-function normalize360(x: number): number {
-  return ((x % 360) + 360) % 360;
-}
-
-export function longitudeToPlacement(longitude: number): Placement {
-  const lon = normalize360(longitude);
-  const idx = Math.floor(lon / 30);
-  const degree = lon % 30;
-  return {
-    sign: ZODIAC_SIGNS[idx],
-    degree: Math.round(degree * 100) / 100,
-    longitude: Math.round(lon * 100) / 100,
-  };
-}
-
-export function placementToLongitude(p: { sign: string; degree: number }): number {
-  const idx = ZODIAC_SIGNS.indexOf(p.sign as ZodiacSign);
-  if (idx < 0) return 0;
-  return idx * 30 + p.degree;
-}
 
 function geocentricLongitude(body: 'Sun' | 'Moon' | Astronomy.Body, time: Astronomy.AstroTime): number {
   if (body === 'Sun') return Astronomy.SunPosition(time).elon;

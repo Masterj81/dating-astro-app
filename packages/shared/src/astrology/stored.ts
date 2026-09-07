@@ -26,8 +26,8 @@
 // server-side recompute), at which point `toStoredBirthChart` writes the v2
 // shape. Reads must keep tolerating v1 forever.
 
-import { placementToLongitude } from './chart';
-import { ZODIAC_SIGNS } from './chart';
+import { placementToLongitude } from './signs';
+import { ZODIAC_SIGNS } from './signs';
 import type {
   Confidence,
   InnerPlanetKey,

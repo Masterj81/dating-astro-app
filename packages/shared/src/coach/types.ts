@@ -20,8 +20,16 @@ export type CoachSign =
   | 'aquarius'
   | 'pisces';
 
-/** P0 situations. Four only — see §5.2 of the feature plan for why these four. */
-export type CoachSituationKey = 'start' | 'clarity' | 'repair' | 'boundary';
+/** Conversation situations. `start` is the only free one; the rest are locked. */
+export type CoachSituationKey =
+  | 'start'
+  | 'clarity'
+  | 'repair'
+  | 'boundary'
+  | 'feelings'
+  | 'plan'
+  | 'flirt'
+  | 'slow';
 
 /**
  * `free`   — always readable, no quota, no server call. Exactly one situation

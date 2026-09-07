@@ -10,8 +10,15 @@ const STRIPE_PRICES = {
   cosmic_yearly: process.env.EXPO_PUBLIC_STRIPE_PRICE_COSMIC_YEARLY || process.env.EXPO_PUBLIC_STRIPE_PRICE_COSMIC_ANNUAL || '',
 };
 
-// Coupon code for annual plans (60% off first year)
-const ANNUAL_COUPON_ID = process.env.EXPO_PUBLIC_STRIPE_ANNUAL_COUPON_ID || '';
+// The annual discount is NOT chosen here any more.
+//
+// This file used to read `EXPO_PUBLIC_STRIPE_ANNUAL_COUPON_ID` and send it as
+// `couponId`, and `create-checkout-session` applied whatever it received. The
+// price beside it was validated against an allowlist; the coupon was not. So a
+// signed-in account could pair a MONTHLY price with the ANNUAL coupon — the id
+// was published in this bundle — or with any other coupon in the Stripe
+// account. The rule now lives on the server, derived from the validated price.
+// docs/security-audit-2026-09-07.md, JUNO-03.
 
 export type WebSubscriptionPlan =
   | 'celestial_monthly'
@@ -44,16 +51,11 @@ export async function createCheckoutSession(
     return { error: 'Invalid subscription plan' };
   }
 
-  // Apply coupon for annual plans
-  const isAnnual = plan.includes('yearly');
-  const couponId = isAnnual && ANNUAL_COUPON_ID ? ANNUAL_COUPON_ID : undefined;
-
   try {
     const { data, error } = await supabase.functions.invoke('create-checkout-session', {
       body: {
         priceId,
         userId,
-        couponId,
         promoCode: promoCode?.trim() || undefined,
         successUrl: `${window.location.origin}/premium/success`,
         cancelUrl: `${window.location.origin}/premium`,

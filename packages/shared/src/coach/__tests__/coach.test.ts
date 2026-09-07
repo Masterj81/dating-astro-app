@@ -51,8 +51,8 @@ describe('coach corpus coverage', () => {
 
   it('enumerates every corpus string exactly once', () => {
     const strings = allCoachStrings();
-    // 1 disclaimer + 4 frames x 2 + 12 signs x (3 + 4 lines)
-    expect(strings).toHaveLength(1 + 4 * 2 + 12 * 7);
+    // 1 disclaimer + 8 frames x 2 + 12 signs x (3 + 8 lines)
+    expect(strings).toHaveLength(1 + 8 * 2 + 12 * 11);
     expect(new Set(strings.map((s) => s.path)).size).toBe(strings.length);
     for (const { path, value } of strings) {
       expect(value.trim(), path).not.toBe('');
@@ -139,7 +139,7 @@ describe('untrusted input resolution', () => {
 
   it('resolves and rejects situations the same way', () => {
     expect(resolveCoachSituation('Repair')).toBe('repair');
-    expect(resolveCoachSituation('flirt')).toBeNull();
+    expect(resolveCoachSituation('Flirt')).toBe('flirt');
     expect(resolveCoachSituation(undefined)).toBeNull();
   });
 

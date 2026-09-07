@@ -44,6 +44,29 @@ against.
 | `claim_push_token_v2(text, text, text)` | uses `auth.uid()` | Per-device push token, primary path |
 | `clear_push_token_v2(text)` | uses `auth.uid()` | Mobile logout |
 | `mark_conversation_messages_read(uuid)` | conversation membership check (`auth.uid()` is `user_a`/`user_b`) | Chat read receipts — `messages` UPDATE stays locked down; the RPC writes only `is_read`/`read_at` on the *other* participant's rows |
+| `can_view_profile_chart(uuid)` | **no viewer parameter** — the viewer is `auth.uid()` | May this reader open another profile's astrological reading? Called by the `get-profile-chart` edge function with the CALLER's JWT (added 2026-09-07, JUNO-02) |
+
+`public.profile_chart_visible(uuid, uuid)` is the predicate behind that
+wrapper and is **not** client-callable: it takes a viewer id as a parameter,
+which is exactly the shape a caller must not be able to supply. It is shared
+with `get_synastry_candidate_profiles` so the picker and the reader cannot
+disagree about who is visible.
+
+### Tables the clients only ever read
+
+Revoking the privilege beats narrowing the policy: a policy is consulted only
+when the privilege exists, so a REVOKE makes the whole class of mistake
+unreachable rather than correctly handled. Enforced in the repository by
+`npm run validate:rls-contract`, and provable on the live database with the
+query that validator prints.
+
+| Table | Client privileges | Why |
+|---|---|---|
+| `messages` | SELECT, INSERT | UPDATE/DELETE/TRUNCATE revoked 2026-09-07 (`20260907000002`, JUNO-08). The inherited UPDATE policy had no `WITH CHECK`, so a sender could rewrite the content of a message already delivered and read, or move it into another of their conversations. Read receipts go through `mark_conversation_messages_read`. |
+| `conversations` | SELECT | Rows are created by `get_or_create_conversation`; `last_message_at` is kept by trigger. Revoked 2026-09-03 (`20260903000001`). |
+| `discoverable_profiles` | SELECT | An auto-updatable view is a second write path to `profiles`. Revoked 2026-09-03. |
+| `premium_usage` | SELECT | A quota its own subject can reset is not a quota. Revoked 2026-08-23 (`20260823000001`). |
+| `product_events`, `security_posture_alerts` | none | RLS with no policies; written only by SECURITY DEFINER RPCs. |
 
 `tier_at_least(text, text)` is `SECURITY INVOKER` and pure (no table
 access); it stays callable by anon/authenticated as a string comparison

@@ -6,6 +6,7 @@ import * as Astronomy from 'https://esm.sh/astronomy-engine@2.1.19'
 // used as a source of truth.
 import { DateTime, IANAZone } from 'https://esm.sh/luxon@3.7.2'
 import tzlookup from 'https://esm.sh/tz-lookup@6.1.25'
+import { createOriginPolicy } from '../_shared/cors.ts';
 
 // --- Zodiac helpers (inline for Deno edge function) ---
 
@@ -516,21 +517,12 @@ function validateInputs(action: string, params: Record<string, any>): string | n
 
 // --- Server handler ---
 
-const PROD_ORIGINS = [
-  'https://www.astrodatingapp.com',
-  'https://astrodatingapp.com',
-  'https://app.astrodatingapp.com',
-  'https://app.junosynastry.com',
-]
-const DEV_ORIGINS = [
-  ...PROD_ORIGINS,
-  'http://localhost:3000',
-  'http://localhost:8081',
-  'http://localhost:19006',
-]
-const ALLOWED_ORIGINS = Deno.env.get('ENVIRONMENT') === 'production'
-  ? PROD_ORIGINS
-  : DEV_ORIGINS
+// CORS — fail-closed allowlist shared by every edge function.
+// See supabase/functions/_shared/cors.ts (JUNO-11): PRODUCTION is the default,
+// and only ENVIRONMENT === 'development' widens it. An absent, renamed or
+// misspelled variable can now only be more restrictive, never less.
+const originPolicy = createOriginPolicy(Deno.env.get('ENVIRONMENT'));
+const ALLOWED_ORIGINS = originPolicy.allowed;
 
 function getAllowedOrigin(origin: string | null): string {
   if (origin && ALLOWED_ORIGINS.includes(origin)) return origin

@@ -19,8 +19,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
   buildExplorationQuestions,
-  buildSynastryView,
   formatOrb,
+  resolveSynastryView,
   resolveTrustedRisingSign,
 } from '@astro/shared/astrology';
 import {
@@ -127,6 +127,13 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
   // SynastryProfile above only carries sign names.
   const [selfChart, setSelfChart] = useState<unknown>(null);
   const [matchChart, setMatchChart] = useState<unknown>(null);
+  // The scored reading, computed by the edge function. Since 2026-09-07 the
+  // server owns this arithmetic, because doing it here required the response
+  // to carry the other person's ecliptic longitudes — and those inverted
+  // straight back to their exact birth instant and birth coordinates
+  // (docs/security-audit-2026-09-07.md, JUNO-01). `resolveSynastryView` prefers
+  // this and falls back to the local computation when it is absent.
+  const [matchSynastry, setMatchSynastry] = useState<unknown>(null);
   const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(initialTargetId);
   const [error, setError] = useState<string | null>(null);
@@ -186,6 +193,13 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
               images?: string[] | null;
             };
             chart?: { planets?: ChartPlanets } | null;
+            /**
+             * The scored reading from the server. `unknown` on purpose:
+             * `isSynastryView` validates it structurally inside
+             * `resolveSynastryView`. A cast here would be the unchecked trust
+             * that validation exists to avoid.
+             */
+            synastry?: unknown;
             error?: string;
           }
         | null;
@@ -220,10 +234,12 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
         images: p.images ?? null,
       };
       setMatchProfile(profile);
-      // The raw chart, kept whole. `buildSynastryView` needs the LONGITUDES —
-      // the sign strings above cannot produce an aspect, and the sign-only
-      // reading is exactly what this screen stopped using.
+      // The chart, kept whole for the local fallback path only. It no longer
+      // carries longitudes: `resolveSynastryView` prefers `response.synastry`,
+      // which the server computed at full internal precision from data that
+      // never left it.
       setMatchChart(c ?? null);
+      setMatchSynastry(response.synastry ?? null);
       return profile;
     },
     [t],
@@ -428,8 +444,8 @@ function SynastryScreenContent({ onLoadingChange }: SynastryContentProps) {
   // function still exists and is still rendered, but only as the explicitly
   // labelled "Sign rhythm preview" when a chart is missing.
   const synastryView = useMemo(
-    () => buildSynastryView(selfChart, matchChart),
-    [selfChart, matchChart],
+    () => resolveSynastryView(matchSynastry, selfChart, matchChart),
+    [matchSynastry, selfChart, matchChart],
   );
 
   if (loading) {

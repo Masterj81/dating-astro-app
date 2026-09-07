@@ -37,6 +37,14 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# Test scratch: the suites that execute real edge-function source transpile it
+# to a temp module first (packages/shared/src/testing/edge-source.ts, and the
+# older copy inside engine-contract.test.ts). Both clean up after themselves;
+# these rules cover a run killed mid-way, which would otherwise leave a
+# generated .mjs sitting in src/ waiting to be committed by a `git add .`.
+packages/shared/src/**/.edge-source*/
+packages/shared/src/**/.engine-contract/
+
 app-example
 
 # generated native folders

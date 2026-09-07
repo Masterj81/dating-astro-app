@@ -22,7 +22,7 @@ export const COACH_SIGNS: readonly CoachSign[] = [
 ] as const;
 
 /**
- * P0 situations, in render order.
+ * Situations, in render order.
  *
  * `start` is free and unlimited by product decision, not by accident: it is
  * the only surface in the app whose value does not run out, and gating it
@@ -34,6 +34,10 @@ export const COACH_SITUATIONS: readonly CoachSituation[] = [
   { key: 'clarity', access: 'locked', order: 2, labelKey: 'conversationGuideSituationClarity' },
   { key: 'repair', access: 'locked', order: 3, labelKey: 'conversationGuideSituationRepair' },
   { key: 'boundary', access: 'locked', order: 4, labelKey: 'conversationGuideSituationBoundary' },
+  { key: 'feelings', access: 'locked', order: 5, labelKey: 'conversationGuideSituationFeelings' },
+  { key: 'plan', access: 'locked', order: 6, labelKey: 'conversationGuideSituationPlan' },
+  { key: 'flirt', access: 'locked', order: 7, labelKey: 'conversationGuideSituationFlirt' },
+  { key: 'slow', access: 'locked', order: 8, labelKey: 'conversationGuideSituationSlow' },
 ] as const;
 
 /** The single free situation. Throws at module load if the table ever loses it. */

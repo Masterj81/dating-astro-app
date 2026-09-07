@@ -204,3 +204,58 @@ export function buildSynastryView(
 export function formatOrb(orb: number): string {
   return `${(Math.round(orb * 10) / 10).toFixed(1)}°`;
 }
+
+/**
+ * Is this value a synastry view the server computed for us?
+ *
+ * Structural, not a cast: the payload crosses the network, and a `as
+ * SynastryView` on an untrusted object is how a missing `frames` array becomes
+ * a crash inside a render. Every field the aspect branch renders is checked.
+ */
+export function isSynastryView(value: unknown): value is SynastryView {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  if (v.source === 'sign-rhythm') return typeof v.reason === 'string';
+  if (v.source !== 'aspects') return false;
+  if (!Array.isArray(v.frames) || v.frames.length === 0) return false;
+  if (!v.headline || typeof v.headline !== 'object') return false;
+  const headline = v.headline as Record<string, unknown>;
+  if (typeof headline.score !== 'number' || !Number.isFinite(headline.score)) return false;
+  if (typeof headline.band !== 'string') return false;
+  if (!Array.isArray(headline.topAspects)) return false;
+  if (!Array.isArray(v.interpretiveAspects)) return false;
+  if (typeof v.confidence !== 'string') return false;
+  return true;
+}
+
+/**
+ * The view to render: the server's if it sent one, otherwise computed here.
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * Since 2026-09-07 `get-profile-chart` computes the synastry itself and returns
+ * it, because computing it in the client required the response to carry the
+ * other person's ecliptic longitudes — and those longitudes inverted back to
+ * their exact birth instant and birth coordinates
+ * (docs/security-audit-2026-09-07.md, JUNO-01).
+ *
+ * The local branch is not dead code and is not a fallback for convenience. It
+ * covers two real states:
+ *
+ *   1. A response from a deployment that predates the change, or one where the
+ *      viewer's own `birth_chart` could not be read (the server treats that as
+ *      non-fatal and sends `synastry: null` rather than failing the request).
+ *   2. Any future caller that has both charts in hand already.
+ *
+ * Both platforms call this one function, for the reason the two `buildSynastryView`
+ * call sites carried in their own comments: two implementations of the headline
+ * number is how the platforms drift.
+ */
+export function resolveSynastryView(
+  serverView: unknown,
+  ownChart: unknown,
+  otherChart: unknown,
+): SynastryView {
+  if (isSynastryView(serverView)) return serverView;
+  return buildSynastryView(ownChart, otherChart);
+}

@@ -1,29 +1,58 @@
-// Phase 3-A: get-profile-chart edge function.
+// get-profile-chart edge function.
 //
-// Purpose: let an authenticated user fetch the natal chart of ANOTHER active
-// profile WITHOUT exposing the target's raw birth_time / birth_latitude /
-// birth_longitude / birth_date / email.
+// Purpose: let an ENTITLED, AUTHORIZED user read an astrological reading of
+// ANOTHER active profile without that reading carrying the target's birth
+// date, birth time or birth coordinates — the columns Phase 3-C revokes.
 //
-// Architecture:
-//   1. Caller's JWT is verified by the Supabase platform (verify_jwt = default true).
-//   2. We re-extract the caller's user.id for the rate-limit key.
-//   3. We read the target profile via the service_role client (bypassing
-//      RLS and any future Phase 3-C column REVOKEs). Only the fields needed
-//      for the natal chart calculation + the public profile fields are
-//      pulled — and only the latter are returned to the caller.
-//   4. We calculate the natal chart server-side using astronomy-engine
-//      (same lib as supabase/functions/calculate-chart).
-//   5. We sanitize the output: birth_time, birth_date, raw lat/long are
-//      NEVER returned. coordinates in the chart are coarsened to 0.5°
-//      (~55 km) so reverse-engineering the target's exact birth location
-//      is not practical.
-//   6. Rate limit: 100 chart views per caller per hour.
+// ── WHAT CHANGED ON 2026-09-07, AND WHY IT HAD TO ────────────────────────────
+//
+// This function used to publish `longitude` at full float64 precision on
+// `sun`, `moon`, `rising`, `mc`, every planet, and the twelve `houses`, and a
+// comment beside them asserted that those values "say nothing about the exact
+// minute or the exact coordinates". That was false, and exactly invertible:
+//
+//   moon.longitude  → the birth instant, to the SECOND
+//   mc.longitude    → the birth longitude (MC depends only on instant + longitude)
+//   rising.longitude→ the birth latitude
+//
+// Measured against this very engine: 0 s of error on the instant, 1.3e-13° on
+// the longitude, 8.4e-13° on the latitude. The `coordinates` field beside them
+// was rounded to 0.5° "so reverse-engineering the target's exact birth location
+// is not practical" — a 55 km blur in front of an unlocked door.
+// (docs/security-audit-2026-09-07.md, JUNO-01.)
+//
+// THREE CONTROLS NOW STAND WHERE ONE PRETENDED TO:
+//
+//   1. MINIMISATION. The response carries `sign` + `degree` only. `longitude`
+//      is GONE, not rounded. `coordinates` and `houses` are gone too: no
+//      surface ever read them from this payload (the natal wheel renders the
+//      reader's OWN chart). `degree` is quantised to CHART_DEGREE_QUANTUM.
+//
+//   2. AUTHORIZATION (JUNO-02). Entitlement is checked server-side with the
+//      caller's own JWT, and visibility is decided by `can_view_profile_chart`
+//      — one SQL function shared with the synastry RPC so the two cannot
+//      drift. Blocks in BOTH directions, discoverability, and "is there a
+//      conversation" all live there. Every refusal answers the same way, so
+//      the function is not a UUID oracle.
+//
+//   3. RATE LIMIT, FAIL-CLOSED. Persistent, server-side, per caller. If the
+//      limiter itself errors, the request is REFUSED. It used to log the error
+//      and continue, which meant a broken limiter was an open door.
+//
+// WHY MINIMISATION ALONE IS NOT ENOUGH, STATED SO NOBODY RE-DERIVES IT
+// --------------------------------------------------------------------
+// Quantising cannot close the birth-time leak. The ten bodies constrain each
+// other, so even a product-destroying 1° step still pins the birth instant to
+// ±20 minutes (measured; see the audit). Any full natal reading of another
+// person leaks their birth time to within tens of minutes. That is why
+// control 2 is load-bearing and must never be weakened to "just round harder".
 //
 // What this function MUST NOT do:
-//   - Return birth_time, birth_date, email, push_token, raw lat/long.
-//   - Allow anonymous calls (verify_jwt enforces this).
-//   - Use the caller's JWT for the target read (RLS would only return
-//     the caller's own row and the public projection of others).
+//   - Return birth_time, birth_date, email, push_token, raw lat/long, or any
+//     ecliptic longitude.
+//   - Serve a caller who is not entitled, or a target they may not see.
+//   - Continue when the rate limiter fails.
+//   - Distinguish "no such profile" from "not allowed" in its response.
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
@@ -32,6 +61,13 @@ import * as Astronomy from 'https://esm.sh/astronomy-engine@2.1.19'
 // the rationale. We never use the Deno worker's local clock as ground truth.
 import { DateTime, IANAZone } from 'https://esm.sh/luxon@3.7.2'
 import tzlookup from 'https://esm.sh/tz-lookup@6.1.25'
+import { createOriginPolicy } from '../_shared/cors.ts'
+// THE SAME scoring model the apps use, bundled for Deno by
+// `scripts/build-edge-astrology.mjs` and verified against its sources in CI.
+// Not a copy: `npm run validate:edge-astrology` regenerates it and fails on
+// any difference, so the server and the clients cannot score two charts
+// differently. See the file's banner.
+import { buildSynastryView } from '../_shared/astrology-engine.generated.ts'
 
 // ---------------------------------------------------------------------------
 // Astrology helpers (kept inline — TODO: factor with calculate-chart later).
@@ -89,6 +125,15 @@ function calculateMidheaven(time: any, longitude: number): number {
   return ((mc % 360) + 360) % 360
 }
 
+/**
+ * Kept although this function no longer publishes houses (JUNO-01 removed
+ * them from the payload — twelve rotations of the ascendant, read by nobody).
+ *
+ * It stays because `engine-contract.test.ts` executes `calculateEqualHouses`
+ * from BOTH edge functions and from the shared engine and fails if the three
+ * diverge. Deleting the declaration here would not remove a risk, it would
+ * remove the alarm that watches `calculate-chart`, which does still use it.
+ */
 function calculateEqualHouses(ascendantLongitude: number): number[] {
   const houses: number[] = []
   for (let i = 0; i < 12; i++) {
@@ -148,52 +193,367 @@ function calculatePlanetPositions(time: any) {
 }
 
 // ---------------------------------------------------------------------------
-// CORS
+// Public payload minimisation (JUNO-01)
 // ---------------------------------------------------------------------------
 
-// CORS origins. Pattern aligned with calculate-chart / create-checkout-session
-// / claim-referral so any new web subdomain is whitelisted in one place.
-// `https://app.astrodatingapp.com` and `https://app.junosynastry.com` MUST be included — the authenticated web
-// app runs there and was previously rejected, surfacing as
-// "Failed to send a request to the Edge Function" on the synastry page.
-const PROD_ORIGINS = [
-  'https://www.astrodatingapp.com',
-  'https://astrodatingapp.com',
-  'https://app.astrodatingapp.com',
-  'https://app.junosynastry.com',
-]
-const DEV_ORIGINS = [
-  ...PROD_ORIGINS,
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-  'http://localhost:8081',
-  'http://localhost:19006',
-]
-const ALLOWED_ORIGINS = Deno.env.get('ENVIRONMENT') === 'production'
-  ? PROD_ORIGINS
-  : DEV_ORIGINS
+/**
+ * Quantum applied to every published `degree`, in degrees of arc.
+ *
+ * 0.1° = 6 arc-minutes. Chosen by measurement, not by feel, against both sides
+ * of the trade-off (the study is reproduced in
+ * `packages/shared/src/astrology/__tests__/chart-payload-privacy.test.ts`):
+ *
+ *   ATTACK SIDE — how much the inversion still yields, per quantum:
+ *
+ *     quantum   birth instant   birth longitude   birth latitude
+ *     0.01°     ± 0.5 min       ± 0.00°           ± 0.01°     ← the old `degree`
+ *     0.1°      ± 5.2 min       ± 0.04°           ± 0.18°     ← chosen
+ *     0.25°     ± 13.0 min      ± 0.12°           ± 0.44°
+ *     1°        ± 20.4 min      ± 0.53°           ± 2.10°
+ *
+ *   PRODUCT SIDE — synastry score drift over 400 random chart pairs
+ *   (1 200 frame scores), against the same charts at full precision:
+ *
+ *     quantum   mean Δscore   max Δscore   band changes
+ *     0.01°     0.005         2            0 / 1200
+ *     0.1°      0.039         2            4 / 1200   ← chosen
+ *     0.25°     0.089         3            12 / 1200
+ *     1°        0.303         4            36 / 1200
+ *
+ * 0.1° is where the curve turns: it is ten times coarser than what the field
+ * used to carry, costs 0.039 points of a 0-100 score on average, and the four
+ * band changes are pairs already sitting on a band boundary. Coarser buys
+ * minutes on the instant and costs three times the band churn.
+ *
+ * The honest reading of the left-hand column is that NO quantum closes the
+ * birth-time leak — see the header. `can_view_profile_chart` is what does.
+ *
+ * Every UI that renders a placement already calls `Math.round(degree)`
+ * (`NatalChartOverview.tsx:269`, `natal-chart.tsx:783`), so this quantum is
+ * invisible on screen. It exists for the aspect maths in
+ * `packages/shared/src/astrology/synastry.ts`, which is the only consumer that
+ * needs sub-degree precision at all.
+ */
+const CHART_DEGREE_QUANTUM = 0.1
 
-function getAllowedOrigin(origin: string | null): string {
-  if (origin && ALLOWED_ORIGINS.includes(origin)) return origin
-  // Native mobile + Supabase relay calls have no Origin header — empty string
-  // means "no CORS allowance", which is correct: those code paths don't go
-  // through a browser CORS check anyway.
-  return ''
+/** Decimal places implied by the quantum, for a clean float. */
+const CHART_DEGREE_DECIMALS = 1
+
+/**
+ * Whether `chart` still carries a `degree` alongside each `sign`.
+ *
+ * TRUE is a migration affordance with an expiry condition, not a preference.
+ * Installed mobile builds compute their own synastry from this payload by
+ * rebuilding longitudes from sign + degree (`parseStoredPlacement`). Publishing
+ * signs alone today would hydrate to null in those builds and drop paying
+ * readers to the sign-rhythm fallback for as long as they stay on that version.
+ *
+ * FLIP TO FALSE WHEN, and the condition is checkable rather than a feeling:
+ *   1. a mobile release carrying the `response.synastry` reader has been live
+ *      long enough to cover the active install base, and
+ *   2. `get-profile-chart` logs show no caller relying on the legacy path.
+ *
+ * At that point the response carries twelve sign names and a scored result,
+ * and no placement precision whatsoever. `chart-payload-privacy.test.ts`
+ * asserts the contract for BOTH values of this flag, so flipping it is a
+ * one-line change that cannot silently break a client.
+ */
+const PUBLISH_LEGACY_DEGREES = true
+
+/**
+ * Quantise a degree-in-sign, without letting 29.97° roll into the next sign.
+ *
+ * The rounding is done on the degree-in-sign rather than on the longitude on
+ * purpose: `sign` is published beside it, so quantising the pair independently
+ * could disagree (longitude 29.96° of Aries rounds to 30.0°, which is Taurus,
+ * while `sign` still says Aries — a placement that does not exist).
+ */
+function quantizeDegree(degreeInSign: number): number {
+  const steps = Math.round(degreeInSign / CHART_DEGREE_QUANTUM)
+  const quantized = steps * CHART_DEGREE_QUANTUM
+  const capped = Math.min(Math.max(quantized, 0), 30 - CHART_DEGREE_QUANTUM)
+  return Number(capped.toFixed(CHART_DEGREE_DECIMALS))
 }
 
-function corsHeaders(origin: string): HeadersInit {
+type PublicPlacement = { sign: string; degree?: number }
+
+/**
+ * One placement, as it goes on the wire: sign and a quantised degree.
+ *
+ * `longitude` is absent by construction rather than deleted afterwards — a
+ * whitelist cannot leak a field somebody adds upstream. The shared hydrator
+ * (`parseStoredPlacement`, packages/shared/src/astrology/stored.ts) rebuilds
+ * the longitude from `sign` + `degree`, so synastry keeps working with no
+ * client change at all.
+ */
+function toPublicPlacement(longitude: number): PublicPlacement {
+  const placement: PublicPlacement = { sign: getZodiacSign(longitude) }
+  if (PUBLISH_LEGACY_DEGREES) {
+    placement.degree = quantizeDegree(getDegreeInSign(longitude))
+  }
+  return placement
+}
+
+export interface PublicChart {
+  sun: PublicPlacement
+  moon: PublicPlacement
+  rising: PublicPlacement | null
+  mc: PublicPlacement | null
+  planets: Record<string, PublicPlacement>
+  confidence: 'high' | 'medium' | 'low'
+}
+
+/**
+ * Orb precision published with a synastry aspect, in degrees.
+ *
+ * The aspect list is a disclosure channel in its own right, and it took a
+ * second look to see it: the reader knows their OWN chart exactly, so
+ * "your Sun trine their Moon, orb 2.34°" places their Moon to 0.01° — finer
+ * than CHART_DEGREE_QUANTUM, which would have made moving the computation
+ * server-side a step backwards.
+ *
+ * 0.1° is not a compromise here, it is the display precision:
+ * `formatOrb` (packages/shared/src/astrology/synastry-view.ts) renders
+ * `(Math.round(orb * 10) / 10).toFixed(1)` and both platforms show only the
+ * top five aspects of the love frame. Rounding to what the screen shows costs
+ * the product exactly nothing and stops the payload from carrying a second,
+ * sharper copy of the geometry the chart no longer carries.
+ *
+ * The residual is honest and inherent: an entitled, authorised reader can
+ * place up to five of the target's bodies to ±0.05°. A synastry product IS a
+ * controlled disclosure of chart geometry; that is what the access controls
+ * above are for.
+ */
+const SYNASTRY_ORB_QUANTUM = 0.1
+
+/**
+ * Angular measurements on a published aspect. BOTH must be quantised, and the
+ * reason is algebraic rather than cautious:
+ *
+ *     separation = angle ± orb
+ *
+ * `angle` is a constant per aspect name (0, 60, 90, 120, 180). So rounding
+ * `orb` while publishing `separation` raw hands the exact orb straight back,
+ * and rounding `separation` while publishing `orb` raw does the same in the
+ * other direction. Either alone is not a control.
+ *
+ * `separation` is the sharper of the two: it is |lonA − lonB| between the two
+ * charts, and the reader knows their OWN longitude exactly — so an unrounded
+ * separation places the target's body to float precision. It is the single
+ * field that would have made moving the computation server-side a step
+ * BACKWARDS from publishing quantised degrees.
+ */
+const QUANTISED_ASPECT_FIELDS = ['orb', 'separation'] as const
+
+/**
+ * Return a deep copy of the synastry view with every angular measurement
+ * rounded to SYNASTRY_ORB_QUANTUM.
+ *
+ * Walks the whole structure rather than reaching into `frames[i].topAspects`:
+ * `interpretiveAspects` carries aspects too, and a future field that carries
+ * one more must not need this function edited to stay safe.
+ *
+ * Deliberately untouched:
+ *   - `contribution` — a weight, not a distance. Rounding it moves the scores.
+ *   - `angle`, `maxOrb` — constants from the aspect table and the orb policy.
+ *     They are the same for everybody and describe no one's chart.
+ */
+export function withRoundedOrbs<T>(view: T): T {
+  const quantise = (value: number): number => {
+    const steps = Math.round(value / SYNASTRY_ORB_QUANTUM)
+    return Number((steps * SYNASTRY_ORB_QUANTUM).toFixed(1))
+  }
+  const walk = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map(walk)
+    if (node && typeof node === 'object') {
+      const out: Record<string, unknown> = {}
+      for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+        const isAngular = (QUANTISED_ASPECT_FIELDS as readonly string[]).includes(key)
+        out[key] = isAngular && typeof value === 'number' && Number.isFinite(value)
+          ? quantise(value)
+          : walk(value)
+      }
+      return out
+    }
+    return node
+  }
+  return walk(view) as T
+}
+
+/**
+ * Shape the response chart. Everything not named here does not travel.
+ *
+ * Deliberately absent, each for a reason that was checked rather than assumed:
+ *   - `longitude` on every placement — the inversion vector (JUNO-01).
+ *   - `coordinates` — searched on 2026-09-07: the only readers of
+ *     `chart.coordinates` are `AccountSetupForm.tsx:551` and
+ *     `AccountProfileWorkspace.tsx:633`, and both consume `calculate-chart`'s
+ *     answer for the READER'S OWN chart. Nothing has ever read it from this
+ *     payload, so a 0.5° blur was protecting a field nobody wanted.
+ *   - `houses` — twelve raw longitudes, all derivable from the ascendant, and
+ *     `NatalChartWheel` (the only house renderer on either platform) is mounted
+ *     solely by the natal-chart screens, on the reader's own chart.
+ */
+function buildPublicChart(input: {
+  sunLongitude: number
+  moonLongitude: number
+  ascLongitude: number | null
+  mcLongitude: number | null
+  planets: Record<string, { longitude: number }>
+  confidence: 'high' | 'medium' | 'low'
+}): PublicChart {
+  const planets: Record<string, PublicPlacement> = {}
+  for (const [key, value] of Object.entries(input.planets)) {
+    planets[key] = toPublicPlacement(value.longitude)
+  }
   return {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    sun: toPublicPlacement(input.sunLongitude),
+    moon: toPublicPlacement(input.moonLongitude),
+    rising: input.ascLongitude != null ? toPublicPlacement(input.ascLongitude) : null,
+    mc: input.mcLongitude != null ? toPublicPlacement(input.mcLongitude) : null,
+    planets,
+    confidence: input.confidence,
   }
 }
 
-function jsonError(status: number, message: string, origin: string): Response {
+// ---------------------------------------------------------------------------
+// Authorization (JUNO-02) + rate limit
+// ---------------------------------------------------------------------------
+
+/**
+ * Chart views per caller per hour. Unchanged in value, changed in meaning: the
+ * limiter is now fail-closed, so this is a ceiling rather than a suggestion.
+ *
+ * It is the real anti-harvesting control, because the premium check below is
+ * READ-ONLY and therefore never consumes the `synastry` daily quota.
+ */
+const RATE_LIMIT_MAX_PER_HOUR = 100
+const RATE_LIMIT_ACTION = 'profile_chart_view'
+
+/**
+ * The feature key this endpoint sells. `synastry` already exists in
+ * `premium_feature_policy` (celestial, 20/day, no free preview) and is the
+ * product this data belongs to: all three call sites are synastry screens
+ * (`apps/mobile/app/premium-screens/synastry.tsx:169`,
+ * `apps/web/src/components/SynastryOverview.tsx:240,318`).
+ */
+const CHART_FEATURE_KEY = 'synastry'
+
+/**
+ * One refusal shape for every "you may not have this".
+ *
+ * A UUID that does not exist, one that belongs to a deactivated account, one
+ * that blocked the caller, and one the caller simply may not see must be
+ * indistinguishable — otherwise the endpoint answers "does this person exist,
+ * and did they block me?" for any UUID, which is a worse leak than the chart.
+ * Status and body are identical in all four cases.
+ */
+const NOT_VISIBLE = { status: 404, error: 'profile_not_available' } as const
+
+export type ChartAccessDecision =
+  | { ok: true; reason: 'self' | 'entitled' }
+  | { ok: false; status: number; error: string }
+
+export interface ChartAccessDeps {
+  /** Calls an RPC with the CALLER's JWT, so `auth.uid()` is the caller. */
+  rpcAsCaller: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
+  /** Calls an RPC with service_role, for things `authenticated` may not run. */
+  rpcAsService: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
+}
+
+/** First row of a `RETURNS TABLE` result, whatever shape the client gave back. */
+function firstRow(data: unknown): Record<string, unknown> | null {
+  if (Array.isArray(data)) return (data[0] ?? null) as Record<string, unknown> | null
+  if (data && typeof data === 'object') return data as Record<string, unknown>
+  return null
+}
+
+/**
+ * May this caller read this target's chart, right now?
+ *
+ * Order matters and is defensive: the cheap identity check first, then the
+ * rate limit (so a caller who is hammering the endpoint cannot use it to probe
+ * entitlement), then entitlement, then visibility. Every branch that is not an
+ * unambiguous yes returns a refusal; there is no fall-through.
+ *
+ * EVERY external call is fail-closed. An RPC that errors is a control that did
+ * not run, and a control that did not run is a control that said no. The
+ * previous version logged `check_rate_limit` failures and carried on, which
+ * turned any transient database error into an unmetered endpoint.
+ */
+export async function authorizeChartAccess(
+  deps: ChartAccessDeps,
+  callerId: string,
+  targetUserId: string,
+): Promise<ChartAccessDecision> {
+  // 0. Reading your own chart is never gated: it is your data, the premium
+  //    surfaces need it as the left-hand side of every comparison, and the
+  //    natal-chart screens have their own `natal_chart` gate.
+  if (callerId === targetUserId) return { ok: true, reason: 'self' }
+
+  // 1. Rate limit — persistent, server-side, service_role (an `authenticated`
+  //    caller cannot execute check_rate_limit, which is the point).
+  const rl = await deps.rpcAsService('check_rate_limit', {
+    p_user_id: callerId,
+    p_action: RATE_LIMIT_ACTION,
+    p_max_count: RATE_LIMIT_MAX_PER_HOUR,
+    p_window: '1 hour',
+  })
+  if (rl.error) {
+    // Fail CLOSED. No target data has been read at this point.
+    console.error('[get-profile-chart] rate limit check failed:', rl.error.message)
+    return { ok: false, status: 503, error: 'rate_limit_unavailable' }
+  }
+  if (rl.data === false) {
+    return { ok: false, status: 429, error: 'rate_limited' }
+  }
+
+  // 2. Entitlement — the caller's OWN JWT, so `auth.uid()` inside the function
+  //    is the caller and no client-supplied tier can reach it. Read-only on
+  //    purpose: `enforce_premium_feature` would spend a free daily preview
+  //    here, reproducing the double-consumption bug fixed on 2026-08-23.
+  const gate = await deps.rpcAsCaller('can_use_premium_feature', {
+    p_feature_key: CHART_FEATURE_KEY,
+  })
+  if (gate.error) {
+    console.error('[get-profile-chart] premium check failed:', gate.error.message)
+    return { ok: false, status: 503, error: 'entitlement_unavailable' }
+  }
+  const gateRow = firstRow(gate.data)
+  if (!gateRow || gateRow.allowed !== true) {
+    const reason = typeof gateRow?.reason === 'string' ? gateRow.reason : 'insufficient_tier'
+    // 402 rather than 403: this is "pay for it", and the clients already
+    // distinguish the two. The reason string comes from the server's own
+    // vocabulary, never from the request.
+    return { ok: false, status: 402, error: reason }
+  }
+
+  // 3. Visibility — blocks in both directions, active + onboarded, and either
+  //    mutual discoverability or an existing conversation. One SQL function,
+  //    shared with get_synastry_candidate_profiles, so the picker and the
+  //    reader cannot disagree about who is visible.
+  const vis = await deps.rpcAsCaller('can_view_profile_chart', { p_target_id: targetUserId })
+  if (vis.error) {
+    console.error('[get-profile-chart] visibility check failed:', vis.error.message)
+    return { ok: false, status: 503, error: 'visibility_unavailable' }
+  }
+  if (vis.data !== true) {
+    return { ok: false, status: NOT_VISIBLE.status, error: NOT_VISIBLE.error }
+  }
+
+  return { ok: true, reason: 'entitled' }
+}
+
+// ---------------------------------------------------------------------------
+// CORS — fail-closed allowlist, shared with every other function (JUNO-11)
+// ---------------------------------------------------------------------------
+
+const originPolicy = createOriginPolicy(Deno.env.get('ENVIRONMENT'))
+
+function jsonError(status: number, message: string, origin: string | null): Response {
   return new Response(
     JSON.stringify({ success: false, error: message }),
-    { status, headers: corsHeaders(origin) },
+    { status, headers: originPolicy.headers(origin) },
   )
 }
 
@@ -203,27 +563,26 @@ function jsonError(status: number, message: string, origin: string): Response {
 
 serve(async (req) => {
   const origin = req.headers.get('origin')
-  const allowedOrigin = getAllowedOrigin(origin)
 
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders(allowedOrigin) })
+    return new Response('ok', { headers: originPolicy.headers(origin) })
   }
   if (req.method !== 'POST') {
-    return jsonError(405, 'Method not allowed', allowedOrigin)
+    return jsonError(405, 'Method not allowed', origin)
   }
 
   // 1. Verify caller (defense-in-depth — verify_jwt default also enforces this).
   const authHeader = req.headers.get('Authorization')
-  if (!authHeader) return jsonError(401, 'Missing authorization', allowedOrigin)
+  if (!authHeader) return jsonError(401, 'Missing authorization', origin)
   const callerToken = authHeader.replace(/^Bearer\s+/i, '').trim()
-  if (!callerToken) return jsonError(401, 'Invalid authorization', allowedOrigin)
+  if (!callerToken) return jsonError(401, 'Invalid authorization', origin)
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
   const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
   const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
   if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
-    return jsonError(500, 'Server misconfigured', allowedOrigin)
+    return jsonError(500, 'Server misconfigured', origin)
   }
 
   const jwtClient = createClient(supabaseUrl, supabaseAnonKey, {
@@ -231,38 +590,37 @@ serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   })
   const { data: { user: caller }, error: authError } = await jwtClient.auth.getUser(callerToken)
-  if (authError || !caller) return jsonError(401, 'Unauthorized', allowedOrigin)
+  if (authError || !caller) return jsonError(401, 'Unauthorized', origin)
 
   // 2. Parse + validate input.
   let body: { targetUserId?: string }
   try {
     body = await req.json()
   } catch {
-    return jsonError(400, 'Invalid JSON body', allowedOrigin)
+    return jsonError(400, 'Invalid JSON body', origin)
   }
   const targetUserId = body.targetUserId
   if (!targetUserId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetUserId)) {
-    return jsonError(400, 'Invalid targetUserId', allowedOrigin)
+    return jsonError(400, 'Invalid targetUserId', origin)
   }
 
-  // 3. Rate limit (service_role can call check_rate_limit; authenticated cannot).
   const adminClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
-  try {
-    const { data: rlOk, error: rlErr } = await adminClient.rpc('check_rate_limit', {
-      p_user_id: caller.id,
-      p_action: 'profile_chart_view',
-      p_max_count: 100,
-      p_window: '1 hour',
-    })
-    if (rlErr) {
-      console.error('check_rate_limit failed (non-fatal):', rlErr.message)
-    } else if (rlOk === false) {
-      return jsonError(429, 'Too many requests', allowedOrigin)
-    }
-  } catch (e) {
-    console.error('check_rate_limit threw (non-fatal):', e)
+
+  // 3. Rate limit, entitlement and visibility — all server-side, all
+  //    fail-closed, and all BEFORE the target row is read. Nothing about the
+  //    target reaches this worker's memory until the caller has earned it.
+  const decision = await authorizeChartAccess(
+    {
+      rpcAsCaller: (fn, args) => jwtClient.rpc(fn, args) as unknown as Promise<{ data: unknown; error: { message: string } | null }>,
+      rpcAsService: (fn, args) => adminClient.rpc(fn, args) as unknown as Promise<{ data: unknown; error: { message: string } | null }>,
+    },
+    caller.id,
+    targetUserId,
+  )
+  if (!decision.ok) {
+    return jsonError(decision.status, decision.error, origin)
   }
 
   // 4. Read target via service_role (bypasses RLS + Phase 3-C column REVOKEs).
@@ -287,11 +645,15 @@ serve(async (req) => {
 
   if (targetErr) {
     console.error('Target profile read failed:', targetErr.message)
-    return jsonError(500, 'Failed to load profile', allowedOrigin)
+    return jsonError(500, 'Failed to load profile', origin)
   }
-  if (!target) return jsonError(404, 'Profile not found', allowedOrigin)
+  // Same answer as "not allowed", on purpose: a distinct 'Profile not found'
+  // turned this endpoint into an existence oracle for any UUID. The visibility
+  // RPC above already rejected everything a caller may not see, so reaching
+  // either branch here means the row vanished between the two calls.
+  if (!target) return jsonError(NOT_VISIBLE.status, NOT_VISIBLE.error, origin)
   if (!target.is_active || !target.onboarding_completed) {
-    return jsonError(404, 'Profile not available', allowedOrigin)
+    return jsonError(NOT_VISIBLE.status, NOT_VISIBLE.error, origin)
   }
   if (!target.birth_date) {
     // No birth date on file — return profile without chart so the UI can
@@ -302,7 +664,7 @@ serve(async (req) => {
         profile: sanitizeProfile(target),
         chart: null,
       }),
-      { headers: corsHeaders(allowedOrigin) },
+      { headers: originPolicy.headers(origin) },
     )
   }
 
@@ -350,26 +712,34 @@ serve(async (req) => {
   const sunLong = getGeocentricLongitude('Sun', time)
   const moonLong = getGeocentricLongitude('Moon', time)
   const ascLong = hasBirthTime && hasBirthPlace ? calculateAscendant(time, lat as number, lng as number) : null
-  // Midheaven and the twelve equal-house cusps, added 2026-09-01. These are
-  // ASTROLOGICAL OUTPUTS, not raw birth data: they say nothing about the exact
-  // minute or the exact coordinates, which is why they may be returned for
-  // someone else's chart while birth_time, birth_date and the raw lat/lng
-  // still may not. `sanitizeProfile` remains an allowlist and is unchanged.
+  // Midheaven, added 2026-09-01. The comment that used to sit here claimed
+  // these outputs "say nothing about the exact minute or the exact
+  // coordinates". They said everything: the MC is a function of the birth
+  // instant and the birth longitude alone, so publishing it at float64
+  // precision published the birthplace. It is now quantised and stripped of
+  // its longitude by `buildPublicChart` — see CHART_DEGREE_QUANTUM.
   const mcLong = ascLong != null ? calculateMidheaven(time, lng as number) : null
   const housesArr = ascLong != null ? calculateEqualHouses(ascLong) : null
   const planets = calculatePlanetPositions(time)
+  const confidence: 'high' | 'medium' | 'low' =
+    !hasBirthTime || !hasBirthPlace || tz.source === 'fallback'
+      ? 'low'
+      : tz.source === 'lookup'
+      ? 'medium'
+      : 'high'
 
-  // 6. Coarsen coordinates to 0.5° (~55 km) before returning.
+  // 6a. Synastry, computed HERE, at full internal precision.
   //
-  // Null stays null. `Math.round(null * 2) / 2` is 0 in JavaScript, so an
-  // unknown birthplace used to be returned as `{ latitude: 0, longitude: 0 }`
-  // — the Gulf of Guinea, presented as this person's approximate birthplace.
-  // The same shape is what `hydrateStoredChart` reads coordinates from, so a
-  // consumer that hydrated this payload would rebuild a chart cast there.
-  const coarseLat = hasBirthPlace ? Math.round((lat as number) * 2) / 2 : null
-  const coarseLng = hasBirthPlace ? Math.round((lng as number) * 2) / 2 : null
-
-  const chart = {
+  // This is the half of JUNO-01 that minimisation alone could not reach. The
+  // clients used to run `buildSynastryView` themselves, which meant the
+  // response had to carry longitudes for twelve bodies — and those longitudes
+  // inverted straight back to the target's birth instant and coordinates.
+  //
+  // Note what is used below and what is published: the FULL-precision chart
+  // (`internalChart`, longitudes untouched, houses included) goes into the
+  // computation, and only the scored result comes out. The engine's accuracy
+  // is unchanged; what changed is where the arithmetic happens.
+  const internalChart = {
     sun: { longitude: sunLong, sign: getZodiacSign(sunLong), degree: getDegreeInSign(sunLong) },
     moon: { longitude: moonLong, sign: getZodiacSign(moonLong), degree: getDegreeInSign(moonLong) },
     rising: ascLong != null
@@ -380,13 +750,61 @@ serve(async (req) => {
       : null,
     houses: housesArr,
     planets,
-    coordinates: { latitude: coarseLat, longitude: coarseLng },
-    confidence: !hasBirthTime || !hasBirthPlace || tz.source === 'fallback' ? 'low' : tz.source === 'lookup' ? 'medium' : 'high',
+    coordinates: { latitude: lat, longitude: lng },
+    timezone: tz.iana,
+    confidence,
   }
 
+  // The caller's own chart, read with service_role for the same reason the
+  // target's is: `birth_chart` is column-revoked from `authenticated`. It is
+  // the caller's OWN row — the same JSONB `get_my_full_profile()` hands them —
+  // so nothing crosses a boundary here that was not already theirs.
+  let synastry: unknown = null
+  try {
+    const { data: viewer, error: viewerErr } = await adminClient
+      .from('profiles')
+      .select('birth_chart')
+      .eq('id', caller.id)
+      .maybeSingle()
+    if (viewerErr) {
+      // Non-fatal: the reading still renders, the compatibility panel falls
+      // back to its documented sign-rhythm state. Never fail the whole
+      // request over the optional half.
+      console.error('[get-profile-chart] viewer chart read failed:', viewerErr.message)
+    } else {
+      synastry = withRoundedOrbs(buildSynastryView(viewer?.birth_chart ?? null, internalChart))
+    }
+  } catch (e) {
+    console.error('[get-profile-chart] synastry computation failed:', (e as Error)?.message)
+  }
+
+  // 6b. Shape the public payload.
+  //
+  // The equal-house cusps are not published: twelve rotations of the
+  // ascendant, carrying nothing it does not, read by no surface on either
+  // platform. The coordinates are gone for the same reason — the 0.5° blur was
+  // guarding a field with no readers while the longitudes beside it gave the
+  // exact position away.
+  //
+  // `chart` still carries sign + quantised degree, and that is a DELIBERATE,
+  // TIME-BOXED backward-compatibility affordance, not a design choice. An
+  // installed mobile build computes its own synastry from this payload; a
+  // response with signs only would hydrate to null and drop those readers to
+  // the sign-rhythm fallback until they update. Once `synastry` is the only
+  // path in the field (see PUBLISH_LEGACY_DEGREES), the degrees go too and the
+  // response carries no placement precision at all.
+  const chart = buildPublicChart({
+    sunLongitude: sunLong,
+    moonLongitude: moonLong,
+    ascLongitude: ascLong,
+    mcLongitude: mcLong,
+    planets,
+    confidence,
+  })
+
   return new Response(
-    JSON.stringify({ success: true, profile: sanitizeProfile(target), chart }),
-    { headers: corsHeaders(allowedOrigin) },
+    JSON.stringify({ success: true, profile: sanitizeProfile(target), chart, synastry }),
+    { headers: originPolicy.headers(origin) },
   )
 })
 
