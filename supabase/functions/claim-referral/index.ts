@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { createOriginPolicy } from '../_shared/cors.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
@@ -6,22 +7,12 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
 const REWARD_DAYS = 30; // 1 month free for both
 
-const PROD_ORIGINS = [
-  'https://www.astrodatingapp.com',
-  'https://astrodatingapp.com',
-  'https://app.astrodatingapp.com',
-  'https://app.junosynastry.com',
-];
-
-const DEV_ORIGINS = [
-  'http://localhost:3000',
-  'http://localhost:8081',
-  'http://localhost:19006',
-];
-
-const ALLOWED_ORIGINS = Deno.env.get('ENVIRONMENT') === 'production'
-  ? PROD_ORIGINS
-  : [...PROD_ORIGINS, ...DEV_ORIGINS];
+// CORS — fail-closed allowlist shared by every edge function.
+// See supabase/functions/_shared/cors.ts (JUNO-11): PRODUCTION is the default,
+// and only ENVIRONMENT === 'development' widens it. An absent, renamed or
+// misspelled variable can now only be more restrictive, never less.
+const originPolicy = createOriginPolicy(Deno.env.get('ENVIRONMENT'));
+const ALLOWED_ORIGINS = originPolicy.allowed;
 
 const getCorsHeaders = (origin: string | null) => {
   const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : '';
@@ -45,7 +36,10 @@ const jsonResponse = (
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   if (origin && !ALLOWED_ORIGINS.includes(origin)) {
-    return new Response('Forbidden origin', { status: 403 });
+    // Refused, but WITH the policy's headers: a bare response carries no
+    // Access-Control-*, so a legitimate origin left off the list surfaces in
+    // the browser as an unreadable network error instead of a 403. (JUNO-11.)
+    return jsonResponse({ error: 'forbidden_origin' }, 403, getCorsHeaders(origin));
   }
 
   const corsHeaders = getCorsHeaders(origin);

@@ -628,14 +628,47 @@ describe('get-profile-chart does not leak the birth data it reads', () => {
     expect(new RegExp(field + '\\s*:').test(sanitizer)).toBe(false);
   });
 
-  it('returns null coordinates when the birthplace is unknown', () => {
-    // `Math.round(null * 2) / 2` is 0 in JavaScript, so the coarsening step
-    // used to answer `{ latitude: 0, longitude: 0 }` — the Gulf of Guinea,
-    // returned as this person's approximate birthplace.
-    expect(src).toMatch(/const coarseLat = hasBirthPlace \? Math\.round/);
-    expect(src).toMatch(/const coarseLng = hasBirthPlace \? Math\.round/);
+  it('returns no coordinates at all, coarsened or otherwise', () => {
+    // HISTORY, because this assertion changed shape on 2026-09-07 and the
+    // reason matters more than the assertion.
+    //
+    // The function used to return a birthplace coarsened to 0.5° (~55 km), and
+    // this test guarded the bug fixed just before: `Math.round(null * 2) / 2`
+    // is 0 in JavaScript, so an unknown birthplace was answered as
+    // `{ latitude: 0, longitude: 0 }` — the Gulf of Guinea, presented as this
+    // person's approximate birthplace.
+    //
+    // The 0.5° blur turned out to be decorative anyway: the ecliptic longitudes
+    // published beside it inverted back to the EXACT coordinates
+    // (docs/security-audit-2026-09-07.md, JUNO-01). And a search on that date
+    // found the field had no readers — the two consumers of
+    // `chart.coordinates` both read `calculate-chart`'s answer for the
+    // READER'S OWN chart. So the field is gone entirely, which is strictly
+    // stronger than any rounding, and the null-vs-zero trap goes with it.
+    expect(/coarseLat/.test(src)).toBe(false);
+    expect(/coarseLng/.test(src)).toBe(false);
     expect(/Math\.round\(lat \* 2\)/.test(src)).toBe(false);
     expect(/Math\.round\(lng \* 2\)/.test(src)).toBe(false);
+
+    // The response builder is an allowlist; `coordinates` may not appear in it.
+    const builder = src.slice(
+      src.indexOf('function buildPublicChart'),
+      src.indexOf('// Authorization (JUNO-02)'),
+    );
+    expect(builder.length).toBeGreaterThan(0);
+    expect(/coordinates\s*:/.test(builder)).toBe(false);
+  });
+
+  it('still computes the angles from the FULL-precision birthplace', () => {
+    // The other half of the same change: minimisation happens on the way out
+    // and nowhere else. `calculateAscendant` must still receive the stored
+    // latitude and longitude, unrounded — an ascendant cast for a rounded
+    // birthplace is a different ascendant.
+    expect(src).toMatch(/calculateAscendant\(time, lat as number, lng as number\)/);
+    expect(src).toMatch(/calculateMidheaven\(time, lng as number\)/);
+    // And the guard that produced `missing_birth_place` is untouched: no time
+    // or no place still means no angles, never a substituted city.
+    expect(src).toMatch(/hasBirthTime && hasBirthPlace \? calculateAscendant/);
   });
 });
 

@@ -1,5 +1,6 @@
 import Stripe from 'https://esm.sh/stripe@14.14.0?target=denonext';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { createOriginPolicy } from '../_shared/cors.ts';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
@@ -9,21 +10,12 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
 // Allowed origins for CORS
-const PROD_ORIGINS = [
-  'https://www.astrodatingapp.com',
-  'https://astrodatingapp.com',
-  'https://app.astrodatingapp.com',
-  'https://app.junosynastry.com',
-];
-const DEV_ORIGINS = [
-  ...PROD_ORIGINS,
-  'http://localhost:3000',
-  'http://localhost:8081',
-  'http://localhost:19006',
-];
-const ALLOWED_ORIGINS = Deno.env.get('ENVIRONMENT') === 'production'
-  ? PROD_ORIGINS
-  : DEV_ORIGINS;
+// CORS — fail-closed allowlist shared by every edge function.
+// See supabase/functions/_shared/cors.ts (JUNO-11): PRODUCTION is the default,
+// and only ENVIRONMENT === 'development' widens it. An absent, renamed or
+// misspelled variable can now only be more restrictive, never less.
+const originPolicy = createOriginPolicy(Deno.env.get('ENVIRONMENT'));
+const ALLOWED_ORIGINS = originPolicy.allowed;
 
 const getCorsHeaders = (origin: string | null) => {
   // SECURITY: Only return CORS headers for known origins. Never fall back to a default.
@@ -48,7 +40,10 @@ const jsonResponse = (
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   if (origin && !ALLOWED_ORIGINS.includes(origin)) {
-    return new Response('Forbidden origin', { status: 403 });
+    // Refused, but WITH the policy's headers: a bare response carries no
+    // Access-Control-*, so a legitimate origin left off the list surfaces in
+    // the browser as an unreadable network error instead of a 403. (JUNO-11.)
+    return jsonResponse({ error: 'forbidden_origin' }, 403, getCorsHeaders(origin));
   }
   const corsHeaders = getCorsHeaders(origin);
 
@@ -77,13 +72,13 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Missing required fields' }, 400, corsHeaders);
     }
 
-    // Validate returnUrl to prevent open-redirect attacks
-    try {
-      const parsed = new URL(returnUrl);
-      if (!ALLOWED_ORIGINS.includes(parsed.origin)) {
-        return jsonResponse({ error: 'Invalid return URL' }, 400, corsHeaders);
-      }
-    } catch {
+    // Validate returnUrl against the same fail-closed allowlist that governs
+    // CORS. `isAllowedRedirect` compares serialized ORIGINS — so the http
+    // variant of an https host, a deceptive subdomain and a lookalike suffix
+    // all fail — and additionally rejects credentials in the authority, which
+    // is how `https://app.junosynastry.com@evil.com` reads as our host to a
+    // person while parsing to somebody else's. (JUNO-11.)
+    if (!originPolicy.isAllowedRedirect(returnUrl)) {
       return jsonResponse({ error: 'Invalid return URL' }, 400, corsHeaders);
     }
 

@@ -523,21 +523,66 @@ if (selected) {
   );
 }
 
-// --- an unknown place is not the Gulf of Guinea -------------------------------
-// `Math.round(null * 2) / 2` is 0 in JavaScript. The coarsening step returned
-// `{ latitude: 0, longitude: 0 }` for a profile with no birthplace — a
-// fabricated location in an API response, and the exact shape
-// `hydrateStoredChart` reads coordinates from.
+/**
+ * The body of `buildPublicChart` — the allowlist that decides what a caller
+ * learns about somebody else. Sliced out so the checks below can assert on what
+ * is RETURNED rather than on the whole file, whose comments legitimately name
+ * the fields that were removed (JUNO-01).
+ */
+// Anchored on DECLARATIONS, not on comments: `code.profileChart` has already
+// had its comments stripped, so a comment marker would never be found and the
+// slice would silently come back empty — a check that proves nothing.
+const publicChartBuilder = (() => {
+  const start = code.profileChart.indexOf('function buildPublicChart');
+  if (start < 0) return '';
+  const returnAt = code.profileChart.indexOf('return {', start);
+  const end = code.profileChart.indexOf('const RATE_LIMIT_MAX_PER_HOUR', start);
+  return returnAt < 0 || end < 0 ? '' : code.profileChart.slice(returnAt, end);
+})();
+
 check(
-  'coarsened coordinates stay null when the birthplace is unknown',
-  /const coarseLat = hasBirthPlace \? Math\.round/.test(code.profileChart) &&
-    /const coarseLng = hasBirthPlace \? Math\.round/.test(code.profileChart),
-  'Math.round(null * 2) / 2 === 0, which is a real coordinate',
+  'get-profile-chart has a single response allowlist',
+  publicChartBuilder.length > 0,
+  'buildPublicChart is what keeps a field from reaching the wire by accident',
+);
+check(
+  'the response allowlist publishes no ecliptic longitude',
+  !/longitude\s*:/.test(publicChartBuilder) && !/houses\s*:/.test(publicChartBuilder),
+  'a published longitude inverts back to the exact birth instant and coordinates — JUNO-01',
+);
+
+// --- an unknown place is not the Gulf of Guinea -------------------------------
+// HISTORY: this guard changed shape on 2026-09-07, and the reason is the point.
+//
+// `get-profile-chart` used to return a birthplace coarsened to 0.5°, and this
+// checked the fix for the bug underneath it: `Math.round(null * 2) / 2` is 0 in
+// JavaScript, so a profile with no birthplace was answered as
+// `{ latitude: 0, longitude: 0 }` — a fabricated location in an API response,
+// and the exact shape `hydrateStoredChart` reads coordinates from.
+//
+// The 0.5° blur was decorative: the ecliptic longitudes published beside it
+// inverted back to the EXACT coordinates (docs/security-audit-2026-09-07.md,
+// JUNO-01). A search that day found the field had no readers at all — both
+// consumers of `chart.coordinates` read `calculate-chart`'s answer for the
+// READER'S OWN chart. So it is gone, which subsumes this guard: a field that
+// is never published cannot be published as zero.
+check(
+  'no coordinates are published for another user, coarsened or otherwise',
+  !/coarseLat/.test(code.profileChart) &&
+    !/coarseLng/.test(code.profileChart) &&
+    !/coordinates\s*:/.test(publicChartBuilder),
+  'the payload must carry no birthplace at all — see JUNO-01',
 );
 check(
   'no unguarded numeric coercion of a nullable coordinate',
   !/Math\.round\(lat \* 2\)/.test(code.profileChart) &&
     !/Math\.round\(lng \* 2\)/.test(code.profileChart),
+);
+check(
+  'the angles are still computed from the FULL-precision birthplace',
+  /calculateAscendant\(time, lat as number, lng as number\)/.test(code.profileChart) &&
+    /calculateMidheaven\(time, lng as number\)/.test(code.profileChart),
+  'minimisation happens on the way out; an ascendant cast for a rounded birthplace is a different ascendant',
 );
 
 // --- the sanitizer stays an allowlist ----------------------------------------
@@ -625,14 +670,29 @@ check(
 for (const key of ['mobileSynastry', 'webSynastry']) {
   check(
     `${FILES[key]}: the headline score comes from the aspect engine`,
+    // `resolveSynastryView` since 2026-09-07: it prefers the reading the edge
+    // function computed — the SAME shared scoring model, bundled for Deno by
+    // scripts/build-edge-astrology.mjs and verified against its sources by
+    // `npm run validate:edge-astrology` — and computes locally only when the
+    // server sent none. The move was forced: computing here required the
+    // response to carry the other person's ecliptic longitudes, and those
+    // inverted back to their exact birth instant and coordinates
+    // (docs/security-audit-2026-09-07.md, JUNO-01).
+    //
     // Whitespace is collapsed first: the two screens format the ternary
     // differently, and a newline-sensitive pattern would pass on one platform
     // and fail on the other for no reason that matters.
-    /buildSynastryView\(/.test(code[key]) &&
+    /resolveSynastryView\(/.test(code[key]) &&
       /aspectView \? aspectView\.headline\.score/.test(
         code[key].replace(/\s+/g, ' '),
       ),
     'this is the whole point of the change',
+  );
+  check(
+    `${FILES[key]}: prefers the server-computed reading`,
+    /matchSynastry/.test(code[key]) &&
+      /resolveSynastryView\(\s*matchSynastry/.test(code[key].replace(/\s+/g, ' ')),
+    'the server computes it so the response need not carry the longitudes to compute it here',
   );
   check(
     `${FILES[key]}: the sign score survives only as a labelled fallback`,

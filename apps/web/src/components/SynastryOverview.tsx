@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
-import { buildSynastryView, formatOrb } from "@astro/shared/astrology";
+import { formatOrb, resolveSynastryView } from "@astro/shared/astrology";
 import {
   calculateSunCompatibility,
   calculateZoneScores,
@@ -112,10 +112,18 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
   const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [matchProfile, setMatchProfile] = useState<SynastryProfile | null>(null);
-  // Raw birth_chart JSONB for both sides. The SynastryProfile above carries
-  // only sign names; `buildSynastryView` needs the LONGITUDES.
+  // Raw birth_chart JSONB for both sides — the reader's own, and whatever the
+  // edge function still publishes for the other person.
+  //
+  // These are no longer the primary input to the score. Since 2026-09-07 the
+  // server computes the synastry and returns it in `matchSynastry`, because
+  // computing it here required the response to carry the other person's
+  // ecliptic longitudes, and those inverted straight back to their exact birth
+  // instant and coordinates (docs/security-audit-2026-09-07.md, JUNO-01).
+  // `resolveSynastryView` prefers the server's answer and falls back to these.
   const [selfChart, setSelfChart] = useState<unknown>(null);
   const [matchChart, setMatchChart] = useState<unknown>(null);
+  const [matchSynastry, setMatchSynastry] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -186,8 +194,9 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
         if (ownData) {
           setSelfIntentions(sanitizeConnectionIntentions(ownData.connection_intentions));
         }
-        // The raw chart, kept whole: `buildSynastryView` needs the longitudes,
-        // which the sign columns below do not carry.
+        // The reader's OWN chart, kept whole. Still needed: it is the local
+        // fallback's left-hand side when the server sends no `synastry`, and
+        // it is the reader's own data, not another person's.
         setSelfChart(ownData?.birth_chart ?? null);
         let nextCandidates = (candidateRows as CandidateProfile[]) || [];
         setSelfProfile(
@@ -337,6 +346,13 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
             images?: string[] | null;
           };
           chart?: { planets?: ChartPlanets } | null;
+          /**
+           * The scored reading, computed by the edge function. Typed `unknown`
+           * on purpose: `isSynastryView` validates it structurally inside
+           * `resolveSynastryView`, and a cast here would be the exact
+           * unchecked trust that validation exists to avoid.
+           */
+          synastry?: unknown;
           error?: string;
         };
 
@@ -348,6 +364,7 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
 
         const c = response.chart;
         setMatchChart(c ?? null);
+        setMatchSynastry(response.synastry ?? null);
         setMatchProfile({
           id: response.profile.id,
           name: response.profile.name ?? null,
@@ -447,13 +464,16 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
   const other = matchProfile;
   // ── The engine ────────────────────────────────────────────────────────────
   //
-  // Same `buildSynastryView` as mobile, on purpose: two implementations of the
-  // headline number is how the platforms drift. It reads the actual longitudes
-  // of both charts and the aspects between them, replacing
-  // `calculateSunCompatibility(me.sun_sign, other.sun_sign)` — an element
-  // comparison between two Sun SIGNS that could not tell a 1° Venus contact
-  // from a 29° one.
-  const synastryView = buildSynastryView(selfChart, matchChart);
+  // Same `resolveSynastryView` as mobile, on purpose: two implementations of
+  // the headline number is how the platforms drift. It prefers the reading the
+  // edge function computed — from the same shared scoring model, bundled for
+  // Deno and verified against its sources in CI — and computes locally only
+  // when the server sent none.
+  //
+  // What it replaced, two changes ago: `calculateSunCompatibility(me.sun_sign,
+  // other.sun_sign)`, an element comparison between two Sun SIGNS that could
+  // not tell a 1° Venus contact from a 29° one.
+  const synastryView = resolveSynastryView(matchSynastry, selfChart, matchChart);
   const aspectView = synastryView.source === "aspects" ? synastryView : null;
 
   // The sign-based score survives ONLY as the labelled fallback. Never blended

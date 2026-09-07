@@ -31,23 +31,16 @@
  * The caller's IP is not forwarded either. Geoapify sees this function.
  */
 
+import { createOriginPolicy } from '../_shared/cors.ts';
+
 const GEOAPIFY_KEY = Deno.env.get('GEOAPIFY_API_KEY') ?? '';
 
-const PROD_ORIGINS = [
-  'https://www.astrodatingapp.com',
-  'https://astrodatingapp.com',
-  'https://app.astrodatingapp.com',
-  'https://app.junosynastry.com',
-];
-const DEV_ORIGINS = [
-  'http://localhost:3000',
-  'http://localhost:8081',
-  'http://localhost:19006',
-];
-const ALLOWED_ORIGINS =
-  Deno.env.get('ENVIRONMENT') === 'production'
-    ? PROD_ORIGINS
-    : [...PROD_ORIGINS, ...DEV_ORIGINS];
+// CORS — fail-closed allowlist shared by every edge function.
+// See supabase/functions/_shared/cors.ts (JUNO-11): PRODUCTION is the default,
+// and only ENVIRONMENT === 'development' widens it. An absent, renamed or
+// misspelled variable can now only be more restrictive, never less.
+const originPolicy = createOriginPolicy(Deno.env.get('ENVIRONMENT'));
+const ALLOWED_ORIGINS = originPolicy.allowed;
 
 const corsHeaders = (origin: string | null) => ({
   // React Native sends no Origin at all; a missing Origin is not a browser

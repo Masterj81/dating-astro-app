@@ -1,5 +1,6 @@
 import Stripe from 'https://esm.sh/stripe@14.14.0?target=denonext';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { createOriginPolicy } from '../_shared/cors.ts';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
@@ -8,32 +9,10 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
-// Allowed origins for CORS
-const PROD_ORIGINS = [
-  'https://www.astrodatingapp.com',
-  'https://astrodatingapp.com',
-  'https://app.astrodatingapp.com',
-  'https://app.junosynastry.com',
-];
-const DEV_ORIGINS = [
-  ...PROD_ORIGINS,
-  'http://localhost:3000',
-  'http://localhost:8081',
-  'http://localhost:19006',
-];
-const ALLOWED_ORIGINS = Deno.env.get('ENVIRONMENT') === 'production'
-  ? PROD_ORIGINS
-  : DEV_ORIGINS;
-
-const getCorsHeaders = (origin: string | null) => {
-  // SECURITY: Only return CORS headers for known origins. Never fall back to a default.
-  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : '';
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  };
-};
+// CORS + redirect allowlist — fail-closed, shared with every other function.
+// See supabase/functions/_shared/cors.ts (JUNO-11): the default is the
+// PRODUCTION list, and only ENVIRONMENT === 'development' widens it.
+const originPolicy = createOriginPolicy(Deno.env.get('ENVIRONMENT'));
 
 const jsonResponse = (
   body: Record<string, unknown>,
@@ -62,6 +41,68 @@ const getBillingCycleFromPriceId = (priceId: string): 'monthly' | 'yearly' | nul
   if (isYearlyPriceId(priceId)) return 'yearly';
   return null;
 };
+
+// ---------------------------------------------------------------------------
+// Discounts are a server decision (JUNO-03)
+// ---------------------------------------------------------------------------
+//
+// WHAT WAS WRONG
+// --------------
+// The request body carried `couponId` and this function applied it verbatim:
+//
+//     if (couponId) { sessionParams.discounts = [{ coupon: couponId }]; }
+//
+// The `priceId` beside it was validated against an allowlist. The coupon was
+// not. The rule "the annual discount applies to annual plans" lived entirely
+// in the client (`apps/web/src/lib/web-checkout.ts:34`,
+// `apps/mobile/services/webPayments.ts:49`), and the coupon's id was published
+// in the bundle as `NEXT_PUBLIC_STRIPE_ANNUAL_COUPON_ID`. So any signed-in
+// account could POST a MONTHLY price with the ANNUAL coupon and be billed
+// accordingly — and, more broadly, could apply ANY coupon that exists in the
+// Stripe account to any plan, including internal or partner coupons created
+// for a test. (docs/security-audit-2026-09-07.md, JUNO-03.)
+//
+// HOW IT IS FIXED
+// ---------------
+// The discount is now DERIVED from the validated `priceId`, from a server-only
+// table. `couponId` is no longer part of the input contract: an old client that
+// still sends one is served correctly and the field is ignored, never echoed,
+// never used to branch. There is no request shape that can select a discount.
+
+/**
+ * The only automatic discounts, keyed by the billing cycle they belong to.
+ *
+ * Values come from the function's own environment, never from `NEXT_PUBLIC_*`
+ * or `EXPO_PUBLIC_*`. A coupon id is not a secret, but it is a server input:
+ * publishing it is what turned it into a parameter.
+ */
+const AUTOMATIC_COUPONS: Record<'monthly' | 'yearly', string | null> = {
+  monthly: Deno.env.get('STRIPE_MONTHLY_COUPON_ID') || null,
+  // Historically `EXPO_PUBLIC_STRIPE_ANNUAL_COUPON_ID`. Same value, read from a
+  // server-only variable now.
+  yearly:
+    Deno.env.get('STRIPE_ANNUAL_COUPON_ID') ||
+    Deno.env.get('STRIPE_YEARLY_COUPON_ID') ||
+    null,
+};
+
+/**
+ * The discount this plan earns. Pure: the same validated price always resolves
+ * to the same coupon, and nothing the caller sends can influence it.
+ */
+export function resolveAutomaticCoupon(
+  priceId: string,
+  billingCycle: 'monthly' | 'yearly' | null,
+  coupons: Record<'monthly' | 'yearly', string | null> = AUTOMATIC_COUPONS,
+): string | null {
+  if (!billingCycle) return null;
+  // Belt and braces: the cycle is derived from the price allowlist above, so a
+  // cycle without a matching price cannot occur — assert it rather than trust it.
+  const cycleMatchesPrice =
+    billingCycle === 'yearly' ? isYearlyPriceId(priceId) : isMonthlyPriceId(priceId);
+  if (!cycleMatchesPrice) return null;
+  return coupons[billingCycle] ?? null;
+}
 
 type PromoCampaign = {
   code: string;
@@ -118,10 +159,17 @@ async function getPromoCampaign(
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
-  if (origin && !ALLOWED_ORIGINS.includes(origin)) {
-    return new Response('Forbidden origin', { status: 403 });
+  const corsHeaders = originPolicy.headers(origin);
+
+  // A browser request from an origin we do not serve is refused — but WITH the
+  // policy's headers. The previous `new Response('Forbidden origin')` carried
+  // none, which is how a legitimate origin left off the list surfaces in a
+  // console as an unreadable network error instead of a 403 anyone can debug.
+  // An absent Origin (native app, server-to-server) is not a browser request
+  // and is not subject to this check; the JWT below is what authorises it.
+  if (origin && !originPolicy.isAllowedOrigin(origin)) {
+    return jsonResponse({ error: 'forbidden_origin' }, 403, corsHeaders);
   }
-  const corsHeaders = getCorsHeaders(origin);
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -142,23 +190,21 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Missing authorization header' }, 401, corsHeaders);
     }
 
-    const { priceId, userId, couponId, promoCode, successUrl, cancelUrl } = await req.json();
+    // `couponId` is deliberately NOT destructured. Old clients still send it
+    // (apps ship for weeks); the field is read by nobody, echoed by nobody, and
+    // cannot reach Stripe. See AUTOMATIC_COUPONS above — JUNO-03.
+    const { priceId, userId, promoCode, successUrl, cancelUrl } = await req.json();
 
     if (!priceId || !userId || !successUrl || !cancelUrl) {
       return jsonResponse({ error: 'Missing required fields' }, 400, corsHeaders);
     }
 
-    // Validate redirect URLs to prevent open-redirect attacks
-    const allowedRedirectOrigins = ALLOWED_ORIGINS;
-    const isValidUrl = (url: string) => {
-      try {
-        const parsed = new URL(url);
-        return allowedRedirectOrigins.includes(parsed.origin);
-      } catch {
-        return false;
-      }
-    };
-    if (!isValidUrl(successUrl) || !isValidUrl(cancelUrl)) {
+    // Validate redirect URLs against the same fail-closed allowlist that
+    // governs CORS. Origin equality covers scheme, host and port together, and
+    // `isAllowedRedirect` additionally rejects credentials in the authority —
+    // `https://app.junosynastry.com@evil.com` reads as our host to a person and
+    // parses to `evil.com`.
+    if (!originPolicy.isAllowedRedirect(successUrl) || !originPolicy.isAllowedRedirect(cancelUrl)) {
       return jsonResponse({ error: 'Invalid redirect URL' }, 400, corsHeaders);
     }
 
@@ -298,9 +344,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Apply a specific coupon if provided (legacy annual discount flow).
-    if (couponId) {
-      sessionParams.discounts = [{ coupon: couponId }];
+    // The automatic discount, DERIVED from the validated price. Nothing in the
+    // request reaches this decision; a monthly price can never pick up the
+    // annual coupon, whatever the caller sends. (JUNO-03.)
+    const automaticCoupon = resolveAutomaticCoupon(priceId, promoBillingCycle);
+    if (automaticCoupon && !promoCampaign) {
+      sessionParams.discounts = [{ coupon: automaticCoupon }];
       delete sessionParams.allow_promotion_codes; // Can't use both
     }
 
