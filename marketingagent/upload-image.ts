@@ -1,71 +1,40 @@
 /**
  * Upload local images to Supabase Storage for use with Blotato.
  *
- * Uses the Supabase REST API directly (no SDK dependency).
- * Bucket: marketing-images (must be public)
+ * JUNO-04 (8 Sep 2026): this file used to POST the image bytes straight to
+ * `/storage/v1/object/marketing-images/<name>` with SUPABASE_SERVICE_ROLE_KEY
+ * in the Authorization header — a credential that also reads every row of
+ * `profiles` and `messages` and can delete any account. It now goes through
+ * ./marketing-api.js and the `marketing-agent` edge function, which holds that
+ * key server-side and exposes only this one upload.
+ *
+ * Two behaviours changed with it, both because the old ones were defects:
+ *
+ *   * the remote filename was `marketing-${Date.now()}-${basename(localPath)}`,
+ *     built from a local path. It is now a server-chosen UUID, so nothing this
+ *     process sends can name an object in the bucket.
+ *   * the bucket is declared by a migration for the first time
+ *     (20260908000001). It has existed since at least April 2026 without one,
+ *     which is the JUNO-15 drift in miniature.
+ *
+ * The exported signatures are unchanged, so blotato.ts and
+ * .pi/extensions/blotato-publisher.ts need no edit.
  */
 
-import { readFileSync, existsSync } from "fs";
-import { basename, extname } from "path";
-import { fetchWithTimeout } from "./lib.js";
-
-const MIME_TYPES: Record<string, string> = {
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".webp": "image/webp",
-  ".gif": "image/gif",
-};
+import { uploadMarketingImage } from "./marketing-api.js";
 
 /**
  * Upload a local image file to Supabase Storage and return its public URL.
  * Returns null if the file doesn't exist or the upload fails.
+ *
+ * Still null rather than a throw: the caller's contract is "publish without an
+ * image rather than not publish". The warning now names what to check, which
+ * the previous "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set" no longer
+ * would — that variable is deliberately gone from this tool's environment.
  */
 export async function uploadImageToSupabase(localPath: string): Promise<string | null> {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    console.warn("⚠️  SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set — skipping image upload");
-    return null;
-  }
-
-  if (!existsSync(localPath)) {
-    console.warn(`⚠️  Image file not found: ${localPath} — skipping upload`);
-    return null;
-  }
-
   try {
-    const ext = extname(localPath).toLowerCase();
-    const mime = MIME_TYPES[ext] || "application/octet-stream";
-    const originalName = basename(localPath);
-    const uniqueName = `marketing-${Date.now()}-${originalName}`;
-
-    const fileBuffer = readFileSync(localPath);
-
-    // Strip trailing slash from URL if present
-    const baseUrl = supabaseUrl.replace(/\/$/, "");
-
-    const response = await fetchWithTimeout(
-      `${baseUrl}/storage/v1/object/marketing-images/${uniqueName}`,
-      {
-        method: "POST",
-        timeoutMs: 30_000,
-        headers: {
-          Authorization: `Bearer ${serviceRoleKey}`,
-          "Content-Type": mime,
-        },
-        body: fileBuffer,
-      },
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.warn(`⚠️  Supabase upload failed (${response.status}): ${errorText.slice(0, 200)}`);
-      return null;
-    }
-
-    const publicUrl = `${baseUrl}/storage/v1/object/public/marketing-images/${uniqueName}`;
+    const publicUrl = await uploadMarketingImage(localPath);
     console.log(`📤 Image uploaded: ${publicUrl}`);
     return publicUrl;
   } catch (err) {

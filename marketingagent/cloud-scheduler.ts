@@ -13,13 +13,25 @@
  *     and avoid double-publication.
  *   - `scheduleInCloud` refuses to re-queue a post that already has
  *     `scheduledServerId` set, unless `force` is passed.
+ *
+ * JUNO-04 (8 Sep 2026): this module used to build a Supabase client with
+ * SUPABASE_SERVICE_ROLE_KEY — a credential that bypasses RLS on every table,
+ * including `profiles` and `messages`, for the sake of one INSERT and two
+ * SELECTs on `marketing_posts`. It now goes through ./marketing-api.js, which
+ * calls an edge function that exposes exactly the four operations this file
+ * needs. The behaviour of every function below is unchanged.
  */
 
 import "dotenv/config";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { readFileSync, existsSync } from "fs";
-import { atomicWriteJson, fetchWithTimeout } from "./lib.js";
+import { atomicWriteJson } from "./lib.js";
 import { POSTS_FILE } from "./constants.js";
+import {
+  fetchMarketingStatuses,
+  listMarketingQueue,
+  scheduleMarketingPost,
+  uploadMarketingImage,
+} from "./marketing-api.js";
 
 export interface CloudPost {
   id: string;                    // Supabase UUID
@@ -60,21 +72,6 @@ function saveLocalPosts(posts: LocalPost[]): void {
   atomicWriteJson(POSTS_FILE, posts);
 }
 
-function getSupabase(): SupabaseClient {
-  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL
-    || process.env.NEXT_PUBLIC_SUPABASE_URL
-    || process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error(
-      "Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in marketingagent/.env to use the cloud scheduler.",
-    );
-  }
-  return createClient(supabaseUrl, supabaseKey, {
-    global: { fetch: fetchWithTimeout as unknown as typeof fetch },
-  });
-}
-
 /**
  * True iff this local post has already been pushed to Supabase. Pure function
  * so it's testable without touching the network.
@@ -83,22 +80,29 @@ export function isCloudScheduled(post: Pick<LocalPost, "scheduledServerId">): bo
   return Boolean(post.scheduledServerId);
 }
 
+/**
+ * Upload the post's image and return its public URL.
+ *
+ * Two changes from the service-role version, both deliberate:
+ *
+ *   * the object lands in the `marketing-images` bucket rather than in
+ *     `avatars`, which holds users' profile photos and had no business
+ *     carrying promotional material;
+ *   * the remote filename is chosen by the SERVER, from a UUID. It used to be
+ *     `marketing/${Date.now()}-${basename}` with `upsert: true`, so two posts
+ *     generated in the same millisecond overwrote each other, and a crafted
+ *     local filename could name any object in the bucket.
+ *
+ * Still returns null rather than throwing when there is no image to upload, so
+ * a post without one schedules exactly as before. A REAL failure now throws:
+ * the previous version logged and returned null, which published the post with
+ * no image and no indication anything had gone wrong.
+ */
 async function uploadImageIfPresent(
-  supabase: SupabaseClient,
   imagePath: string | undefined,
 ): Promise<string | null> {
   if (!imagePath || !existsSync(imagePath)) return null;
-  const buffer = readFileSync(imagePath);
-  const fileName = `marketing/${Date.now()}-${imagePath.split(/[/\\]/).pop()}`;
-  const { error } = await supabase.storage.from("avatars").upload(fileName, buffer, {
-    contentType: "image/png",
-    upsert: true,
-  });
-  if (error) {
-    console.error(`   image upload failed: ${error.message}`);
-    return null;
-  }
-  return supabase.storage.from("avatars").getPublicUrl(fileName).data.publicUrl;
+  return await uploadMarketingImage(imagePath);
 }
 
 /**
@@ -115,6 +119,12 @@ export async function scheduleInCloud(
   const posts = loadLocalPosts();
   const post = posts.find((p) => p.id === postId);
   if (!post) throw new Error(`Post #${postId} not found locally. Run: npm run list`);
+  if (post.status !== "approved") {
+    throw new Error(`Post #${postId} must be approved before cloud scheduling.`);
+  }
+  if (!post.imagePath || !existsSync(post.imagePath)) {
+    throw new Error(`Post #${postId} needs a generated image before cloud scheduling.`);
+  }
 
   if (post.scheduledServerId && !opts.force) {
     throw new Error(
@@ -123,31 +133,23 @@ export async function scheduleInCloud(
     );
   }
 
-  const supabase = getSupabase();
-  const imageUrl = await uploadImageIfPresent(supabase, post.imagePath);
+  const imageUrl = await uploadImageIfPresent(post.imagePath);
 
-  const { data, error } = await supabase
-    .from("marketing_posts")
-    .insert({
-      text: post.text,
-      topic: post.topic,
-      ai_score: post.aiScore,
-      platforms: ["facebook", "instagram"],
-      status: "scheduled",
-      scheduled_for: scheduledFor.toISOString(),
-      image_url: imageUrl,
-    })
-    .select("id")
-    .single();
-
-  if (error) throw new Error(`Failed to schedule in cloud: ${error.message}`);
+  const cloudId = await scheduleMarketingPost({
+    text: post.text,
+    topic: post.topic,
+    aiScore: post.aiScore,
+    platforms: ["facebook", "instagram"],
+    scheduledFor: scheduledFor.toISOString(),
+    imageUrl,
+  });
 
   post.status = "scheduled";
   post.scheduledFor = scheduledFor.toISOString();
-  post.scheduledServerId = String(data.id);
+  post.scheduledServerId = cloudId;
   saveLocalPosts(posts);
 
-  return { cloudId: String(data.id), scheduledFor: scheduledFor.toISOString() };
+  return { cloudId, scheduledFor: scheduledFor.toISOString() };
 }
 
 /**
@@ -155,16 +157,13 @@ export async function scheduleInCloud(
  * Used by the `cloud-list` CLI command for an at-a-glance view of the queue.
  */
 export async function listCloudQueue(opts: { limit?: number; status?: CloudPost["status"] } = {}): Promise<CloudPost[]> {
-  const supabase = getSupabase();
-  let q = supabase
-    .from("marketing_posts")
-    .select("id, text, topic, status, scheduled_for, posted_at, blotato_post_id, error, image_url, created_at")
-    .order("scheduled_for", { ascending: false })
-    .limit(opts.limit ?? 30);
-  if (opts.status) q = q.eq("status", opts.status);
-  const { data, error } = await q;
-  if (error) throw new Error(`Failed to list cloud queue: ${error.message}`);
-  return (data ?? []) as CloudPost[];
+  // Columns, ordering and the status allowlist now live in
+  // `marketing_agent_list_queue`, so no parameter from here can name a column
+  // or an operator. The limit is clamped to 100 server-side.
+  return (await listMarketingQueue({
+    limit: opts.limit ?? 30,
+    status: opts.status,
+  })) as CloudPost[];
 }
 
 /**
@@ -181,15 +180,10 @@ export async function syncCloudBackToLocal(): Promise<{ checked: number; updated
     .map((p) => p.scheduledServerId!) as string[];
   if (cloudIds.length === 0) return { checked: 0, updated: 0, postedNow: 0, failedNow: 0 };
 
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from("marketing_posts")
-    .select("id, status, posted_at, blotato_post_id, error")
-    .in("id", cloudIds);
-  if (error) throw new Error(`Failed to fetch cloud statuses: ${error.message}`);
+  const data = await fetchMarketingStatuses(cloudIds);
 
   const cloudById = new Map<string, { status: string; posted_at: string | null; blotato_post_id: string | null; error: string | null }>();
-  for (const row of data ?? []) cloudById.set(String(row.id), row);
+  for (const row of data) cloudById.set(String(row.id), row);
 
   let updated = 0;
   let postedNow = 0;
