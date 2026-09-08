@@ -83,10 +83,51 @@ supabase secrets list
   `LEGACY_UNSUBSCRIBE_SECRET` = `juno-unsubscribe-v1:<ancienne service_role>`,
   concaténation littérale, sans espace, sans saut de ligne.
 
-> Si le nom apparaît mais que sa valeur est perdue, les anciens liens sont
-> irrécupérables. Ce n'est pas une raison de renoncer au correctif : c'est une
-> raison de le déployer et d'accepter que les liens historiques renvoient une
-> page d'erreur, en le sachant plutôt qu'en le découvrant.
+> **`secrets list` dit si le nom existe, jamais sa valeur.** Si le nom apparaît
+> et que sa valeur est perdue, **n'inventez pas `_PREVIOUS`**. Une valeur fausse
+> casse exactement les mêmes liens qu'une valeur absente — mais elle *a l'air*
+> configurée, donc personne ne revient vérifier. L'absence, elle, est annoncée
+> par la ligne de démarrage de la fonction.
+
+### A.1 bis — trancher une valeur candidate, hors ligne
+
+Ne pas deviner : **vérifier**. Un seul lien de désabonnement, pris dans
+n'importe quel courriel lifecycle déjà envoyé, suffit à décider — le jeton porte
+sa propre preuve.
+
+```powershell
+Set-PSReadLineOption -HistorySaveStyle SaveNothing
+
+$env:JUNO_UNSUB_TOKEN = Read-Host "collez l URL ou le jeton de desabonnement"
+
+# l'une OU l'autre, selon ce que vous testez :
+$env:JUNO_CANDIDATE_SECRET       = Read-Host "valeur candidate"
+$env:JUNO_CANDIDATE_SERVICE_ROLE = Read-Host "ancienne cle service_role"
+
+npm run check:unsubscribe-legacy-key
+
+Remove-Item Env:JUNO_UNSUB_TOKEN, Env:JUNO_CANDIDATE_SECRET, Env:JUNO_CANDIDATE_SERVICE_ROLE
+```
+
+Les valeurs passent par l'**environnement**, jamais par `argv` : elles ne
+touchent donc pas `ConsoleHost_history.txt`. Le script ne les imprime pas, pas
+même leur longueur, et il vérifie à travers le **module réel** que la fonction
+déployée utilise — il ne peut donc pas diverger de ce que fera la production.
+
+`JUNO_CANDIDATE_SERVICE_ROLE` construit `juno-unsubscribe-v1:<clé>` pour vous.
+C'est le chemin recommandé : concaténer à la main est exactement là où un saut
+de ligne parasite produit une réponse fausse en silence.
+
+| sortie | signification | action |
+|---|---|---|
+| `MATCH` sur une candidate, `generation: legacy` | c'est la bonne valeur | poser `_PREVIOUS` |
+| aucun `MATCH` | ce n'est aucune de ces valeurs | **ne rien poser** ; essayer un autre courriel, ou une clé de service antérieure |
+| `generation: v2` | le lien vient d'après la migration | il renseigne `_V2`, pas `_PREVIOUS` — reprendre avec un courriel plus ancien |
+
+Si rien ne vérifie, les liens historiques sont irrécupérables. Ce n'est pas une
+raison de renoncer au correctif : c'est une raison de le déployer et d'acter que
+ces liens répondront 400 — en le sachant, plutôt qu'en l'apprenant d'un lecteur
+qui n'a pas pu se désabonner.
 
 ### A.2 — Construire la valeur sans l'exposer
 

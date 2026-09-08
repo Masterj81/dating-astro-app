@@ -7,6 +7,49 @@ tournée ni révoquée. Aucune fonction n'a été déployée.
 
 ---
 
+## 0. Ordre de déploiement — la séquence de référence
+
+Les deux vagues sont sur `master` et le CI est vert. **Cela ne veut pas dire que
+la vague 2 est en production** : la base est partiellement prête, et
+`send-email`, `unsubscribe` et `marketing-agent` ne sont pas déployées. Rien
+ci-dessous ne doit être sauté ni réordonné.
+
+| # | étape | porte de contrôle |
+|---|---|---|
+| 1 | attendre la fin du déploiement Vercel | le build est vert dans le tableau de bord |
+| 2 | tester une **synastrie autorisée** et le **paywall gratuit** | le compte abonné voit la lecture ; le compte gratuit voit le paywall, pas une erreur |
+| 3 | ouvrir un **checkout annuel sans payer** | voir la liste ci-dessous |
+| 4 | **confirmer que `20260908000001` est appliquée** | `verify_20260908`, énoncé 1 : 13/13 |
+| 5 | préparer la transition dual-key (§3 de l'autre runbook) | une valeur candidate **vérifiée**, pas devinée |
+| 6 | déployer `send-email` **et** `unsubscribe` | les deux, dans la même passe |
+| 7 | tester **un ancien** lien et **un nouveau** | `generation=legacy` puis `generation=v2` dans les journaux |
+| 8 | poser `MARKETING_AGENT_TOKEN` | des deux côtés : `.env` local **et** secret Supabase |
+| 9 | déployer `marketing-agent` | l'étape 4 doit être verte, sinon la fonction refuse tout |
+| 10 | tester ses **4 opérations autorisées** et **plusieurs interdites** | phase B, les deux tableaux |
+| 11 | retirer `SUPABASE_SERVICE_ROLE_KEY` de `marketingagent/.env` | refaire les 4 opérations après le retrait |
+| 12 | **seulement alors**, considérer JUNO-04 et JUNO-21 comme fermés | — |
+
+L'étape 4 avant l'étape 9 n'est pas une précaution de style : `marketing-agent`
+appelle les trois RPC de `20260908000001`, et échoue fermé.
+
+### Étape 3 — ce qu'il faut vérifier sur le checkout annuel
+
+Aucun paiement n'est à finaliser. Ouvrir la page Stripe suffit.
+
+- [ ] le **mode** Stripe — test ou live ; savoir lequel avant de lire un montant
+- [ ] le **produit** et la **périodicité annuelle**, pas mensuelle
+- [ ] le **montant avant et après remise** — c'est le seul témoin de
+      `STRIPE_ANNUAL_COUPON_ID` ; s'il n'est pas posé côté serveur,
+      `resolveAutomaticCoupon` rend `null`, la session se crée normalement au
+      **prix plein**, et **rien n'échoue**
+- [ ] la **devise**
+- [ ] l'**absence de `couponId`** dans la requête réseau du navigateur — le
+      serveur l'ignore déjà, mais son absence prouve que le nouveau bundle est
+      bien servi
+- [ ] **ne rien finaliser**
+
+---
+
 ## 1. Ce que le constat est, et ce qu'il n'est pas
 
 `marketingagent/.env` contient `SUPABASE_SERVICE_ROLE_KEY` : un JWT valide
@@ -240,12 +283,30 @@ accès au poste.
 
 ## 6. Phase D — rotation manuelle
 
-Ne rien exécuter ici tant que la phase B n'est pas terminée et vérifiée.
+### Porte d'entrée — sept conditions, toutes vraies
+
+Ne rien exécuter ici tant que ces sept lignes ne sont pas cochées. Ce n'est pas
+une liste de bonnes pratiques : chacune correspond à une panne observable si on
+tourne la clé sans elle.
+
+- [ ] un **ancien** lien de désabonnement fonctionne
+- [ ] un **nouveau** lien v2 fonctionne
+- [ ] les nouveaux courriels sont signés **uniquement** en v2
+- [ ] les **quatre** opérations de `marketing-agent` fonctionnent
+- [ ] les opérations **hors périmètre** sont refusées
+- [ ] **aucun consommateur local** de l'ancienne clé ne subsiste
+- [ ] l'**inventaire des consommateurs distants** est terminé (§6.2)
+
+Les deux premières sont celles qui coûtent le plus cher si on les saute : la
+rotation invalide alors, d'un coup et sans erreur visible, tous les liens de
+désabonnement déjà envoyés.
 
 1. **Confirmer que la compatibilité legacy des désabonnements est active.**
    `supabase secrets list` doit montrer `UNSUBSCRIBE_TOKEN_SECRET_PREVIOUS`, et
-   un ancien lien doit encore fonctionner. Sans cela, la rotation casse tous les
-   liens déjà envoyés.
+   un ancien lien doit encore fonctionner — **testé**, pas supposé. Rappel :
+   `secrets list` prouve la présence du nom, jamais la justesse de la valeur.
+   Seul `npm run check:unsubscribe-legacy-key`, ou un vrai clic sur un vrai
+   lien, prouve la seconde.
 
 2. **Inventorier les consommateurs.** Au 8 septembre 2026, **dix-neuf** fonctions
    edge (`marketing-agent` comprise) et une bibliothèque web lisent la clé :
