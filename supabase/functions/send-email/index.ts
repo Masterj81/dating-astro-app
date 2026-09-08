@@ -4,6 +4,12 @@ import {
   TEMPLATES,
   type TemplateContext,
 } from "./templates.ts";
+import {
+  describeKeyring,
+  readUnsubscribeKeyring,
+  signUnsubscribeToken,
+  UNSUBSCRIBE_CATEGORY,
+} from "../_shared/unsubscribe-token.ts";
 
 // JUNO lifecycle + transactional email.
 //
@@ -38,49 +44,33 @@ const FROM_EMAIL =
 // ---------------------------------------------------------------------------
 // Unsubscribe tokens
 // ---------------------------------------------------------------------------
-// Same construction as supabase/functions/cancel-account-deletion: an HMAC over
-// `userId:category`, base64url payload + "." + signature. Verified by the
-// companion `unsubscribe` function.
+// Signing lives in ../_shared/unsubscribe-token.ts, which is also what the
+// companion `unsubscribe` function verifies with. Read its header before
+// changing anything here.
 //
 // Deliberately NEVER expires. An unsubscribe link that has gone stale is a
 // compliance failure, not a security improvement. The token grants exactly one
 // capability — flipping one boolean on one profile — so replay is harmless.
 //
-// The secret falls back to a value derived from the service-role key so the
-// feature works on first deploy with nothing to provision. Set
-// UNSUBSCRIBE_TOKEN_SECRET to rotate it independently.
-const UNSUBSCRIBE_TOKEN_SECRET =
-  Deno.env.get("UNSUBSCRIBE_TOKEN_SECRET") ||
-  (supabaseServiceKey ? `juno-unsubscribe-v1:${supabaseServiceKey}` : "");
+// JUNO-21: this used to fall back to `juno-unsubscribe-v1:${serviceRoleKey}`,
+// which chained every unsubscribe link ever sent to the lifetime of the most
+// privileged credential in the system. There is no fallback now. This function
+// signs v2 tokens and nothing else — the legacy key exists only in
+// `unsubscribe`, only to VERIFY links already in people's inboxes.
+const ENV = Deno.env.toObject();
+const UNSUBSCRIBE_KEYRING = readUnsubscribeKeyring(ENV);
 
-function b64UrlEncode(s: string): string {
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-async function hmac(value: string, secret: string): Promise<string> {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(value));
-  const bytes = new Uint8Array(sig);
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
+// One line at cold start. Names and presence only, never values — and it is
+// the only place that warns about a half-finished key migration.
+console.log(`[send-email] unsubscribe keys: ${describeKeyring(ENV)}`);
 
 async function buildUnsubscribeUrl(
   userId: string,
   category: string,
 ): Promise<string | null> {
-  if (!UNSUBSCRIBE_TOKEN_SECRET || !supabaseUrl) return null;
-  const payload = `${userId}:${category}`;
-  const sig = await hmac(payload, UNSUBSCRIBE_TOKEN_SECRET);
-  const token = `${b64UrlEncode(payload)}.${sig}`;
+  if (!supabaseUrl) return null;
+  const token = await signUnsubscribeToken(userId, category, UNSUBSCRIBE_KEYRING);
+  if (!token) return null;
   return `${supabaseUrl}/functions/v1/unsubscribe?token=${encodeURIComponent(token)}`;
 }
 
@@ -194,7 +184,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const unsubscribeUrl = await buildUnsubscribeUrl(userId, "lifecycle");
+    const unsubscribeUrl = await buildUnsubscribeUrl(userId, UNSUBSCRIBE_CATEGORY);
 
     // HTML-escape anything that reaches a template. Signs additionally pass
     // through a lookup table in templates.ts, so they can never carry markup.

@@ -124,3 +124,24 @@ marketingagent/tiktok-analytics.json
 /.tmp/
 /.tools/
 /*.xlsx
+
+# JUNO-20 of docs/security-audit-2026-09-07.md — no archives in a route folder.
+#
+# `apps/mobile/app/appaD.zip` was a 147 KB snapshot of the whole expo-router
+# tree taken in March 2026: 58 route files including `(tabs)/matches.tsx` and
+# `match/[id].tsx`, from the `matches` model retired in May 2026, and predating
+# every hardening in this repository. It carried no secret — that was verified
+# against eleven credential patterns before it was removed, which is why the
+# git history was NOT rewritten. The risk was resurrection: a backup sitting in
+# the routing directory invites somebody to restore it.
+#
+# Scoped to route folders on purpose. Archives elsewhere in the repository are
+# legitimate (store assets, build outputs) and are not the subject of this rule.
+# scripts/validate-repo-hygiene.mjs fails the build if one is committed anyway,
+# because .gitignore does not stop `git add -f`.
+apps/*/app/**/*.zip
+apps/*/app/**/*.tar
+apps/*/app/**/*.tar.gz
+apps/*/app/**/*.tgz
+apps/*/app/**/*.7z
+apps/*/app/**/*.rar

@@ -53,11 +53,34 @@ In addition to your usual keys:
 
 ```
 SUPABASE_URL=https://<project>.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=<service-role-jwt>
+MARKETING_AGENT_TOKEN=<32+ random characters>
 ```
 
-The service role key only ever leaves your machine via direct Supabase
-requests — the marketing agent doesn't expose it on a port.
+`MARKETING_AGENT_TOKEN` replaced `SUPABASE_SERVICE_ROLE_KEY` on 8 September 2026
+(JUNO-04 of `docs/security-audit-2026-09-07.md`). **If your `.env` still has the
+service-role key, delete that line** — nothing in this tool reads it any more.
+
+The reasoning matters more than the swap. The old key bypasses row-level
+security on every table: every profile's birth data and personal information,
+every private message, plus the auth admin API that can delete any account. It
+was here so the agent could do one INSERT and two SELECTs on `marketing_posts`,
+and one image upload. The key was never committed — verified across the whole
+git history — so this is not a leak being cleaned up; it is a privilege being
+reduced to what the tool actually uses.
+
+Generate the token and register it on both sides:
+
+```bash
+openssl rand -hex 32
+supabase secrets set MARKETING_AGENT_TOKEN=<the same value>
+```
+
+The token authenticates to the `marketing-agent` edge function, which holds the
+service-role key server-side and exposes exactly four operations. A leaked token
+can queue a marketing post; it cannot read a single user record.
+
+Full procedure, including what to verify before removing the old key:
+`docs/runbooks/service-role-least-privilege-2026-09.md`.
 
 ### Schedule a post for cloud publishing
 

@@ -28,6 +28,8 @@ const FN_DIR = path.join(ROOT, 'supabase', 'functions', 'send-email');
 const TEMPLATES_TS = path.join(FN_DIR, 'templates.ts');
 const INDEX_TS = path.join(FN_DIR, 'index.ts');
 const UNSUB_TS = path.join(ROOT, 'supabase', 'functions', 'unsubscribe', 'index.ts');
+// JUNO-21: signing and verification live here, shared by send-email and unsubscribe.
+const TOKEN_TS = path.join(ROOT, 'supabase', 'functions', '_shared', 'unsubscribe-token.ts');
 const UNSUB_PAGE = path.join(
   ROOT, 'apps', 'web', 'src', 'app', '[locale]', 'unsubscribe', 'page.tsx',
 );
@@ -429,7 +431,65 @@ if (unsubSrc) {
   check('unsubscribe: handles GET (footer link)', /"GET"/.test(unsubSrc));
   check('unsubscribe: handles POST (RFC 8058 one-click)', /"POST"/.test(unsubSrc));
   check('unsubscribe: verifies an HMAC token', /verifyToken\(/.test(unsubSrc));
-  check('unsubscribe: compares signatures in constant time', /constantTimeEqual/.test(unsubSrc));
+
+  // JUNO-21 (8 Sep 2026): signing and verification moved out of the two
+  // functions into supabase/functions/_shared/unsubscribe-token.ts, so that a
+  // rotation of SUPABASE_SERVICE_ROLE_KEY stops invalidating every unsubscribe
+  // link already in an inbox. The constant-time comparison went with it.
+  //
+  // This check FOLLOWS the code rather than being relaxed: it now asserts both
+  // that `unsubscribe` delegates to the shared verifier, and that the shared
+  // module still compares in constant time. Deleting either half fails here.
+  let tokenSrc = '';
+  try {
+    tokenSrc = readFileSync(TOKEN_TS, 'utf8');
+  } catch {
+    // Reported by the check below.
+  }
+
+  // Comments blanked. All three files EXPLAIN the old derivation in their
+  // headers — that prose is the reason nobody reinstates it, and a validator
+  // that cannot tell it from code would force the explanation out.
+  const codeOf = (text) =>
+    text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const tokenCode = codeOf(tokenSrc);
+
+  check(
+    'unsubscribe: delegates verification to the shared token module',
+    /verifyUnsubscribeToken/.test(unsubSrc),
+    'It should call the shared verifier, which is what supports both token generations.',
+  );
+  check(
+    'unsubscribe: compares signatures in constant time',
+    /constantTimeEqual\(sig, expected\)/.test(tokenCode),
+    `${path.relative(ROOT, TOKEN_TS)} must compare the HMAC with constantTimeEqual, not ===.`,
+  );
+
+  // The legacy branch, asserted on its three moving parts rather than on the
+  // word "legacy" — which also appears in the type union and in a later
+  // comparison, so a check for the word alone passes against a module whose
+  // legacy branch has been gutted. Found by mutating it.
+  check(
+    'unsubscribe: still verifies links signed before the key split',
+    /parts\.length === 2/.test(tokenCode) &&
+      /secret = keyring\.previous/.test(tokenCode) &&
+      /generation = "legacy"/.test(tokenCode) &&
+      /PREVIOUS_SECRET_ENV/.test(tokenCode),
+    'Dropping legacy verification turns every unsubscribe link already sent into a 400 — ' +
+      'an RFC 8058 failure with Gmail and Yahoo. See docs/runbooks/unsubscribe-dual-key-2026-09.md.',
+  );
+  check(
+    'unsubscribe: new tokens are signed with the current key only',
+    /signWith\(`\$\{TOKEN_VERSION\}\.\$\{b64Payload\}`, keyring\.current\)/.test(tokenCode),
+    'A new token signed with the previous key would outlive the transition it exists to end.',
+  );
+  check(
+    'unsubscribe: no signing key is derived from the service-role key',
+    !/juno-unsubscribe-v1:/.test(tokenCode) &&
+      !/juno-unsubscribe-v1:/.test(codeOf(unsubSrc)) &&
+      !/juno-unsubscribe-v1:/.test(codeOf(indexSrc)),
+    'Rotating SUPABASE_SERVICE_ROLE_KEY would again invalidate every link already sent.',
+  );
   check('unsubscribe: writes the same preference key send-email reads',
     new RegExp(`LIFECYCLE_PREF_KEY = "${LIFECYCLE_PREF_KEY}"`).test(unsubSrc));
   check('unsubscribe: cancels still-queued mail', /scheduled_emails/.test(unsubSrc));

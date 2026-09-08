@@ -170,6 +170,203 @@ conversation existante, et une limite de débit qui refuse quand elle ne peut pa
 
 ---
 
+## État après la deuxième vague de remédiation — 8 septembre 2026
+
+Quatre constats supplémentaires traités. **Rien n'a été déployé, aucune migration n'exécutée à
+distance, aucune clé créée, posée, tournée ni révoquée.** Deux runbooks portent les étapes
+manuelles.
+
+| Constat | Statut | Ce qui le prouve |
+|---|---|---|
+| **JUNO-18** | **Corrigé** | `.github/workflows/ci.yml` déclare `permissions: contents: read` au niveau workflow ; `validate:repo-hygiene` échoue si le bloc disparaît, si un job s'élève sans justification, ou si `pull_request_target` apparaît |
+| **JUNO-20** | **Corrigé** | `apps/mobile/app/appaD.zip` n'est plus suivi ; règle `.gitignore` ciblée sur `apps/*/app/**` ; le validateur refuse une archive réintroduite par `git add -f` |
+| **JUNO-21** | **Corrigé dans le code**, transition manuelle | `unsubscribe-token.test.ts` — 43 tests, dont une **copie verbatim de l'ancien signeur** qui prouve que les liens déjà envoyés se vérifient encore |
+| **JUNO-04** | **Corrigé dans le code**, phases B–D manuelles | `marketing-agent-authz.test.ts` — 41 tests sur la décision réelle ; migration `20260908000001` ; `marketingagent` ne lit plus `SUPABASE_SERVICE_ROLE_KEY` |
+| **JUNO-28** *(nouveau)* | **FERMÉ, prouvé en base le 8 sep** | `20260908000002` appliquée ; son auto-vérification exige que le second appel au limiteur soit refusé, donc le compteur compte |
+
+### JUNO-21 — le piège que le correctif évident contient
+
+Le rapport recommandait de poser `UNSUBSCRIBE_TOKEN_SECRET` **avant** la rotation. C'était faux, et
+la correction vient du lecteur du rapport. L'ancien code **préfère** cette variable quand elle
+existe, et Supabase injecte les secrets dans la fonction **en cours d'exécution** : à la seconde où
+on la pose, la fonction déployée vérifie avec une clé qui n'a jamais rien signé. **Poser le secret
+EST la panne**, quelques minutes avant que le nouveau code n'arrive.
+
+D'où deux décisions :
+
+1. **La clé de signature courante porte un nom que l'ancien code n'a jamais lu** —
+   `UNSUBSCRIBE_TOKEN_SECRET_V2`. Les deux nouvelles variables se provisionnent pendant que
+   l'ancienne fonction tourne, sans aucun effet sur elle. Fenêtre de casse : **zéro**.
+2. **Deux générations coexistent.** `v2.<payload>.<sig>` signé avec la clé courante ;
+   `<payload>.<sig>` — la forme historique — vérifié avec `UNSUBSCRIBE_TOKEN_SECRET_PREVIOUS`. La
+   forme du jeton choisit la clé, donc aucun jeton n'est essayé contre les deux et il n'existe pas
+   de signal « quelle clé a fonctionné ».
+
+Séparation de domaine : v2 signe `v2.<b64url(payload)>`, legacy signe le payload décodé. Une
+signature d'une génération ne valide pas dans l'autre **même si les deux variables portent la même
+valeur** — le cas de la faute de frappe, qui est testé.
+
+La compatibilité legacy **ne doit pas être retirée** parce que la transition « a l'air finie » : les
+jetons n'expirent jamais, délibérément, et chaque courriel jamais envoyé porte un lien legacy.
+`verifyUnsubscribeToken` rapporte la génération de chaque **succès**, donc `generation=legacy` dans
+les journaux mesure directement si quelqu'un les utilise encore. Décision et seuil :
+`docs/runbooks/unsubscribe-dual-key-2026-09.md` §5.
+
+### JUNO-04 — privilège excessif, pas fuite
+
+Analyse d'exposition, faite sur le dépôt le 8 septembre :
+
+| question | résultat |
+|---|---|
+| `marketingagent/.env` suivi par git ? | non |
+| l'a-t-il **jamais** été ? | **0 ajout sur toutes les refs** |
+| un fichier suivi contient-il un JWT ? | aucun |
+| un diff `marketingagent/` a-t-il porté un JWT ? | 0 occurrence |
+| le CI reçoit-il la variable ? | aucune référence |
+| du code sérialise-t-il `process.env` ? | aucun |
+
+**Aucune exposition démontrée.** Le constat est donc « un processus local détient un privilège
+administratif général sur la production », pas « la clé a fuité » — et **une rotation ne corrige
+pas cela** : elle remplacerait une clé omnipotente par une autre clé omnipotente dans le même
+fichier en clair. Déplacer le `.env` vers un gestionnaire de secrets ne le corrige pas davantage.
+
+Ce que l'outil fait réellement, lu dans son code : téléverser une image, insérer une ligne dans
+`marketing_posts`, lister la file, relire des statuts. Quatre opérations, une table, un bucket. Ce
+que la clé lui donne en plus : `profiles` en entier (PII et données de naissance), `messages`,
+et l'API d'administration `auth.users`.
+
+La fonction edge `marketing-agent` expose ces quatre opérations et rien d'autre. La clé de service
+ne disparaît pas — elle **déménage** du poste de travail vers le magasin de secrets de Supabase, où
+elle vit déjà pour dix-huit autres fonctions. Le poste ne garde que `MARKETING_AGENT_TOKEN`.
+
+Trois RPC `SECURITY DEFINER` (`20260908000001`) valident les entrées à la frontière de la base :
+liste blanche de plateformes, longueurs bornées, fenêtre de dates, et une URL d'image
+obligatoirement dans le bucket marketing — `publish-scheduled-posts` transmet cette valeur telle
+quelle à Blotato, donc une colonne non contrainte est un trou en forme de SSRF chez un tiers.
+
+### JUNO-28 — nouveau constat : `check_edge_rate_limit` n'existait pas en production
+
+**Sévérité : Moyenne · Confiance : Haute · Confirmé en base le 8 septembre 2026 · FERMÉ le même
+jour.**
+
+> **`20260908000002_edge_rate_limits_present.sql` a été appliquée le 8 septembre 2026.** Son bloc
+> d'auto-vérification est passé, ce qui prouve davantage que la présence : il appelle la fonction
+> deux fois avec `p_max = 1` et **exige que le second appel soit refusé**, puis vérifie qu'une clé
+> vide est rejetée, et efface sa propre sonde. Le compteur compte.
+>
+> Le diagnostic relancé après application rend **`TOUT EST EN PLACE`** sur les huit lignes :
+> fonction, table, purge, **et la tâche cron `cleanup-edge-rate-limits (15 3 * * *)`**. Ce dernier
+> point ne pouvait venir que de là : le bloc `pg_cron` de la migration est enveloppé dans un
+> `EXCEPTION WHEN OTHERS`, donc son auto-vérification est structurellement incapable de le prouver.
+>
+> `calculate-chart`, `claim-referral` et `claim-promo-code` ont donc retrouvé leur limite de débit
+> sans redéploiement. **Des 429 sur ces trois chemins ne sont pas une régression** : c'est le
+> limiteur qui fonctionne pour la première fois depuis avril.
+
+Trouvé en exécutant la vérification de cette vague, qui s'est arrêtée sur :
+
+```
+ERROR: 42883: function "public.check_edge_rate_limit(text,integer,integer)" does not exist
+```
+
+La fonction est créée par `20260420000004_rate_limiting.sql`, qui vit dans ce dépôt depuis avril.
+Elle n'a jamais été appliquée. **C'est JUNO-15 qui produit un défaut de sécurité concret**, pas une
+gêne théorique.
+
+**Mesuré en base le 8 septembre 2026** (`supabase/tests/diagnose_rate_limiting.sql`) — la migration
+d'avril n'a laissé **aucun** de ses quatre objets :
+
+| objet | état |
+|---|---|
+| `check_edge_rate_limit(text,integer,integer)` | **ABSENT** |
+| table `edge_rate_limits` | **ABSENT** |
+| `cleanup_edge_rate_limits()` | **ABSENT** |
+| tâche cron `cleanup-edge-rate-limits` | **ABSENTE** |
+
+Et ce qui, à l'inverse, est bien là : `check_rate_limit(uuid,text,integer,interval)` **PRÉSENT**,
+table `rate_limits` **PRÉSENTE**, cron `cleanup-rate-limits (0 3 * * *)` — tous du schéma de base.
+**`get-profile-chart` n'est donc pas touchée** : la synastrie de la vague 1 fonctionne, ce qui était
+la seule hypothèse critique à écarter avant tout le reste.
+
+Trois fonctions edge déployées l'appellent, et **toutes les trois échouent ouvert** :
+
+| fonction | seuil visé | comportement réel sur erreur RPC |
+|---|---|---|
+| `calculate-chart` | 30/min | `return false` — le commentaire dit : *« if the function literally doesn't exist yet (fresh env), allow but log once »* |
+| `claim-referral` | 10/h | `console.warn`, puis on continue |
+| `claim-promo-code` | 10/h | `console.error`, puis on continue |
+
+Leur limite de débit est donc **inopérante depuis avril**, en silence. Le seul symptôme est une
+ligne d'avertissement dans des journaux que personne ne lit, et le comportement observable — les
+requêtes passent — est exactement celui d'un limiteur qui marche et qu'on n'a pas saturé. Même
+forme que JUNO-02 : un contrôle qui n'a pas pu s'exécuter et qui a répondu « oui ».
+
+`get-profile-chart` n'est **pas** touchée : elle appelle `check_rate_limit`, une autre fonction,
+créée par `20260320000003` et vérifiée en production lors de la vague 1.
+
+**Correctif** : `20260908000002_edge_rate_limits_present.sql`, copie conforme de la migration
+d'avril — mêmes objets, mêmes privilèges, y compris `SET search_path = public` plutôt que `''`.
+Rien n'est amélioré au passage : deux définitions divergentes de la même fonction dans deux
+migrations est la dérive que ce dépôt combat ailleurs. Son auto-vérification appelle la fonction
+deux fois et exige que le second appel soit **refusé** — une fonction présente qui rendrait toujours
+TRUE serait indiscernable d'une fonction absente, du point de vue des trois appelants.
+
+C'était aussi une **dépendance dure de JUNO-04** : `marketing-agent` échoue *fermé* sur ce
+limiteur, donc elle aurait refusé 100 % des requêtes avec 503.
+
+**À surveiller après application** : si l'une des trois voit soudain des 429, ce n'est pas une
+régression — c'est le limiteur qui fonctionne pour la première fois depuis avril.
+
+**Exposition réelle, mesurée plutôt que supposée.** Les deux chemins à conséquence financière sont
+bornés par des contraintes de base, pas par le limiteur absent :
+`promo_campaign_redemptions UNIQUE (user_id, campaign_code, platform)` plus `max_redemptions` sous
+verrou de ligne, et `referrals UNIQUE (referee_id)`. **Aucun double octroi n'a été possible.** Ce
+qui manquait est le plafond de débit : énumération de codes promo et consommation de ressources sur
+`calculate-chart` (l'éphéméride, 30/min visés). Sérieux, mais pas une fuite d'argent.
+
+Ce constat corrige aussi **JUNO-23**, dont le paragraphe affirmait que « le serveur protège
+réellement ces deux chemins ». Il ne les protégeait pas. Vérifier qu'un appel existe dans le code
+n'établit pas que le contrôle s'exécute — même erreur de raisonnement que celle qui a fait
+« réussir » `20260903000002`.
+
+**Non corrigé, et délibérément** : les trois appelants échouent toujours ouvert. Les passer en
+fail-closed change le comportement de fonctions déployées et se décide séparément — c'est
+recommandé, pas fait.
+
+Diagnostic autonome : `supabase/tests/diagnose_rate_limiting.sql`.
+
+Garde ajouté : `validate:repo-hygiene` vérifie désormais que **toute RPC appelée par une fonction
+edge est créée par une migration** — dix RPC couvertes. Il ne peut pas voir la base (c'est JUNO-15),
+mais un nom qu'aucune migration ne crée est un 42883 garanti, pas une hypothèse.
+
+### Deux défauts trouvés pendant la vague, pas dans le rapport
+
+**`parseOperation` lisait la chaîne de prototypes.** `record.op` accepte un `op` hérité. Non
+exploitable via `JSON.parse` aujourd'hui, corrigé quand même — le test qui le cherchait a échoué et
+c'est ce qui l'a révélé.
+
+**`has_function_privilege('public', …)` lève une exception.** PUBLIC n'est pas une ligne de
+`pg_authid` : l'appel échoue avec « role "public" does not exist » et **fait échouer la migration au
+lieu de la vérifier**. Corrigé par `aclexplode` sur `proacl` avec `grantee = 0`, en traitant
+`proacl IS NULL` comme « privilèges par défaut, donc PUBLIC a EXECUTE ». Aucune migration déjà
+appliquée ne porte ce motif — vérifié.
+
+### Ce que la vague 2 n'a pas pu vérifier
+
+Aucun Postgres n'est disponible localement (ni `docker`, ni `psql`, ni la CLI Supabase). La
+migration et son fichier de vérification ont donc été contrôlés **structurellement** — équilibre des
+parenthèses et des dollar-quotes, terminaison des énoncés — et par revue, jamais exécutés. Les
+formes employées (`proconfig` pour `search_path`, `to_regprocedure` qui rend NULL au lieu de lever)
+sont celles que la vérification de la vague 1 a réellement exécutées sur la production.
+
+### Étapes manuelles, dans l'ordre
+
+1. **`docs/runbooks/unsubscribe-dual-key-2026-09.md` d'abord.** La rotation sans la compatibilité à
+   deux clés est exactement la panne que tout ce travail existe pour éviter.
+2. Puis `docs/runbooks/service-role-least-privilege-2026-09.md`, phases A → D.
+
+---
+
 ## 1. Résumé exécutif
 
 Le modèle de sécurité de JUNO est, dans l'ensemble, sérieux : RLS partout, `anon` sans SELECT
@@ -1425,9 +1622,26 @@ défendable, mais elle doit être écrite dans la politique de confidentialité.
 `apps/mobile/utils/rateLimiter.ts:1-4` : *« Prevents brute force attacks on referral codes, promo
 codes, and auth »*. Un état en mémoire dans le processus de l'application ne prévient rien : il
 suffit d'appeler l'API. Le fichier voisin `utils/rateLimit.ts:1-2` a la bonne formulation
-(« Server-side triggers are the real enforcement; this is for UX »). La bonne nouvelle : le serveur
-protège réellement ces deux chemins — `claim-promo-code/index.ts:150-157` et
-`claim-referral/index.ts:91-101` appellent `check_edge_rate_limit` (10/heure). Le constat est donc
+(« Server-side triggers are the real enforcement; this is for UX »).
+
+> **CORRECTION DU 8 SEPTEMBRE 2026 — ce paragraphe était faux.** Il disait : « la bonne nouvelle :
+> le serveur protège réellement ces deux chemins — `claim-promo-code/index.ts:150-157` et
+> `claim-referral/index.ts:91-101` appellent `check_edge_rate_limit` (10/heure) ». Ils l'appellent,
+> oui. Mais **cette fonction n'existe pas dans la base** (JUNO-28, mesuré) et les deux échouent
+> ouvert. Aucune limite de débit ne s'applique à ces chemins depuis avril.
+>
+> L'exposition réelle reste bornée, mais par autre chose : `promo_campaign_redemptions` porte
+> `UNIQUE (user_id, campaign_code, platform)` et `claim_promo_campaign_redemption` applique
+> `max_redemptions` sous verrou de ligne ; `referrals` porte `UNIQUE (referee_id)` et
+> `claim_referral_atomic` rend `already_claimed` / `self_referral`. **Personne n'a pu réclamer deux
+> fois.** Ce qui manquait est le plafond de débit : énumération de codes et consommation de
+> ressources, pas double octroi.
+>
+> La leçon dépasse le constat : vérifier qu'un appel existe dans le code n'établit pas que le
+> contrôle s'exécute. C'est la même erreur de raisonnement que celle qui a fait « réussir »
+> `20260903000002`.
+
+Le constat est donc
 un **commentaire faux**, ce qui compte : il peut convaincre un futur relecteur qu'une protection
 existe là où elle n'existe pas.
 *Correctif* : corriger le commentaire. Pour l'authentification, la protection réelle est

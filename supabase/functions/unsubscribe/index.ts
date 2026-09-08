@@ -1,4 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  describeKeyring,
+  readUnsubscribeKeyring,
+  verifyUnsubscribeToken,
+  type VerifiedUnsubscribeToken,
+} from "../_shared/unsubscribe-token.ts";
 
 // One-click unsubscribe for JUNO lifecycle email.
 //
@@ -28,10 +34,17 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
-// Must match the derivation in send-email/index.ts.
-const UNSUBSCRIBE_TOKEN_SECRET =
-  Deno.env.get("UNSUBSCRIBE_TOKEN_SECRET") ||
-  (SUPABASE_SERVICE_ROLE_KEY ? `juno-unsubscribe-v1:${SUPABASE_SERVICE_ROLE_KEY}` : "");
+// Token keys. See ../_shared/unsubscribe-token.ts — this endpoint verifies BOTH
+// generations, send-email signs only the current one.
+//
+// JUNO-21: the service-role key used to be the fallback secret here, which tied
+// every link already in somebody's inbox to the lifetime of the most privileged
+// credential in the system. It is still read above, because this function
+// writes to `profiles` — but it no longer signs or verifies anything.
+const ENV = Deno.env.toObject();
+const UNSUBSCRIBE_KEYRING = readUnsubscribeKeyring(ENV);
+
+console.log(`[unsubscribe] keys: ${describeKeyring(ENV)}`);
 
 // Host of the branded result page. `PUBLIC_APP_BASE_URL` is the canonical name
 // — send-email/templates.ts reads the same variable to build CTA links, so one
@@ -71,67 +84,18 @@ const SUPPORT_EMAIL = Deno.env.get("SUPPORT_EMAIL") || "support@junosynastry.com
 // Must match LIFECYCLE_PREF_KEY in send-email/index.ts.
 const LIFECYCLE_PREF_KEY = "lifecycleEmails";
 
-function b64UrlDecode(s: string): string {
-  const pad = (4 - (s.length % 4)) % 4;
-  const b64 = s.replace(/-/g, "+").replace(/_/g, "/").padEnd(s.length + pad, "=");
-  return atob(b64);
-}
-
-async function hmac(value: string, secret: string): Promise<string> {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(value));
-  const bytes = new Uint8Array(sig);
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function constantTimeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) {
-    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return diff === 0;
-}
-
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
+/**
+ * Verify a token of either generation.
+ *
+ * Thin wrapper so the two call sites below read the same as before. Every
+ * failure — unknown version, bad signature, tampered payload, missing key,
+ * wrong category — returns null and is logged identically: the caller has
+ * nothing to do with the difference, and an attacker would.
+ */
 async function verifyToken(
   token: string,
-): Promise<{ userId: string; category: string } | null> {
-  if (!UNSUBSCRIBE_TOKEN_SECRET) return null;
-  const parts = token.split(".");
-  if (parts.length !== 2) return null;
-  const [b64Payload, sig] = parts;
-
-  let payload: string;
-  try {
-    payload = b64UrlDecode(b64Payload);
-  } catch {
-    return null;
-  }
-
-  const expectedSig = await hmac(payload, UNSUBSCRIBE_TOKEN_SECRET);
-  if (!constantTimeEqual(sig, expectedSig)) return null;
-
-  const colonIdx = payload.lastIndexOf(":");
-  if (colonIdx <= 0) return null;
-  const userId = payload.slice(0, colonIdx);
-  const category = payload.slice(colonIdx + 1);
-
-  if (!UUID_REGEX.test(userId)) return null;
-  if (category !== "lifecycle") return null;
-
-  return { userId, category };
+): Promise<VerifiedUnsubscribeToken | null> {
+  return await verifyUnsubscribeToken(token, UNSUBSCRIBE_KEYRING);
 }
 
 /**
@@ -329,6 +293,11 @@ Deno.serve(async (req) => {
     }
     const result = await setLifecyclePreference(parsed.userId, false);
     if (result.ok) await cancelPendingLifecycleEmails(parsed.userId);
+    // Generation, never the token and never the user. This is the measurement
+    // that decides when UNSUBSCRIBE_TOKEN_SECRET_PREVIOUS can be retired: while
+    // `generation=legacy` still appears, links from before the key migration
+    // are still being clicked.
+    console.log(`[unsubscribe] one-click ok generation=${parsed.generation}`);
     return new Response(JSON.stringify({ ok: result.ok }), {
       status: result.ok ? 200 : 500,
       headers: { "Content-Type": "application/json" },
@@ -354,6 +323,7 @@ Deno.serve(async (req) => {
   }
 
   const wantsResubscribe = url.searchParams.get("action") === "resubscribe";
+  console.log(`[unsubscribe] link ok generation=${parsed.generation}`);
   const result = await setLifecyclePreference(parsed.userId, wantsResubscribe);
 
   if (!result.ok) {

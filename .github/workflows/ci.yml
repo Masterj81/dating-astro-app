@@ -10,6 +10,28 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# JUNO-18 of docs/security-audit-2026-09-07.md.
+#
+# Without this block GITHUB_TOKEN inherits the repository default, which for a
+# repository created before Feb 2023 — this one — is read/write on contents,
+# packages, issues, pull requests and more. Every step, including anything a
+# third-party action decides to run, gets that token in its environment. This
+# pipeline pushes nothing, comments nothing and publishes nothing: it installs
+# dependencies and runs validators. Read is all it has ever needed.
+#
+# Workflow level rather than job level so a job added later inherits the
+# restriction instead of silently starting from the repository default. A job
+# that genuinely needs more must declare its own `permissions:` block AND say
+# why — scripts/validate-repo-hygiene.mjs fails the build on an escalation with
+# no justification comment.
+#
+# `pull_request` (not `pull_request_target`) is what makes fork PRs safe here:
+# GitHub withholds repository secrets from fork runs of `pull_request`, and the
+# token it does issue is read-only regardless. This workflow reads no secret at
+# all, so there is nothing to withhold.
+permissions:
+  contents: read
+
 jobs:
   quality:
     name: Quality Gates
@@ -54,9 +76,12 @@ jobs:
       - name: Validate edge astrology bundle is current
         run: npm run validate:edge-astrology
 
-      # JUNO-01/02/03/11. Executes the REAL edge-function source: the payload
-      # allowlist, the authorization decision and its fail-closed branches, the
-      # origin allowlist, and the server-derived Stripe discount.
+      # JUNO-01/02/03/11, and JUNO-21 since 8 Sep. Executes the REAL
+      # edge-function source: the payload allowlist, the authorization decision
+      # and its fail-closed branches, the origin allowlist, the server-derived
+      # Stripe discount, and both generations of unsubscribe token — including a
+      # verbatim copy of the pre-fix signer, so "links already in an inbox still
+      # work" is a test rather than a hope.
       # `packages/shared` is the only workspace with a test runner, which is why
       # suites about Deno code live there.
       - name: Validate edge security contracts
@@ -73,6 +98,20 @@ jobs:
       # that settles that, which is the honest scope for a code-side guard.
       - name: Validate RLS contract
         run: npm run validate:rls-contract
+
+      # ── Second remediation wave, 8 Sep 2026 ───────────────────────────────
+      # JUNO-18, JUNO-20 and the JUNO-21 decoupling. Structural, not
+      # behavioural: it guards this workflow's own `permissions:` block, keeps
+      # archives out of the route folders, and fails if an unsubscribe signing
+      # key is ever derived from SUPABASE_SERVICE_ROLE_KEY again. That last one
+      # is silent when broken — lifecycle mail keeps sending, and the damage
+      # only appears months later when the key is rotated and every link in
+      # every inbox dies at once.
+      #
+      # It also scans tracked files for credential material. Not a replacement
+      # for a real secret scanner: it reads the working tree, not the history.
+      - name: Validate repository hygiene
+        run: npm run validate:repo-hygiene
 
       - name: Validate lifecycle email templates
         run: npm run validate:email-templates

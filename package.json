@@ -31,6 +31,7 @@
     "validate:chart-privacy": "npm run test --workspace=@astro/shared -- src/astrology/__tests__/chart-payload-privacy.test.ts",
     "validate:edge-security": "npm run test --workspace=@astro/shared -- src/security",
     "validate:rls-contract": "node scripts/validate-rls-contract.mjs",
+    "validate:repo-hygiene": "node scripts/validate-repo-hygiene.mjs",
     "validate:engine-contract": "npm run test --workspace=@astro/shared -- src/astrology/__tests__/engine-contract.test.ts",
     "validate:locales": "npm run validate:web:locales && npm run validate:mobile:locales && npm run validate:mobile:i18n-usage && npm run validate:locale-contract",
     "check:store-metadata": "node scripts/check-store-metadata.mjs",
