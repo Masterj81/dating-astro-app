@@ -361,9 +361,25 @@ sont celles que la vérification de la vague 1 a réellement exécutées sur la 
 
 ### Étapes manuelles, dans l'ordre
 
-1. **`docs/runbooks/unsubscribe-dual-key-2026-09.md` d'abord.** La rotation sans la compatibilité à
-   deux clés est exactement la panne que tout ce travail existe pour éviter.
-2. Puis `docs/runbooks/service-role-least-privilege-2026-09.md`, phases A → D.
+> **« Sur `master` » ne veut pas dire « en production ».** Au 8 septembre 2026 les deux vagues sont
+> mergées et le CI est vert, la base est **partiellement** prête — `20260908000002` appliquée,
+> `20260908000001` à confirmer — et **`send-email`, `unsubscribe` et `marketing-agent` ne sont pas
+> déployées**. JUNO-04 et JUNO-21 ne sont fermés qu'après les validations en environnement réel.
+
+La séquence de référence, en douze étapes avec ses portes de contrôle, est en tête de
+`docs/runbooks/service-role-least-privilege-2026-09.md` (§0). Deux ordres y sont contraignants :
+
+1. **`docs/runbooks/unsubscribe-dual-key-2026-09.md` avant toute rotation.** La rotation sans la
+   compatibilité à deux clés est exactement la panne que tout ce travail existe pour éviter.
+2. **`20260908000001` confirmée appliquée avant de déployer `marketing-agent`**, qui appelle ses
+   trois RPC et échoue fermé.
+
+**`supabase secrets list` prouve qu'un nom existe, jamais que sa valeur est la bonne.** Si
+`UNSUBSCRIBE_TOKEN_SECRET` est listé mais que sa valeur est perdue, **ne pas inventer `_PREVIOUS`** :
+une valeur fausse casse les mêmes liens qu'une valeur absente, mais elle a l'air configurée.
+`npm run check:unsubscribe-legacy-key` tranche hors ligne, contre un vrai ancien jeton, en
+vérifiant à travers le module que la fonction déployée utilise réellement — sans jamais imprimer la
+valeur candidate.
 
 ---
 
