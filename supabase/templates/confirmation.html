@@ -3,41 +3,76 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Confirm your email</title>
+  <meta name="color-scheme" content="dark" />
+  <meta name="supported-color-schemes" content="dark" />
+  <title>Confirm your JUNO email</title>
 </head>
-<body style="margin:0;padding:0;background-color:#0f0f1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f0f1a;padding:40px 0;">
+<body style="margin:0;padding:0;background-color:#070b16;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+    Confirm your email and start exploring connection through synastry.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#070b16" style="width:100%;background-color:#070b16;">
     <tr>
-      <td align="center">
-        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background-color:#1a1a2e;border-radius:12px;padding:40px;max-width:480px;">
+      <td align="center" style="padding:32px 14px;">
+        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" bgcolor="#12182a" style="width:100%;max-width:560px;background-color:#12182a;border:1px solid #2a3247;border-radius:28px;overflow:hidden;">
           <tr>
-            <td align="center" style="padding-bottom:24px;">
-              <span style="font-size:36px;">&#x2728;</span>
-              <h1 style="color:#ffffff;font-size:22px;margin:12px 0 0;">Welcome to JUNO</h1>
+            <td bgcolor="#21172d" style="padding:28px 32px 24px;background-color:#21172d;background-image:linear-gradient(135deg,rgba(244,114,182,0.18),rgba(167,139,250,0.08));border-bottom:1px solid #2a3247;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="padding:8px 14px;border:1px solid #4b556f;border-radius:999px;color:#f8d4df;font-size:11px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;">
+                    JUNO
+                  </td>
+                </tr>
+              </table>
+
+              <h1 style="margin:18px 0 10px;color:#ffffff;font-size:30px;line-height:1.15;letter-spacing:-0.03em;font-weight:700;">
+                Your chart is waiting
+              </h1>
+              <p style="margin:0;color:#d4d9e7;font-size:16px;line-height:1.7;">
+                Confirm your email to finish creating your account and begin exploring connection through synastry.
+              </p>
             </td>
           </tr>
+
           <tr>
-            <td style="color:#c0c0c0;font-size:15px;line-height:1.6;padding-bottom:28px;">
-              You're one step away from exploring connection through synastry. Confirm your email address to get started.
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding-bottom:28px;">
-              <a href="{{ .ConfirmationURL }}"
-                 style="display:inline-block;background-color:#e94560;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:14px 36px;border-radius:8px;">
-                Confirm Email
-              </a>
-            </td>
-          </tr>
-          <tr>
-            <td style="color:#888888;font-size:13px;line-height:1.5;">
-              If the button doesn't work, copy and paste this link into your browser:<br />
-              <a href="{{ .ConfirmationURL }}" style="color:#a78bfa;word-break:break-all;">{{ .ConfirmationURL }}</a>
-            </td>
-          </tr>
-          <tr>
-            <td style="color:#555555;font-size:12px;padding-top:32px;border-top:1px solid #2a2a40;margin-top:24px;">
-              If you didn't create a JUNO account, you can safely ignore this email.
+            <td style="padding:28px 32px 30px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#2a1b3d" style="width:100%;margin:0 0 24px;background-color:#2a1b3d;background-image:linear-gradient(135deg,rgba(236,72,153,0.22),rgba(99,102,241,0.14));border:1px solid #3b3552;border-radius:22px;">
+                <tr>
+                  <td style="padding:18px 20px;">
+                    <div style="margin:0 0 8px;color:#c9bfd8;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;">
+                      One last step
+                    </div>
+                    <p style="margin:0;color:#ffffff;font-size:16px;line-height:1.7;">
+                      Verify that this address belongs to you. The link is personal and expires in one hour.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 4px;">
+                <tr>
+                  <td align="center" bgcolor="#e94560" style="border-radius:14px;">
+                    <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 28px;background-color:#e94560;border-radius:14px;color:#ffffff;font-size:16px;font-weight:700;line-height:1.2;text-decoration:none;">
+                      Confirm my email
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:10px 0 22px;color:#8f9ab5;font-size:12px;line-height:1.6;">
+                If the button doesn't work, paste this link into your browser:<br />
+                <a href="{{ .ConfirmationURL }}" style="color:#aeb8d0;text-decoration:underline;word-break:break-all;">{{ .ConfirmationURL }}</a>
+              </p>
+
+              <div style="padding-top:18px;border-top:1px solid #2a3247;color:#b7bfd3;font-size:14px;line-height:1.75;">
+                If you didn't create a JUNO account, you can safely ignore this message. No account will be activated without confirmation.
+              </div>
+
+              <div style="margin-top:14px;color:#7c869e;font-size:12px;line-height:1.7;">
+                This is a transactional account-security email, sent only to verify your address.<br />
+                JUNO &mdash; Montr&eacute;al, Qu&eacute;bec, Canada
+              </div>
             </td>
           </tr>
         </table>
