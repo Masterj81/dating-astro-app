@@ -181,7 +181,7 @@ manuelles.
 | **JUNO-18** | **Corrigé** | `.github/workflows/ci.yml` déclare `permissions: contents: read` au niveau workflow ; `validate:repo-hygiene` échoue si le bloc disparaît, si un job s'élève sans justification, ou si `pull_request_target` apparaît |
 | **JUNO-20** | **Corrigé** | `apps/mobile/app/appaD.zip` n'est plus suivi ; règle `.gitignore` ciblée sur `apps/*/app/**` ; le validateur refuse une archive réintroduite par `git add -f` |
 | **JUNO-21** | **Corrigé dans le code**, transition manuelle | `unsubscribe-token.test.ts` — 43 tests, dont une **copie verbatim de l'ancien signeur** qui prouve que les liens déjà envoyés se vérifient encore |
-| **JUNO-04** | **Corrigé dans le code**, phases B–D manuelles | `marketing-agent-authz.test.ts` — 41 tests sur la décision réelle ; migration `20260908000001` ; `marketingagent` ne lit plus `SUPABASE_SERVICE_ROLE_KEY` |
+| **JUNO-04** | **Phase B fermée le 10 sep 2026** — privilège réduit en production ; phases C–D (rotation) restent une décision | `marketing-agent-authz.test.ts` — 41 tests sur la décision réelle ; migration `20260908000001` ; `SUPABASE_SERVICE_ROLE_KEY` retirée de `marketingagent/.env`, vérifié sans afficher de valeur |
 | **JUNO-28** *(nouveau)* | **FERMÉ, prouvé en base le 8 sep** | `20260908000002` appliquée ; son auto-vérification exige que le second appel au limiteur soit refusé, donc le compteur compte |
 
 ### JUNO-21 — le piège que le correctif évident contient
@@ -213,6 +213,25 @@ les journaux mesure directement si quelqu'un les utilise encore. Décision et se
 `docs/runbooks/unsubscribe-dual-key-2026-09.md` §5.
 
 ### JUNO-04 — privilège excessif, pas fuite
+
+> **Phase B fermée le 10 septembre 2026.** `MARKETING_AGENT_TOKEN` est posé localement et dans les
+> secrets Supabase ; `marketing-agent` est déployée et **`verify_jwt = false` est déclaré dans
+> `config.toml:404`**, pas seulement passé en ligne de commande — un `--no-verify-jwt` ponctuel
+> aurait été réarmé au déploiement suivant depuis la configuration, et la fonction aurait cessé de
+> répondre à son seul appelant. Un téléversement d'image réel a réussi, `marketingagent` fonctionne
+> avec le jeton restreint, et `SUPABASE_SERVICE_ROLE_KEY` a été retirée de `marketingagent/.env` —
+> absence vérifiée sans afficher aucune valeur.
+>
+> **Le poste ne détient plus de clé administrative.** Le jeton restant n'ouvre que les quatre
+> opérations que la fonction edge autorise explicitement.
+>
+> **Les phases C et D restent ouvertes, et ce n'est pas un oubli.** La rotation de
+> `SUPABASE_SERVICE_ROLE_KEY` dépend de quatre questions auxquelles le dépôt ne peut pas répondre —
+> la clé a-t-elle été partagée, envoyée à un tiers, le poste a-t-il pu être compromis, son historique
+> d'exposition est-il établissable. Si aucune n'est vraie, la rotation est **préventive**, pas
+> corrective : `docs/runbooks/service-role-least-privilege-2026-09.md` §5. Elle reste recommandée —
+> la clé vit dix ans et n'a jamais été tournée — et son ordonnancement dépend de JUNO-21, dont la
+> transition à deux clés doit être terminée d'abord.
 
 Analyse d'exposition, faite sur le dépôt le 8 septembre :
 
@@ -380,6 +399,257 @@ une valeur fausse casse les mêmes liens qu'une valeur absente, mais elle a l'ai
 `npm run check:unsubscribe-legacy-key` tranche hors ligne, contre un vrai ancien jeton, en
 vérifiant à travers le module que la fonction déployée utilise réellement — sans jamais imprimer la
 valeur candidate.
+
+---
+
+## JUNO-29 — le cron de suppression définitive n'a jamais rien supprimé
+
+**Sévérité : Haute · Confiance : Haute · Confirmé en base le 9 septembre 2026 · FERMÉ le
+9 septembre 2026.**
+
+Trouvé pendant la phase A de JUNO-09, dont il est **distinct**. Ce n'est pas une fuite : c'est un
+droit à l'effacement qui n'est pas honoré.
+
+> **Fermeture.** Réponse `53395`, 9 septembre 17:23:10 UTC :
+> `200 {"success":true,"deleted":8,"total_candidates":8,"truncated":false,"failures":[]}`. Les huit
+> comptes sont supprimés, `auth.users` passe de 369 à 362 (369 − 8 + 1 inscription, vérifiée),
+> `profiles` en parité, retard métier à 0, tâche réarmée et lisant le coffre. Les deux passages
+> suivants ont rendu `deleted: 0` — l'idempotence est prouvée en conditions réelles, par accident,
+> ce qui vaut mieux qu'un test sur bouchons. Chronologie et sept preuves :
+> `docs/juno-29-evidence-2026-09-09.md` §7.
+>
+> **JUNO-09 reste ouvert et s'est alourdi d'un objet**, comme l'arbitrage le prévoyait : `avatars`
+> est passé de 3 à 4 orphelins, `verifications` reste à 1.
+
+| mesuré le 9 sep 2026 | |
+|---|---|
+| tâche `process-expired-deletions` | `0 3 * * *`, **active**, vise la bonne fonction |
+| **secret dans la commande cron** | **VIDE** |
+| exécutions enregistrées | **142, dont 142 « réussies »** |
+| réponses HTTP sur 14 jours | 200 × 72 · **401 × 25** |
+| comptes expirés non supprimés | **8** |
+| retard de la plus ancienne demande | **114 jours** — 7 comptes sur 8 au-delà de 30 jours |
+| déjà masqués (`is_active = false`) | 8 sur 8 |
+
+**Cause racine — deux constructions fail-open dans le même bloc.**
+[`20260419000004_account_soft_deletion.sql:46-49`](../supabase/migrations/20260419000004_account_soft_deletion.sql#L46) :
+
+```sql
+v_secret := COALESCE(current_setting('app.settings.expired_deletions_secret', TRUE), '');
+…
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'pg_cron or pg_net not available — schedule process-expired-deletions manually';
+```
+
+Le paramètre n'a jamais été posé. `current_setting(…, TRUE)` rend `NULL`, `COALESCE` en fait `''`,
+et la commande cron a été **figée** avec un en-tête `x-expired-deletions-secret` vide.
+`process-expired-deletions/index.ts:50-52` la refuse — correctement — par un 401. Et le
+gestionnaire d'exception garantissait que la migration ne pouvait pas échouer bruyamment.
+
+**Pourquoi personne ne l'a vu.** `pg_cron` enregistre `succeeded` dès que l'appel HTTP est **émis**
+— il ne lit jamais le code de réponse. La supervision voyait donc 142 succès consécutifs. Le seul
+témoin était la ligne `401` de `net._http_response`, que rien ne consulte.
+
+C'est la même famille que `has_function_privilege('public', …)` de la vague 2, que les trois passes
+à vide de la vague 1, et que JUNO-28 : **un contrôle qui n'a pas pu s'exécuter et qui a répondu
+oui.**
+
+**Le préjudice est la conservation, pas l'exposition** : les huit profils sont masqués de Discover
+depuis leur demande (`is_active = false`). Mais leurs données — profil, messages, médias — sont
+toujours là, l'une depuis 114 jours.
+
+**Angle mort structurel : voir JUNO-30 ci-dessous.** Il n'était pas isolé.
+
+**Correctif** : `docs/runbooks/expired-deletions-cron-2026-09.md`. **Non appliqué** — le réparer
+supprime définitivement huit comptes, ce qui demande une autorisation explicite, et une décision
+d'ordre vis-à-vis de JUNO-09 : sans la purge des médias, ces suppressions créeraient de nouveaux
+orphelins. `supabase/tests/diagnose_expired_deletions_impact.sql` mesure combien.
+
+Diagnostics livrés, tous en lecture seule : `diagnose_deletion_cron.sql`,
+`diagnose_expired_deletions_impact.sql`, `diagnose_media_ownership.sql`.
+
+---
+
+## JUNO-30 — `pg_cron` ne sait pas si une fonction edge a répondu
+
+**Sévérité : Moyenne · Confiance : Haute · Mesuré en base le 9 septembre 2026 · OUVERT.**
+
+C'est le constat qui explique pourquoi JUNO-29 a pu durer 142 nuits. Il n'était pas isolé.
+
+`cron.job_run_details.status = 'succeeded'` signifie : la commande SQL s'est exécutée sans erreur.
+Or cette commande est `SELECT net.http_post(...)`, qui **met la requête en file** et rend un
+identifiant. Elle réussit donc toujours — que la fonction réponde 200, 401, 500, ou rien.
+
+### Les quatre tâches edge réellement planifiées
+
+| tâche cron | cible | fréquence | secret | verdict | 7 j pg_cron |
+|---|---|---|---|---|---|
+| `daily-horoscope-push` | send-daily-horoscope | `0 12 * * *` | **VIDE** | **401** | 7/7 « succeeded » |
+| `process-expired-deletions` | process-expired-deletions | `0 3 * * *` | **VIDE** | **401** | 7/7 « succeeded » |
+| `process-scheduled-emails` | send-scheduled-emails | `*/5 * * * *` | aucun en-tête | **200** | 2016/2016 |
+| `send-scheduled-emails` | send-scheduled-emails | `*/15 * * * *` | **VIDE** | **401** | 672/672 |
+
+**2 702 exécutions en 7 jours, 2 702 « succeeded », dont au moins 703 refusées par un 401.**
+
+### Trois découvertes qui sortent du périmètre de JUNO-29
+
+**1. L'horoscope quotidien n'est pas parti depuis avril.** Même défaut, même migration
+(`20260419000005`), autre fonctionnalité. Une notification push absente ne laisse aucune trace :
+personne ne l'a signalé.
+
+**2. `publish-scheduled-posts` n'est planifiée nulle part**, bien que `20260413000003` et
+`20260419000005` la créent toutes deux. La publication marketing programmée n'a **aucun publieur**.
+Rien n'est bloqué aujourd'hui (retard = 0), mais un post programmé par `marketingagent` ne
+partirait jamais — ce qui concerne directement la vague 2, qui vient de recâbler cet outil.
+
+**3. La tâche qui fonctionne n'est dans aucune migration.** `process-scheduled-emails` a été
+planifiée à la main : elle passe un `Authorization` porteur de la clé de service, que
+`send-scheduled-emails/index.ts:11-24` accepte sans secret. Celle que le dépôt documente
+(`20260824000001:44`) répond 401 quatre fois par heure. **Rejouer les migrations pour « remettre
+d'aplomb » garderait la cassée et pourrait retirer celle qui marche.** C'est JUNO-15 sous sa forme
+la plus piégeuse : la dérive est du bon côté.
+
+### Attribution — l'arithmétique se recoupe
+
+`net._http_response` est purgé par pg_net : la fenêtre réelle mesurée était **08:15 → 14:10**
+(5 h 55), pas les « 14 jours » que ma première requête laissait croire. 97 réponses.
+
+| tâche | passages attendus | code |
+|---|---|---|
+| `process-scheduled-emails` (*/5) | ~72 | **200 × 72** |
+| `send-scheduled-emails` (*/15) | ~24 | 401 |
+| `daily-horoscope-push` (12:00) | 1 | 401 |
+| **total** | **97** | **200×72 + 401×25** |
+
+pg_net ne conserve pas l'URL dans `_http_response` : l'attribution est une **inférence**. Elle est
+arithmétiquement exacte et cohérente avec l'état des secrets mesuré indépendamment.
+
+### Correctif livré, non appliqué
+
+`20260909000002_cron_edge_health.sql` — `check_cron_edge_health()` juge sur le **résultat** (retard
+métier, réponses non-2xx) et non sur la configuration. Elle ne modifie rien : elle rend visible.
+
+Son propre piège a été corrigé avant livraison : ses trois `EXCEPTION WHEN OTHERS` mettaient la
+valeur à NULL, la branche du verdict était sautée, et le verdict retombait sur `OK`. **C'était
+JUNO-29 réécrit dans l'outil censé le détecter.** Trois drapeaux « la lecture a-t-elle abouti ? » et
+trois branches `INDETERMINE` corrigent cela : une lecture impossible ne peut plus se lire « OK ».
+
+Diagnostic : `supabase/tests/diagnose_cron_edge_supervision.sql`, lecture seule.
+
+**Non corrigé** : le secret de `daily-horoscope-push`, et l'absence de `publish-scheduled-posts`.
+Chacun demande une décision d'exploitation distincte. `send-scheduled-emails` a été traité par
+JUNO-31 ci-dessous.
+
+**Deux défauts de cet outil, découverts en s'en servant, et corrigés :**
+
+1. **`ALERTE : jamais executee` sur une tâche saine.** `cron.unschedule` + `cron.schedule` crée un
+   **nouveau `jobid`** : toute tâche replanifiée naît sans historique. Le verdict jugeait la
+   plomberie à cet endroit précis. Un état `EN ATTENTE` le remplace lorsque le retard métier est nul
+   **et lu** — les deux conjonctions, pour qu'une lecture impossible ne se lise jamais « en
+   attente ».
+2. **`aucun en-tete de secret` sur la seule tâche qui en portait un en clair.** La détection ne
+   connaissait que la forme `jsonb_build_object('x-…-secret', '…')` ; la tâche exposée employait
+   `'{"x-…-secret": "…"}'::jsonb`. **Un détecteur aveugle à une écriture ne rassure pas moins qu'un
+   détecteur absent — il rassure davantage, et à tort.** Les deux formes sont désormais reconnues, et
+   un littéral non vide produit `EN CLAIR dans la commande (N car.)` avec un verdict `CRITIQUE`.
+
+**Limite assumée** : le compteur de réponses non-2xx agrège **toutes les tâches**, faute de pouvoir
+attribuer une réponse à son émetteur — pg_net ne conserve pas l'URL dans `net._http_response`. Il
+s'affiche donc sur la ligne de la tâche qui fonctionne. Le compte est juste, son emplacement est
+trompeur.
+
+---
+
+## JUNO-31 — un secret applicatif écrit en clair dans `cron.job.command`
+
+**Sévérité : Moyenne · Confiance : Haute · Confirmé en base le 9 septembre 2026 · FERMÉ le
+10 septembre 2026.**
+
+Découvert en cherchant pourquoi `process-scheduled-emails` répondait 200 là où `send-scheduled-emails`
+répondait 401. La réponse était dans la commande : elle portait la valeur de
+`SCHEDULED_EMAILS_SECRET` en clair.
+
+### Nature — à ne pas surqualifier
+
+**Exposition confirmée** d'un secret applicatif. Pas un privilège excessif, pas une compromission de
+la clé `service_role`.
+
+| | |
+|---|---|
+| où | `cron.job.command` — donc dans chaque sauvegarde, et lisible par tout rôle capable de lire cette table |
+| aggravation | la commande s'est affichée dans un terminal pendant le diagnostic du 9 septembre |
+| portée | déclencher `send-scheduled-emails`. Forcer l'envoi anticipé de courriels **déjà en file** |
+| hors de portée | en fabriquer, lire un profil, contourner RLS, toucher `auth.users` |
+
+### Deux tâches, et la dérive était du bon côté
+
+| tâche | cadence | réponse | secret | créée par |
+|---|---|---|---|---|
+| `process-scheduled-emails` | `*/5` | 200 | **en clair** | personne — planifiée à la main |
+| `send-scheduled-emails` | `*/15` | 401 | vide | `20260824000001:43` |
+
+Celle qui livrait réellement le courrier n'était dans **aucune migration** ; celle que le dépôt
+décrit répondait 401 quatre fois par heure. **Rejouer les migrations pour « remettre d'aplomb »
+aurait gardé la cassée et retiré celle qui fonctionne.** C'est JUNO-15 dans sa forme la plus
+piégeuse.
+
+La cause est la même que JUNO-29 vue par l'autre bout : `20260824000001` interpole le secret par
+`%L`, ce qui le **matérialise** dans la commande. Elle n'a rien exposé parce que le coffre était vide
+quand elle a tourné — elle a écrit une chaîne vide, et c'est le 401 de la `*/15`. Le secret en clair
+vient de la tâche manuelle qui l'a remplacée.
+
+### Correctif — appliqué et vérifié
+
+`20260910000001_scheduled_emails_cron_canonical.sql`. Une seule tâche,
+`scheduled-emails-dispatch`, `*/5`, active, lisant `vault.decrypted_secrets` à chaque passage ; la
+commande ne porte que le **nom** du secret. Aucun en-tête `Authorization` : `config.toml:409` déclare
+`verify_jwt = false`, l'en-tête de secret **est** l'authentification.
+
+**Un garde d'exécution**, `public._assert_cron_secret`, précède l'appel et **lève** si le secret est
+absent, vide ou inférieur à 32 caractères. Sans lui, un secret retiré du coffre donnerait un en-tête
+nul, un 401, et un `succeeded` côté pg_cron — les trois ingrédients de JUNO-29, réunis à nouveau. Son
+plancher est **le même** que celui du prérequis : le prérequis ne tourne qu'à l'installation, et deux
+planchers divergents ne sont pas deux contrôles, c'est un contrôle et une porte.
+
+L'ancienne valeur a été **tournée**, pas déplacée : elle avait quitté son périmètre.
+
+### Preuves, 10 septembre 2026
+
+| | |
+|---|---|
+| tâches visant la fonction | **1** |
+| tâches historiques | **aucune** |
+| secret ou JWT en clair dans `cron.job.command` | **aucun** |
+| secret du coffre | une seule occurrence, 64 caractères, sans espace parasite |
+| réponses HTTP après bascule | **200** à 14:35, 14:40 et 14:45 UTC, corps portant `processed` |
+| passage cron enregistré | 14:50 UTC |
+| retard métier | **0** |
+
+Les 401 encore visibles dans `net._http_response` sont **antérieurs** à la bascule — cette table
+couvre 08:55–14:50 UTC et conserve temporairement les échecs des deux anciennes tâches. Conservés
+comme preuve historique.
+
+### Garde de non-régression
+
+`npm run validate:cron-secrets` — 29 contrôles, sans connaître aucune valeur : aucun en-tête écrit
+comme littéral **dans les deux orthographes** ; aucune **nouvelle** interpolation `%L` de matière
+secrète dans une commande cron ; la commande reconstruite statiquement satisfait les propres
+assertions de la migration ; les deux planchers de 32 restent alignés ; le nom d'en-tête correspond à
+celui que la fonction edge lit.
+
+### Constat latent laissé ouvert, délibérément
+
+`20260413000003:42-43` et `20260419000004:70-71` interpolent
+`app.settings.supabase_service_role_key` dans leur commande cron par `%L`. Mesuré le 9 septembre :
+`command ~ 'eyJ…'` est **faux** sur les six tâches — ce réglage est vide, elles ont écrit une chaîne
+vide. **Latent, pas actif.** Mais les rejouer avec le réglage posé écrirait la **clé de service** en
+clair dans `cron.job.command`. Les cinq migrations concernées sont épinglées nommément par le
+validateur, qui échoue sur toute nouvelle occurrence — il ne peut pas empêcher un `db push` de
+rejouer l'historique.
+
+Runbooks : `docs/runbooks/scheduled-emails-cron-2026-09.md` (raisonnement, rotation, retour arrière)
+et `docs/runbooks/JUNO-31-EXECUTION.md` (checklist opérateur). Diagnostic :
+`supabase/tests/diagnose_scheduled_emails_cron.sql`, lecture seule.
 
 ---
 

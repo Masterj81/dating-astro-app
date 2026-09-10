@@ -400,6 +400,10 @@ verify_jwt = false
 [functions.publish-scheduled-posts]
 verify_jwt = false
 
+# Local marketing tool (auth via MARKETING_AGENT_TOKEN, not JWT)
+[functions.marketing-agent]
+verify_jwt = false
+
 # Scheduled email processor (auth via shared secret header, not JWT)
 [functions.send-scheduled-emails]
 verify_jwt = false

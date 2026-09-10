@@ -149,7 +149,15 @@ $dir = Join-Path $env:TEMP ("juno-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Path $dir | Out-Null
 $file = Join-Path $dir "secrets.env"
 
-$newSigning = -join ((1..64) | ForEach-Object { '{0:x}' -f (Get-Random -Max 16) })
+$rng   = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$bytes = New-Object byte[] 32
+$rng.GetBytes($bytes)
+$rng.Dispose()
+$newSigning = -join ($bytes | ForEach-Object { '{0:x2}' -f $_ })
+
+if ($newSigning.Length -ne 64 -or $newSigning -eq ('0' * 64)) {
+  throw "Generation ratee — NE PAS utiliser cette valeur."
+}
 
 $legacy = Read-Host "LEGACY_UNSUBSCRIBE_SECRET"
 
@@ -164,6 +172,12 @@ Remove-Item $file -Force
 Remove-Item $dir -Force
 Remove-Variable newSigning, legacy
 ```
+
+> **La génération du secret v2 ne doit pas passer par `Get-Random`** — ce runbook le proposait, et
+> c'est un générateur pseudo-aléatoire ensemencé, pas un CSPRNG. Ni par
+> `[…RandomNumberGenerator]::Fill()`, une méthode .NET Core absente de Windows PowerShell 5.1 :
+> l'appel échoue, le tableau reste **à zéro**, et l'on obtient `0000…0000` — une clé qui a l'air
+> d'une clé. Vérifié le 9 septembre 2026 sur cette machine. D'où `Create()` et le `throw`.
 
 `Read-Host` sans `-AsSecureString` affiche la saisie à l'écran mais ne la met
 pas dans l'historique. Si l'écran est partagé, utiliser `-AsSecureString` et
