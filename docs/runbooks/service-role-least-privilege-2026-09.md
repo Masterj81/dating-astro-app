@@ -198,7 +198,15 @@ déjà envoyés.
    ```powershell
    Set-PSReadLineOption -HistorySaveStyle SaveNothing
 
-   $token = -join ((1..64) | ForEach-Object { '{0:x}' -f (Get-Random -Max 16) })
+   $rng   = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+   $bytes = New-Object byte[] 32
+   $rng.GetBytes($bytes)
+   $rng.Dispose()
+   $token = -join ($bytes | ForEach-Object { '{0:x2}' -f $_ })
+
+   if ($token.Length -ne 64 -or $token -eq ('0' * 64)) {
+     throw "Generation ratee — NE PAS utiliser cette valeur."
+   }
 
    $dir  = Join-Path $env:TEMP ("juno-" + [guid]::NewGuid())
    New-Item -ItemType Directory -Path $dir | Out-Null
@@ -211,14 +219,23 @@ déjà envoyés.
 
    Puis mettre **la même valeur** dans `marketingagent/.env`, sous
    `MARKETING_AGENT_TOKEN=`. Ne pas encore retirer l'ancienne clé.
+   Enfin : `Remove-Variable token, bytes`.
 
-   `Get-Random` n'est pas cryptographiquement sûr. Pour un jeton partagé
-   destiné à durer, préférer :
-   ```powershell
-   $bytes = [byte[]]::new(32)
-   [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
-   $token = -join ($bytes | ForEach-Object { '{0:x2}' -f $_ })
-   ```
+   > **Deux pièges, tous deux rencontrés le 9 septembre 2026.**
+   >
+   > `Get-Random` — que ce runbook proposait d'abord — n'est **pas**
+   > cryptographiquement sûr : c'est un générateur pseudo-aléatoire ensemencé,
+   > adéquat pour un tirage, pas pour un secret partagé destiné à durer.
+   >
+   > `[System.Security.Cryptography.RandomNumberGenerator]::Fill()` — que ce
+   > runbook proposait en remplacement — est une méthode **.NET Core / .NET 5+**.
+   > Windows PowerShell 5.1 tourne sur .NET Framework : l'appel échoue,
+   > `$bytes` reste **à zéro**, et la ligne suivante produit `0000…0000`.
+   > Une clé qui a l'air d'une clé.
+   >
+   > `RandomNumberGenerator::Create()` fonctionne sur les deux éditions —
+   > vérifié sur cette machine. Le `throw` est là parce qu'une génération
+   > ratée doit s'arrêter, pas livrer une valeur inutilisable.
 
 4. Déployer la fonction :
    ```
@@ -400,3 +417,49 @@ d'environnement.
 **`delete-account/index.ts:23`** porte un `TODO (ops)` indiquant que
 `DELETION_TOKEN_SECRET` n'est peut-être pas injecté. À vérifier avec le même
 `supabase secrets list`.
+
+---
+
+## 9. Phase B — fermée le 10 septembre 2026
+
+| preuve | état |
+|---|---|
+| `MARKETING_AGENT_TOKEN` posé localement | oui |
+| `MARKETING_AGENT_TOKEN` posé dans les secrets Supabase | oui |
+| fonction `marketing-agent` déployée | oui |
+| `verify_jwt = false` **déclaré dans `config.toml:404`** | oui |
+| téléversement d'image réel | réussi |
+| `marketingagent` fonctionne avec le jeton restreint | oui |
+| `SUPABASE_SERVICE_ROLE_KEY` retirée de `marketingagent/.env` | oui |
+| absence vérifiée sans afficher de valeur | oui |
+
+**Le poste local ne détient plus de clé administrative.** Le jeton restant n'ouvre que les quatre
+opérations que la fonction edge autorise explicitement — téléverser une image, insérer une ligne
+`marketing_posts`, lister la file, relire les statuts — et chacune est revalidée à la frontière de la
+base par une RPC `SECURITY DEFINER` accordée au seul `service_role`.
+
+### La ligne qui compte le plus dans ce tableau
+
+`verify_jwt = false` **dans `config.toml`**, et pas seulement `--no-verify-jwt` à la ligne de
+commande. Un déploiement ultérieur depuis la configuration aurait réarmé la vérification de
+passerelle, et la fonction aurait cessé de répondre à son unique appelant — un processus Node qui ne
+porte aucun JWT. La panne serait survenue des semaines plus tard, sans lien apparent avec cette
+vague.
+
+Le choix est correct sur le fond : la fonction **vérifie son propre secret partagé**, et son limiteur
+de débit s'exécute **avant** la comparaison du jeton, parce qu'un limiteur placé après ne borne pas
+une tentative de deviner le secret.
+
+### Ce qui reste, et pourquoi ce n'est pas un oubli
+
+Les phases C et D — la rotation de `SUPABASE_SERVICE_ROLE_KEY` — dépendent de quatre questions
+auxquelles le dépôt ne peut pas répondre (§5). La réduction de privilège était nécessaire **dans tous
+les cas** ; la rotation dépend d'une analyse d'exposition qui n'est pas terminée.
+
+Si aucune des quatre n'est vraie, la rotation est **préventive**, pas corrective, et reste recommandée
+pour une raison indépendante du constat : cette clé vit dix ans et n'a jamais été tournée.
+
+**Ordre impératif** : la transition à deux clés de JUNO-21 doit être terminée d'abord. Faire tourner
+la clé de service avant que `UNSUBSCRIBE_TOKEN_SECRET_V2` et `_PREVIOUS` ne soient en place
+invaliderait tout lien de désabonnement déjà présent dans une boîte de réception — un échec RFC 8058
+avec Gmail et Yahoo, et un échec CASL pour un expéditeur québécois.

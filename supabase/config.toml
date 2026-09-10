@@ -221,15 +221,15 @@ otp_expiry = 3600
 # user = "resend"
 # pass = "env(RESEND_SMTP_KEY)"
 # admin_email = "noreply@astrodatingapp.com"
-# sender_name = "AstroDating"
+# sender_name = "JUNO"
 
 # Custom email templates — match the app's dark theme
 [auth.email.template.confirmation]
-subject = "Confirm your AstroDating email"
+subject = "Confirm your JUNO email"
 content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.recovery]
-subject = "Reset your AstroDating password"
+subject = "Reset your JUNO password"
 content_path = "./supabase/templates/recovery.html"
 
 [auth.email.template.email_change]
@@ -398,6 +398,10 @@ verify_jwt = false
 
 # Scheduled marketing posts publisher (auth via shared secret, not JWT)
 [functions.publish-scheduled-posts]
+verify_jwt = false
+
+# Local marketing tool (auth via MARKETING_AGENT_TOKEN, not JWT)
+[functions.marketing-agent]
 verify_jwt = false
 
 # Scheduled email processor (auth via shared secret header, not JWT)
