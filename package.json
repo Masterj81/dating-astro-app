@@ -33,6 +33,7 @@
     "validate:rls-contract": "node scripts/validate-rls-contract.mjs",
     "validate:repo-hygiene": "node scripts/validate-repo-hygiene.mjs",
     "validate:cron-secrets": "node scripts/validate-cron-secrets.mjs",
+    "validate:media-purge": "node scripts/validate-media-purge.mjs",
     "check:unsubscribe-legacy-key": "node scripts/check-unsubscribe-legacy-key.mjs",
     "validate:engine-contract": "npm run test --workspace=@astro/shared -- src/astrology/__tests__/engine-contract.test.ts",
     "validate:locales": "npm run validate:web:locales && npm run validate:mobile:locales && npm run validate:mobile:i18n-usage && npm run validate:locale-contract",

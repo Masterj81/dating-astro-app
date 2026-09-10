@@ -450,14 +450,24 @@ Le choix est correct sur le fond : la fonction **vérifie son propre secret part
 de débit s'exécute **avant** la comparaison du jeton, parce qu'un limiteur placé après ne borne pas
 une tentative de deviner le secret.
 
-### Ce qui reste, et pourquoi ce n'est pas un oubli
+### JUNO-04 est fermé ici, sans rotation
 
-Les phases C et D — la rotation de `SUPABASE_SERVICE_ROLE_KEY` — dépendent de quatre questions
-auxquelles le dépôt ne peut pas répondre (§5). La réduction de privilège était nécessaire **dans tous
-les cas** ; la rotation dépend d'une analyse d'exposition qui n'est pas terminée.
+La qualification est arrêtée le 10 septembre 2026 :
 
-Si aucune des quatre n'est vraie, la rotation est **préventive**, pas corrective, et reste recommandée
-pour une raison indépendante du constat : cette clé vit dix ans et n'a jamais été tournée.
+| | |
+|---|---|
+| présence dans l'historique Git | **aucune** — 0 ajout sur toutes les références |
+| divulgation externe | **aucune preuve** |
+| état du poste | la clé en est retirée |
+| remplacement | `MARKETING_AGENT_TOKEN`, portée réduite à quatre opérations |
+
+**Ni « clé exposée », ni « compromise », ni « fuite ».** Ces mots décrivent une divulgation, et
+aucune n'est démontrée. Le constat était un privilège trop large, et il est corrigé. La réduction de
+privilège était nécessaire **dans tous les cas** ; la rotation, elle, ne l'est pas.
+
+Elle reste **souhaitable** pour une raison indépendante de ce constat : cette clé vit dix ans et n'a
+jamais été tournée. Elle se planifie comme mesure d'**hygiène**, sans urgence, et ne conditionne pas
+la fermeture.
 
 **Ordre impératif** : la transition à deux clés de JUNO-21 doit être terminée d'abord. Faire tourner
 la clé de service avant que `UNSUBSCRIBE_TOKEN_SECRET_V2` et `_PREVIOUS` ne soient en place

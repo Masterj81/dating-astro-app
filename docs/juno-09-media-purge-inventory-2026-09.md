@@ -278,9 +278,20 @@ diagnostic qui ne s'auto-vérifie pas est un diagnostic qui peut mentir.
 | classe `uuid` — propriété prouvable | 21 | — | 1 |
 | classe `prefixe-non-uuid` | 6 | — | 0 |
 | classe `racine` | **62** | — | 0 |
-| **orphelins** (classe uuid, compte disparu) | **3** | — | **1** |
+| **orphelins** (classe uuid, compte disparu) | **4** | — | **1** |
 
-369 comptes `auth.users`. Plus ancien orphelin : **1ᵉʳ février 2026** — sept mois.
+362 comptes `auth.users`. Plus ancien orphelin : **1ᵉʳ février 2026** — sept mois.
+
+> **Mesure corrigée le 10 septembre 2026.** La phase A avait relevé **3** orphelins dans `avatars`
+> et 369 comptes. La fermeture de JUNO-29 le 9 septembre a supprimé les huit comptes en retard
+> d'effacement, dont **un** possédait un objet de stockage : `avatars` est donc passé à **4**
+> orphelins, et `auth.users` à 362 (369 − 8 + 1 inscription vérifiée).
+>
+> Cet objet était prévu et arbitré : « Le retard d'effacement de huit comptes l'emporte sur la
+> création contrôlée d'un seul nouvel avatar orphelin. Cet objet devra être comptabilisé dans le
+> rattrapage historique de JUNO-09. » `verifications` reste à **1**, inchangé.
+>
+> **Total : 5 orphelins**, dont une vidéo de vérification.
 
 ### Les trois classes, et ce qu'on en fait
 
@@ -538,9 +549,10 @@ Restent quatre points, dont un urgent :
 
 ### Ce qui change dans le plan, à la lumière de la mesure
 
-- **Le rattrapage historique est minuscule** : 4 orphelins, dont 1 vidéo de vérification. Il ne
-  demande pas d'outillage industriel, mais la même rigueur — le détecteur reste en lecture seule et
-  son rapport reste validé à la main.
+- **Le rattrapage historique est minuscule** : **5 orphelins** au 10 septembre 2026 — 4 avatars et
+  1 vidéo de vérification. Il ne demande pas d'outillage industriel, mais la même rigueur : le
+  détecteur reste en lecture seule et son rapport reste validé à la main. Le plafond de volume
+  compte précisément parce que le chiffre est petit — un bug de classification en ferait 90.
 - **Les 62 objets `seed-`** ne sont pas un problème JUNO-09 : ils appartiennent à la question du
   ménage des comptes synthétiques déjà ouverte dans `docs/suivi-supabase-2026-09.md`. Ils doivent
   être **explicitement exclus** de tout futur mode destructif, et le détecteur doit les nommer
@@ -558,3 +570,34 @@ exécutée contre la production — le diagnostic est écrit, pas lancé.
 
 Deux fichiers ajoutés, tous deux inertes : ce document et
 `supabase/tests/diagnose_media_ownership.sql`.
+
+---
+
+## 12. Phase B — préparée le 10 septembre 2026, non appliquée
+
+L'architecture de la §7 est retenue telle quelle, avec les douze amendements arrêtés par
+l'exploitant. Les livrables :
+
+| fichier | rôle |
+|---|---|
+| `supabase/migrations/20260910000002_media_purge_jobs.sql` | la table durable **sans FK**, les trois RPC, deny-all |
+| `supabase/migrations/20260910000003_media_purge_resume_cron.sql` | reprise `*/10` **armée**, rétention 90 j |
+| `supabase/migrations/20260910000004_cron_edge_health_media_purge.sql` | la supervision sait **mesurer** la reprise |
+| `supabase/functions/purge-user-media/index.ts` | la purge centralisée, seule implémentation |
+| `supabase/functions/process-expired-deletions/index.ts` | exécutant mobile — le garde précède la suppression |
+| `apps/web/src/app/api/account/confirm-deletion/route.ts` | exécutant web — même garde, et le courriel corrigé |
+| `packages/shared/src/security/__tests__/media-purge.test.ts` | 44 tests sur le **vrai** code edge |
+| `scripts/validate-media-purge.mjs` | 55 contrôles statiques |
+| `supabase/tests/diagnose_media_purge_jobs.sql` | 21 contrôles, lecture seule |
+| `docs/runbooks/media-purge-2026-09.md` | l'ordre de déploiement, la vérification contrôlée, le retour arrière |
+
+### Ce que la phase B ne fait pas, et pourquoi
+
+**Elle ne touche pas les cinq orphelins historiques.** Aucun travail ne les désigne, la tâche de
+reprise est figée en mode `resume`, et le détecteur n'a pas de mode destructif. C'est l'amendement 12,
+et c'est aussi la bonne conception : un rattrapage de masse mérite son propre livrable, avec
+`--dry-run` par défaut, un manifeste immuable, un plafond de volume et une validation humaine.
+
+**JUNO-09 reste donc OUVERT.** La phase B arrête l'hémorragie — à partir de son déploiement, aucune
+suppression de compte ne laisse de média derrière elle. Les cinq objets déjà là, dont la vidéo de
+vérification du 1ᵉʳ février, attendent le rattrapage.
