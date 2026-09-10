@@ -2,6 +2,18 @@ import { NextResponse } from "next/server";
 import { createHash, timingSafeEqual as cryptoTimingSafeEqual } from "crypto";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getResend, EMAIL_FROM } from "@/lib/resend";
+import { requestMediaPurge, deletionEmailText } from "@/lib/media-purge";
+
+// JUNO-09 — the web path deletes immediately, and until 10 Sep 2026 it deleted
+// the account while leaving every uploaded file in storage. `storage.objects`
+// has no foreign key to `auth.users`, so the cascade never touched it.
+//
+// The helpers live in `@/lib/media-purge` and not here: an App Router route may
+// export ONLY its HTTP handlers, and they have to be importable by the vitest
+// suite that executes the real decision rather than a copy of it.
+//
+// The purge itself is NOT reimplemented on this side. Both executors call the
+// same edge function — see the module header for why that matters.
 
 export async function POST(request: Request) {
   try {
@@ -104,6 +116,28 @@ export async function POST(request: Request) {
       .delete()
       .eq("user_id", user.id);
 
+    // JUNO-09 step 1 — the durable job row, BEFORE the irreversible act.
+    const purge = await requestMediaPurge(user.id, {
+      baseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+      secret: process.env.MEDIA_PURGE_SECRET ?? "",
+      fetchImpl: fetch,
+    });
+
+    if (!purge.jobCreated) {
+      // The ONLY condition that stops a deletion. The verification code has
+      // already been consumed above, so the reader must request a new one —
+      // which is the correct trade: a replayable code would be worse than a
+      // retry, and stranding media with no record of it would be worse than
+      // both.
+      console.error("Account deletion refused: media purge job not created");
+      return NextResponse.json(
+        { error: "Failed to delete account. Please try again." },
+        { status: 500 }
+      );
+    }
+
+    // JUNO-09 step 2 — proceed even on an incomplete purge. The job row has no
+    // FK to auth.users, survives the cascade, and the resume cron finishes.
     const { error: deleteErr } = await supabaseAdmin.auth.admin.deleteUser(user.id);
 
     if (deleteErr) {
@@ -118,7 +152,7 @@ export async function POST(request: Request) {
       from: EMAIL_FROM,
       to: email,
       subject: "Account Deleted - JUNO",
-      text: `Hi,\n\nYour JUNO account has been permanently deleted. All associated data (profile, matches, messages) has been removed.\n\nIf you didn't request this, please contact us immediately at support@astrodatingapp.com.\n\n- The JUNO Team`,
+      text: deletionEmailText(purge.done),
     });
 
     return NextResponse.json({ success: true });
