@@ -811,7 +811,7 @@ données publiées à côté (JUNO-01).
 | **JUNO-06** | Mobile | 9 fonctionnalités premium sur 11 gatées côté client uniquement | **Haute** | Haute | Confirmé |
 | **JUNO-07** | Web / API | `/api/contact` : relais mail non authentifié, sans limite de débit ni captcha | **Moyenne** | Haute | Confirmé |
 | **JUNO-08** | Backend / DB | `messages` : UPDATE accordé + policy sans `WITH CHECK` → réécriture de messages livrés | **Moyenne** | Moyenne | Probable |
-| **JUNO-09** | Vie privée | Aucun nettoyage du stockage à la suppression de compte (photos, voix, vidéos de vérification) | **Moyenne** | Haute | Confirmé |
+| **JUNO-09** | Vie privée | Aucun nettoyage du stockage à la suppression de compte (photos, voix, vidéos de vérification) | **Moyenne** | Haute | Confirmé — **phase B livrée le 10 sep 2026** ; rattrapage des 5 orphelins historiques toujours ouvert |
 | **JUNO-10** | Web / Auth | Branche implicite résiduelle dans `auth/callback` → fixation de session | **Moyenne** | Moyenne | Probable |
 | **JUNO-11** | Infra / CORS | Les listes blanches retombent en mode permissif si `ENVIRONMENT ≠ production` | **Moyenne** | Moyenne | À vérifier dynamiquement |
 | **JUNO-12** | Supply chain | 47 vulnérabilités npm ; `next`, `next-intl`, `undici` atteignables à l'exécution | **Moyenne** | Haute | Confirmé |
@@ -1385,6 +1385,27 @@ trigger `update_conversation_last_message`, `SECURITY DEFINER`, donc insensible 
 ---
 
 ### JUNO-09 — La suppression de compte laisse les photos, la voix et les vidéos de vérification
+
+> **Phase B livrée le 10 septembre 2026 — JUNO-09 reste OUVERT.**
+>
+> À partir de son déploiement, aucune suppression de compte ne laisse de média derrière elle : la
+> purge vit dans une fonction edge unique, `purge-user-media`, que les deux exécutants appellent en
+> serveur-à-serveur. Une ligne `media_purge_jobs` **sans clé étrangère vers `auth.users`** est créée
+> AVANT la suppression et lui survit ; son absence **interdit** la suppression, tandis qu'une purge
+> incomplète ne la bloque pas — c'est la reprise `*/10` qui termine.
+>
+> La propriété est **prouvée** — premier segment du chemin égal à l'UUID en entier —, jamais
+> approchée : `scripts/seed-profile-photos.js` écrit `seed-{uuid}.jpg` à la racine du bucket, et il y
+> a 60 objets de cette forme dans `avatars` qu'une correspondance partielle supprimerait.
+>
+> Ce qui reste, et pourquoi ce n'est pas un oubli : **les cinq orphelins historiques** — 4 avatars et
+> **une vidéo de vérification** du 1ᵉʳ février 2026 — ne sont pas touchés. Aucun travail ne les
+> désigne, la tâche de reprise est figée en mode `resume`, et le détecteur n'a aucun mode destructif.
+> Leur rattrapage est un livrable distinct : `--dry-run` par défaut, manifeste immuable, plafond de
+> volume, validation humaine du rapport. `docs/runbooks/media-purge-2026-09.md` §8.
+>
+> Garde-fous : `npm run validate:media-purge` (57 contrôles) et 44 tests exécutant le **vrai** code
+> edge. Diagnostic : `supabase/tests/diagnose_media_purge_jobs.sql`, lecture seule.
 
 | | |
 |---|---|
