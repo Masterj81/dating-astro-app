@@ -180,7 +180,7 @@ manuelles.
 |---|---|---|
 | **JUNO-18** | **Corrigé** | `.github/workflows/ci.yml` déclare `permissions: contents: read` au niveau workflow ; `validate:repo-hygiene` échoue si le bloc disparaît, si un job s'élève sans justification, ou si `pull_request_target` apparaît |
 | **JUNO-20** | **Corrigé** | `apps/mobile/app/appaD.zip` n'est plus suivi ; règle `.gitignore` ciblée sur `apps/*/app/**` ; le validateur refuse une archive réintroduite par `git add -f` |
-| **JUNO-21** | **Corrigé dans le code**, transition manuelle | `unsubscribe-token.test.ts` — 43 tests, dont une **copie verbatim de l'ancien signeur** qui prouve que les liens déjà envoyés se vérifient encore |
+| **JUNO-21** | **FERMÉ le 10 sep 2026** — transition à deux clés faite en production | `unsubscribe-token.test.ts` — 43 tests, dont une **copie verbatim de l'ancien signeur** qui prouve que les liens déjà envoyés se vérifient encore |
 | **JUNO-04** | **FERMÉ le 10 sep 2026** — privilège réduit en production. Aucune rotation requise : aucune divulgation n'est démontrée | `marketing-agent-authz.test.ts` — 41 tests sur la décision réelle ; migration `20260908000001` ; `SUPABASE_SERVICE_ROLE_KEY` retirée de `marketingagent/.env`, vérifié sans afficher de valeur |
 | **JUNO-28** *(nouveau)* | **FERMÉ, prouvé en base le 8 sep** | `20260908000002` appliquée ; son auto-vérification exige que le second appel au limiteur soit refusé, donc le compteur compte |
 
@@ -248,11 +248,13 @@ les journaux mesure directement si quelqu'un les utilise encore. Décision et se
 > pour une raison indépendante de ce constat — cette clé vit dix ans et n'a jamais été tournée — et
 > se planifie comme mesure d'hygiène, sans urgence.
 >
-> **Un ordre s'impose néanmoins le jour où elle aura lieu** : la transition à deux clés de JUNO-21
-> doit être terminée d'abord. Faire tourner la clé de service avant que `UNSUBSCRIBE_TOKEN_SECRET_V2`
-> et `_PREVIOUS` ne soient en place invaliderait tout lien de désabonnement déjà présent dans une
-> boîte de réception — un échec RFC 8058 avec Gmail et Yahoo, et un échec CASL pour un expéditeur
-> québécois.
+> **L'ordre qui la contraignait est désormais satisfait.** La rotation devait attendre la transition
+> à deux clés de JUNO-21 : la faire avant que `UNSUBSCRIBE_TOKEN_SECRET_V2` et `_PREVIOUS` ne soient
+> en place aurait invalidé tout lien de désabonnement déjà présent dans une boîte de réception — un
+> échec RFC 8058 avec Gmail et Yahoo, et un échec CASL pour un expéditeur québécois.
+>
+> **JUNO-21 est fermé depuis le 10 septembre 2026.** La rotation n'est plus bloquée par rien ; elle
+> reste simplement sans urgence.
 
 Analyse d'exposition, faite sur le dépôt le 8 septembre :
 
@@ -404,8 +406,8 @@ sont celles que la vérification de la vague 1 a réellement exécutées sur la 
 > **« Sur `master` » ne veut pas dire « en production ».** Au 8 septembre 2026 les deux vagues sont
 > mergées et le CI est vert, la base est **partiellement** prête — `20260908000002` appliquée,
 > `20260908000001` à confirmer — et **`send-email`, `unsubscribe` et `marketing-agent` ne sont pas
-> déployées**. JUNO-21 n'est fermé qu'après les validations en environnement réel ; JUNO-04 l'a été
-> le 10 septembre.
+> déployées**. *Constat du 8 septembre.* JUNO-21 et JUNO-04 ont été fermés le 10 septembre, après
+> leurs validations en environnement réel.
 
 La séquence de référence, en douze étapes avec ses portes de contrôle, est en tête de
 `docs/runbooks/service-role-least-privilege-2026-09.md` (§0). Deux ordres y sont contraignants :
@@ -823,7 +825,7 @@ données publiées à côté (JUNO-01).
 | **JUNO-18** | CI/CD | Workflow sans bloc `permissions`, actions épinglées par tag, aucun scan de dépendances ni de secrets | **Faible** | Haute | Confirmé |
 | **JUNO-19** | Web / Compte | Deux parcours de suppression divergents : le web supprime définitivement sans ré-authentification ni délai de grâce | **Faible** | Haute | Confirmé |
 | **JUNO-20** | Dépôt | `apps/mobile/app/appaD.zip` : instantané de 147 Ko du code pré-durcissement, versionné dans le routeur | **Faible** | Haute | Confirmé |
-| **JUNO-21** | Secrets | Clé HMAC de désabonnement dérivée de la `SERVICE_ROLE_KEY` | **Faible** | Haute | Confirmé |
+| **JUNO-21** | Secrets | Clé HMAC de désabonnement dérivée de la `SERVICE_ROLE_KEY` | **Faible** | Haute | Confirmé — **fermé le 10 sep 2026** |
 | **JUNO-22** | Stockage | Buckets `avatars` et `voice-intros` en lecture publique non authentifiée | **Faible** | Haute | Confirmé |
 | **JUNO-23** | Mobile | Limiteur client présenté comme protection anti-brute-force | **Faible** | Haute | Confirmé |
 | **JUNO-24** | iOS | Aucun `associatedDomains` / AASA : repli sur le schéma `astrodating://`, revendicable par toute app | **Faible** | Haute | Confirmé |
@@ -1109,9 +1111,10 @@ marketingagent/cloud-scheduler.ts:67   process.env.SUPABASE_SERVICE_ROLE_KEY
 marketingagent/upload-image.ts:26      process.env.SUPABASE_SERVICE_ROLE_KEY
 ```
 
-Il détient à la place la clé qui contourne toute la RLS, lit `profiles` en entier, et dont
-`unsubscribe/index.ts:34` dérive en plus le secret HMAC de désabonnement (JUNO-21). Le JWT expire
-en 2036 et n'a pas de rotation documentée.
+Il détenait à la place la clé qui contourne toute la RLS, lit `profiles` en entier, et dont
+`unsubscribe/index.ts:34` dérivait en plus le secret HMAC de désabonnement (JUNO-21 — **cette
+dérivation est supprimée depuis le 10 septembre 2026**). Le JWT expire en 2036 et n'a jamais été
+tourné.
 
 **Scénario — hypothétique, et c'est celui que le correctif a supprimé.** Aucun de ces événements
 n'est survenu : il s'agit du rayon d'action que le privilège rendait possible, pas d'un incident.
@@ -1121,10 +1124,14 @@ propagation lors du passage au runner cloud décrit dans `marketingagent/CLOUD-R
 conversations, abonnements. Aucune RLS ne s'y oppose, et la table `security_posture_alerts` ne le
 verrait pas.
 
-**Recommandation.**
-1. **Rotation immédiate** de la `SUPABASE_SERVICE_ROLE_KEY` dans le dashboard Supabase — en
-   sachant que cela invalide tous les liens de désabonnement déjà envoyés (JUNO-21), ce qui est
-   précisément la raison de découpler les deux secrets d'abord.
+**Recommandation d'origine, du 7 septembre 2026 — révisée depuis.** Le point 1 réclamait une
+rotation *immédiate* ; l'analyse d'exposition qui a suivi n'a démontré aucune divulgation, et la
+rotation est donc **préventive**, pas corrective. La réduction de privilège, elle, était nécessaire
+dans tous les cas, et elle est faite. Voir l'encadré en tête de §JUNO-04.
+
+1. ~~**Rotation immédiate**~~ **rotation préventive** de la `SUPABASE_SERVICE_ROLE_KEY` — le
+   découplage du secret HMAC (JUNO-21) qui la conditionnait est fait depuis le 10 septembre 2026,
+   donc elle n'invalide plus aucun lien de désabonnement.
 2. Créer un rôle Postgres dédié `marketing_bot` (`NOLOGIN` + JWT signé avec ce `role`), avec
    `GRANT INSERT, SELECT ON scheduled_marketing_posts` et une policy storage limitée au bucket
    `marketing-images`. Rien d'autre.
@@ -1406,6 +1413,19 @@ trigger `update_conversation_last_message`, `SECURITY DEFINER`, donc insensible 
 >
 > Garde-fous : `npm run validate:media-purge` (57 contrôles) et 44 tests exécutant le **vrai** code
 > edge. Diagnostic : `supabase/tests/diagnose_media_purge_jobs.sql`, lecture seule.
+>
+> **L'ordre de déploiement est vérifié par la plateforme, pas par affirmation.** Le garde est
+> fail-closed : déployer un exécutant avant que la fonction centrale ne réponde bloquerait toute
+> suppression de compte. `supabase functions list` le tranche :
+>
+> | fonction | déployée | |
+> |---|---|---|
+> | `purge-user-media` | **2026-09-10 18:24:06 UTC** | version 1, `verify_jwt = false` côté plateforme |
+> | `process-expired-deletions` | **2026-09-10 18:38:24 UTC** | version 30 |
+>
+> 14 min 18 s d'écart, dans le bon sens. Le `verify_jwt = false` est lu sur la fonction **déployée**,
+> ce qui est une preuve plus forte que la déclaration dans `config.toml` — un `--no-verify-jwt`
+> ponctuel se perdrait au déploiement suivant, la déclaration non.
 
 | | |
 |---|---|
@@ -1927,7 +1947,24 @@ répertoire de routage invite à restaurer une version vulnérable. Il n'est pas
 `.easignore` et voyage donc jusqu'au builder.
 *Correctif* : `git rm apps/mobile/app/appaD.zip`. L'historique git est la sauvegarde.
 
-**JUNO-21 · Clé HMAC dérivée de la clé service_role — `Faible` · Confirmé.**
+**JUNO-21 · Clé HMAC dérivée de la clé service_role — `Faible` · FERMÉ le 10 septembre 2026.**
+
+> **Fermé.** La transition à deux clés est faite en production : la signature courante emploie
+> `UNSUBSCRIBE_TOKEN_SECRET_V2` — un nom que l'ancien code ne lit pas, ce qui est exactement ce qui
+> a permis de provisionner sans toucher aux liens en circulation — et `_PREVIOUS` porte la
+> génération historique. `verifyUnsubscribeToken` vérifie les deux, la FORME du jeton sélectionne
+> la clé, donc rien n'est essayé contre les deux et il n'existe aucun signal « laquelle a marché ».
+> `scripts/check-unsubscribe-legacy-key.mjs` a prouvé la clé historique hors ligne contre un vrai
+> ancien jeton, au lieu de la deviner.
+>
+> **Conséquence pour JUNO-04 : la rotation de la clé de service n'est plus bloquée.** L'ordre
+> imposé est satisfait. Elle reste préventive, sans urgence, et se planifie comme mesure d'hygiène.
+>
+> Les liens historiques n'expirent pas par conception : c'est `generation=legacy` dans les journaux
+> qui décidera un jour de retirer le support, pas une date.
+
+Le constat, tel qu'il était :
+
 `unsubscribe/index.ts:32-35` et son pendant dans `send-email` :
 `UNSUBSCRIBE_TOKEN_SECRET || \`juno-unsubscribe-v1:${SUPABASE_SERVICE_ROLE_KEY}\``. HMAC-SHA256
 étant résistant à la préimage, la clé de service ne fuit pas par les jetons — le problème est
@@ -2230,7 +2267,7 @@ cohabitent.
 |---|---|---|
 | 1 | **JUNO-01** — retirer les champs `longitude` des réponses de `get-profile-chart`, arrondir les degrés à 0,01°, adapter `synastry-view.ts` / `stored.ts`, étendre `engine-contract.test.ts` | ½ j |
 | 2 | **JUNO-03** — supprimer `couponId` du contrat d'entrée ; dériver la remise du `priceId` côté serveur ; nettoyer les deux clients | 1 h |
-| 3 | **JUNO-04** — sortir `SUPABASE_SERVICE_ROLE_KEY` de `marketingagent/.env` et la remplacer par un jeton de portée réduite. *Fait le 10 sep 2026.* La rotation de la clé est une mesure d'**hygiène** distincte, à planifier après JUNO-21 | 2 h |
+| 3 | **JUNO-04** — sortir `SUPABASE_SERVICE_ROLE_KEY` de `marketingagent/.env` et la remplacer par un jeton de portée réduite. *Fait le 10 sep 2026.* La rotation de la clé est une mesure d'**hygiène** distincte, désormais **débloquée** : JUNO-21 est fermé | 2 h |
 | 4 | **JUNO-08** — `REVOKE UPDATE, DELETE, TRUNCATE … ON public.messages`, avec le test de non-régression (envoyer un message, ouvrir un fil) | 15 min |
 | 5 | **JUNO-11** — inverser le défaut des sept listes blanches ; vérifier `ENVIRONMENT` en production | 30 min |
 | 6 | **§8 A→C** — exécuter les trois blocs de vérification et consigner les sorties dans ce document | 30 min |
@@ -2292,8 +2329,8 @@ cohabitent.
    incident sur le poste, de la base entière à quatre opérations. Ce n'est pas une réaction à une
    divulgation — il n'y en a aucune de démontrée — mais la suppression d'un pouvoir dont l'outil
    n'a jamais eu besoin. La rotation de la clé, si elle est décidée, est une mesure d'hygiène
-   distincte et doit suivre JUNO-21, sinon elle casse tous les liens de
-   désabonnement déjà envoyés.
+   distincte, et l'ordre qui la contraignait — après JUNO-21, sinon elle casse tous les liens de
+   désabonnement déjà envoyés — est satisfait depuis le 10 septembre 2026.
 4. **CSP à nonce, sans `unsafe-inline`** (JUNO-05/13, 1 jour). Coupe la chaîne XSS → vol de jeton
    sur le seul canal iOS, sans attendre le chantier BFF. À déployer en `Report-Only` d'abord.
 5. **`REVOKE UPDATE ON public.messages`** (JUNO-08, 15 minutes). Restaure la non-répudiation du fil
