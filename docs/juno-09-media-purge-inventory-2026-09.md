@@ -573,7 +573,7 @@ Deux fichiers ajoutés, tous deux inertes : ce document et
 
 ---
 
-## 12. Phase B — préparée le 10 septembre 2026, non appliquée
+## 12. Phase B — préparée, déployée et prouvée le 10 septembre 2026
 
 L'architecture de la §7 est retenue telle quelle, avec les douze amendements arrêtés par
 l'exploitant. Les livrables :
@@ -598,6 +598,40 @@ reprise est figée en mode `resume`, et le détecteur n'a pas de mode destructif
 et c'est aussi la bonne conception : un rattrapage de masse mérite son propre livrable, avec
 `--dry-run` par défaut, un manifeste immuable, un plafond de volume et une validation humaine.
 
-**JUNO-09 reste donc OUVERT.** La phase B arrête l'hémorragie — à partir de son déploiement, aucune
-suppression de compte ne laisse de média derrière elle. Les cinq objets déjà là, dont la vidéo de
-vérification du 1ᵉʳ février, attendent le rattrapage.
+**JUNO-09 restait donc OUVERT à la fin de la phase B.** Elle arrête l'hémorragie — depuis son
+déploiement, aucune suppression de compte ne laisse de média derrière elle. Les cinq objets déjà
+là, dont la vidéo de vérification du 1ᵉʳ février, attendaient le rattrapage — c'est la §13.
+
+---
+
+## 13. Phase C — exécutée le 11 septembre 2026 : JUNO-09 fermé
+
+Le rattrapage a été conçu comme un livrable distinct (`docs/juno-09-phase-c-design-2026-09.md`,
+runbook `docs/runbooks/orphan-media-catchup-2026-09.md`) et exécuté le 11 septembre 2026, campagne
+`2026-09-11-6cb356`.
+
+**La décision sur la vidéo de vérification a été prise avant, et écrite** : aucune obligation de
+conservation identifiée ; la vidéo brute n'était plus nécessaire après la vérification et le compte
+avait demandé sa suppression ; elle a donc été incluse.
+
+| | avant | après |
+|---|---|---|
+| orphelins `avatars` / `voice-intros` / `verifications` | 4 / 0 / 1 | **0 / 0 / 0** |
+| témoins `seed-*` | 60 | **60** |
+| objets de comptes vivants | `avatars=17` | **`avatars=17`** |
+| objets classés (exhaustif) | 90 | 85 |
+
+Résultat `deleted=5 · already_absent=0 · failed=0`, enregistré. Les 85 objets restants sont, un à
+un, ceux de la matrice de la §4 qui devaient rester : les 60 `seed-*`, les 6 `marketing/`, les 2
+autres à la racine, et les 17 des comptes vivants. **La règle de propriété de la §3 — premier
+segment égal à l'UUID en entier, jamais une sous-chaîne — est ce qui a laissé les 60 témoins en
+place.**
+
+Une première campagne le même jour s'était arrêtée à la validation (`409 manifest_mismatch`) sans
+rien supprimer ni enregistrer : le manifeste était assemblé sur le poste et le serveur n'avait pas
+d'empreinte à enregistrer à la découverte. Le protocole a été corrigé (v1.1.0, manifeste v2, le
+serveur assemble, hache, enregistre et relit) et la chaîne des portes est testée comme une chaîne.
+Détail : audit, section « JUNO-09 — FERMÉ le 11 septembre 2026 ».
+
+**JUNO-09 est fermé.** Ce document reste l'inventaire de départ ; il n'est plus une liste de choses
+à faire.

@@ -363,6 +363,11 @@ Le rattrapage, quand il sera écrit, devra porter :
 **JUNO-09 n'est PAS fermé à la fin de ce runbook.** La phase B arrête l'hémorragie ; les cinq objets
 déjà là restent à traiter, dont la vidéo de vérification du 1ᵉʳ février.
 
+> **Mise à jour du 11 septembre 2026.** Le rattrapage a été écrit et exécuté :
+> `docs/runbooks/orphan-media-catchup-2026-09.md`, campagne `2026-09-11-6cb356`,
+> `deleted=5 · already_absent=0 · failed=0`, témoins `60 → 60`, médias des comptes vivants
+> `17 → 17`. **JUNO-09 est fermé.** Le retard métier de la phase B est resté à 0 pendant et après.
+
 ---
 
 ## 9. Retour arrière
