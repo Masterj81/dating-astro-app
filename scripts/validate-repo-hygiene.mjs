@@ -410,6 +410,47 @@ for (const file of tracked) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// No NUL byte in a tracked text file.
+//
+// WHY THIS IS A SECRET-SCANNING CONCERN, NOT A TIDINESS ONE
+// ---------------------------------------------------------------------------
+// A single NUL byte makes `grep`, `git grep`, `ripgrep` and `gitleaks` classify
+// the file as BINARY and skip it entirely — silently. Every text-based scan in
+// this repository, including a future one nobody has written yet, stops seeing
+// that file. A secret could then sit in it forever with every scanner reporting
+// clean.
+//
+// Found on 11 Sep 2026 in `supabase/functions/purge-user-media/index.ts`, which
+// had shipped with one: `providedSecret ?? "\0".repeat(...)` where a space was
+// meant. The behaviour was correct — the padding is n characters either way, so
+// the constant-time comparison still worked — and the JS validators were not
+// fooled, because they read through Node rather than grep. That is luck, not
+// design, and this check replaces the luck.
+// ---------------------------------------------------------------------------
+const nulHits = [];
+for (const file of tracked) {
+  if (!TEXT_EXT.test(file)) continue;
+  const full = path.join(ROOT, file);
+  if (!existsSync(full)) continue;
+  if (statSync(full).size > 2_000_000) continue;
+  const bytes = readFileSync(full);
+  const at = bytes.indexOf(0);
+  if (at !== -1) {
+    const line = bytes.subarray(0, at).toString('utf8').split('\n').length;
+    nulHits.push(`${file}:${line}`);
+  }
+}
+
+check(
+  'No NUL byte in a tracked text file',
+  nulHits.length === 0,
+  `${nulHits.join('\n    ')}\n` +
+    '    One NUL byte makes grep, git grep, ripgrep and gitleaks treat the file as\n' +
+    '    binary and skip it — silently. Every text-based scan, including ones not\n' +
+    '    written yet, stops seeing it.',
+);
+
 check(
   'No credential material in a tracked file',
   hits.length === 0,

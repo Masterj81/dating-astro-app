@@ -519,7 +519,7 @@ export async function authorizePurgeRequest(
 
   // Compared against a same-length placeholder when absent, so a missing header
   // costs the same time as a wrong one.
-  const candidate = providedSecret ?? " ".repeat(deps.configuredSecret.length);
+  const candidate = providedSecret ?? " ".repeat(deps.configuredSecret.length);
   if (!constantTimeEqual(candidate, deps.configuredSecret)) {
     return { ok: false, ...UNAUTHORIZED };
   }
