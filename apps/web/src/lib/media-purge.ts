@@ -82,31 +82,13 @@ export async function requestMediaPurge(
 }
 
 /**
- * The confirmation email.
+ * The confirmation email is rendered by `account-deletion-email.ts`, not here.
  *
- * The previous text said: "All associated data (profile, matches, messages) has
- * been removed." Two things were wrong with it, and both mattered.
- *
- * It named `matches`, a table retired in May 2026 — the product has
- * conversations. And it asserted a completed deletion at a moment when no media
- * had been deleted at all, and when, even now, a slow bucket can leave files for
- * the resume cron. Telling someone their data is gone when it is not is the part
- * of this finding a reader could actually be harmed by: it is the sentence they
- * would rely on when deciding not to follow up.
- *
- * So the text follows the measurement rather than the intent.
+ * It used to be: a `deletionEmailText(purgeComplete)` lived in this file, and
+ * its one rule — say the media are gone ONLY when the purge reported that they
+ * are — is now enforced there, on both the HTML and the text a reader receives.
+ * What stays here is the decision that rule depends on: `WebPurgeOutcome.done`
+ * is the purge's own report, and the route hands exactly that to the renderer.
+ * A copy of the copy in two places is how the two ephemerides and the two tarot
+ * decks in this repository drifted.
  */
-export function deletionEmailText(purgeComplete: boolean): string {
-  const opening = "Hi,\n\nYour JUNO account has been permanently deleted.\n\n";
-  const body = purgeComplete
-    ? "Your profile, conversations, messages and uploaded files (photos, voice " +
-      "intro, verification video) have all been removed.\n\n"
-    : "Your profile, conversations and messages have been removed. A small " +
-      "number of uploaded files are still being deleted and will be gone " +
-      "within 24 hours.\n\n";
-  return (
-    opening + body +
-    "If you didn't request this, please contact us immediately at " +
-    "support@astrodatingapp.com.\n\n- The JUNO Team"
-  );
-}

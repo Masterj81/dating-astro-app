@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { createHash, timingSafeEqual as cryptoTimingSafeEqual } from "crypto";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getResend, EMAIL_FROM } from "@/lib/resend";
-import { requestMediaPurge, deletionEmailText } from "@/lib/media-purge";
+import { requestMediaPurge } from "@/lib/media-purge";
+import { deletionCompletedEmail } from "@/lib/account-deletion-email";
 
 // JUNO-09 — the web path deletes immediately, and until 10 Sep 2026 it deleted
 // the account while leaving every uploaded file in storage. `storage.objects`
@@ -148,11 +149,13 @@ export async function POST(request: Request) {
       );
     }
 
+    const deletionEmail = deletionCompletedEmail(purge.done);
     await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
       subject: "Account Deleted - JUNO",
-      text: deletionEmailText(purge.done),
+      html: deletionEmail.html,
+      text: deletionEmail.text,
     });
 
     return NextResponse.json({ success: true });

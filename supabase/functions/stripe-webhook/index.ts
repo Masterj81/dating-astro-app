@@ -658,6 +658,28 @@ function getPlanLabel(priceId?: string | null): string {
   return 'JUNO Premium';
 }
 
+/** The address readers are told to write to. Displayed, never a recipient. */
+const SUPPORT_EMAIL = 'support@junosynastry.com';
+
+/**
+ * HTML-escape for the payment email. `profile.name` is typed by the reader
+ * and used to land in the `<p>` unescaped: a name of `<img src=x onerror=…>`
+ * would have rendered as markup in a JUNO-branded email. Every value goes
+ * through this, including the ones Stripe generated — the rule is "everything
+ * is escaped", which needs no judgement call at each call site.
+ */
+function escapeHtml(value: string): string {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    // \u0022 and \u0027 are the two quote characters, written as escapes so a
+    // regex literal never contains a bare quote: the test harness that extracts
+    // this function by brace matching knows strings but not regexes.
+    .replace(/\u0022/g, '&quot;')
+    .replace(/\u0027/g, '&#x27;');
+}
+
 function renderPaymentEmailShell({
   eyebrow,
   title,
@@ -667,35 +689,41 @@ function renderPaymentEmailShell({
 }: {
   eyebrow: string;
   title: string;
+  /** Already-escaped HTML. */
   intro: string;
+  /** Raw values; escaped here. */
   summaryRows: Array<{ label: string; value: string }>;
+  /** Already-escaped HTML. */
   footer: string;
 }) {
   const summaryHtml = summaryRows
     .map(
       (row) => `
         <tr>
-          <td style="padding:0 0 10px;color:#98a2b8;font-size:13px;letter-spacing:0.02em;">${row.label}</td>
-          <td style="padding:0 0 10px;color:#ffffff;font-size:14px;font-weight:600;text-align:right;">${row.value}</td>
+          <td style="padding:0 0 10px;color:#98a2b8;font-size:13px;letter-spacing:0.02em;">${escapeHtml(row.label)}</td>
+          <td style="padding:0 0 10px;color:#ffffff;font-size:14px;font-weight:600;text-align:right;">${escapeHtml(row.value)}</td>
         </tr>
       `
     )
     .join('');
 
   return `<!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="supported-color-schemes" content="dark" />
+    <title>${title}</title>
   </head>
-  <body style="margin:0;padding:0;background:#0b1020;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:radial-gradient(circle at top left,#2d1638 0%,#0b1020 46%,#070b16 100%);padding:32px 14px;">
+  <body style="margin:0;padding:0;background-color:#070b16;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#070b16" style="width:100%;background-color:#070b16;background-image:radial-gradient(circle at top left,rgba(232,199,126,0.12) 0%,#0b1020 46%,#070b16 100%);padding:32px 14px;">
       <tr>
         <td align="center">
-          <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#12182a;border:1px solid #2a3247;border-radius:28px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.35);">
+          <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" bgcolor="#12182a" style="width:100%;max-width:560px;background-color:#12182a;border:1px solid #2a3247;border-radius:28px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.35);">
             <tr>
-              <td style="padding:28px 32px 18px;background:linear-gradient(135deg,rgba(244,114,182,0.18),rgba(167,139,250,0.08));border-bottom:1px solid #2a3247;">
-                <div style="display:inline-block;padding:9px 14px;border-radius:999px;border:1px solid #4b556f;color:#f8d4df;font-size:11px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;">
+              <td bgcolor="#1c1b18" style="padding:28px 32px 18px;background-color:#1c1b18;background-image:linear-gradient(135deg,rgba(232,199,126,0.18),rgba(201,162,77,0.08));border-bottom:1px solid #4a402c;">
+                <div style="display:inline-block;padding:9px 14px;border-radius:999px;border:1px solid #a9823d;color:#e8c77e;font-size:11px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;">
                   ${eyebrow}
                 </div>
                 <h1 style="margin:18px 0 10px;color:#ffffff;font-size:30px;line-height:1.15;letter-spacing:-0.03em;">
@@ -708,13 +736,21 @@ function renderPaymentEmailShell({
             </tr>
             <tr>
               <td style="padding:28px 32px;">
-                <div style="margin-bottom:22px;padding:18px 20px;border-radius:22px;background:linear-gradient(135deg,rgba(236,72,153,0.22),rgba(99,102,241,0.14));border:1px solid rgba(255,255,255,0.08);">
-                  <table width="100%" cellpadding="0" cellspacing="0">
-                    ${summaryHtml}
-                  </table>
-                </div>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#211f19" style="width:100%;margin:0 0 22px;background-color:#211f19;background-image:linear-gradient(135deg,rgba(232,199,126,0.20),rgba(201,162,77,0.10));border:1px solid #5c4d2e;border-radius:22px;">
+                  <tr>
+                    <td style="padding:18px 20px;">
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                        ${summaryHtml}
+                      </table>
+                    </td>
+                  </tr>
+                </table>
                 <div style="color:#b7bfd3;font-size:14px;line-height:1.75;">
                   ${footer}
+                </div>
+                <div style="margin-top:22px;padding-top:18px;border-top:1px solid #2a3247;color:#7c869e;font-size:12px;line-height:1.7;">
+                  Questions? <a href="mailto:${SUPPORT_EMAIL}" style="color:#e8c77e;text-decoration:underline;">${SUPPORT_EMAIL}</a><br />
+                  JUNO &mdash; Montr&eacute;al, Qu&eacute;bec, Canada
                 </div>
               </td>
             </tr>
@@ -785,14 +821,28 @@ async function sendPaymentConfirmationEmail(
     { label: 'Subscription ID', value: input.subscription.id },
   ];
 
+  // The reader typed `firstName`; it is escaped before it touches the markup.
+  // This email is sent from a noreply address, so it must not invite a reply.
   const html = renderPaymentEmailShell({
     eyebrow: 'Payment confirmed',
     title: 'Your JUNO payment went through',
-    intro: `Hi ${firstName}, your subscription is active and your payment has been confirmed.`,
+    intro: `Hi ${escapeHtml(firstName)}, your subscription is active and your payment has been confirmed.`,
     summaryRows,
     footer:
-      'You can manage your subscription anytime from billing settings. If anything looks wrong, reply to this email and the JUNO team will review it.',
+      `You can manage or cancel your subscription anytime from Billing in JUNO settings. If anything looks wrong, write to <a href="mailto:${SUPPORT_EMAIL}" style="color:#e8c77e;">${SUPPORT_EMAIL}</a> and the JUNO team will review it.`,
   });
+  const text = [
+    'Your JUNO payment went through',
+    '',
+    `Hi ${firstName}, your subscription is active and your payment has been confirmed.`,
+    '',
+    ...summaryRows.map((row) => `${row.label}: ${row.value}`),
+    '',
+    'You can manage or cancel your subscription anytime from Billing in JUNO settings.',
+    `If anything looks wrong, write to ${SUPPORT_EMAIL} and the JUNO team will review it.`,
+    '',
+    '- The JUNO Team',
+  ].join('\n');
 
   const resendResponse = await fetch(RESEND_API_URL, {
     method: 'POST',
@@ -805,6 +855,7 @@ async function sendPaymentConfirmationEmail(
       to: [profile.email],
       subject: `Payment confirmed - ${planLabel}`,
       html,
+      text,
     }),
   });
 

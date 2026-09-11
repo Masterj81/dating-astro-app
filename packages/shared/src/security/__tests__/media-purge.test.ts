@@ -31,7 +31,8 @@
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { cleanupEdgeModules, loadEdgeModule, readRepoFile } from '../../testing/edge-source';
+import { cleanupEdgeModules, loadEdgeModule, loadWholeModule, readRepoFile }
+  from '../../testing/edge-source';
 
 const PURGE_FILE = 'supabase/functions/purge-user-media/index.ts';
 const CRON_FILE = 'supabase/functions/process-expired-deletions/index.ts';
@@ -109,11 +110,14 @@ type WebModule = {
     userId: string,
     deps: { baseUrl: string; secret: string; fetchImpl: unknown },
   ) => Promise<{ jobCreated: boolean; done: boolean }>;
-  deletionEmailText: (purgeComplete: boolean) => string;
+};
+type WebEmailModule = {
+  deletionCompletedEmail: (purgeComplete: boolean) => { html: string; text: string };
 };
 
 let purge: PurgeModule;
 let cron: CronModule;
+let webEmail: WebEmailModule;
 let web: WebModule;
 
 beforeAll(async () => {
@@ -143,8 +147,13 @@ beforeAll(async () => {
   web = await loadEdgeModule<WebModule>({
     file: WEB_FILE,
     label: 'web-confirm-deletion',
-    declarations: ['PURGE_FUNCTION_PATH', 'requestMediaPurge', 'deletionEmailText'],
+    declarations: ['PURGE_FUNCTION_PATH', 'requestMediaPurge'],
   });
+  // The confirmation email is rendered by its own module since 11 Sep 2026
+  // (the gold transactional set); the honesty rule below is asserted on what
+  // the route actually sends — HTML and text — not on a helper nothing calls.
+  webEmail = await loadWholeModule<WebEmailModule>(
+    'apps/web/src/lib/account-deletion-email.ts', 'web-account-deletion-email');
 });
 
 afterAll(() => cleanupEdgeModules());
@@ -876,22 +885,29 @@ describe('JUNO-09 · deployed invariants', () => {
   });
 
   it('the confirmation email no longer claims more than was measured', () => {
-    const complete = web.deletionEmailText(true);
-    const partial = web.deletionEmailText(false);
+    const complete = webEmail.deletionCompletedEmail(true);
+    const partial = webEmail.deletionCompletedEmail(false);
 
-    // The retired `matches` table, named in the old text.
-    expect(complete).not.toMatch(/\bmatches\b/i);
-    expect(partial).not.toMatch(/\bmatches\b/i);
-
-    expect(complete).toMatch(/uploaded files/i);
-    expect(complete).toMatch(/verification video/i);
-    // The honest half: it does not say everything is gone when it is not.
-    expect(partial).toMatch(/still being deleted/i);
-    expect(partial).not.toMatch(/have all been removed/i);
-    for (const text of [complete, partial]) {
-      expect(text).toMatch(/permanently deleted/i);
-      expect(text).toMatch(/support@astrodatingapp\.com/);
+    for (const doc of [complete.html, complete.text, partial.html, partial.text]) {
+      // The retired `matches` table, named in the old text.
+      expect(doc).not.toMatch(/\bmatches\b/i);
+      expect(doc).toMatch(/has been deleted/i);
+      expect(doc).toMatch(/support@junosynastry\.com/);
     }
+    for (const doc of [complete.html, complete.text]) {
+      expect(doc).toMatch(/uploaded files/i);
+      expect(doc).toMatch(/verification video/i);
+    }
+    // The honest half: it does not say everything is gone when it is not.
+    for (const doc of [partial.html, partial.text]) {
+      expect(doc).toMatch(/still being deleted/i);
+      expect(doc).not.toMatch(/have all been removed/i);
+      expect(doc).not.toMatch(/uploaded files[^.]*have been removed/i);
+    }
+    // And the route hands the renderer the MEASUREMENT, never a literal.
+    const route = readRepoFile('apps/web/src/app/api/account/confirm-deletion/route.ts');
+    expect(route).toMatch(/deletionCompletedEmail\(purge\.done\)/);
+    expect(route).not.toMatch(/deletionCompletedEmail\((true|false)\)/);
   });
 
   it('neither the grace-window nor the cancellation path can purge anything', () => {
