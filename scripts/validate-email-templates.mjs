@@ -738,8 +738,8 @@ check('contact (source): only the escaped variables reach the HTML',
     return calls.length === 2 && calls.every((c) => !/\$\{(name|email|category|message)\}/.test(c));
   })());
 check('contact (source): auto-reply does not say "reply to this email"', !/just reply to this email/i.test(contactSrc));
-check('contact (source): the functional inbox is unchanged and documented',
-  /to: "support@astrodatingapp\.com"/.test(contactSrc) && /The FUNCTIONAL inbox/.test(contactSrc));
+check('contact (source): sends to the verified JUNO support inbox',
+  /to: "support@junosynastry\.com"/.test(contactSrc) && /functional JUNO inbox/.test(contactSrc));
 
 for (const [label, src] of [['delete-account', deleteSrc], ['stripe-webhook', stripeSrc], ['contact', contactSrc], ['lifecycle templates', readFileSync(TEMPLATES_TS, 'utf8')]]) {
   for (const [re, why] of LEGACY_COLOURS) check(`${label} (source): free of the ${why}`, !re.test(src));

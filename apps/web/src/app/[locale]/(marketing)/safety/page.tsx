@@ -113,8 +113,8 @@ export default function SafetyPage() {
           </p>
           <p className="text-sm text-text-muted mt-1">
             <strong>General Support:</strong>{" "}
-            <a href="mailto:support@astrodatingapp.com" className="text-purple-light hover:underline">
-              support@astrodatingapp.com
+            <a href="mailto:support@junosynastry.com" className="text-purple-light hover:underline">
+              support@junosynastry.com
             </a>
           </p>
           <p className="mt-3 text-sm text-text-muted">{t("s7_response")}</p>

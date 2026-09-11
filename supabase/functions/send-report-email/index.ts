@@ -4,7 +4,7 @@ const RESEND_API_URL = "https://api.resend.com/emails";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const FROM_EMAIL =
   Deno.env.get("EMAIL_FROM") || "JUNO <noreply@junosynastry.com>";
-const SUPPORT_EMAIL = "support@astrodatingapp.com";
+const SUPPORT_EMAIL = "support@junosynastry.com";
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
