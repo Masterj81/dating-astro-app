@@ -220,6 +220,19 @@ export default function SettingsScreen() {
 
           <TouchableOpacity
             style={styles.settingsRow}
+            onPress={() => router.push('/settings/account-security')}
+            accessibilityRole="button"
+            accessibilityLabel={t('accountSecurity')}
+          >
+            <View style={styles.rowLeft}>
+              <Text style={styles.rowIcon}>{'\u{1F512}'}</Text>
+              <Text style={styles.rowText}>{t('accountSecurity')}</Text>
+            </View>
+            <Text style={styles.rowArrow}>{'\u{2192}'}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingsRow}
             onPress={() => router.push('/settings/preferences')}
             accessibilityRole="button"
             accessibilityLabel={t('discoveryPreferences') || 'Discovery Preferences'}
@@ -461,7 +474,7 @@ export default function SettingsScreen() {
 
           <TouchableOpacity
             style={styles.settingsRow}
-            onPress={() => openLink('mailto:support@astrodatingapp.com')}
+            onPress={() => openLink('mailto:support@junosynastry.com')}
           >
             <View style={styles.rowLeft}>
               <Text style={styles.rowIcon}>✉️</Text>
