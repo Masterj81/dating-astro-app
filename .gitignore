@@ -145,3 +145,11 @@ apps/*/app/**/*.tar.gz
 apps/*/app/**/*.tgz
 apps/*/app/**/*.7z
 apps/*/app/**/*.rar
+
+# JUNO-09 phase C — artefacts de campagne de rattrapage.
+#
+# Le manifeste nomme chaque objet Storage sur le point d etre supprime, par
+# son identifiant opaque. L approbation porte la signature du serveur. Ni l un
+# ni l autre ne doit entrer dans l historique : un manifeste committe une fois
+# y reste pour toujours. Le CLI REFUSE de tourner si ce chemin n est pas ignore.
+.juno09/

@@ -5,8 +5,10 @@
 // All three deletion paths called `auth.admin.deleteUser()` and nothing else.
 // The FK cascade removes `profiles` and everything hanging off it; it removes no
 // storage object, because `storage.objects` has no foreign key to `auth.users`.
-// Five objects are still in storage from accounts that no longer exist, the
-// oldest from 1 February 2026, and one of them is a video of someone's face.
+// Five objects were still in storage from accounts that no longer existed, the
+// oldest from 1 February 2026, and one of them was a video of someone's face —
+// deleted by the phase C campaign on 11 Sep 2026. This suite is phase B: what
+// happens to the media of every account deleted from now on.
 //
 // The suite executes the REAL functions extracted from the deployed sources —
 // `supabase/functions/purge-user-media/index.ts` and the two executors — rather
@@ -33,9 +35,10 @@ import { cleanupEdgeModules, loadEdgeModule, readRepoFile } from '../../testing/
 
 const PURGE_FILE = 'supabase/functions/purge-user-media/index.ts';
 const CRON_FILE = 'supabase/functions/process-expired-deletions/index.ts';
-const WEB_ROUTE = 'apps/web/src/app/api/account/confirm-deletion/route.ts';
-// Les helpers vivent dans un module : une route App Router ne peut exporter que
-// ses gestionnaires HTTP, et le typecheck le refuse autrement.
+// Les helpers vivent dans un module et non dans la route : un `route.ts` de
+// l App Router ne peut exporter que ses gestionnaires HTTP, et le typecheck le
+// refuse autrement. Le fait que la route delegue est asserte par
+// scripts/validate-media-purge.mjs, pas ici.
 const WEB_FILE = 'apps/web/src/lib/media-purge.ts';
 const DETECTOR = 'supabase/tests/diagnose_media_ownership.sql';
 const TABLE_MIGRATION = 'supabase/migrations/20260910000002_media_purge_jobs.sql';
