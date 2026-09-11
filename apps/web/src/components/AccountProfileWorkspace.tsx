@@ -110,6 +110,10 @@ type PasswordFormState = {
   confirmPassword: string;
 };
 
+type EmailFormState = {
+  nextEmail: string;
+};
+
 type EditingSection = "summary" | "birth" | "preferences" | "mvp" | "security" | null;
 
 const MAX_BIO_LENGTH = 500;
@@ -359,6 +363,7 @@ export function AccountProfileWorkspace({
     nextPassword: "",
     confirmPassword: "",
   });
+  const [emailForm, setEmailForm] = useState<EmailFormState>({ nextEmail: "" });
   const [mvpForm, setMvpForm] = useState<MvpFormState>({
     intent: null,
     connectionIntentions: [...DEFAULT_CONNECTION_INTENTIONS],
@@ -377,7 +382,9 @@ export function AccountProfileWorkspace({
   const [savingBirth, setSavingBirth] = useState(false);
   const [savingPreferences, setSavingPreferences] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [savingEmail, setSavingEmail] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -567,6 +574,7 @@ export function AccountProfileWorkspace({
       if (updateError) throw updateError;
 
       setProfile((current) => (current ? { ...current, photos: nextPhotos } : current));
+      setImageLoadFailed(false);
       setSuccess(t("profilePhotoUpdated"));
     } catch (uploadFailure) {
       setError(uploadFailure instanceof Error ? uploadFailure.message : t("profilePhotoError"));
@@ -794,6 +802,33 @@ export function AccountProfileWorkspace({
     }
   };
 
+  const handleEmailSave = async () => {
+    const nextEmail = emailForm.nextEmail.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(nextEmail)) {
+      setError(t("profileEmailInvalid"));
+      return;
+    }
+
+    if (nextEmail === sessionEmail.toLowerCase()) {
+      setError(t("profileEmailUnchanged"));
+      return;
+    }
+
+    try {
+      setSavingEmail(true);
+      resetMessages();
+      const supabase = getSupabaseBrowser();
+      const { error: updateError } = await supabase.auth.updateUser({ email: nextEmail });
+      if (updateError) throw updateError;
+      setEmailForm({ nextEmail: "" });
+      setSuccess(t("profileEmailSaveSuccess"));
+    } catch (saveFailure) {
+      setError(saveFailure instanceof Error ? saveFailure.message : t("unknownError"));
+    } finally {
+      setSavingEmail(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="rounded-[2rem] border border-border bg-card/90 p-6 text-sm text-text-muted">
@@ -814,6 +849,7 @@ export function AccountProfileWorkspace({
   }
 
   const imageSrc = resolveImageSrc(profile.photos?.[0]);
+  const displayedImageSrc = imageLoadFailed ? resolveImageSrc() : imageSrc;
   const isEditingSummary = isSetupMode || editingSection === "summary";
   const isEditingBirth = isSetupMode || editingSection === "birth";
   const isEditingPreferences = isSetupMode || editingSection === "preferences";
@@ -921,11 +957,12 @@ export function AccountProfileWorkspace({
         <div className="flex items-center gap-4">
           <div className="relative h-24 w-24 overflow-hidden rounded-3xl bg-bg-secondary">
             <Image
-              src={imageSrc}
+              src={displayedImageSrc}
               alt={profile.name || t("unknownUser")}
               fill
               sizes="96px"
-              unoptimized={shouldBypassImageOptimization(imageSrc)}
+              unoptimized={shouldBypassImageOptimization(displayedImageSrc)}
+              onError={() => setImageLoadFailed(true)}
               className="object-cover"
             />
             <button
@@ -1532,9 +1569,9 @@ export function AccountProfileWorkspace({
               <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
                 {t("profileSecurityLabel")}
               </p>
-              <h3 className="mt-3 text-xl font-semibold text-white">{t("profilePasswordTitle")}</h3>
+              <h3 className="mt-3 text-xl font-semibold text-white">{t("profileSecurityTitle")}</h3>
               <p className="mt-2 text-sm leading-7 text-text-muted">
-                {t("profilePasswordBody")}
+                {t("profileSecurityBody")}
               </p>
             </div>
             <SectionAction
@@ -1550,6 +1587,31 @@ export function AccountProfileWorkspace({
 
           {isEditingSecurity ? (
             <>
+              <div className="mt-5 rounded-[1.25rem] border border-border bg-card/40 p-4">
+                <p className="text-sm font-semibold text-white">{t("profileEmailTitle")}</p>
+                <p className="mt-1 text-sm text-text-muted">
+                  {t("profileEmailCurrent")}: {sessionEmail}
+                </p>
+                <div className="mt-4 flex flex-col gap-3 md:flex-row">
+                  <input
+                    type="email"
+                    autoComplete="email"
+                    value={emailForm.nextEmail}
+                    onChange={(event) => setEmailForm({ nextEmail: event.target.value })}
+                    placeholder={t("profileEmailNew")}
+                    className="min-w-0 flex-1 rounded-[1.25rem] border border-border bg-bg px-4 py-3 text-white outline-none transition-colors focus:border-accent"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleEmailSave}
+                    disabled={savingEmail}
+                    className="rounded-full border border-gold px-5 py-3 text-sm font-semibold text-gold transition-colors hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {savingEmail ? t("loading") : t("profileEmailSave")}
+                  </button>
+                </div>
+                <p className="mt-3 text-xs leading-5 text-text-dim">{t("profileEmailBody")}</p>
+              </div>
               <div className="mt-5 grid gap-4 md:grid-cols-2">
                 <label className="block">
                   <span className="mb-2 block text-sm font-medium text-text-muted">

@@ -9,7 +9,7 @@ export const SITE = {
   // domain. Keep astrodatingapp.com here until junosynastry.com mailboxes
   // are provisioned (see "Next manual actions" in the rebrand report).
   email: {
-    support: "support@astrodatingapp.com",
+    support: "support@junosynastry.com",
     privacy: "privacy@astrodatingapp.com",
     legal: "legal@astrodatingapp.com",
   },

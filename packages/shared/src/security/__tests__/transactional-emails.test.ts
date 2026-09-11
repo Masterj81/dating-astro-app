@@ -488,10 +488,16 @@ describe('contact form · escaped in, honest out', () => {
     expect(src).toMatch(/Write to <a href="mailto:\$\{SUPPORT_EMAIL\}"/);
   });
 
-  it('keeps the FUNCTIONAL inbox unchanged and documents why it differs from the displayed one', () => {
+  it('sends to the verified JUNO inbox — the same address the reader is shown', () => {
+    // Until 11 Sep 2026 the functional inbox was the legacy AstroDating
+    // mailbox and this test pinned it there, because nothing proved the brand
+    // mailbox received. Inbound delivery was then verified and the route
+    // switched; the comment above the send records that. The two addresses
+    // must now agree, so a reader who writes back reaches the inbox we read.
     const src = readRepoFile(CONTACT_ROUTE);
-    expect(src).toMatch(/to: "support@astrodatingapp\.com"/);
-    expect(src).toMatch(/The FUNCTIONAL inbox/);
+    expect(src).toMatch(/to: "support@junosynastry\.com"/);
+    expect(src).not.toMatch(/to: "support@astrodatingapp\.com"/);
+    expect(src).toMatch(/verified before replacing the legacy AstroDating mailbox/);
     expect(contact.SUPPORT_EMAIL).toBe(SUPPORT);
   });
 

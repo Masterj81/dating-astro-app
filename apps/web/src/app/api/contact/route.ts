@@ -103,14 +103,11 @@ export async function POST(request: Request) {
     const subjectName = sanitizeHeader(name);
     const subjectCategory = sanitizeHeader(category);
 
-    // The FUNCTIONAL inbox. It is not the brand address the reader sees
-    // (support@junosynastry.com, see SITE.email in lib/constants.ts): the
-    // mailboxes are bound to MX records, not to the public domain, and this
-    // one is where support mail is actually read. Do not change it to match
-    // the brand without proof that the new mailbox receives.
+    // The functional JUNO inbox. Inbound delivery to this address was
+    // verified before replacing the legacy AstroDating mailbox.
     await resend.emails.send({
       from: EMAIL_FROM,
-      to: "support@astrodatingapp.com",
+      to: "support@junosynastry.com",
       replyTo: sanitizeHeader(email),
       subject: `[${subjectCategory}] Contact form from ${subjectName}`,
       html: renderEmailShell({

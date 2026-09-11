@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
     if (!parsed) {
       return htmlResponse(
         "Invalid or expired link",
-        "We couldn't verify this cancellation link. If you still want to keep your account, please sign back in and contact support@astrodatingapp.com.",
+        "We couldn't verify this cancellation link. If you still want to keep your account, please sign back in and contact support@junosynastry.com.",
         400,
       );
     }

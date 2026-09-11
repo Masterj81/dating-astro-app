@@ -10,6 +10,7 @@ export default function SettingsLayout() {
     >
       <Stack.Screen name="index" />
       <Stack.Screen name="preferences" />
+      <Stack.Screen name="account-security" />
       <Stack.Screen name="blocked" />
       <Stack.Screen name="privacy-policy" />
       <Stack.Screen name="terms-of-service" />
