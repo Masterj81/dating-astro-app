@@ -3,41 +3,76 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Confirm email change</title>
+  <meta name="color-scheme" content="dark" />
+  <meta name="supported-color-schemes" content="dark" />
+  <title>Confirm your JUNO email change</title>
 </head>
-<body style="margin:0;padding:0;background-color:#0f0f1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f0f1a;padding:40px 0;">
+<body style="margin:0;padding:0;background-color:#070b16;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+    Confirm the new email address for your JUNO account. The link expires in one hour.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#070b16" style="width:100%;background-color:#070b16;background-image:radial-gradient(circle at top,rgba(232,199,126,0.12) 0%,#0b1020 42%,#070b16 100%);">
     <tr>
-      <td align="center">
-        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background-color:#1a1a2e;border-radius:12px;padding:40px;max-width:480px;">
+      <td align="center" style="padding:32px 14px;">
+        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" bgcolor="#12182a" style="width:100%;max-width:560px;background-color:#12182a;border:1px solid #2a3247;border-radius:28px;overflow:hidden;">
           <tr>
-            <td align="center" style="padding-bottom:24px;">
-              <span style="font-size:36px;">&#x2709;&#xFE0F;</span>
-              <h1 style="color:#ffffff;font-size:22px;margin:12px 0 0;">Confirm Email Change</h1>
+            <td bgcolor="#1c1b18" style="padding:28px 32px 24px;background-color:#1c1b18;background-image:linear-gradient(135deg,rgba(232,199,126,0.18),rgba(201,162,77,0.06));border-bottom:1px solid #4a402c;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="padding:8px 14px;border:1px solid #a9823d;border-radius:999px;color:#e8c77e;font-size:11px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;">
+                    Account security
+                  </td>
+                </tr>
+              </table>
+
+              <h1 style="margin:18px 0 10px;color:#ffffff;font-size:30px;line-height:1.15;letter-spacing:-0.03em;font-weight:700;">
+                Confirm your new email
+              </h1>
+              <p style="margin:0;color:#d4d9e7;font-size:16px;line-height:1.7;">
+                You asked to change the email address on your JUNO account. Confirm that this new address is yours.
+              </p>
             </td>
           </tr>
+
           <tr>
-            <td style="color:#c0c0c0;font-size:15px;line-height:1.6;padding-bottom:28px;">
-              You requested to change the email address on your JUNO account. Tap the button below to confirm this change.
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding-bottom:28px;">
-              <a href="{{ .ConfirmationURL }}"
-                 style="display:inline-block;background-color:#e94560;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:14px 36px;border-radius:8px;">
-                Confirm Change
-              </a>
-            </td>
-          </tr>
-          <tr>
-            <td style="color:#888888;font-size:13px;line-height:1.5;">
-              If the button doesn't work, copy and paste this link into your browser:<br />
-              <a href="{{ .ConfirmationURL }}" style="color:#a78bfa;word-break:break-all;">{{ .ConfirmationURL }}</a>
-            </td>
-          </tr>
-          <tr>
-            <td style="color:#555555;font-size:12px;padding-top:32px;border-top:1px solid #2a2a40;margin-top:24px;">
-              If you didn't request this change, please secure your account by resetting your password immediately.
+            <td style="padding:28px 32px 30px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#211f19" style="width:100%;margin:0 0 24px;background-color:#211f19;background-image:linear-gradient(135deg,rgba(232,199,126,0.16),rgba(201,162,77,0.05));border:1px solid #5c4d2e;border-radius:22px;">
+                <tr>
+                  <td style="padding:18px 20px;">
+                    <div style="margin:0 0 8px;color:#e8c77e;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;">
+                      One hour
+                    </div>
+                    <p style="margin:0;color:#ffffff;font-size:16px;line-height:1.7;">
+                      The link is personal and expires in one hour. Until you confirm, your account keeps its current address.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 4px;">
+                <tr>
+                  <td align="center" bgcolor="#e8c77e" style="border-radius:14px;">
+                    <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 28px;background-color:#e8c77e;border-radius:14px;color:#0b0b14;font-size:16px;font-weight:700;line-height:1.2;text-decoration:none;">
+                      Confirm my new email
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:10px 0 22px;color:#8f9ab5;font-size:12px;line-height:1.6;">
+                If the button doesn't work, paste this link into your browser:<br />
+                <a href="{{ .ConfirmationURL }}" style="color:#e8c77e;text-decoration:underline;word-break:break-all;">{{ .ConfirmationURL }}</a>
+              </p>
+
+              <div style="padding-top:18px;border-top:1px solid #2a3247;color:#b7bfd3;font-size:14px;line-height:1.75;">
+                If you didn't request this change, don't confirm it &mdash; and secure your account by resetting your password right away. Nothing changes without this link.
+              </div>
+
+              <div style="margin-top:14px;color:#7c869e;font-size:12px;line-height:1.7;">
+                This is a transactional account-security email, sent only because an email change was requested on this account.<br />
+                JUNO &mdash; Montr&eacute;al, Qu&eacute;bec, Canada
+              </div>
             </td>
           </tr>
         </table>

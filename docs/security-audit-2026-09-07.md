@@ -443,7 +443,8 @@ droit à l'effacement qui n'est pas honoré.
 > `docs/juno-29-evidence-2026-09-09.md` §7.
 >
 > **JUNO-09 reste ouvert et s'est alourdi d'un objet**, comme l'arbitrage le prévoyait : `avatars`
-> est passé de 3 à 4 orphelins, `verifications` reste à 1.
+> est passé de 3 à 4 orphelins, `verifications` reste à 1. *(État du 9 septembre. Les cinq ont été
+> supprimés le 11 septembre ; JUNO-09 est fermé — voir sa section en tête.)*
 
 | mesuré le 9 sep 2026 | |
 |---|---|
@@ -677,6 +678,91 @@ et `docs/runbooks/JUNO-31-EXECUTION.md` (checklist opérateur). Diagnostic :
 
 ---
 
+## JUNO-09 — FERMÉ le 11 septembre 2026
+
+Deux livrables, prouvés séparément en production. La **phase B** (10 septembre) fait qu'aucune
+suppression de compte ne laisse plus de média derrière elle. La **phase C** (11 septembre) a
+supprimé les cinq objets que les suppressions antérieures avaient laissés. Rien d'autre n'a bougé :
+90 objets avant, 85 après, et les 85 sont, un à un, ceux qui devaient rester.
+
+### Phase B — les suppressions futures, prouvées le 10 septembre
+
+| | mesuré |
+|---|---|
+| `media_purge_jobs` | **sans FK vers `auth.users`** ; RLS active, zéro policy, aucun privilège client ; RPC limitées au `service_role` |
+| parcours web `web_immediate` | testé : un avatar découvert et supprimé, travail terminé, aucun échec |
+| cron `media-purge-resume` | actif en `*/10`, commande figée en mode `resume`, secret lu depuis Vault |
+| cron `media-purge-retention` | actif en `17 4 * * *`, travaux terminés conservés 90 jours |
+| retard métier | **0** |
+
+### Phase C — le rattrapage historique, exécuté le 11 septembre
+
+**Décision préalable, consignée.** *Aucune obligation de conservation de la vidéo de vérification
+n'a été identifiée. La vidéo brute n'était plus nécessaire après la vérification et le compte avait
+demandé sa suppression. Elle a donc été incluse dans le rattrapage.* Aucune obligation n'a été
+inventée dans un sens ni dans l'autre : en l'absence d'une obligation écrite, la demande d'effacement
+commande.
+
+Campagne `2026-09-11-6cb356`. Empreintes tronquées, telles que le diagnostic les rend : manifeste
+`e8dd5a11993f2127`, approbation `a0ed3fd80f994ac9`. Ni les empreintes complètes, ni les identifiants
+d'objets, ni un chemin ne figurent ici — le registre lui-même ne peut pas en stocker.
+
+| | AVANT | APRÈS |
+|---|---|---|
+| orphelins `avatars` / `voice-intros` / `verifications` | **4 / 0 / 1** | **0 / 0 / 0** |
+| vidéo de vérification orpheline | 1 | **0** |
+| témoins `seed-*` | 60 | **60** |
+| objets de comptes vivants | `avatars=17` | **`avatars=17`** |
+| objets classés, classification exhaustive | 90 | 85 |
+| répartition — `ambiguous_ownership` / `unknown_path_shape` / `uuid` | 6 / 62 / 22 | 6 / 62 / **17** |
+| plus ancien orphelin | 2026-02-01 | aucun |
+| campagnes au registre | — | `executed=1`, aucune sans approbation |
+| retard métier phase B | 0 | 0 |
+| travaux `manual` de phase B | 2 (vérification contrôlée) | 2, inchangé |
+| comptes Auth | 365 | 365 |
+
+Résultat de l'exécution : **`deleted=5 · already_absent=0 · failed=0`**, aucune classe d'erreur,
+enregistré au registre. La baisse de 90 à 85 est exactement les cinq objets autorisés ; la classe
+`uuid` passe de 22 à 17, c'est-à-dire les 17 objets des comptes vivants, seuls.
+
+**La chaîne des portes est prouvée indépendamment**, par le diagnostic relu entre chaque porte :
+`discover` → registre `discovered`, empreinte identique, manifeste v2 assemblé et haché par le
+serveur ; `validate` → approbation signée par le serveur, registre `approved`, empreinte
+identique ; `execute` → registre vérifié **avant** la première suppression, une seule passe.
+
+Fin de procédure : manifeste et approbation locaux détruits par `shred`, presse-papiers écrasé,
+`ORPHAN_PURGE_SECRET` retiré de l'environnement, console fermée.
+
+### L'incident du 11 septembre, et ce qu'il a changé
+
+La première campagne s'est arrêtée à la porte C, proprement : `HTTP 409 manifest_mismatch`, zéro
+campagne enregistrée, zéro approbation, zéro suppression. Cause architecturale, pas un oubli : le CLI
+assemblait le manifeste **sur le poste**, donc le serveur ne le voyait pas pendant `discover`,
+`record_orphan_discovery` n'avait aucune empreinte à enregistrer, et la base refusait à raison
+l'approbation d'une campagne inconnue. Chaque porte avait un test ; aucun test n'exécutait la porte
+suivante après la précédente.
+
+Correctif — `TOOL_VERSION 1.1.0`, manifeste `juno09-orphan-manifest/2` : le serveur assemble et
+hache le manifeste, enregistre la découverte et la **relit** avant d'émettre ; les portes C et D
+reçoivent le manifeste **entier** et le serveur recalcule l'empreinte lui-même ; le registre est
+consulté avant la première suppression. Les portes sont des fonctions nommées — `gateDiscover`,
+`gateApprove`, `gateExecute`, `handleOrphanRequest` — et `orphan-purge-chain.test.ts` exécute
+la chaîne réelle contre un double du registre qui applique les refus de la migration. L'ancien
+manifeste a été détruit, ni récupéré ni enregistré après coup.
+
+**Invariant définitif : une campagne, une seule passe destructive.** Un timeout ou un résultat partiel
+enregistre et **ferme** la campagne ; une seconde exécution est refusée `campaign_closed` avant toute
+suppression ; ce qui reste demande une nouvelle campagne et un changement de plafond revu. Aucun
+document de ce dépôt ne dit plus qu'une campagne se rejoue.
+
+Garde-fous : `npm run validate:orphan-purge` (90 contrôles, chaque assertion bornée à la fonction de
+porte nommée), 60 tests sur le vrai code edge (49 par porte, 11 pour la chaîne), diagnostic
+`supabase/tests/diagnose_orphan_purge.sql` (19 contrôles, lecture seule). Runbooks :
+`docs/runbooks/orphan-media-catchup-2026-09.md` et `docs/runbooks/JUNO-09-PHASE-C-EXECUTION.md` ;
+conception : `docs/juno-09-phase-c-design-2026-09.md`.
+
+---
+
 ## 1. Résumé exécutif
 
 Le modèle de sécurité de JUNO est, dans l'ensemble, sérieux : RLS partout, `anon` sans SELECT
@@ -813,7 +899,7 @@ données publiées à côté (JUNO-01).
 | **JUNO-06** | Mobile | 9 fonctionnalités premium sur 11 gatées côté client uniquement | **Haute** | Haute | Confirmé |
 | **JUNO-07** | Web / API | `/api/contact` : relais mail non authentifié, sans limite de débit ni captcha | **Moyenne** | Haute | Confirmé |
 | **JUNO-08** | Backend / DB | `messages` : UPDATE accordé + policy sans `WITH CHECK` → réécriture de messages livrés | **Moyenne** | Moyenne | Probable |
-| **JUNO-09** | Vie privée | Aucun nettoyage du stockage à la suppression de compte (photos, voix, vidéos de vérification) | **Moyenne** | Haute | Confirmé — **phase B livrée le 10 sep 2026** ; rattrapage des 5 orphelins historiques toujours ouvert |
+| **JUNO-09** | Vie privée | Aucun nettoyage du stockage à la suppression de compte (photos, voix, vidéos de vérification) | **Moyenne** | Haute | Confirmé — **FERMÉ le 11 sep 2026** : phase B livrée le 10 sep, rattrapage des 5 orphelins historiques exécuté le 11 sep (`5/0/0`) |
 | **JUNO-10** | Web / Auth | Branche implicite résiduelle dans `auth/callback` → fixation de session | **Moyenne** | Moyenne | Probable |
 | **JUNO-11** | Infra / CORS | Les listes blanches retombent en mode permissif si `ENVIRONMENT ≠ production` | **Moyenne** | Moyenne | À vérifier dynamiquement |
 | **JUNO-12** | Supply chain | 47 vulnérabilités npm ; `next`, `next-intl`, `undici` atteignables à l'exécution | **Moyenne** | Haute | Confirmé |
@@ -1393,7 +1479,10 @@ trigger `update_conversation_last_message`, `SECURITY DEFINER`, donc insensible 
 
 ### JUNO-09 — La suppression de compte laisse les photos, la voix et les vidéos de vérification
 
-> **Phase B livrée le 10 septembre 2026 — JUNO-09 reste OUVERT.**
+> **FERMÉ le 11 septembre 2026.** Phase B livrée et prouvée le 10 septembre ; phase C — le
+> rattrapage des cinq orphelins historiques — exécutée le 11 septembre, campagne `2026-09-11-6cb356`,
+> `deleted=5 · already_absent=0 · failed=0`, 60 témoins et 17 médias de comptes vivants inchangés.
+> Preuves et incident : section « JUNO-09 — FERMÉ le 11 septembre 2026 » en tête de ce document.
 >
 > À partir de son déploiement, aucune suppression de compte ne laisse de média derrière elle : la
 > purge vit dans une fonction edge unique, `purge-user-media`, que les deux exécutants appellent en
@@ -1405,11 +1494,14 @@ trigger `update_conversation_last_message`, `SECURITY DEFINER`, donc insensible 
 > approchée : `scripts/seed-profile-photos.js` écrit `seed-{uuid}.jpg` à la racine du bucket, et il y
 > a 60 objets de cette forme dans `avatars` qu'une correspondance partielle supprimerait.
 >
-> Ce qui reste, et pourquoi ce n'est pas un oubli : **les cinq orphelins historiques** — 4 avatars et
-> **une vidéo de vérification** du 1ᵉʳ février 2026 — ne sont pas touchés. Aucun travail ne les
-> désigne, la tâche de reprise est figée en mode `resume`, et le détecteur n'a aucun mode destructif.
-> Leur rattrapage est un livrable distinct : `--dry-run` par défaut, manifeste immuable, plafond de
-> volume, validation humaine du rapport. `docs/runbooks/media-purge-2026-09.md` §8.
+> La phase B ne touchait pas **les cinq orphelins historiques** — 4 avatars et **une vidéo de
+> vérification** du 1ᵉʳ février 2026 — et ce n'était pas un oubli : aucun travail ne les désignait, la
+> tâche de reprise est figée en mode `resume`, le détecteur n'a aucun mode destructif. Leur
+> rattrapage a été un livrable distinct, exécuté le 11 septembre par quatre portes — découverte en
+> lecture seule, manifeste assemblé et haché par le serveur, validation signée par le serveur,
+> exécution exigeant simultanément `--execute`, le manifeste, l'approbation, un plafond de 5, le
+> projet, la re-vérification de l'absence du propriétaire et une confirmation chiffrée. Les cinq
+> objets sont partis ; les 85 autres, un à un, sont restés.
 >
 > Garde-fous : `npm run validate:media-purge` (57 contrôles) et 44 tests exécutant le **vrai** code
 > edge. Diagnostic : `supabase/tests/diagnose_media_purge_jobs.sql`, lecture seule.
@@ -2277,7 +2369,7 @@ cohabitent.
 | # | Action | Effort |
 |---|---|---|
 | 7 | **JUNO-02** — `can_use_premium_feature` + contrôle de blocage dans `get-profile-chart` et les RPC synastry | 1 j |
-| 8 | **JUNO-09** — purge du stockage avant `deleteUser`, sur les deux chemins ; script de rattrapage des dossiers orphelins | 4 h |
+| 8 | **JUNO-09** — purge du stockage avant `deleteUser`, sur les deux chemins ; script de rattrapage des dossiers orphelins. *Fait : phase B le 10 sep 2026, phase C le 11 sep 2026.* | 4 h |
 | 9 | **JUNO-05 + JUNO-13** — CSP à nonce + `strict-dynamic`, d'abord en `Report-Only` 48 h ; ajouter `frame-ancestors`, COOP, CORP, `worker-src` | 1 j |
 | 10 | **JUNO-07 + JUNO-14** — supprimer l'accusé de réception non authentifié, limite de débit persistée via `check_rate_limit`, Turnstile | 3 h |
 | 11 | **JUNO-12** — monter `next`, `next-intl`, `undici` ; `npm audit --omit=dev --audit-level=high` vide sur la pile runtime | ½ j |
@@ -2312,7 +2404,7 @@ cohabitent.
 | **Service worker** | **À valider** | Celui d'`apps/web` est un kill-switch exemplaire. Celui d'`apps/mobile` est un vrai cache non cloisonné — reste à établir s'il est encore servi (§8 H). |
 | **Android** | **Correct avec réserves** | Session en Keystore, permissions minimales déclarées, App Links vérifiés, `usesCleartextTraffic` non positionné. Réserves : `allowBackup`, absence de `dataExtractionRules`, manifeste fusionné non audité, et surtout le gating premium côté client. |
 | **iOS** | **Non applicable / hérite du web** | Pas d'application native livrée. Le canal iOS est la PWA, donc il hérite intégralement du verdict PWA — y compris JUNO-05, qui y touche 100 % des utilisateurs. |
-| **Localisation / vie privée** | **Insuffisant** | Aucune géolocalisation d'appareil, `product_events` sans PII, minimisation réfléchie dans `suggest-birth-cities`. Mais les coordonnées de naissance sont récupérables par tout compte (JUNO-01) et le droit à l'effacement n'est pas honoré sur les médias (JUNO-09). |
+| **Localisation / vie privée** | **Insuffisant** | Aucune géolocalisation d'appareil, `product_events` sans PII, minimisation réfléchie dans `suggest-birth-cities`. Mais les coordonnées de naissance sont récupérables par tout compte (JUNO-01) et le droit à l'effacement n'était pas honoré sur les médias (JUNO-09, **fermé le 11 sep 2026**). |
 | **Supply chain / CI-CD** | **Correct avec réserves** | Lockfile présent, aucun secret versionné, archive EAS assainie, huit validateurs métier en CI. Réserves : pas de `permissions`, actions non épinglées, aucun scan, trois vulnérabilités runtime. |
 
 ---

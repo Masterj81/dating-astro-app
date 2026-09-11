@@ -242,6 +242,23 @@ const REMOVE_EXCEPTIONS = new Set([
   // A reader deleting their OWN voice intro from the profile screen. User
   // action on a live account, not an account-deletion purge.
   'apps/mobile/services/voiceIntroService.ts',
+
+  // JUNO-09 phase C — the historical catch-up (11 Sep 2026). A SECOND storage
+  // deleter, and pinning it here is not a weakening of this check: the file is
+  // named, so a THIRD one still fails.
+  //
+  // Why it is legitimate rather than the drift this check exists to prevent:
+  // phase B deletes the media of an account being deleted NOW, driven by a
+  // `media_purge_jobs` row created before the deletion. Phase C deletes objects
+  // whose accounts vanished months ago, for which no such row exists and none
+  // can honestly be fabricated (constraint 13). They are different operations on
+  // different inputs, and merging them would mean inventing a provenance.
+  //
+  // What bounds it is a separate guard: `scripts/validate-orphan-purge.mjs`
+  // (90 checks on 11 Sep 2026) requires a manifest, a server-signed approval, a cap of five,
+  // and re-verification per entry — and asserts that phase B's own guarantees
+  // are untouched.
+  'supabase/functions/purge-orphan-media/index.ts',
 ]);
 
 const SKIP_DIRS = new Set(['node_modules', '.next', 'dist', 'build', '.expo', '.turbo']);
@@ -505,6 +522,7 @@ console.log(
   '  way the design says, not that Supabase Storage behaves as modelled — the\n' +
   '  vitest suite uses a double, and only the controlled verification in\n' +
   '  docs/runbooks/media-purge-2026-09.md §6 exercises the real service.\n' +
-  '  It also cannot see production: five historical orphans are still in storage,\n' +
-  '  and JUNO-09 is NOT closed until the catch-up plan has been run and verified.\n',
+  '  It also cannot see production. The five historical orphans were deleted by\n' +
+  '  the phase C campaign on 11 Sep 2026 (2026-09-11-6cb356, 5/0/0); JUNO-09 is\n' +
+  '  closed. The proof is the diagnostic, not this file.\n',
 );

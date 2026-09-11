@@ -129,9 +129,9 @@ export function renderEmailShell({
   const button = `
     <table cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 4px;">
       <tr>
-        <td align="center" bgcolor="#e94560" style="border-radius:14px;">
+        <td align="center" bgcolor="#e8c77e" style="border-radius:14px;">
           <a href="${cta.url}"
-             style="display:inline-block;padding:14px 28px;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:14px;background:#e94560;">
+             style="display:inline-block;padding:14px 28px;font-size:16px;font-weight:700;color:#0b0b14;text-decoration:none;border-radius:14px;background:#e8c77e;">
             ${cta.label}
           </a>
         </td>
@@ -142,23 +142,25 @@ export function renderEmailShell({
   // (misconfiguration), point at somewhere real instead of printing the word
   // "unsubscribe" with nothing behind it.
   const unsubscribeLine = unsubscribeUrl
-    ? `<a href="${unsubscribeUrl}" style="color:#8f9ab5;text-decoration:underline;">Unsubscribe from these emails</a>`
+    ? `<a href="${unsubscribeUrl}" style="color:#e8c77e;text-decoration:underline;">Unsubscribe from these emails</a>`
     : `Manage email preferences in JUNO under Settings &rsaquo; Notifications.`;
 
   return `<!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="supported-color-schemes" content="dark" />
   </head>
-  <body style="margin:0;padding:0;background:#0b1020;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:radial-gradient(circle at top left,#2d1638 0%,#0b1020 46%,#070b16 100%);padding:32px 14px;">
+  <body style="margin:0;padding:0;background-color:#070b16;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#070b16" style="width:100%;background-color:#070b16;background-image:radial-gradient(circle at top left,rgba(232,199,126,0.12) 0%,#0b1020 46%,#070b16 100%);padding:32px 14px;">
       <tr>
         <td align="center">
-          <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#12182a;border:1px solid #2a3247;border-radius:28px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.35);">
+          <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" bgcolor="#12182a" style="width:100%;max-width:560px;background-color:#12182a;border:1px solid #2a3247;border-radius:28px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.35);">
             <tr>
-              <td style="padding:28px 32px 18px;background:linear-gradient(135deg,rgba(244,114,182,0.18),rgba(167,139,250,0.08));border-bottom:1px solid #2a3247;">
-                <div style="display:inline-block;padding:9px 14px;border-radius:999px;border:1px solid #4b556f;color:#f8d4df;font-size:11px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;">
+              <td bgcolor="#1c1b18" style="padding:28px 32px 18px;background-color:#1c1b18;background-image:linear-gradient(135deg,rgba(232,199,126,0.18),rgba(201,162,77,0.08));border-bottom:1px solid #4a402c;">
+                <div style="display:inline-block;padding:9px 14px;border-radius:999px;border:1px solid #a9823d;color:#e8c77e;font-size:11px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;">
                   ${eyebrow}
                 </div>
                 <h1 style="margin:18px 0 10px;color:#ffffff;font-size:30px;line-height:1.15;letter-spacing:-0.03em;">
@@ -171,8 +173,8 @@ export function renderEmailShell({
             </tr>
             <tr>
               <td style="padding:28px 32px;">
-                <div style="margin-bottom:24px;padding:18px 20px;border-radius:22px;background:linear-gradient(135deg,rgba(236,72,153,0.22),rgba(99,102,241,0.14));border:1px solid rgba(255,255,255,0.08);color:#ffffff;">
-                  <div style="font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.72);margin-bottom:8px;">
+                <div style="margin-bottom:24px;padding:18px 20px;border-radius:22px;background-color:#211f19;background-image:linear-gradient(135deg,rgba(232,199,126,0.20),rgba(201,162,77,0.10));border:1px solid #5c4d2e;color:#ffffff;">
+                  <div style="font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#e8c77e;margin-bottom:8px;">
                     ${accentLabel}
                   </div>
                   ${accentBody}
@@ -181,7 +183,7 @@ export function renderEmailShell({
                 ${button}
                 <p style="margin:10px 0 22px;color:#8f9ab5;font-size:12px;line-height:1.6;">
                   If the button doesn't work, paste this into your browser:<br />
-                  <a href="${cta.url}" style="color:#8f9ab5;word-break:break-all;">${cta.url}</a>
+                  <a href="${cta.url}" style="color:#e8c77e;word-break:break-all;">${cta.url}</a>
                 </p>
 
                 <div style="color:#b7bfd3;font-size:14px;line-height:1.75;border-top:1px solid #2a3247;padding-top:18px;">
@@ -189,7 +191,7 @@ export function renderEmailShell({
                 </div>
                 <div style="margin-top:14px;color:#7c869e;font-size:12px;line-height:1.7;">
                   ${unsubscribeLine}<br />
-                  Questions? <a href="mailto:${SUPPORT_EMAIL}" style="color:#8f9ab5;">${SUPPORT_EMAIL}</a><br />
+                  Questions? <a href="mailto:${SUPPORT_EMAIL}" style="color:#e8c77e;">${SUPPORT_EMAIL}</a><br />
                   ${escapeHtml(SENDER_POSTAL_ADDRESS)}
                 </div>
               </td>

@@ -193,6 +193,15 @@ for (const name of names) {
     check(`${where}: html is non-empty`, typeof html === 'string' && html.length > 200);
     check(`${where}: text alternative is non-empty`, typeof text === 'string' && text.trim().length > 50);
 
+    // Brand palette: lifecycle emails must use the same gold CTA as the auth
+    // templates. The dark text is intentional for contrast on the gold fill.
+    check(`${where}: uses the JUNO gold palette`, /#e8c77e/i.test(html));
+    check(`${where}: gold CTA uses dark text`, /color:#0b0b14/i.test(html));
+    check(`${where}: excludes the legacy coral CTA`, !/#e94560/i.test(html));
+    check(`${where}: excludes the legacy pink-purple wash`,
+      !/rgba\(244\s*,\s*114\s*,\s*182/i.test(html) &&
+      !/rgba\(236\s*,\s*72\s*,\s*153/i.test(html));
+
     // --- the defect this whole patch exists to fix ---
     const anchors = [...html.matchAll(/<a\s+href="([^"]+)"/g)].map((m) => m[1]);
     check(`${where}: html contains at least one <a href>`, anchors.length > 0);
@@ -579,6 +588,185 @@ if (unsubSrc) {
 const configToml = readFileSync(path.join(ROOT, 'supabase', 'config.toml'), 'utf8');
 check('config.toml: unsubscribe is exempt from JWT verification',
   /\[functions\.unsubscribe\]\s*\nverify_jwt = false/.test(configToml));
+
+// ---------------------------------------------------------------------------
+// Transactional emails — the gold set of 11 Sep 2026
+// ---------------------------------------------------------------------------
+// The account-deletion journey (code → scheduled → completed), the payment
+// confirmation, the contact pair and the three Supabase Auth templates. The web
+// deletion module is RENDERED here, the way the lifecycle templates are; the
+// Deno renderers cannot be imported under Node and are checked at the source,
+// labelled as such. The behavioural assertions on those — hostile names, hostile
+// cancel URLs, the two honest states — live in
+// packages/shared/src/security/__tests__/transactional-emails.test.ts, which
+// executes the real functions. This section is the cheap guard that runs on
+// every validate:*; that suite is the proof.
+section('Transactional emails');
+
+const LEGACY_COLOURS = [
+  [/#e94560/i, 'coral CTA'],
+  [/#ec4899/i, 'pink accent'],
+  [/#a78bfa/i, 'lavender link'],
+  [/#6366f1/i, 'indigo wash'],
+  [/#2d1638/i, 'purple ground'],
+  [/#f8d4df/i, 'pink eyebrow'],
+  [/#f9a8d4/i, 'pink link'],
+  [/rgba\(\s*244\s*,\s*114\s*,\s*182/i, 'pink wash'],
+  [/rgba\(\s*236\s*,\s*72\s*,\s*153/i, 'magenta wash'],
+  [/rgba\(\s*167\s*,\s*139\s*,\s*250/i, 'lavender wash'],
+  [/rgba\(\s*99\s*,\s*102\s*,\s*241/i, 'indigo wash'],
+  [/#0f0f1a|#1a1a2e|#2a2a40/i, 'first-generation greys'],
+];
+
+function gradientOffenders(html) {
+  const out = [];
+  for (const m of html.matchAll(/style="([^"]*)"/g)) {
+    const style = m[1];
+    if (!/background-image\s*:\s*(linear|radial)-gradient/.test(style)) continue;
+    if (!/background-color\s*:\s*#[0-9a-f]{3,6}/i.test(style)) out.push(style.slice(0, 60));
+  }
+  for (const m of html.matchAll(/background\s*:\s*(linear|radial)-gradient[^;"]*/g)) out.push(m[0].slice(0, 60));
+  return out;
+}
+
+function checkRenderedTransactional(where, html, text) {
+  check(`${where}: html is non-empty`, typeof html === 'string' && html.length > 500);
+  check(`${where}: text alternative is non-empty`, typeof text === 'string' && text.trim().length > 80);
+  check(`${where}: uses the JUNO gold palette`, /#e8c77e/i.test(html));
+  for (const [re, why] of LEGACY_COLOURS) check(`${where}: free of the ${why}`, !re.test(html));
+  for (const [pattern, why] of BANNED) {
+    const m = (html + '\n' + text).match(pattern);
+    check(`${where}: free of "${pattern.source}" (${why})`, !m, m ? `matched: ${m[0]}` : '');
+  }
+  const opens = (html.match(/<a\s/gi) ?? []).length;
+  const closes = (html.match(/<\/a>/gi) ?? []).length;
+  check(`${where}: anchors are balanced`, opens === closes, `${opens} <a> vs ${closes} </a>`);
+  check(`${where}: every gradient has a solid fallback`, gradientOffenders(html).length === 0,
+    gradientOffenders(html).join(' | '));
+  check(`${where}: card is fluid on mobile`, /width:100%;max-width:560px/.test(html));
+  check(`${where}: layout tables are presentation`, /role="presentation"/.test(html));
+  check(`${where}: declares its language`, /<html lang="en">/.test(html));
+  check(`${where}: shows the support address`, html.includes('support@junosynastry.com') && text.includes('support@junosynastry.com'));
+}
+
+// --- the web deletion module, rendered -------------------------------------
+const WEB_EMAIL_TS = path.join(ROOT, 'apps', 'web', 'src', 'lib', 'account-deletion-email.ts');
+let webEmail = null;
+try {
+  webEmail = await import(pathToFileURL(WEB_EMAIL_TS).href);
+} catch (err) {
+  check('account-deletion-email.ts loads under Node (imports nothing)', false, err.message);
+}
+if (webEmail) {
+  const SAMPLE_CODE = '0123456789ABCDEF';
+  const code = webEmail.deletionCodeEmail(SAMPLE_CODE);
+  checkRenderedTransactional('deletion code', code.html, code.text);
+  check('deletion code: code present in text', code.text.includes(SAMPLE_CODE));
+  check('deletion code: code present in html (grouped)', code.html.includes('0123&nbsp;&nbsp;4567&nbsp;&nbsp;89AB&nbsp;&nbsp;CDEF'));
+  check('deletion code: 10-minute expiry in both', /10 minutes/.test(code.html) && /10 minutes/.test(code.text));
+  check('deletion code: never inside a URL',
+    [...code.html.matchAll(/href="([^"]+)"/g)].every((m) => !m[1].includes('0123') && m[1].startsWith('mailto:')));
+  check('deletion code: "never send this code" warning', /Never send this code/i.test(code.html) && /Never send this code/i.test(code.text));
+  check('deletion code: refuses a malformed code',
+    (() => { try { webEmail.deletionCodeEmail('<b>x</b>'); return false; } catch { return true; } })());
+
+  const done = webEmail.deletionCompletedEmail(true);
+  const partial = webEmail.deletionCompletedEmail(false);
+  checkRenderedTransactional('deletion completed (purge done)', done.html, done.text);
+  checkRenderedTransactional('deletion completed (purge partial)', partial.html, partial.text);
+  for (const doc of [done.html, done.text]) {
+    check('deletion completed (purge done): says the files are removed', /uploaded files[^.]*have been removed/i.test(doc));
+    check('deletion completed (purge done): names the verification video', /verification video/i.test(doc));
+  }
+  for (const doc of [partial.html, partial.text]) {
+    check('deletion completed (purge partial): does not claim the files are gone', !/uploaded files[^.]*have been removed/i.test(doc) && !/have all been removed/i.test(doc));
+    check('deletion completed (purge partial): gives the 24-hour bound', /within 24 hours/i.test(doc));
+  }
+  check('deletion completed: deterministic', JSON.stringify(done) === JSON.stringify(webEmail.deletionCompletedEmail(true)));
+}
+
+// --- the routes hand the renderer the measurement, and send html + text ------
+const REQUEST_ROUTE = path.join(ROOT, 'apps', 'web', 'src', 'app', 'api', 'account', 'request-deletion', 'route.ts');
+const CONFIRM_ROUTE = path.join(ROOT, 'apps', 'web', 'src', 'app', 'api', 'account', 'confirm-deletion', 'route.ts');
+const CONTACT_ROUTE = path.join(ROOT, 'apps', 'web', 'src', 'app', 'api', 'contact', 'route.ts');
+const DELETE_FN = path.join(ROOT, 'supabase', 'functions', 'delete-account', 'index.ts');
+const STRIPE_FN = path.join(ROOT, 'supabase', 'functions', 'stripe-webhook', 'index.ts');
+const WEB_LIB = path.join(ROOT, 'apps', 'web', 'src', 'lib', 'media-purge.ts');
+const rd = (p) => (existsSync(p) ? readFileSync(p, 'utf8') : '');
+
+const requestSrc = rd(REQUEST_ROUTE);
+const confirmSrc = rd(CONFIRM_ROUTE);
+check('request-deletion (source): renders through deletionCodeEmail(code)', /deletionCodeEmail\(code\)/.test(requestSrc));
+check('request-deletion (source): sends html and text', /html: deletionEmail\.html/.test(requestSrc) && /text: deletionEmail\.text/.test(requestSrc));
+check('confirm-deletion (source): renders through deletionCompletedEmail(purge.done), never a literal',
+  /deletionCompletedEmail\(purge\.done\)/.test(confirmSrc) && !/deletionCompletedEmail\((true|false)\)/.test(confirmSrc));
+check('confirm-deletion (source): sends html and text', /html: deletionEmail\.html/.test(confirmSrc) && /text: deletionEmail\.text/.test(confirmSrc));
+check('confirm-deletion (source): the JUNO-09 guard precedes deleteUser, which precedes the email',
+  (() => {
+    const g = confirmSrc.indexOf('if (!purge.jobCreated) {');
+    const d = confirmSrc.indexOf('auth.admin.deleteUser(user.id)');
+    const e = confirmSrc.indexOf('deletionCompletedEmail(purge.done)');
+    return g > 0 && d > g && e > d;
+  })());
+check('media-purge.ts (source): no longer renders email copy', !/export function deletionEmailText/.test(rd(WEB_LIB)));
+
+const deleteSrc = rd(DELETE_FN);
+check('delete-account (source): renderer is a named export outside Deno.serve',
+  deleteSrc.indexOf('export function renderDeletionScheduledEmail') > 0 &&
+    deleteSrc.indexOf('export function renderDeletionScheduledEmail') < deleteSrc.indexOf('Deno.serve('));
+check('delete-account (source): sends html and text from the renderer',
+  /html: scheduledEmail\.html/.test(deleteSrc) && /text: scheduledEmail\.text/.test(deleteSrc));
+check('delete-account (source): cancel URL is validated by shape before rendering',
+  /isAcceptableCancelUrl\(input\.cancelUrl, input\.supabaseUrl\)/.test(deleteSrc));
+check('delete-account (source): "Keep my JUNO account" on a table button with bgcolor',
+  /bgcolor="#e8c77e"[^>]*>\s*<a href="\$\{safeCancel\}"[^>]*color:#0b0b14[^>]*>Keep my JUNO account/.test(deleteSrc));
+check('delete-account (source): never logs the cancel URL or token', !/console\.\w+\([^)]*cancel(Url|Token)/.test(deleteSrc));
+
+const stripeSrc = rd(STRIPE_FN);
+check('stripe-webhook (source): the reader\'s name is escaped', /Hi \$\{escapeHtml\(firstName\)\}/.test(stripeSrc));
+check('stripe-webhook (source): summary rows are escaped', /\$\{escapeHtml\(row\.label\)\}/.test(stripeSrc) && /\$\{escapeHtml\(row\.value\)\}/.test(stripeSrc));
+check('stripe-webhook (source): sends a text alternative', /html,\s*text,/.test(stripeSrc));
+check('stripe-webhook (source): does not invite a reply to noreply@', !/reply to this email/i.test(stripeSrc));
+
+const contactSrc = rd(CONTACT_ROUTE);
+check('contact (source): every reader field is escaped before the HTML',
+  ['name', 'email', 'category', 'message'].every((k) => new RegExp(`const safe\\w* = htmlEscape\\(${k}\\)`).test(contactSrc)));
+check('contact (source): only the escaped variables reach the HTML',
+  (() => {
+    // Both html: renderEmailShell({ … }) calls, and not one raw field inside.
+    const calls = [...contactSrc.matchAll(/html: renderEmailShell\(\{[\s\S]*?\}\),/g)].map((m) => m[0]);
+    return calls.length === 2 && calls.every((c) => !/\$\{(name|email|category|message)\}/.test(c));
+  })());
+check('contact (source): auto-reply does not say "reply to this email"', !/just reply to this email/i.test(contactSrc));
+check('contact (source): the functional inbox is unchanged and documented',
+  /to: "support@astrodatingapp\.com"/.test(contactSrc) && /The FUNCTIONAL inbox/.test(contactSrc));
+
+for (const [label, src] of [['delete-account', deleteSrc], ['stripe-webhook', stripeSrc], ['contact', contactSrc], ['lifecycle templates', readFileSync(TEMPLATES_TS, 'utf8')]]) {
+  for (const [re, why] of LEGACY_COLOURS) check(`${label} (source): free of the ${why}`, !re.test(src));
+  check(`${label} (source): uses the gold palette`, /#e8c77e/i.test(src));
+}
+
+// --- the Supabase Auth templates: pasted into the Dashboard as-is -----------
+for (const name of ['confirmation', 'recovery', 'email_change']) {
+  const file = path.join(ROOT, 'supabase', 'templates', `${name}.html`);
+  const html = rd(file);
+  const where = `auth template ${name}`;
+  check(`${where}: exists`, html.length > 0);
+  check(`${where}: keeps {{ .ConfirmationURL }} exactly — two hrefs and the visible fallback`,
+    html.split('{{ .ConfirmationURL }}').length - 1 === 3 && html.split('href="{{ .ConfirmationURL }}"').length - 1 === 2);
+  check(`${where}: no other Supabase placeholder and no query string appended`,
+    !/\{\{\s*\.(Token|TokenHash|SiteURL|RedirectTo)\s*\}\}/.test(html) && !/ConfirmationURL \}\}[?&]/.test(html));
+  check(`${where}: gold table button with dark text`,
+    /<td align="center" bgcolor="#e8c77e"[^>]*>\s*<a href="\{\{ \.ConfirmationURL \}\}"[^>]*color:#0b0b14/.test(html));
+  for (const [re, why] of LEGACY_COLOURS) check(`${where}: free of the ${why}`, !re.test(html));
+  const opens = (html.match(/<a\s/gi) ?? []).length;
+  const closes = (html.match(/<\/a>/gi) ?? []).length;
+  check(`${where}: anchors are balanced`, opens === closes);
+  check(`${where}: every gradient has a solid fallback`, gradientOffenders(html).length === 0);
+  check(`${where}: card is fluid on mobile`, /width:100%;max-width:560px/.test(html));
+  check(`${where}: free of the legacy brand`, !/astrodating/i.test(html));
+  check(`${where}: declared in config.toml`, new RegExp(`\\[auth\\.email\\.template\\.${name}\\][\\s\\S]{0,120}content_path = "\\./supabase/templates/${name}\\.html"`).test(configToml));
+}
 
 // ---------------------------------------------------------------------------
 

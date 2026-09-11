@@ -294,7 +294,7 @@ describe('malformed tokens', () => {
       'v3.abc.def',
       'a.b.c.d',
       'onepart',
-      ' ',
+      '\u0000',
       'v2.YWJj.ééé',
       'a'.repeat(mod.MAX_TOKEN_LENGTH + 1),
       `v2.${'a'.repeat(mod.MAX_TOKEN_LENGTH)}.sig`,

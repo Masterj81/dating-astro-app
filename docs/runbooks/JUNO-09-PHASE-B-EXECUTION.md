@@ -582,6 +582,11 @@ Archiver les preuves suivantes sans données sensibles :
 - [ ] 233 tests edge verts ;
 - [ ] état exact de Supabase, Vercel et du dépôt.
 
+> **Mise à jour du 11 septembre 2026.** Le rattrapage historique a été exécuté — campagne
+> `2026-09-11-6cb356`, `deleted=5 · already_absent=0 · failed=0`, témoins et médias des comptes
+> vivants inchangés, retard de phase B toujours à 0. **JUNO-09 est fermé.** Voir
+> `JUNO-09-PHASE-C-EXECUTION.md` et l'audit.
+
 La phase B peut être déclarée déployée et prouvée. **JUNO-09 reste ouvert** tant
 que le rattrapage historique séparé n'a pas supprimé les cinq orphelins après
 validation humaine.

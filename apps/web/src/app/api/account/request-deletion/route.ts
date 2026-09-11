@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { createHash, randomBytes, timingSafeEqual } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getResend, EMAIL_FROM } from "@/lib/resend";
+import { deletionCodeEmail } from "@/lib/account-deletion-email";
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_MAX = 3;
@@ -89,11 +90,13 @@ export async function POST(request: Request) {
       );
     }
 
+    const deletionEmail = deletionCodeEmail(code);
     await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
       subject: "Account Deletion Code - JUNO",
-      text: `Your account deletion verification code is: ${code}\n\nThis code expires in 10 minutes.\n\nIf you didn't request this, you can safely ignore this email.\n\n- The JUNO Team`,
+      html: deletionEmail.html,
+      text: deletionEmail.text,
     });
 
     return NextResponse.json({ success: true });
