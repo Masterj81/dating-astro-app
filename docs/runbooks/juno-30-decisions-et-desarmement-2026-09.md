@@ -1,6 +1,6 @@
 # JUNO-30 — décisions produit et désarmement du push horoscope
 
-**Date des décisions : 14 septembre 2026 · Statut : migration PRÉPARÉE, NON APPLIQUÉE.**
+**Date des décisions : 14 septembre 2026 · Statut : migration APPLIQUÉE le 14 septembre (v4, commit `ff37ff8`) — fermeture suspendue à la passe C après le prochain 12:00 UTC.**
 
 Documents de référence : [`../security-audit-2026-09-07.md`](../security-audit-2026-09-07.md)
 (constat JUNO-30, mesures), [`scheduled-emails-cron-2026-09.md`](scheduled-emails-cron-2026-09.md)
@@ -152,14 +152,39 @@ sinon la décision produit se serait lue comme une panne, indéfiniment.
 5. **Diagnostic avant/après** :
    `supabase/tests/diagnose_juno30_horoscope_closure.sql` — passe A (avant),
    passe B (après : verdict intentionnel, historique préservé **si le job
-   préexistait**, privilèges), passe C (lendemain après 12:00 UTC : aucun
-   nouveau 401 au-delà du repère noté en B).
+   préexistait**, privilèges ; repère noté = `2026-09-14 12:00:00`), passe C
+   (lendemain après 12:00 UTC). **Passe C, preuve principale sur l'identité du
+   cron désarmé** (corrigée le 14 septembre sur revue) : `passages_apres_repere
+   = 0` sur le job `daily-horoscope-push` dans `cron.job_run_details`,
+   `dernier_passage = 2026-09-14 12:00:00+00` — le compteur global de 401
+   pg_net n'est qu'un indicateur **secondaire**, et un nouveau 401 global ne
+   doit **pas** être attribué au push horoscope sans corrélation supplémentaire
+   (pg_net ne relie pas une réponse à sa tâche émettrice).
 
 ### Application
 
 Dans l'éditeur SQL (jamais `db push` — JUNO-15), d'un seul tenant, puis lire les
 NOTICE et exécuter la requête de supervision. **Ne s'applique que sur mon accord
 explicite : rien n'a été appliqué le 14 septembre.**
+
+### Incidents d'application — 14 septembre 2026 (consignés, corrigés, état final conforme)
+
+Quatre empreintes se sont succédé le jour de l'application ; l'état de production
+a toujours été soit l'état antérieur (v1), soit l'état voulu avec un défaut
+fail-visible (v2, v3) — jamais un faux vert. **La version appliquée finale est
+v4, identique octet pour octet au commit `ff37ff8`** (git blob `6f89cdb5`).
+
+| version | SHA-256 | sort |
+|---|---|---|
+| v1 | `CF253661…` | **application refusée par sa propre auto-vérification** : `NULL` non castés dans le `RETURN QUERY` de la passe « décisions sans tâche » (text vs boolean/timestamptz/integer). Transaction annulée avant COMMIT ; contrôle post-échec : registre absent, tâche active, 147 passages intacts — **rien appliqué**. |
+| v2 | `0689AED8…` | appliquée, puis **régression détectée à la vérification** : la variable plpgsql `d` de la passe des décisions collisionnait avec l'alias `d` de `cron.job_run_details` — PL/pgSQL substitue la variable au même nom, la lecture d'historique échouait silencieusement pour TOUTES les tâches (verdicts `INDETERMINE`, jamais `OK` : fail-visible, sans faux apaisement). |
+| v3 | `AD48CAA7…` | appliquée (collision corrigée), mais **R5 a attrapé un défaut de conception** : la décision « publication manuelle uniquement » n'était appariée que par nom de job — un publieur recréé sous un autre nom filait vers `EN ATTENTE`. |
+| **v4** | **`FA6F4059…`** | ✅ **finale** : appariement par nom **ou fonction ciblée**, passe « sans tâche » ne dit CONFORME que si aucun job ne vise la fonction. Appliquée, R1–R7 vertes, commit `ff37ff8`. |
+
+À chaque itération : empreinte publiée avant l'envoi, trois validateurs verts
+(cron-secrets 29/29 · rls-contract 60/60 · repo-hygiene 75/75), application en un
+seul tenant. Le harnais de test a lui-même corrigé un double `cron.unschedule`
+(levée d'erreur sur nom absent — forme par jobid idempotente adoptée).
 
 ---
 
@@ -196,11 +221,13 @@ aucun jeton au format Expo attendu par l'API (`ExpoPushToken[…]`).
 ## 5. Statut proposé pour JUNO-30
 
 > **Décisions produit prises le 14 septembre 2026 ; fermeture opérationnelle
-> PRÉPARÉE (migration `20260914000001` rédigée, non appliquée).** JUNO-30 sera
-> FERMÉ pour sa partie exploitation lorsque : (a) la migration sera appliquée et
-> le cron explicitement désarmé, (b) la supervision montrera le verdict
-> `DESACTIVEE` (ou `CONFORME : désactivée et absente`), (c) **zéro tâche active
-> ne visera `send-daily-horoscope`**, (d) le passage de 12:00 UTC suivant
-> n'aura produit **aucun nouveau 401** au-delà du repère noté. Les constats
-> « jetons push » (suivi A) et « consentement » (suivi B) restent des chantiers
-> séparés, hors périmètre de fermeture.
+> PRÉPARÉE puis EXÉCUTÉE le 14 septembre (migration `20260914000001` appliquée,
+> commit `ff37ff8`).** JUNO-30 sera FERMÉ pour sa partie exploitation lorsque,
+> après le prochain passage de 12:00 UTC : (a) le verdict sera toujours
+> `DESACTIVEE` (ou `CONFORME : désactivée et absente`), (b) **zéro tâche active
+> ne visera `send-daily-horoscope`**, (c) **le job désarmé n'aura enregistré
+> aucun passage après le repère** (`passages_apres_repere = 0`,
+> `dernier_passage = 2026-09-14 12:00:00+00`) — le compteur global de 401
+> pg_net reste indicateur secondaire, sans attribution au push horoscope sans
+> corrélation. Les constats « jetons push » (suivi A) et « consentement »
+> (suivi B) restent des chantiers séparés, hors périmètre de fermeture.

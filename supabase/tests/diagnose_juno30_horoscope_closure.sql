@@ -68,13 +68,43 @@ SELECT count(*)                    AS total_401_dans_la_fenetre,
 --    à 12:00 UTC pile.
 -- Attendu passe C : nouveau total nul AU-DELÀ du repère noté en passe B.
 
--- Passe C uniquement — remplacer :repere par le dernier_401 noté en passe B :
---   SELECT count(*) AS nouveaux_401_apres_le_repere
+-- ---------------------------------------------------------------------------
+-- 3. PASSAGE DE 12:00 UTC — PREUVE PRINCIPALE SUR L'IDENTITÉ DU CRON DÉSARMÉ.
+--
+--    Corrigé le 14 septembre (revue) : compter TOUS les 401 de pg_net
+--    empêcherait à tort la fermeture — d'autres tâches y produisent des 401
+--    (et des réponses sans statut) qui ne sont pas les siens. La preuve de
+--    fermeture porte sur LES PASSAGES du job désarmé : pg_cron n'exécute pas
+--    un job inactive, et son historique est la source qui lui est propre.
+--    Le repère est le dernier_401 noté en passe B : 2026-09-14 12:00:00+00.
+-- ---------------------------------------------------------------------------
+SELECT
+  j.jobid,
+  j.jobname,
+  j.active,
+  count(r.*) FILTER (
+    WHERE r.start_time > TIMESTAMPTZ '2026-09-14 12:00:00+00'
+  ) AS passages_apres_repere,
+  max(r.start_time) AS dernier_passage
+FROM cron.job AS j
+LEFT JOIN cron.job_run_details AS r
+  ON r.jobid = j.jobid
+WHERE
+  j.jobname = 'daily-horoscope-push'
+  OR j.command LIKE '%functions/v1/send-daily-horoscope%'
+GROUP BY j.jobid, j.jobname, j.active;
+-- Attendu passe C : active = false · passages_apres_repere = 0 ·
+--                   dernier_passage = 2026-09-14 12:00:00+00.
+-- Tout autre résultat = le désarmement n'a pas tenu, ou une seconde tâche
+-- vise la fonction (la requête 1 la montrerait).
+
+-- Indicateur SECONDAIRE seulement — un nouveau 401 global ne doit PAS être
+-- attribué à daily-horoscope-push sans corrélation supplémentaire (pg_net ne
+-- relie pas une réponse à la tâche émettrice) :
+--   SELECT count(*)
 --     FROM net._http_response
 --    WHERE status_code = 401
---      AND created > TIMESTAMPTZ ':repere';
--- Attendu : 0. Toute autre valeur signifie qu'une tâche tire encore sur la
--- fonction : identifier laquelle avec la requête 1.
+--      AND created > TIMESTAMPTZ '2026-09-14 12:00:00+00';
 
 -- ---------------------------------------------------------------------------
 -- 4. Préservation de l'historique — uniquement SI le job existait avant la
