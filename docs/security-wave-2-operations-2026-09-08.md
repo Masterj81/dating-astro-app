@@ -47,6 +47,8 @@ fix/security-wave-2-2026-09-08
 | `permissions: contents: read` | Ne casse pas le CI | Workflow exécuté avec succès |
 | `validate:repo-hygiene` | Exécuté en intégration | Étape verte dans le run CI |
 | Vague 1 en base | Vérifiée | 28/28 posture et 6/6 comportement rapportés |
+| Fonctions edge de la vague 1 | **Déployées** — `functions list` : les sept fonctions de l'étape 5 (`get-profile-chart` incluse, v33) partagent l'horodatage **2026-09-07 16:19:37 UTC** | comportement vérifié le **14 septembre 2026** pour `get-profile-chart` (JUNO-01 fermé avec résiduel temporaire documenté) : preuve complète dans [`security-audit-2026-09-07.md`](security-audit-2026-09-07.md), § « Preuve de production — 14 septembre 2026 » ; les six autres restent à vérifier comportementalement au fil des usages |
+| Build Android 130 (`2.1.1`) | **Promu à 100 % en production sur Google Play** (constat de l'exploitant, 14 septembre 2026) | adoption à mesurer sur le **quotidien** : Utilisateurs actifs regroupés par **version**, **7 derniers jours disponibles** (délai Play 24–48 h) — une fenêtre de 28 jours compterait des actifs de la 129 d'avant la publication et sous-estimerait l'adoption ; seuil **130 ≥ 95 % pendant 7 jours consécutifs** ; canal iOS natif **sans objet** (aucune app iOS distribuée) — reste le test d'une PWA installée avec ancien service worker (JUNO-16). Détail dans l'audit, § « Preuve de production — 14 septembre 2026 » |
 | `20260907000003` | Appliquée et vérifiée | Contrôle 19 vert |
 | `20260908000002` | Appliquée | Diagnostic du limiteur et test d'un 429 contrôlé |
 | Déploiement Web | Lancé depuis `master` | Commit effectivement servi et tests de fumée réussis |
