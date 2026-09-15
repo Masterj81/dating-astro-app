@@ -20,6 +20,7 @@ export type NavIconName =
   | "guide"
   | "cosmic"
   | "celestial"
+  | "astro"
   | "profile"
   | "globe"
   | "signout"
@@ -90,6 +91,21 @@ export function NavIcon({ name, className = "h-5 w-5" }: NavIconProps) {
         <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
           <path d="M12 2l1.6 4.5L18 8l-4.4 1.5L12 14l-1.6-4.5L6 8l4.4-1.5L12 2Z" />
           <path d="M18.5 14l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6.6-1.6Z" />
+        </svg>
+      );
+    case "astro":
+      // Portal glyph — a constellation arc of three stars joined by a line.
+      // Deliberately NEITHER the gold Celestial star NOR the violet Cosmic
+      // planet: the Astro tab is the door to both tiers, so its icon belongs
+      // to neither brand accent. Generic, neutral, readable at 24px.
+      return (
+        <svg {...baseProps}>
+          <path d="M5 17.5L10.5 11l4 3.5L19 6.5" />
+          <path d="M4.6 17.9l.8.8M18.6 6.1l.8.8" />
+          <circle cx="5" cy="17.5" r="1.3" fill="currentColor" stroke="none" />
+          <circle cx="10.5" cy="11" r="1.3" fill="currentColor" stroke="none" />
+          <circle cx="14.5" cy="14.5" r="1.3" fill="currentColor" stroke="none" />
+          <circle cx="19" cy="6.5" r="1.3" fill="currentColor" stroke="none" />
         </svg>
       );
     case "profile":
