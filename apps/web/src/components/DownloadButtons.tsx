@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
-import { SITE } from "@/lib/constants";
 import { Link, useRouter } from "@/i18n/navigation";
+import { SITE } from "@/lib/constants";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 
 /**
  * sessionStorage flag read on mount by InstallPrompt to auto-open the iOS guide
@@ -65,10 +65,10 @@ function WebIcon() {
   );
 }
 
-function fireOpenInstallGuide() {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent(OPEN_INSTALL_GUIDE_EVENT));
-}
+// fireOpenInstallGuide() was removed on 2026-09-15 (wave 1): the event-based
+// path had been superseded by the sessionStorage flag + navigation flow below,
+// and the function was dead (eslint: no-unused-vars). OPEN_INSTALL_GUIDE_EVENT
+// stays exported — InstallPrompt and IOSInstallGuideModal listen to it.
 
 export { SHOW_INSTALL_GUIDE_FLAG };
 
@@ -161,10 +161,27 @@ export function DownloadButtons({
     </Link>
   );
 
+  // PRIMARY on every device: create an account. The visitor's single most
+  // important gesture must sit in the first mobile screen — on 2026-09-15 the
+  // only signup CTA ("Get Started Free") lived at y≈10 000 px of a 12 469 px
+  // page, and the hero offered no way to start (audit PWA, wave 1 A). Full
+  // width on narrow screens so it can be missed by no one; auto width from sm.
+  // Existing members keep "Open Web App" one gesture away, not behind it.
+  const signUpBtn = (
+    <Link
+      key="signup"
+      href="/auth/signup"
+      className={`inline-flex w-full items-center justify-center gap-2 rounded-full bg-gold px-6 font-semibold text-bg shadow-lg shadow-gold/20 transition-all hover:bg-gold-soft hover:shadow-gold/30 sm:w-auto ${padding}`}
+    >
+      {t("signUp")}
+    </Link>
+  );
+
   // Pre-hydration / variant=all: render every option (no flash, fully accessible without JS)
   if (variant === "all" || device === null) {
     return (
       <div className="flex flex-wrap justify-center gap-3">
+        {signUpBtn}
         {appStoreBtn}
         {playStoreBtn}
         {webAppBtn}
@@ -176,6 +193,7 @@ export function DownloadButtons({
   if (device === "ios") {
     return (
       <div className="flex flex-wrap justify-center gap-3">
+        {signUpBtn}
         {installWebAppBtn}
         {webAppBtn}
       </div>
@@ -185,6 +203,7 @@ export function DownloadButtons({
   if (device === "android") {
     return (
       <div className="flex flex-wrap justify-center gap-3">
+        {signUpBtn}
         {playStoreBtn}
         {webAppBtn}
       </div>
@@ -194,6 +213,7 @@ export function DownloadButtons({
   // desktop
   return (
     <div className="flex flex-wrap justify-center gap-3">
+      {signUpBtn}
       {webAppBtn}
       {playStoreBtn}
     </div>

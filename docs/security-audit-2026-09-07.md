@@ -20,11 +20,13 @@ re-qualifiés ici avec de nouvelles preuves.
 
 Cinq constats ont été traités le jour même. Le code et les migrations sont dans le dépôt ;
 **rien n'a été déployé, aucune migration n'a été exécutée à distance, aucune clé n'a été
-tournée.** Les étapes manuelles restantes sont en fin de section.
+tournée.** Les étapes manuelles restantes sont en fin de section. *(Exécutées le soir même :
+la séquence de l'étape 5 est partie à 16:19:37 UTC, et JUNO-01 a été fermé en production le
+14 septembre — voir « Preuve de production — 14 septembre 2026 » en fin de section.)*
 
 | Constat | Statut | Ce qui le prouve |
 |---|---|---|
-| **JUNO-01** | **Corrigé** (avec un résiduel documenté) | `chart-payload-privacy.test.ts` — 16 tests, dont la PoC d'inversion qui échouait à 0 s d'erreur et ne dispose plus des champs nécessaires |
+| **JUNO-01** | **FERMÉ en production le 14 septembre 2026**, avec un résiduel temporaire documenté (degrés quantifiés à 0,1° tant que l'adoption d'un build porteur du lecteur `response.synastry` n'est pas constatée — le 130 est promu à 100 % sur Play, ce qui ne prouve pas la mise à jour des appareils) | dépôt : `chart-payload-privacy.test.ts` — 16 tests, dont la PoC d'inversion qui échouait à 0 s d'erreur et ne dispose plus des champs nécessaires ; production : preuve mesurée du 14 septembre, § « Preuve de production — 14 septembre 2026 » ci-dessous |
 | **JUNO-02** | **FERMÉ, prouvé en base le 7 sep** | `profile-chart-authz.test.ts` — 23 tests sur la décision réelle, y compris les trois branches fail-closed ; migration `20260907000001` appliquée, 9/9 contrôles verts |
 | **JUNO-03** | **Corrigé** | `checkout-coupon.test.ts` — 15 tests ; `couponId` sorti du contrat d'entrée, remise dérivée du `priceId` |
 | **JUNO-08** | **FERMÉ, prouvé en base le 7 sep** | migration `20260907000002` appliquée ; 7/7 contrôles verts |
@@ -167,6 +169,104 @@ conversation existante, et une limite de débit qui refuse quand elle ne peut pa
 6. Fumée, dans cet ordre : liste de conversations → ouvrir un fil → **envoyer un message** (ce
    dernier exerce le trigger `last_message_at`, que le REVOKE aurait pu casser) ; puis synastrie
    avec un compte abonné, puis avec un compte gratuit (doit répondre 402).
+
+### Preuve de production — 14 septembre 2026 (JUNO-01 fermé)
+
+Les trois états distingués par le [`security-wave-2-operations-2026-09-08.md`](security-wave-2-operations-2026-09-08.md)
+sont désormais tranchés pour `get-profile-chart` : le code est versionné (`43b0a9a`), il est
+déployé, et son comportement est vérifié. Mesures du **14 septembre 2026, entre 14:14 et
+14:43 UTC**, depuis le poste de l'exploitant, toutes en lecture seule ; la session authentifiée
+a été fournie volontairement par l'exploitant, et **aucun jeton n'a été lu, affiché ni sorti de
+la page** — l'appel authentifié du chemin gratuit a été exécuté dans la page, qui seule a
+manipulé la session.
+
+**Déploiement.** `supabase functions list` : `get-profile-chart` version 33, dernière mise à
+jour **2026-09-07 16:19:37 UTC** — le même horodatage, à la milliseconde, que les six autres
+fonctions de l'étape 5 ci-dessus (`calculate-chart`, `create-checkout-session`,
+`create-portal-session`, `claim-promo-code`, `claim-referral`, `suggest-birth-cities`). La
+séquence de déploiement a donc bien été exécutée le soir du 7 septembre. Réserve honnête, close
+par le comportement : ce déploiement **précède de 69 minutes** le commit final `43b0a9a`
+(17:28:26 UTC) — il est parti de l'arbre de travail, et un horodatage seul ne pouvait pas
+prouver le contenu déployé. L'empreinte comportementale ci-dessous le fait.
+
+**Empreinte de version (non authentifié).** Un `OPTIONS` avec `Origin: http://localhost:3000`
+reçoit `Vary: Origin`, `Access-Control-Allow-Methods: POST, OPTIONS` et **aucun**
+`Access-Control-Allow-Origin`. Le code d'avant-vague (`43b0a9a~1`) aurait **échoité** l'origine
+locale (`ENVIRONMENT` absent en production → liste de développement). Deux marqueurs
+indépendants sont donc incompatibles avec l'ancien code. Un `POST` sans JWT reçoit 401 de la
+passerelle (`UNAUTHORIZED_NO_AUTH_HEADER`), cohérent avec `verify_jwt = true`.
+
+**Comportement vérifié.**
+
+| chemin | méthode | résultat mesuré |
+|---|---|---|
+| Compte gratuit | appel authentifié depuis la page, cible = **UUID aléatoire** | **402 `insufficient_tier`**, corps `{success, error}` seul — aucun thème, aucune synastrie ; le refus d'habilitation précède toute lecture de la cible (ordre des contrôles), donc aucune ligne réelle n'a été touchée par ce chemin |
+| Compte abonné | parcours UI réel (écran Synastrie de la web app) | **HTTP 200** |
+| → minimisation | scan récursif de la réponse, à toute profondeur | **zéro** champ `longitude`, `latitude`, `coordinates`, `houses`, `birth_*` ; `chart` = 6 clés (`sun, moon, rising, mc, planets, confidence`) ; chaque placement porte exactement `sign` + `degree` ; `profile` = les 15 clés de l'allowlist de `sanitizeProfile` |
+| → quantification | 12 degrés publiés | **tous au pas de 0,1°** (vérification arithmétique ×10 sur chacun) |
+| → synastrie serveur | objet `synastry` de la réponse | `source: 'aspects'`, 3 frames (`love` / `friendship` / `business`), `modelVersion 2` ; 36 mesures `orb`/`separation`, **toutes à 1 décimale** |
+| Client | rendu observé depuis l'objet serveur | web et Android 130 consomment `response.synastry` — `43b0a9a` est un ancêtre de `50e8e6d` (bump 2.1.1), le repli local ne s'est pas déclenché |
+| Politique | lecture de `premium_feature_policy` | `synastry` : `celestial`, quota 20/jour, `free_preview_quota = NULL` — aucun aperçu gratuit, le 402 du chemin gratuit est le comportement attendu |
+
+Aucune valeur de degré, aucune bande de score, aucun attribut personnel du profil lu n'est
+consigné ici. Le parcours UI ayant répondu 200 a **lu les données autorisées du profil cible —
+c'est le produit** ; ce qui est prouvé est qu'**aucune coordonnée, aucune maison et aucune
+donnée de naissance interdite n'a été retournée au client**.
+
+**Défaut de l'outil de mesure, consigné.** La première passe du scanner affichait
+`degreesAllOneDecimal: false` : le script évaluait le *parent* de chaque chemin `…degree`
+au lieu de la valeur elle-même. Bug de l'outil, pas du déploiement ; corrigé et re-mesuré
+dans la foulée. Une vérification doit échouer visiblement, y compris la sienne.
+
+**Validations locales du même jour.** `validate:chart-privacy` 16/16 ·
+`validate:edge-security` 328/328 (dont `profile-chart-authz` 23) · tests synastrie 67/67 ·
+`validate:profile-reads` 9/9 · `validate:edge-astrology` bundle à jour · typecheck 3/3 ·
+lint 0 erreur (3 avertissements préexistants, non liés).
+
+**Résiduel temporaire assumé — ne pas basculer maintenant.** `PUBLISH_LEGACY_DEGREES` (dans
+la fonction) publie toujours `sign` + `degree` quantifié à 0,1° : c'est l'affordance de
+compatibilité pour les clients installés d'avant la bascule serveur, qui reconstruisent leurs
+longitudes depuis cette paire. **Le build Android 2.1.1 / `versionCode` 130 est promu à
+100 % en production sur Google Play** (constat de l'exploitant, 14 septembre 2026). Cela
+prouve la **promotion**, pas l'**adoption** : rien n'établit que tous les appareils actifs
+ont effectué la mise à jour, et la répartition des utilisateurs actifs par version n'est pas
+encore mesurée.
+
+> Aucun client iOS natif n'est distribué au 14 septembre 2026. Le risque de compatibilité
+> iOS se limite à la PWA installée et relève de JUNO-16.
+
+**Mesure d'adoption — méthode retenue.** Une fenêtre de 28 jours sous-estimerait
+artificiellement l'adoption : elle compterait beaucoup d'utilisateurs actifs sur la 129
+**avant** la publication de la 130. Méthode : Play Console → l'application →
+**Statistiques** → graphique **quotidien** des « Utilisateurs actifs » → regroupement par
+**« Version de l'application »** → lire **les 7 derniers jours disponibles** une fois passé
+le délai Play de 24–48 heures. Seuil recommandé : **`2.1.1 (130)` ≥ 95 % des utilisateurs
+actifs pendant 7 jours consécutifs** ; export CSV daté en preuve.
+
+**Canal iOS — sans objet pour le natif ; le reste est JUNO-16.** Sur iOS, JUNO se consomme
+en PWA. Le déploiement courant est confirmé (la capture du 14 septembre prouve que l'origine
+`app.junosynastry.com` sert un bundle qui consomme `response.synastry`) ; le test qui reste
+à mener n'est **pas** Safari sur le site courant, mais une **PWA installée avant la dernière
+mise à jour du bundle**, dont le service worker décide si l'ancien code est encore servi
+(JUNO-16 : cache non partitionné).
+
+**Les deux portes restantes avant de retirer les degrés legacy :**
+1. **Android** — `2.1.1 (130)` ≥ 95 % des utilisateurs actifs pendant **7 jours
+   consécutifs** (mesure quotidienne ci-dessus).
+2. **PWA** — une PWA installée avec un ancien service worker est **testée**, ou JUNO-16
+   garantit sa **mise à jour forcée**.
+
+Pendant l'accumulation des sept jours : le contrôle J+14 du runbook de suivi a été exécuté le
+14 septembre 2026 (réussi — septembre à 68,8 %, au-dessus du seuil de 56,8 %) ; l'arbitrage
+JUNO-30 est le chantier suivant.
+
+La bascule reste un changement d'une ligne, couverte par `chart-payload-privacy.test.ts` pour
+les deux valeurs du drapeau, suivie d'un `supabase functions deploy get-profile-chart` — et
+le retour arrière est la même ligne inversée, redéployée.
+
+**Conséquence produit.** La mention « synastrie calculée côté serveur », délibérément omise
+des notes Play du build 130 en attendant cette preuve, peut figurer dans les notes du
+**prochain** build.
 
 ---
 
@@ -564,6 +664,48 @@ Diagnostic : `supabase/tests/diagnose_cron_edge_supervision.sql`, lecture seule.
 **Non corrigé** : le secret de `daily-horoscope-push`, et l'absence de `publish-scheduled-posts`.
 Chacun demande une décision d'exploitation distincte. `send-scheduled-emails` a été traité par
 JUNO-31 ci-dessous.
+
+### Décisions produit — 14 septembre 2026 (arbitrage mesuré, exécution préparée)
+
+L'arbitrage a été mené en lecture seule le 14 septembre ; les mesures complètes et la
+fermeture opérationnelle préparée sont dans
+[`runbooks/juno-30-decisions-et-desarmement-2026-09.md`](runbooks/juno-30-decisions-et-desarmement-2026-09.md).
+
+1. **`daily-horoscope-push` : temporairement désactivé** — ne doit envoyer aucune
+   notification ; la fonction `send-daily-horoscope` est conservée pour un chantier
+   futur. **Le cron actif à secret vide n'est pas un état désactivé acceptable** :
+   c'est une panne permanente (un « succeeded » pg_cron et un 401 réel chaque jour à
+   12:00:00 UTC — le seul 401 de la fenêtre pg_net du 14 septembre). La fermeture
+   préparée (`20260914000001`, **non appliquée**) désarme la tâche via
+   `cron.alter_job(active => false)` — elle seule, après un **garde
+   anti-ambiguïté** qui refuse bruyamment **avant toute mutation** si plusieurs
+   tâches portent le nom ou visent la fonction — enregistre la décision dans un
+   registre `cron_task_decisions` lisible par `service_role` seul, et apprend à
+   `check_cron_edge_health()` à distinguer « désactivée par décision produit » de
+   « active mais en panne », **tout en échouant (CRITIQUE) si la tâche est
+   réactivée sans secret Vault valide**. Interdit et documenté : poser le secret
+   uniquement pour faire disparaître le 401. Mesures à l'appui : **0 destinataire
+   éligible** (187 préférences actives sur 289 profils actifs, mais **1 seul jeton
+   push, non au format Expo**) — la réparation serait aujourd'hui un no-op ; le
+   vrai goulot est l'enregistrement des jetons (suivi A) et la nature du
+   consentement par défaut (suivi B).
+2. **`publish-scheduled-posts` : publication manuelle uniquement** — le chemin
+   Blotato direct de `marketingagent` est le seul publieur autorisé ; aucun cron,
+   aucun `BLOTATO_API_KEY` dans Supabase (vérifié absent), le pipeline cloud
+   (`marketing_posts`, **0 ligne** mesuré) reste non activé tant que le chantier
+   `marketingagent` n'est pas fusionné et que l'invariant « un seul publieur »
+   n'est pas conçu : deux publieurs des mêmes contenus sans garde de
+   déduplication publient en double.
+
+**Statut : FERMÉ pour sa partie exploitation le 15 septembre 2026** — passe C
+mesurée à 12:43 UTC : `active = false`, **zéro passage au midi du 15 septembre**
+(`dernier_passage = 2026-09-14 12:00:00.059869+00`, soit hier), 0×401 global
+après le repère (indicateur secondaire, sans attribution). Le `passages_apres_repere = 1`
+de la lecture brute est un faux positif documenté : le repère pg_net est tronqué à
+la seconde alors que `start_time` porte la microseconde — le passage d'hier midi se
+compte « après » son propre repère par 59,869 ms (détail et preuve dans
+[`runbooks/juno-30-decisions-et-desarmement-2026-09.md`](runbooks/juno-30-decisions-et-desarmement-2026-09.md), §6).
+Les suivis A (jetons push) et B (consentement) restent des constats séparés, ouverts.
 
 **Deux défauts de cet outil, découverts en s'en servant, et corrigés :**
 

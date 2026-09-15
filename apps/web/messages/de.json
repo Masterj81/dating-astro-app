@@ -27,10 +27,11 @@
     "webApp": "Web-App öffnen",
     "badge": "Astrologie als Sprache, nicht als Vorhersage.",
     "installWebApp": "Web-App installieren",
-    "iOSInstallHint": "iPhone? Zum Startbildschirm hinzufügen — funktioniert wie eine native App."
+    "iOSInstallHint": "iPhone? Zum Startbildschirm hinzufügen — funktioniert wie eine native App.",
+    "signUp": "Kostenloses Konto erstellen"
   },
   "socialProof": {
-    "proofRating": "auf Google Play",
+    "proofRating": "Bei Google Play erhältlich",
     "proofTags": "Werte- & Lifestyle-Tags",
     "proofEngine": "Echte Synastrie-Engine"
   },
@@ -481,7 +482,7 @@
     "signOut": "Abmelden",
     "settings": "Einstellungen",
     "signInTitle": "Bei JUNO anmelden",
-    "signInSubtitle": "Greife auf dein Konto, die Rückkehrseite für Abos und zukünftige Web-Funktionen zu.",
+    "signInSubtitle": "Melde dich an, um deine Verbindungen fortzusetzen und dein Abonnement zu verwalten.",
     "createAccountTitle": "Erstelle dein JUNO-Konto",
     "createAccountSubtitle": "Starte im Web und mach dann mit demselben Konto auf dem Handy weiter.",
     "name": "Name",
@@ -2272,7 +2273,12 @@
     "natalWheelAriaLabel": "Das Rad deines Geburtshoroskops: Tierkreiszeichen, Planeten, Achsen und Häuser.",
     "natalWheelNeedBirthTime": "Ergänze Geburtszeit und Geburtsort, um Häuser und Achsen zu sehen.",
     "natalWheelNeedBirthPlace": "Deine Geburtszeit ist gespeichert. Ergänze deinen Geburtsort, um Häuser und Achsen zu sehen.",
-    "natalWheelNoChart": "Für dieses Konto konnten wir noch kein Horoskop lesen."
+    "natalWheelNoChart": "Für dieses Konto konnten wir noch kein Horoskop lesen.",
+    "signupTermsPre": "Mit der Erstellung eines Kontos akzeptierst du die",
+    "signupTermsTermsLink": "Nutzungsbedingungen",
+    "signupTermsMid": "und bestätigst, die",
+    "signupTermsPrivacyLink": "Datenschutzerklärung",
+    "signupTermsPost": " gelesen zu haben."
   },
   "invite": {
     "invalidCode": "Ungültiger Empfehlungscode",

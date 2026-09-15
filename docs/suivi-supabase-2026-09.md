@@ -264,7 +264,7 @@ SELECT usage_date,
 
 ## J+14 (à partir du 14 septembre) — 1 vérification
 
-### ☐ 9. Le taux de fin d'onboarding par mois
+### ✅ 9. Le taux de fin d'onboarding par mois
 
 **Pourquoi.** C'est le chiffre qui a révélé toute cette chaîne. Historique :
 février 50 %, mars 43,8 %, avril 66,7 %, mai 41,2 %, **juin 27,4 %** (146
@@ -291,6 +291,55 @@ SELECT to_char(u.created_at, 'YYYY-MM')                    AS mois,
 
 **Attendu :** septembre au-dessus de 56,8 %. En dessous, la garde n'a pas
 l'effet espéré et il faut chercher plus haut dans le tunnel.
+
+**Exécuté le 14 septembre 2026 — lecture seule — VERDICT : RÉUSSI.**
+
+| élément | valeur |
+|---|---|
+| Date d'exécution | 14 septembre 2026 |
+| Méthode | SQL du contrôle ci-dessus, exécuté **tel quel** en lecture seule contre la base de production — `SELECT` uniquement |
+| Résultat mesuré | **septembre 68,8 %** (16 confirmés, 11 terminés) |
+| Seuil de référence | 56,8 % (août) — **dépassé** |
+
+**Définition exacte de la mesure.** Numérateur : comptes dont
+`profiles.onboarding_completed` est vrai. Dénominateur : comptes **confirmés**
+(`auth.users.email_confirmed_at IS NOT NULL`) créés dans le mois calendaire
+(`auth.users.created_at`), hors exclusions. Jointure `LEFT JOIN profiles` : un
+compte confirmé sans ligne `profiles` compte comme non terminé.
+
+**Ventilation mensuelle mesurée (14 septembre 2026).**
+
+| mois | confirmés | terminés | taux |
+|---|---|---|---|
+| 2026-02 | 8 | 4 | 50,0 % |
+| 2026-03 | 16 | 7 | 43,8 % |
+| 2026-04 | 15 | 10 | 66,7 % |
+| 2026-05 | 15 | 5 | 33,3 % |
+| 2026-06 | 141 | 35 | 24,8 % |
+| 2026-07 | 22 | 6 | 27,3 % |
+| 2026-08 | 36 | 20 | 55,6 % |
+| 2026-09 | 16 | 11 | **68,8 %** |
+
+**Exclusions appliquées.** Domaines `astrodating.test`, `test.com`,
+`demo.com`, `example.com` ; comptes non confirmés (absents du dénominateur).
+
+**Limites de la mesure.**
+1. Septembre incomplet : des comptes créés dans le mois peuvent encore
+   compléter — 68,8 % est un plancher de la cohorte du jour, pas un chiffre
+   définitif.
+2. Effectif faible : n = 16, un compte fait basculer le taux de ±6,3 points.
+3. Les chiffres historiques cités en tête (mai 41,2 %, juin 27,4 % sur 146
+   comptes, août 56,8 %) ont été mesurés à une autre date et sans le filtre
+   « confirmés » ; la présente ventilation applique exactement le SQL du
+   contrôle et diffère donc légèrement d'eux.
+4. Mécanisme, mesuré le même jour : depuis le 31 août, `sans_profil = 0` pour
+   chaque fournisseur (email 61,5 % — 8/13 ; Google 75 % — 3/4) ; **aucun
+   compte Apple créé depuis le 31 août** — observation non expliquée, à
+   rapprocher de la décision C (domaine d'expédition Apple).
+
+**Source de la donnée.** Postgres de production du projet Supabase,
+interrogé via l'API Management (session CLI locale), le 14 septembre 2026.
+**Aucune écriture en production** : chaque instruction était un `SELECT`.
 
 ---
 

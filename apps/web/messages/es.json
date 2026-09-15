@@ -27,10 +27,11 @@
     "webApp": "Abrir app web",
     "badge": "La astrología como lenguaje, no como oráculo.",
     "installWebApp": "Instalar app web",
-    "iOSInstallHint": "¿Tienes iPhone? Añádela a tu pantalla de inicio — funciona como una app nativa."
+    "iOSInstallHint": "¿Tienes iPhone? Añádela a tu pantalla de inicio — funciona como una app nativa.",
+    "signUp": "Crear una cuenta gratis"
   },
   "socialProof": {
-    "proofRating": "en Google Play",
+    "proofRating": "Disponible en Google Play",
     "proofTags": "etiquetas de valores y estilo de vida",
     "proofEngine": "Motor de sinastría real"
   },
@@ -481,7 +482,7 @@
     "signOut": "Cerrar sesión",
     "settings": "Ajustes",
     "signInTitle": "Inicia sesión en JUNO",
-    "signInSubtitle": "Accede a tu cuenta, a la página de retorno de suscripción y a las futuras funciones web.",
+    "signInSubtitle": "Inicia sesión para continuar tus conexiones y gestionar tu suscripción.",
     "createAccountTitle": "Crea tu cuenta de JUNO",
     "createAccountSubtitle": "Empieza en la web y luego continúa en móvil con la misma cuenta.",
     "name": "Nombre",
@@ -2272,7 +2273,12 @@
     "natalWheelAriaLabel": "La rueda de tu carta natal: signos, planetas, ángulos y casas.",
     "natalWheelNeedBirthTime": "Añade tu hora y ciudad de nacimiento para ver las casas y los ángulos.",
     "natalWheelNeedBirthPlace": "Tu hora de nacimiento está guardada. Añade tu ciudad de nacimiento para ver las casas y los ángulos.",
-    "natalWheelNoChart": "Todavía no hemos podido leer una carta para esta cuenta."
+    "natalWheelNoChart": "Todavía no hemos podido leer una carta para esta cuenta.",
+    "signupTermsPre": "Al crear una cuenta, aceptas los",
+    "signupTermsTermsLink": "Términos de uso",
+    "signupTermsMid": "y confirmas que has leído la",
+    "signupTermsPrivacyLink": "Política de privacidad",
+    "signupTermsPost": "."
   },
   "invite": {
     "invalidCode": "Código de referido inválido",

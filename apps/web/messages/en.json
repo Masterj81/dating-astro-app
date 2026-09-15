@@ -27,10 +27,11 @@
     "playStore": "Google Play",
     "webApp": "Open Web App",
     "installWebApp": "Install Web App",
-    "iOSInstallHint": "iPhone? Add to your home screen — works like a native app."
+    "iOSInstallHint": "iPhone? Add to your home screen — works like a native app.",
+    "signUp": "Create free account"
   },
   "socialProof": {
-    "proofRating": "on Google Play",
+    "proofRating": "Available on Google Play",
     "proofTags": "values & lifestyle tags",
     "proofEngine": "Real synastry engine"
   },
@@ -527,7 +528,7 @@
     "signOut": "Sign out",
     "settings": "Settings",
     "signInTitle": "Sign in to JUNO",
-    "signInSubtitle": "Access your account, subscription return page, and future web features.",
+    "signInSubtitle": "Sign in to continue your connections and manage your subscription.",
     "createAccountTitle": "Create your JUNO account",
     "createAccountSubtitle": "Start on the web, then continue on mobile with the same account.",
     "name": "Name",
@@ -2318,7 +2319,12 @@
     "natalWheelAriaLabel": "Your natal chart wheel: zodiac signs, planets, angles and houses.",
     "natalWheelNeedBirthTime": "Add your birth time and city to see houses and angles.",
     "natalWheelNeedBirthPlace": "Your birth time is saved. Add your birth city to see houses and angles.",
-    "natalWheelNoChart": "We could not read a chart for this account yet."
+    "natalWheelNoChart": "We could not read a chart for this account yet.",
+    "signupTermsPre": "By creating an account, you agree to the",
+    "signupTermsTermsLink": "Terms of Use",
+    "signupTermsMid": "and acknowledge that you have read the",
+    "signupTermsPrivacyLink": "Privacy Policy",
+    "signupTermsPost": "."
   },
   "invite": {
     "invalidCode": "Invalid referral code",

@@ -27,10 +27,11 @@
     "webApp": "فتح تطبيق الويب",
     "badge": "علم الفلك بوصفه لغة، لا تنبؤًا.",
     "installWebApp": "تثبيت تطبيق الويب",
-    "iOSInstallHint": "هل لديك iPhone؟ أضفه إلى الشاشة الرئيسية — يعمل كتطبيق أصلي."
+    "iOSInstallHint": "هل لديك iPhone؟ أضفه إلى الشاشة الرئيسية — يعمل كتطبيق أصلي.",
+    "signUp": "أنشئ حسابًا مجانيًا"
   },
   "socialProof": {
-    "proofRating": "على Google Play",
+    "proofRating": "متاح على Google Play",
     "proofTags": "علامات القيم ونمط الحياة",
     "proofEngine": "محرك سيناستري حقيقي"
   },
@@ -481,7 +482,7 @@
     "signOut": "تسجيل الخروج",
     "settings": "الإعدادات",
     "signInTitle": "سجّل الدخول إلى JUNO",
-    "signInSubtitle": "ادخل إلى حسابك وصفحة العودة الخاصة بالاشتراك وميزات الويب القادمة.",
+    "signInSubtitle": "سجّل الدخول لمتابعة تواصلك وإدارة اشتراكك.",
     "createAccountTitle": "أنشئ حسابك على JUNO",
     "createAccountSubtitle": "ابدأ من الويب ثم واصل على الجوال بالحساب نفسه.",
     "name": "الاسم",
@@ -2272,7 +2273,12 @@
     "natalWheelAriaLabel": "عجلة خريطتك الفلكية: الأبراج والكواكب والزوايا والبيوت.",
     "natalWheelNeedBirthTime": "أضِف ساعة ميلادك ومدينته لرؤية البيوت والزوايا.",
     "natalWheelNeedBirthPlace": "وقت ميلادك محفوظ. أضِف مدينة ميلادك لرؤية البيوت والزوايا.",
-    "natalWheelNoChart": "لم نتمكّن بعد من قراءة خريطة لهذا الحساب."
+    "natalWheelNoChart": "لم نتمكّن بعد من قراءة خريطة لهذا الحساب.",
+    "signupTermsPre": "بإنشاء حساب، فإنك توافق على",
+    "signupTermsTermsLink": "شروط الاستخدام",
+    "signupTermsMid": "وتقرّ بأنك قرأت",
+    "signupTermsPrivacyLink": "سياسة الخصوصية",
+    "signupTermsPost": "."
   },
   "invite": {
     "invalidCode": "رمز إحالة غير صالح",

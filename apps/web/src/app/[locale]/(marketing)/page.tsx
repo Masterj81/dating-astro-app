@@ -1,22 +1,22 @@
-import { useTranslations } from "next-intl";
-import { StarField } from "@/components/StarField";
-import { GlassCard } from "@/components/GlassCard";
-import { DownloadButtons } from "@/components/DownloadButtons";
-import { MarketingPricingSection } from "@/components/MarketingPricingSection";
-import { InstallPrompt } from "@/components/InstallPrompt";
-import { PhoneMockupPlaceholder } from "@/components/PhoneMockupPlaceholder";
-import { HeroSynastryTriptych } from "@/components/HeroSynastryTriptych";
 import { CompatibilityDotsArc } from "@/components/CompatibilityDotsArc";
-import { ValuePillCloud } from "@/components/ValuePillCloud";
+import { DownloadButtons } from "@/components/DownloadButtons";
+import { GlassCard } from "@/components/GlassCard";
+import { HeroSynastryTriptych } from "@/components/HeroSynastryTriptych";
+import { IcebreakerBubble } from "@/components/IcebreakerBubble";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { IntentPill } from "@/components/IntentPill";
 import { LifestyleTagsCloud } from "@/components/LifestyleTagsCloud";
-import { VoiceIntroDemo } from "@/components/VoiceIntroDemo";
-import { IcebreakerBubble } from "@/components/IcebreakerBubble";
 import {
-  ProfileIcon,
-  DiscoverPeopleIcon,
-  ConversationIcon,
+    ConversationIcon,
+    DiscoverPeopleIcon,
+    ProfileIcon,
 } from "@/components/MarketingIcons";
+import { MarketingPricingSection } from "@/components/MarketingPricingSection";
+import { PhoneMockupPlaceholder } from "@/components/PhoneMockupPlaceholder";
+import { StarField } from "@/components/StarField";
+import { ValuePillCloud } from "@/components/ValuePillCloud";
+import { VoiceIntroDemo } from "@/components/VoiceIntroDemo";
+import { useTranslations } from "next-intl";
 
 const STEPS = [
   { key: "step1", Icon: ProfileIcon },
@@ -33,6 +33,14 @@ const DEMO_LIFESTYLE = ["Outdoor", "Sober-curious", "Yoga", "Plant parent", "Rea
 const DEMO_LIFESTYLE_SHARED = ["Outdoor", "Yoga"];
 
 const PROOF_KEYS = ["proofRating", "proofTags", "proofEngine"] as const;
+
+// A Play rating may only appear here once verified against Play Console.
+// The "★ 4.8" that shipped from the start was never verified — while the
+// strip's own rule (below) said "no invented stats" (audit PWA 2026-09-15,
+// wave 1 C). To restore the number: read it in Play Console → statistics,
+// set it here, and adjust `socialProof.proofRating` copy accordingly
+// (default copy reads standalone, without a number in front).
+const VERIFIED_PLAY_RATING: number | null = null;
 
 const JSON_LD = {
   "@context": "https://schema.org",
@@ -96,7 +104,10 @@ export default function LandingPage({
               <DownloadButtons />
             </div>
 
-            {/* Trust strip — qualitative proofs only, no invented stats */}
+            {/* Trust strip — qualitative proofs only, no invented stats.
+                A quantitative rating is gated behind VERIFIED_PLAY_RATING
+                (see its comment above): an unverified number here would be
+                exactly the "invented stat" this strip promises not to have. */}
             <ul
               className="mx-auto mt-8 flex max-w-full flex-wrap items-center justify-center gap-2"
               aria-label="What sets JUNO apart"
@@ -106,8 +117,10 @@ export default function LandingPage({
                   key={key}
                   className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/8 bg-white/[0.03] px-3 py-1.5 text-xs text-white/85"
                 >
-                  {i === 0 ? (
-                    <span aria-hidden="true" className="text-accent">★ 4.8</span>
+                  {i === 0 && VERIFIED_PLAY_RATING !== null ? (
+                    <span aria-hidden="true" className="text-accent">
+                      ★ {VERIFIED_PLAY_RATING}
+                    </span>
                   ) : null}
                   <span className="truncate">{social(key)}</span>
                 </li>

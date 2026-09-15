@@ -1,19 +1,19 @@
 "use client";
 
-import Image from "next/image";
-import { useMemo, useState, type ReactNode } from "react";
-import { useSearchParams } from "next/navigation";
-import { useLocale, useTranslations } from "next-intl";
-import { Link, useRouter, usePathname } from "@/i18n/navigation";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
-import {
-  buildAuthCallbackUrl,
-  normalizeAuthNext,
-  persistAuthNext,
-} from "@/lib/auth-redirect";
 import { getPasswordStrength } from "@/lib/auth-password";
-import { getProfileSetupState, isWebProfileSetupIncomplete } from "@/lib/web-account";
+import {
+    buildAuthCallbackUrl,
+    normalizeAuthNext,
+    persistAuthNext,
+} from "@/lib/auth-redirect";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
+import { getProfileSetupState, isWebProfileSetupIncomplete } from "@/lib/web-account";
+import { useLocale, useTranslations } from "next-intl";
+import Image from "next/image";
+import { useSearchParams } from "next/navigation";
+import { useMemo, useState, type ReactNode } from "react";
 
 type AuthMode = "login" | "signup";
 type OAuthProvider = "google" | "apple" | "facebook";
@@ -392,6 +392,37 @@ export function AuthCard({ mode }: AuthCardProps) {
             </>
           ) : isSignup ? t("createAccount") : t("signIn")}
         </button>
+
+        {isSignup ? (
+          /* Contractual notice — wave 1 B (2026-09-15). Linked sentence per the
+             product decision: acceptance of the Terms and acknowledgment of the
+             Privacy Policy, with NO single mandatory checkbox. The links open
+             in a NEW TAB (target/_blank + noopener) so the half-filled form is
+             never lost. Optional consents (marketing, notifications) live
+             elsewhere, off by default and revocable — never here. Keyboard and
+             screen-reader accessible: real anchors in reading order. */
+          <p className="mt-4 text-center text-xs leading-relaxed text-text-dim">
+            {t("signupTermsPre")}{" "}
+            <Link
+              href="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline decoration-text-dim underline-offset-2 transition-colors hover:text-white hover:decoration-white"
+            >
+              {t("signupTermsTermsLink")}
+            </Link>{" "}
+            {t("signupTermsMid")}{" "}
+            <Link
+              href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline decoration-text-dim underline-offset-2 transition-colors hover:text-white hover:decoration-white"
+            >
+              {t("signupTermsPrivacyLink")}
+            </Link>
+            {t("signupTermsPost")}
+          </p>
+        ) : null}
       </form>
 
       <div className="mt-6 text-center text-sm text-text-muted">
