@@ -1,16 +1,16 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useState, type ReactNode } from "react";
-import type { Session } from "@supabase/supabase-js";
-import { useLocale, useTranslations } from "next-intl";
+import { InstallPrompt } from "@/components/InstallPrompt";
+import { NavIcon, type NavIconName } from "@/components/NavIcons";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getProfileSetupState, isWebProfileSetupIncomplete } from "@/lib/web-account";
 import { getCurrentTier } from "@/lib/web-subscriptions";
-import { InstallPrompt } from "@/components/InstallPrompt";
-import { NavIcon, type NavIconName } from "@/components/NavIcons";
+import type { Session } from "@supabase/supabase-js";
+import { useLocale, useTranslations } from "next-intl";
+import Image from "next/image";
+import { useEffect, useState, type ReactNode } from "react";
 
 type AppShellProps = {
   children: ReactNode;
@@ -23,7 +23,14 @@ type NavLink = {
   href: string;
   label: string;
   icon: NavIconName;
-  accent?: "cosmic" | "celestial" | "rose";
+  accent?: "cosmic" | "celestial" | "rose" | "astro";
+  /**
+   * Custom active-path predicate. The Astro portal tab must read as active
+   * across BOTH tier hubs and the conversation guide, not just its own
+   * route — otherwise the tab looks dead on half the surfaces it opens.
+   * aria-current is set from the same predicate, never from color alone.
+   */
+  isActivePath?: (pathname: string) => boolean;
 };
 
 // Remembers, for this tab only, that a reader has finished onboarding, so the
@@ -193,6 +200,19 @@ export function AppShell({
 
   // Conversation-first nav: the Matches tab is gone. Chat is now the primary
   // social inbox. Old /app/matches deep links still resolve via a redirect.
+  //
+  // ASTRO PORTAL (2026-09-15): Celestial and Cosmic used to sit as two
+  // sibling entries, and the MOBILE bottom bar linked straight to Cosmic —
+  // so a phone reader could believe the PWA only ships Cosmic. Both entries
+  // are now folded into ONE "Astro" tab (/app/astro) that portals to both
+  // hubs. The hub routes themselves are untouched (step 7 of the mission:
+  // the portal is a new door, not a replacement).
+  const astroActive = (pathname: string) =>
+    pathname === "/app/astro" ||
+    pathname.startsWith("/app/premium/celestial") ||
+    pathname.startsWith("/app/premium/cosmic") ||
+    pathname.startsWith("/app/premium/conversation-guide");
+
   const mainNav: NavLink[] = [
     { href: "/app", label: t("sidebarDashboard"), icon: "dashboard" },
     { href: "/app/discover", label: t("discoverNav"), icon: "discover", accent: "rose" },
@@ -203,23 +223,38 @@ export function AppShell({
       icon: "guide",
       accent: "rose",
     },
-    { href: "/app/premium/cosmic", label: t("premiumNav"), icon: "cosmic", accent: "cosmic" },
-    { href: "/app/premium/celestial", label: t("natalChartNav"), icon: "celestial", accent: "celestial" },
+    {
+      href: "/app/astro",
+      label: t("astroNav"),
+      icon: "astro",
+      accent: "astro",
+      isActivePath: astroActive,
+    },
     { href: "/app/profile", label: t("profileNav"), icon: "profile" },
   ];
 
-  // Bottom tab bar uses a simplified set
+  // Bottom tab bar uses a simplified set. "Connexions" from the target
+  // wireframe does NOT exist as a screen (the Matches tab was retired in
+  // favour of Chat; /app/matches redirects) — no fake entry is invented to
+  // flatter the mock. Four tabs, under the five-tab ceiling.
   const bottomNav: NavLink[] = [
     { href: "/app/discover", label: t("discoverNav"), icon: "discover", accent: "rose" },
     { href: "/app/chat", label: t("chatNav"), icon: "chat" },
-    { href: "/app/premium/cosmic", label: t("premiumNav"), icon: "cosmic", accent: "cosmic" },
+    {
+      href: "/app/astro",
+      label: t("astroNav"),
+      icon: "astro",
+      accent: "astro",
+      isActivePath: astroActive,
+    },
     { href: "/app/profile", label: t("profileNav"), icon: "profile" },
   ];
 
-  const isActive = (href: string) => {
+  const isActive = (link: NavLink) => {
+    if (link.isActivePath) return link.isActivePath(pathname);
     // Exact match for dashboard to avoid matching all /app/* routes
-    if (href === "/app") return pathname === "/app";
-    return pathname === href || pathname.startsWith(`${href}/`);
+    if (link.href === "/app") return pathname === "/app";
+    return pathname === link.href || pathname.startsWith(`${link.href}/`);
   };
 
   if (requireAuth && loading) {
@@ -284,21 +319,23 @@ export function AppShell({
         {/* Nav links */}
         <nav aria-label="App navigation" className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {mainNav.map((link) => {
-            const active = isActive(link.href);
+            const active = isActive(link);
             let activeBg = "bg-white/10";
             let hoverBg = "hover:bg-white/[0.06]";
             // Bronze for the ordinary entries, gold for Celestial, deep
             // violet for Cosmic. The three used to be pink / blue / bright
             // violet, so the navigation announced three unrelated brands
             // before the reader had opened anything. `rose` here now means
-            // "a warm neutral", not "the pink one".
+            // "a warm neutral", not "the pink one"; the Astro portal shares
+            // that neutral — it is the door to BOTH tiers, so it must not
+            // borrow either brand accent.
             if (link.accent === "cosmic") {
               activeBg = "bg-[rgba(91,84,168,0.26)]";
               hoverBg = "hover:bg-[rgba(91,84,168,0.14)]";
             } else if (link.accent === "celestial") {
               activeBg = "bg-[rgba(232,199,126,0.16)]";
               hoverBg = "hover:bg-[rgba(232,199,126,0.09)]";
-            } else if (link.accent === "rose") {
+            } else if (link.accent === "rose" || link.accent === "astro") {
               activeBg = "bg-bronze";
               hoverBg = "hover:bg-[rgba(216,181,109,0.07)]";
             }
@@ -432,7 +469,9 @@ export function AppShell({
             <span className="text-sm font-semibold text-white/80">JUNO</span>
           </Link>
 
-          <div className="flex items-center gap-2">
+          <div
+            className="flex flex-wrap items-center justify-end gap-2"
+          >
             {/* Mobile language */}
             <div className="relative">
               <button
@@ -477,7 +516,7 @@ export function AppShell({
                   pathname: "/auth/login",
                   query: { next: nextPath },
                 }}
-                className="rounded-lg bg-accent/90 px-3 py-1.5 text-xs font-medium text-white"
+                className="whitespace-nowrap rounded-lg bg-accent/90 px-3 py-1.5 text-xs font-medium text-white"
               >
                 {t("signIn")}
               </Link>
@@ -516,7 +555,7 @@ export function AppShell({
       <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[rgba(10,12,20,0.92)] backdrop-blur-2xl lg:hidden" aria-label="App tabs">
         <div className="mx-auto flex max-w-lg items-stretch">
           {bottomNav.map((link) => {
-            const active = isActive(link.href);
+            const active = isActive(link);
             return (
               <Link
                 key={link.href}
