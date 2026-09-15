@@ -27,10 +27,11 @@
     "webApp": "打开网页应用",
     "badge": "把占星当作语言,而不是预言。",
     "installWebApp": "安装网页应用",
-    "iOSInstallHint": "iPhone 用户？添加到主屏幕 — 像原生应用一样使用。"
+    "iOSInstallHint": "iPhone 用户？添加到主屏幕 — 像原生应用一样使用。",
+    "signUp": "免费创建账户"
   },
   "socialProof": {
-    "proofRating": "Google Play 评分",
+    "proofRating": "已在 Google Play 上架",
     "proofTags": "价值观 & 生活方式标签",
     "proofEngine": "真实合盘引擎"
   },
@@ -481,7 +482,7 @@
     "signOut": "退出登录",
     "settings": "设置",
     "signInTitle": "登录 JUNO",
-    "signInSubtitle": "访问你的账户、订阅返回页面，以及即将上线的网页功能。",
+    "signInSubtitle": "登录以继续你的连接并管理你的订阅。",
     "createAccountTitle": "创建你的 JUNO 账户",
     "createAccountSubtitle": "从网页开始，然后用同一个账户继续在移动端使用。",
     "name": "姓名",
@@ -2272,7 +2273,12 @@
     "natalWheelAriaLabel": "你的本命盘轮：星座、行星、轴点与宫位。",
     "natalWheelNeedBirthTime": "补充出生时间与出生城市，即可看到宫位与轴点。",
     "natalWheelNeedBirthPlace": "出生时间已保存。补充出生城市即可看到宫位与轴点。",
-    "natalWheelNoChart": "我们尚未能读取此账户的星盘。"
+    "natalWheelNoChart": "我们尚未能读取此账户的星盘。",
+    "signupTermsPre": "创建账户即表示你同意",
+    "signupTermsTermsLink": "使用条款",
+    "signupTermsMid": "，并确认你已阅读",
+    "signupTermsPrivacyLink": "隐私政策",
+    "signupTermsPost": "。"
   },
   "invite": {
     "invalidCode": "无效的推荐码",

@@ -1,7 +1,7 @@
 {
   "name": "JUNO — Synastry Guide",
   "short_name": "JUNO",
-  "description": "Explore romantic connection through birth-chart context, synastry insights, and guided conversation prompts.",
+  "description": "Love, friendship, working chemistry — see the synastry between two charts before the conversation starts.",
   "id": "/",
   "start_url": "/app/",
   "scope": "/",
@@ -14,13 +14,55 @@
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/compatibility.png",
+      "sizes": "780x1688",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Synastry — see the connection between two charts"
+    },
+    {
+      "src": "/screenshots/chat.png",
+      "sizes": "780x1688",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Conversations that start with real context"
+    },
+    {
+      "src": "/screenshots/discover.png",
+      "sizes": "780x1688",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Discover people through birth-chart context"
+    },
+    {
+      "src": "/screenshots/install-wide-home.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "JUNO — astrology as a language, not a fortune"
     }
   ]
 }

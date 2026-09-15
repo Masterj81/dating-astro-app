@@ -27,10 +27,11 @@
     "webApp": "Webアプリを開く",
     "badge": "占星術は予言ではなく、対話の言語。",
     "installWebApp": "Webアプリをインストール",
-    "iOSInstallHint": "iPhone をお使いですか？ホーム画面に追加 — ネイティブアプリのように動作します。"
+    "iOSInstallHint": "iPhone をお使いですか？ホーム画面に追加 — ネイティブアプリのように動作します。",
+    "signUp": "無料でアカウントを作成"
   },
   "socialProof": {
-    "proofRating": "Google Play で",
+    "proofRating": "Google Play で配信中",
     "proofTags": "価値観 & ライフスタイル タグ",
     "proofEngine": "本物のシナストリー エンジン"
   },
@@ -481,7 +482,7 @@
     "signOut": "サインアウト",
     "settings": "設定",
     "signInTitle": "JUNO にサインイン",
-    "signInSubtitle": "アカウント、購読の戻り先ページ、今後の Web 機能にアクセスします。",
+    "signInSubtitle": "ログインしてつながりを続け、サブスクリプションを管理しましょう。",
     "createAccountTitle": "JUNO アカウントを作成",
     "createAccountSubtitle": "Web から始めて、同じアカウントでモバイルへ続けられます。",
     "name": "名前",
@@ -2272,7 +2273,12 @@
     "natalWheelAriaLabel": "出生図のホイール：星座、天体、アングル、ハウス。",
     "natalWheelNeedBirthTime": "出生時刻と出生地を追加すると、ハウスとアングルが表示されます。",
     "natalWheelNeedBirthPlace": "出生時刻は保存されています。出生地を追加すると、ハウスとアングルが表示されます。",
-    "natalWheelNoChart": "このアカウントのチャートはまだ読み取れていません。"
+    "natalWheelNoChart": "このアカウントのチャートはまだ読み取れていません。",
+    "signupTermsPre": "アカウントを作成することで、",
+    "signupTermsTermsLink": "利用規約",
+    "signupTermsMid": "に同意し、",
+    "signupTermsPrivacyLink": "プライバシーポリシー",
+    "signupTermsPost": "を読んだものとみなされます。"
   },
   "invite": {
     "invalidCode": "無効な紹介コード",
