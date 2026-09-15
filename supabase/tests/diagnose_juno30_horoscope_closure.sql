@@ -77,6 +77,14 @@ SELECT count(*)                    AS total_401_dans_la_fenetre,
 --    fermeture porte sur LES PASSAGES du job désarmé : pg_cron n'exécute pas
 --    un job inactive, et son historique est la source qui lui est propre.
 --    Le repère est le dernier_401 noté en passe B : 2026-09-14 12:00:00+00.
+--
+--    CORRECTION D'EXPLOITATION (15 septembre) : le repère tronqué à la seconde
+--    fait compter le passage-repère LUI-MÊME (« 12:00:00.059869 » > « 12:00:00 »
+--    par 59,869 ms) — un faux positif. Pour toute passe future, utiliser comme
+--    repère l'horodatage EXACT en microsecondes du dernier passage, ou la
+--    prochaine échéance planifiée — jamais un seuil générique « repère + 1 s »,
+--    qui pourrait masquer une véritable exécution décalée d'une seconde.
+--    Repère exact consigné : 2026-09-14 12:00:00.059869+00.
 -- ---------------------------------------------------------------------------
 SELECT
   j.jobid,

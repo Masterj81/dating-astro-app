@@ -697,10 +697,15 @@ fermeture opérationnelle préparée sont dans
    n'est pas conçu : deux publieurs des mêmes contenus sans garde de
    déduplication publient en double.
 
-**Statut proposé :** fermeture opérationnelle préparée ; JUNO-30 sera fermé pour sa
-part exploitation quand la migration sera appliquée, que la supervision montrera
-l'état intentionnel, et que le passage de 12:00 UTC suivant n'aura produit aucun
-401. Les suivis A (jetons push) et B (consentement) restent des constats séparés.
+**Statut : FERMÉ pour sa partie exploitation le 15 septembre 2026** — passe C
+mesurée à 12:43 UTC : `active = false`, **zéro passage au midi du 15 septembre**
+(`dernier_passage = 2026-09-14 12:00:00.059869+00`, soit hier), 0×401 global
+après le repère (indicateur secondaire, sans attribution). Le `passages_apres_repere = 1`
+de la lecture brute est un faux positif documenté : le repère pg_net est tronqué à
+la seconde alors que `start_time` porte la microseconde — le passage d'hier midi se
+compte « après » son propre repère par 59,869 ms (détail et preuve dans
+[`runbooks/juno-30-decisions-et-desarmement-2026-09.md`](runbooks/juno-30-decisions-et-desarmement-2026-09.md), §6).
+Les suivis A (jetons push) et B (consentement) restent des constats séparés, ouverts.
 
 **Deux défauts de cet outil, découverts en s'en servant, et corrigés :**
 

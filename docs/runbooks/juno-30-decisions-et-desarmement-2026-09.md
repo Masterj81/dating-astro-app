@@ -1,6 +1,6 @@
 # JUNO-30 — décisions produit et désarmement du push horoscope
 
-**Date des décisions : 14 septembre 2026 · Statut : migration APPLIQUÉE le 14 septembre (v4, commit `ff37ff8`) — fermeture suspendue à la passe C après le prochain 12:00 UTC.**
+**Date des décisions : 14 septembre 2026 · Statut : FERMÉ pour le versant exploitation le 15 septembre 2026 (passe C conforme) — les suivis A (jetons push) et B (consentement) restent ouverts.**
 
 Documents de référence : [`../security-audit-2026-09-07.md`](../security-audit-2026-09-07.md)
 (constat JUNO-30, mesures), [`scheduled-emails-cron-2026-09.md`](scheduled-emails-cron-2026-09.md)
@@ -221,13 +221,38 @@ aucun jeton au format Expo attendu par l'API (`ExpoPushToken[…]`).
 ## 5. Statut proposé pour JUNO-30
 
 > **Décisions produit prises le 14 septembre 2026 ; fermeture opérationnelle
-> PRÉPARÉE puis EXÉCUTÉE le 14 septembre (migration `20260914000001` appliquée,
-> commit `ff37ff8`).** JUNO-30 sera FERMÉ pour sa partie exploitation lorsque,
-> après le prochain passage de 12:00 UTC : (a) le verdict sera toujours
-> `DESACTIVEE` (ou `CONFORME : désactivée et absente`), (b) **zéro tâche active
-> ne visera `send-daily-horoscope`**, (c) **le job désarmé n'aura enregistré
-> aucun passage après le repère** (`passages_apres_repere = 0`,
-> `dernier_passage = 2026-09-14 12:00:00+00`) — le compteur global de 401
-> pg_net reste indicateur secondaire, sans attribution au push horoscope sans
-> corrélation. Les constats « jetons push » (suivi A) et « consentement »
-> (suivi B) restent des chantiers séparés, hors périmètre de fermeture.
+> EXÉCUTÉE et PROUVÉE le 15 septembre 2026.**
+
+---
+
+## 6. Fermeture — passe C du 15 septembre 2026 (12:43 UTC)
+
+**Preuve principale (identité du cron désarmé) :**
+
+| mesure | attendu | mesuré | verdict |
+|---|---|---|---|
+| `active` | `false` | **`false`** | ✅ |
+| passages depuis le passage de midi du 15 septembre 12:00 UTC | 0 | **0** — le midi du 15 est passé **sans exécution** : `dernier_passage = 2026-09-14 12:00:00.059869+00` (hier) | ✅ |
+| `dernier_passage` | `2026-09-14 12:00:00+00` | `2026-09-14 12:00:00.059869+00` | ✅ |
+| indicateur secondaire : 401 globaux après le repère | — | **0** (sans attribution : pg_net ne relie pas une réponse à sa tâche) | ✅ |
+
+**Faux positif de la première lecture, expliqué et tranché.** La requête brute
+rendait `passages_apres_repere = 1` alors que la fermeture est réelle : le repère
+provient de pg_net, **tronqué à la seconde** (`12:00:00`), tandis que
+`cron.job_run_details.start_time` porte la **microseconde**
+(`12:00:00.059869`). Le passage d'hier midi se compte donc « après » son propre
+repère par 59,869 ms. Ce `1` désigne le passage-repère lui-même, pas un nouveau
+passage — la preuve en est `dernier_passage` inchangé au lendemain du désarmement.
+Toute NOUVELLE exécution se distinguerait par un `dernier_passage` postérieur au
+repère de plus d'une période (24 h). **Correction à retenir pour le diagnostic**
+(décision d'exploitation du 15 septembre) : utiliser comme repère **l'horodatage
+exact en microsecondes** du dernier passage (le `start_time` lui-même) ou la
+**prochaine échéance planifiée** — et non un seuil générique « repère + 1 s »,
+qui pourrait masquer une véritable exécution décalée d'une seconde.
+
+**JUNO-30 est FERMÉ pour son versant exploitation le 15 septembre 2026.** Restent
+ouverts, en chantiers séparés : le suivi A (enregistrement des jetons push —
+1 jeton pour 289 profils actifs, aucun au format Expo) et le suivi B
+(consentement `dailyHoroscope`, `true` par défaut depuis le 24 août). La tâche
+reste désarmée jusqu'à leur clôture ; toute réactivation passe par la procédure
+de réactivation propre du §2.
