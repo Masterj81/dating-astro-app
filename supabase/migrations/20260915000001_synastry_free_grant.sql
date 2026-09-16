@@ -522,17 +522,29 @@ BEGIN
   END IF;
 
   -- PK exacte : (viewer, usage_date_utc) — LA garantie une-cible-par-jour.
-  SELECT COUNT(*) = 1 INTO v_pk_ok
-    FROM pg_index i
-    JOIN pg_class c ON c.oid = i.indrelid
-   WHERE c.relname = 'synastry_free_grant' AND i.indisprimary
-     AND i.indkey = (
-       (SELECT attnum FROM pg_attribute
-         WHERE attrelid = 'public.synastry_free_grant'::regclass AND attname = 'viewer_user_id')
-       ||
-       (SELECT attnum FROM pg_attribute
-         WHERE attrelid = 'public.synastry_free_grant'::regclass AND attname = 'usage_date_utc')
-     );
+  --
+  -- INCIDENT D'APPLICATION (16 sept 2026, production, ANNULE PROPREMENT) :
+  -- la première mouture comparait i.indkey à la concaténation des deux
+  -- pg_attribute.attnum — `smallint || smallint` n'existe pas (erreur
+  -- 42883), la self-verify a refusé de committer, tout a été annulé (table
+  -- absente, quota NULL, zéro fonction : mesuré). Forme portable ci-dessous :
+  -- les colonnes de la PK, agrégées DANS L'ORDRE de indkey via unnest WITH
+  -- ORDINALITY, comparées aux deux noms attendus.
+  SELECT EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_index i
+    WHERE i.indrelid = 'public.synastry_free_grant'::regclass
+      AND i.indisprimary
+      AND (
+        SELECT pg_catalog.array_agg(a.attname ORDER BY key_col.ordinality)
+        FROM pg_catalog.unnest(i.indkey)
+             WITH ORDINALITY AS key_col(attnum, ordinality)
+        JOIN pg_catalog.pg_attribute a
+          ON a.attrelid = i.indrelid
+         AND a.attnum = key_col.attnum
+      ) = ARRAY['viewer_user_id', 'usage_date_utc']::name[]
+  )
+  INTO v_pk_ok;
   IF NOT v_pk_ok THEN
     RAISE EXCEPTION 'PK de synastry_free_grant != (viewer_user_id, usage_date_utc)';
   END IF;

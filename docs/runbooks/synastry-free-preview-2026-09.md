@@ -4,6 +4,18 @@
 **État : implémenté localement, NON appliqué, NON déployé, NON commité**
 **Branche de travail : `fix/security-wave-2-2026-09-08` (non commité)**
 
+## Incident d'application n°1 (16 sept 2026, production — ANNULÉ PROPREMENT)
+
+Première application de `20260915000001` : la self-verification a échoué sur
+
+```
+ERROR 42883: operator does not exist: smallint || smallint
+```
+
+Le contrôle de PK concaténait les deux `pg_attribute.attnum` (`smallint`) — opérateur inexistant en PostgreSQL. **La transaction a été intégralement annulée** ; preuves mesurées après coup : `grant_table = NULL`, `free_preview_quota = NULL`, `created_functions = 0`. La production est revenue à son état exact d'avant : aucun aperçu actif, aucun nettoyage nécessaire. C'est la self-verify qui a refusé de committer — le mécanisme a fait son travail.
+
+**Correctif** (commit `fix(security): validate synastry grant primary key portably`) : vérification portable par `unnest(i.indkey) WITH ORDINALITY` + `array_agg(attname ORDER BY ordinality)` comparé à `ARRAY['viewer_user_id','usage_date_utc']::name[]`. Régression ajoutée à `synastry-grant-contract.test.ts` : le motif `attnum … || … attnum`, toute comparaison directe `indkey = (…`, l'absence de `WITH ORDINALITY` et l'absence des deux noms dans l'ordre sont chacun des échecs de suite.
+
 ## Corrections de la revue du 16 sept 2026 (quatrième passe — toutes appliquées)
 
 10. **`STRICT` retiré des helpers ACL (P0).** `p_privilege DEFAULT NULL` + `STRICT` faisait retourner NULL **sans exécuter la requête** à tout appel mono-argument — et `IF NULL` ne levant pas en PL/pgSQL, le self-verify de la table était un faux vert intégral. Les deux helpers sont désormais en plpgsql sans STRICT ; corollaire : un nom de privilège inconnu lève une **exception** (jamais un FALSE silencieux), et la seule façon d'obtenir FALSE est l'absence réelle d'entrée `grantee = 0`. **Tous** les sites d'appel (self-verifies des deux migrations, test SQL) comparent explicitement : baseline `IS FALSE` / `IS NOT FALSE`, injection `IS TRUE` — un NULL éventuel échoue toujours.

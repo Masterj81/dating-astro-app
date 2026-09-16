@@ -95,6 +95,55 @@ describe('sites d’appel — comparaisons explicites, jamais une condition nue'
   });
 });
 
+describe('vérification PK portable — l’incident 42883 ne doit pas revenir', () => {
+  const src = readRepoFile(MIGRATION_1);
+
+  it('aucune concaténation d’attnum (smallint || smallint n’existe pas)', () => {
+    // Première application en production : ERROR 42883, annulation propre.
+    // Le motif fautif reliait deux pg_attribute.attnum par || — refusé ici
+    // sur le texte SANS commentaires : l’incident est documenté dans la
+    // migration elle-même, et la prose « attnum … || » y est légitime ;
+    // c’est le SQL qui ne doit plus jamais concaténer.
+    const codeOnly = src.replace(/^[ \t]*--.*$/gm, '');
+    expect(codeOnly).not.toMatch(/attnum[^;]*\|\|[^;]*attnum/);
+    // Et aucun || dans le bloc PK une fois la prose retirée.
+    const pkAt = src.indexOf('PK exacte');
+    const pkEnd = src.indexOf('IF NOT v_pk_ok THEN', pkAt);
+    const pkBlock = src.slice(pkAt, pkEnd).replace(/^[ \t]*--.*$/gm, '');
+    expect(pkBlock).not.toContain('||');
+  });
+
+  it('aucune comparaison directe de indkey à des scalaires concaténés', () => {
+    // `i.indkey = ( … || … )` : même idée, autre frappe — indkey est un
+    // int2vector, pas un scalaire. Sur le code seul, pour les mêmes raisons.
+    const codeOnly = src.replace(/^[ \t]*--.*$/gm, '');
+    expect(codeOnly).not.toMatch(/indkey\s*=\s*\(/);
+  });
+
+  it('la vérification utilise unnest … WITH ORDINALITY', () => {
+    const pkAt = src.indexOf('PK exacte');
+    const pkEnd = src.indexOf('IF NOT v_pk_ok THEN', pkAt);
+    const pkBlock = src.slice(pkAt, pkEnd);
+    expect(pkBlock).toContain('WITH ORDINALITY');
+    expect(pkBlock).toContain('pg_catalog.unnest(i.indkey)');
+    expect(pkBlock).toContain('ORDER BY key_col.ordinality');
+    expect(pkBlock).toContain('array_agg');
+  });
+
+  it('les deux colonnes attendues, dans l’ordre, nommées textuellement', () => {
+    const pkAt = src.indexOf('PK exacte');
+    const pkEnd = src.indexOf('IF NOT v_pk_ok THEN', pkAt);
+    const pkBlock = src.slice(pkAt, pkEnd);
+    expect(pkBlock).toContain("ARRAY['viewer_user_id', 'usage_date_utc']::name[]");
+  });
+
+  it('le refus en cas de PK erronée est toujours là', () => {
+    expect(src).toContain(
+      "'PK de synastry_free_grant != (viewer_user_id, usage_date_utc)'",
+    );
+  });
+});
+
 describe('rétention — jour courant + six jours précédents, ni plus ni moins', () => {
   it('le prédicat installé est < v_today − 6 jours (J−7 et plus anciens purgés)', () => {
     const src = readRepoFile(MIGRATION_1);
