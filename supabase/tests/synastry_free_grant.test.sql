@@ -337,6 +337,7 @@ DECLARE
   u1 UUID := 'aaaaaaa1-0000-4000-8000-000000000001';
   u5 UUID := 'aaaaaaa1-0000-4000-8000-000000000005';
   tA UUID := 'aaaaaaa2-0000-4000-8000-00000000000a';
+  tB UUID := 'aaaaaaa2-0000-4000-8000-00000000000b';  -- incident n°10-ter : utilisé ci-dessous, non déclaré = colonne SQL
   v_today DATE := (NOW() AT TIME ZONE 'utc')::date;
   v_code  TEXT;
   v_count BIGINT;

@@ -4,6 +4,18 @@
 **État : implémenté localement, NON appliqué, NON déployé, NON commité**
 **Branche de travail : `fix/security-wave-2-2026-09-08` (non commité)**
 
+## Incident d'application n°10 — CONCLU ET VERT (16 sept 2026)
+
+**Séquence exécutée (ordres opérateur)** : (0) résidus du test échoué mesurés — **0/0/0/0/0, quota = 1**, la transaction annulée n'avait rien laissé ; (1) migration corrective `20260916000001` appliquée — sa première passe s'est annulée proprement sur sa propre self-verify (`position('INTO')` tombait dans un **commentaire** du corps citant « SELECT INTO » : dépouillage des commentaires avant extraction, corrective re-appliquée avec succès) ; (2) définition déployée vérifiée : `v_policy` absent, scalaires présents, `search_path` vide, PUBLIC refusé / authenticated accordé / anon refusé ; (3) préflight rejoué **15/15 OK** ; (4) **test comportemental rollback-safe : SUCCÈS** — scénarios 1-10, purge P1-P6, structurel S1-S3, télémétrie T1-T9, picker K1-K5, ACL R1-R4, sans une seule exception, `ROLLBACK` final ; (5) résidus post-test **0/0/0/0/0, quota 1**.
+
+**Deux écarts réels attrapés par la séquence** :
+- **La migration 2 (picker) n'avait jamais été appliquée** — le test l'a prouvé au scénario 8 (le picker périmé ne levait pas `policy_unavailable`, `tier_at_least(_, NULL)` étant vrai). Appliquée selon l'étape 4 de la séquence du runbook ; picker déployé vérifié (`policy_unavailable` + `free_preview_quota` + `profile_chart_visible` présents). **Le préflight 4c est renforcé** : il exige désormais le **corps** de la migration 2, pas la seule signature — identique entre versions, c'est ainsi que le picker périmé s'était caché.
+- **`tB` non déclaré dans le bloc purge du test** (résolu en colonne SQL) — déclaré. Leçon : chaque identifiant utilisé dans un bloc `DO` doit y être déclaré ; les variables plpgsql ne débordent pas d'un bloc à l'autre.
+
+**Accès** : Management API, jeton du CLI lu par P/Invoke `CredRead` (l'entrée est `LegacyGeneric`, invisible au WinRT PasswordVault), corps JSON construit à la main et envoyé en **octets UTF-8** (PS 5.1 mange les accents en ISO-8859-1, et `ConvertTo-Json` emballe les longues chaînes en `{"value":…}`).
+
+État production après la séquence : porte corrigée et **opérationnelle**, picker migration 2 en place, politique `quota = 1`, zéro résidu. **Aucun déploiement web/edge** : le pipeline de livraison reste à faire.
+
 ## Incident d'application n°10 (16 sept 2026 — découvert par le test, corrective 20260916000001)
 
 **`synastry_preview_gate` écrivait un `SELECT INTO` champ par champ dans un `RECORD` vierge** (`v_policy.required_tier`, `v_policy.free_preview_quota`) : un RECORD plpgsql n'a aucune structure avant sa première affectation **entière**, PostgreSQL refuse l'accès au champ. La self-verify de la migration d'origine ne pouvait pas l'attraper — elle n'**appelle** pas la porte ; seul le test comportemental l'a fait. La transaction du test a été annulée : zéro résidu (les cinq compteurs à 0, quota à 1 — vérifiés avant correctif).

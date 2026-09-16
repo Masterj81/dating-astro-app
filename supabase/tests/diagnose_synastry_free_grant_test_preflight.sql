@@ -290,11 +290,28 @@ SELECT contrôle, observé, attendu, verdict FROM (
                AND (SELECT claim_result FROM fn) LIKE '%next_available_utc%'
               THEN 'OK' ELSE 'BLOQUANT' END
   UNION ALL
-  SELECT '4c. signature get_synastry_candidate_profiles',
-         (SELECT COALESCE(picker_args,'ABSENT') FROM fn),
-         'p_user_id uuid, p_limit integer',
+  SELECT '4c. get_synastry_candidate_profiles : signature ET corps (migration 2)',
+         (SELECT COALESCE(picker_args, 'ABSENT') FROM fn)
+         || (SELECT CASE WHEN position('policy_unavailable' in pg_get_functiondef(p.oid)) > 0
+                         THEN ' + policy_unavailable' ELSE ' + SANS policy_unavailable' END
+               || CASE WHEN position('free_preview_quota' in pg_get_functiondef(p.oid)) > 0
+                       THEN ' + free_preview_quota' ELSE ' + SANS free_preview_quota' END
+               || CASE WHEN position('profile_chart_visible' in pg_get_functiondef(p.oid)) > 0
+                       THEN ' + profile_chart_visible' ELSE ' + SANS profile_chart_visible' END
+            FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+           WHERE n.nspname='public' AND p.proname='get_synastry_candidate_profiles'),
+         'uuid + integer + policy_unavailable + free_preview_quota + profile_chart_visible (la signature seule est identique entre versions : le CORPS décide)',
          CASE WHEN (SELECT picker_args FROM fn) LIKE '%uuid%'
                AND (SELECT picker_args FROM fn) LIKE '%integer%'
+               AND (SELECT position('policy_unavailable' in pg_get_functiondef(p.oid)) > 0
+                     FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+                    WHERE n.nspname='public' AND p.proname='get_synastry_candidate_profiles')
+               AND (SELECT position('free_preview_quota' in pg_get_functiondef(p.oid)) > 0
+                     FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+                    WHERE n.nspname='public' AND p.proname='get_synastry_candidate_profiles')
+               AND (SELECT position('profile_chart_visible' in pg_get_functiondef(p.oid)) > 0
+                     FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+                    WHERE n.nspname='public' AND p.proname='get_synastry_candidate_profiles')
               THEN 'OK' ELSE 'BLOQUANT' END
   UNION ALL
   SELECT '4d. signatures get_user_tier / tier_at_least / profile_chart_visible',

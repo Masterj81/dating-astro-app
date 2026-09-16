@@ -91,6 +91,7 @@ COMMENT ON FUNCTION public.synastry_preview_gate IS
 DO $$
 DECLARE
   v_def TEXT;
+  v_code TEXT;
   v_into TEXT;
   v_at INTEGER;
   v_from INTEGER;
@@ -110,14 +111,17 @@ BEGIN
   END IF;
   -- Jamais d'écriture champ-à-champ d'un RECORD dans un INTO : on borne la
   -- clause INTO (entre INTO et le FROM qui la suit) AVANT de chercher un
-  -- point — le FROM public.… qui suit en contient un, et un regex non borné
-  -- ferait un faux positif (leçon des incidents 4 et 9).
-  v_at := position('INTO' in v_def);
-  v_from := position('FROM' in v_def);
-  IF v_at IS NULL OR v_from IS NULL OR v_from <= v_at THEN
-    RAISE EXCEPTION 'structure inattendue : clause INTO introuvable';
+  -- point. SUR LE TEXTE SANS COMMENTAIRES : pg_get_functiondef préserve la
+  -- prose du corps, et nos commentaires citent « SELECT INTO » et « FROM »
+  -- — la première application s'est prise à ses propres mots (annulée
+  -- proprement, fonction inchangée).
+  v_code := regexp_replace(v_def, '--[^\n\r]*', '', 'g');
+  v_at := position('INTO' in v_code);
+  v_from := position('FROM' in v_code);
+  IF v_at IS NULL OR v_at = 0 OR v_from IS NULL OR v_from = 0 OR v_from <= v_at THEN
+    RAISE EXCEPTION 'structure inattendue : clause INTO introuvable dans le code';
   END IF;
-  v_into := substring(v_def from v_at for v_from - v_at);
+  v_into := substring(v_code from v_at for v_from - v_at);
   IF v_into LIKE '%.%' THEN
     RAISE EXCEPTION 'la clause INTO de la porte contient un accès à un champ (%)', v_into;
   END IF;

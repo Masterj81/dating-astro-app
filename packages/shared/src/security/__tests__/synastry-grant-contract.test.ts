@@ -723,11 +723,14 @@ describe('porte — scalaires, jamais INTO sur champs d’un RECORD (incident n�
   });
 
   it('la self-verify de la corrective borne la clause INTO avant d’y chercher un point', () => {
-    // Leçon des incidents 4 et 9 : un regex non borné verdissait ou
-    // refusait à tort. La preuve extraire INTO→FROM AVANT de chercher '.'.
-    expect(corrective).toMatch(/v_at := position\('INTO' in v_def\)/);
-    expect(corrective).toMatch(/substring\(v_def from v_at for v_from - v_at\)/);
-    expect(corrective).toMatch(/IF v_into LIKE '%\.%' THEN/);
+    // Leçon des incidents 4, 9 et 10-bis : un regex non borné verdissait ou
+    // refusait à tort, ET pg_get_functiondef préserve la prose du corps —
+    // nos propres commentaires citent « INTO » et « FROM ». La preuve
+    // dépouille les commentaires AVANT d’extraire INTO→FROM.
+    expect(corrective).toContain("v_code := regexp_replace(v_def, '--[^\\n\\r]*', '', 'g')");
+    expect(corrective).toContain("v_at := position('INTO' in v_code)");
+    expect(corrective).toContain('substring(v_code from v_at for v_from - v_at)');
+    expect(corrective).toContain("IF v_into LIKE '%.%' THEN");
     // Et l'ACL reste prouvée par inspection réelle.
     expect(corrective).toMatch(/_acl_public_fn_privilege\('public\.synastry_preview_gate\(\)'::regprocedure\) IS NOT FALSE/);
   });
