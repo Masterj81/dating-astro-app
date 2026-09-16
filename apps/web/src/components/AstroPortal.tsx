@@ -252,17 +252,19 @@ export function AstroPortal() {
             lockedLabel=""
             icon="celestial"
           />
-          {/* Synastry — the ONLY locked shortcut in this group: no free
-              preview exists (free_preview_quota IS NULL, verified
-              14 Sep 2026). Locked reads as locked; the destination's 402 is
-              handled by the surface, and the portal itself never consumes
-              quota. */}
+          {/* Synastry — open to EVERY account since 2026-09-15: the server
+              grants one free comparison per UTC day (synastry
+              free_preview_quota = 1, 20260915000001). The same reasoning as
+              the natal shortcut above: a lock here would contradict the
+              "1 offered comparison" note beside it, and the destination's
+              gate + claim are server-side — the portal never consumes
+              quota by linking. The note IS the try-free label. */}
           <QuickLink
             href="/app/premium/celestial/synastry"
             label={t("celestialHubOpenSynastry")}
-            note={null}
-            locked={!celestialUnlocked}
-            lockedLabel={t("astroLockedRequiresCelestial")}
+            note={celestialUnlocked ? null : t("astroQuickSynastryFreeNote")}
+            locked={false}
+            lockedLabel=""
             icon="astro"
           />
           {/* Conversation guide — its free situation never touches the

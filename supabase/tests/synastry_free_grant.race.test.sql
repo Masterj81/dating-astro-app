@@ -1,0 +1,35 @@
+-- =============================================================================
+-- Synastrie offerte — course à deux connexions : LE HARNAIS RÉEL EST NODE
+-- =============================================================================
+--
+-- CE FICHIER N'EST PAS UN TEST EXÉCUTABLE et ne prétend plus l'être.
+--
+-- La course exige deux connexions PostgreSQL vivantes, une barrière réelle
+-- et l'orchestration du COMMIT du gagnant — rien de tout cela ne s'écrit en
+-- SQL commenté. La première version de ce fichier décrivait un protocole à
+-- verrous advisory INVALIDE (les deux workers attendaient des clés
+-- différentes, personne n'attendait la barrière annoncée, et un gagnant en
+-- ROLLBACK laissait le perdant suspendu) : retirée à la revue du 16 sept.
+--
+-- LE TEST RÉEL (usage env-only — la chaîne de connexion ne passe JAMAIS en
+-- argument de commande, elle serait visible dans la liste des processus) :
+--
+--   JUNO_STAGING_DATABASE_URL=postgresql://… \
+--   JUNO_STAGING_PROJECT_REF=<ref-du-staging> \
+--   JUNO_ALLOW_STAGING_RACE_TEST=yes \
+--   node supabase/tests/synastry-free-grant.race.mjs
+--
+--   prérequis : Node >= 18, psql sur le PATH, rôle propriétaire, migrations
+--   20260915000001/2 appliquées (staging d'abord).
+--
+--   Il ouvre deux workers psql, les amène à la barrière (READY puis ARMED,
+--   chacun bloqué sur son stdin), libère la barrière dans la même tick,
+--   lit le PREMIER résultat autorisé, le COMMITTE, exige
+--   free_preview_used_other_target du perdant débloqué, vérifie l'unique
+--   ligne viewer/jour, nettoie BORNÉ aux UUID synthétiques (préfixe
+--   d17a5ace-…) et prouve qu'aucune fixture ne subsiste.
+--
+-- Tant qu'il n'a pas tourné sur une base réelle, la course demeure une
+-- GARANTIE STRUCTURELLE (PK viewer+jour + ON CONFLICT DO NOTHING) — jamais
+-- une exécution mesurée.
+-- =============================================================================

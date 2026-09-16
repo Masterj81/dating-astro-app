@@ -1,35 +1,34 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
-import { useLocale, useTranslations } from "next-intl";
+import { CompatibilityDotsArc } from "@/components/CompatibilityDotsArc";
+import { EmptyState } from "@/components/EmptyState";
+import { SynastryOverviewSkeleton } from "@/components/Skeleton";
 import { Link } from "@/i18n/navigation";
 import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
-import { formatOrb, resolveSynastryView } from "@astro/shared/astrology";
-import {
-  calculateSunCompatibility,
-  calculateZoneScores,
-  getElement,
-  getScoreBand,
-  getWhyFactors,
-  shouldShowWatchFor,
-  type SynastryElement,
-  type WhyFactor,
-  type ZoneScore,
-} from "@/lib/synastry";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
-import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
-import { CompatibilityDotsArc } from "@/components/CompatibilityDotsArc";
-import { SynastryOverviewSkeleton } from "@/components/Skeleton";
-import { EmptyState } from "@/components/EmptyState";
 import {
-  CONNECTION_INTENTIONS,
-  DEFAULT_CONNECTION_INTENTIONS,
-  sanitizeConnectionIntentions,
-  type ConnectionIntention,
+    calculateSunCompatibility,
+    calculateZoneScores,
+    getElement,
+    getScoreBand,
+    getWhyFactors,
+    shouldShowWatchFor,
+    type SynastryElement,
+    type WhyFactor,
+    type ZoneScore,
+} from "@/lib/synastry";
+import { getCurrentAccountState, type WebAccountState } from "@/lib/web-account";
+import { buildExplorationQuestions, formatOrb, resolveSynastryView, resolveTrustedRisingSign } from "@astro/shared/astrology";
+import {
+    CONNECTION_INTENTIONS,
+    DEFAULT_CONNECTION_INTENTIONS,
+    sanitizeConnectionIntentions,
+    type ConnectionIntention,
 } from "@astro/shared/profile";
-import { buildExplorationQuestions, resolveTrustedRisingSign } from "@astro/shared/astrology";
+import { useLocale, useTranslations } from "next-intl";
+import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
 
 // Picker entry. Mirrors the get_synastry_candidate_profiles RPC return
 // shape — same preference filtering as Discover, minus the swipes
@@ -104,6 +103,26 @@ function factorInfluence(score: number): FactorInfluence {
   return "challenging";
 }
 
+/**
+ * Best-effort preview telemetry — one of the five whitelisted events, never
+ * a target id. Idempotent server-side (one row per reader/event/day UTC) and
+ * swallowed on failure by contract: analytics must never interrupt the
+ * surface it measures. Supabase's builder is a thenable without .catch, so
+ * the swallow lives here rather than at each call site.
+ */
+function recordPreviewEvent(eventName: string) {
+  void (async () => {
+    try {
+      await getSupabaseBrowser().rpc("record_product_event", {
+        p_event_name: eventName,
+        p_platform: "web",
+      });
+    } catch {
+      /* best effort by contract */
+    }
+  })();
+}
+
 export function SynastryOverview({ initialProfileId = null }: { initialProfileId?: string | null }) {
   const t = useTranslations("webApp");
   const locale = useLocale();
@@ -127,6 +146,20 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
   const [loading, setLoading] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // ── Free daily preview state (2026-09-15) ──────────────────────────────
+  // The server owns every transition; the client only renders what it is
+  // told. `pickerLocked` mirrors the picker RPC's premium_required — the
+  // legacy lock card — and stays false while the preview is active.
+  // `previewGrant` rides a successful response (allowed_free_new |
+  // allowed_free_existing). `previewBlocked` is the 402 loser state, with
+  // the server-computed next availability. A subscriber sets none of them.
+  const [pickerLocked, setPickerLocked] = useState(false);
+  const [previewGrant, setPreviewGrant] = useState<
+    { code: string; used: boolean } | null
+  >(null);
+  const [previewBlocked, setPreviewBlocked] = useState<{
+    nextAvailableUtc: string | null;
+  } | null>(null);
   // Self + target macro intentions. Used only to pick the initial
   // reading-frame; the user can override via the segmented control. The
   // synastry math itself is UNCHANGED — only labels / prose change.
@@ -187,6 +220,17 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
           throw meError;
         }
         if (candidatesError) {
+          // The picker is the server's gate for free readers too
+          // (20260915000002). premium_required = preview disabled (quota
+          // NULL, the rollback state) or the feature gone from the policy —
+          // both render the legacy lock card rather than a raw error, and
+          // neither is a client-tier guess. policy_unavailable is an outage.
+          const msg = String(candidatesError.message ?? "");
+          if (msg.includes("premium_required")) {
+            setPickerLocked(true);
+            setCandidates([]);
+            return;
+          }
           throw candidatesError;
         }
 
@@ -310,6 +354,20 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
     load();
   }, [t, initialProfileId]);
 
+  // `preview_presented`: once per mount, when the server actually served the
+  // picker to a free reader (not locked, candidates present). Idempotence is
+  // enforced by the partial unique index (one row per reader/event/day UTC),
+  // so a double mount cannot double-count. Best-effort: analytics must never
+  // interrupt the surface it measures.
+  useEffect(() => {
+    if (loading || !state || state.tier !== "free" || pickerLocked) return;
+    if (!candidates.length) return;
+    recordPreviewEvent("preview_presented");
+    // candidates.length in the guard, excluded here on purpose: the event
+    // fires once per mount, not once per candidate change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, state, pickerLocked]);
+
   useEffect(() => {
     const loadSelectedMatch = async () => {
       if (!selectedProfileId) {
@@ -317,18 +375,61 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
         return;
       }
 
+      // Switching targets clears the previous verdicts: a grant, a block, or
+      // a stale chart from the last selection must never bleed into the next
+      // person's panel.
+      setPreviewGrant(null);
+      setPreviewBlocked(null);
+
       try {
         setLoadingProfile(true);
         const supabase = getSupabaseBrowser();
         // Phase 3-B: match profile + chart via edge function. The function
         // reads the target via service_role and returns a sanitized payload —
         // birth_time, birth_date, raw lat/long, email are NEVER included.
+        //
+        // Since 2026-09-15 the SAME call serves the free daily preview: the
+        // edge gates through synastry_preview_gate, computes, then claims.
+        // A 402 `free_preview_used_other_target` means the reader already
+        // compared with someone else today — the response carries
+        // next_available_utc and no astrological data, and this surface
+        // renders the dedicated state instead of an error.
         const { data: payload, error: profileError } = await supabase.functions.invoke(
           "get-profile-chart",
           { body: { targetUserId: selectedProfileId } }
         );
 
         if (profileError) {
+          // FunctionsHttpError carries the Response on `.context`; its body
+          // holds the contract codes the edge emits.
+          const ctx = (profileError as { context?: Response }).context;
+          if (ctx) {
+            let body: Record<string, unknown> | null = null;
+            try {
+              body = (await ctx.json()) as Record<string, unknown>;
+            } catch {
+              body = null;
+            }
+            if (ctx.status === 402 && body?.error === "free_preview_used_other_target") {
+              setPreviewBlocked({
+                nextAvailableUtc:
+                  typeof body.next_available_utc === "string"
+                    ? body.next_available_utc
+                    : null,
+              });
+              setMatchProfile(null);
+              setMatchChart(null);
+              setMatchSynastry(null);
+              return;
+            }
+            if (ctx.status === 402 && body?.error === "insufficient_tier") {
+              // Preview disabled server-side (rollback state): the legacy
+              // lock card, decided by the server, not by the local tier.
+              setPickerLocked(true);
+              setMatchProfile(null);
+              return;
+            }
+          }
           throw profileError;
         }
 
@@ -353,6 +454,8 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
            * unchecked trust that validation exists to avoid.
            */
           synastry?: unknown;
+          /** Free-daily-preview verdict, present only on the free path. */
+          grant?: { code?: string; used?: boolean } | null;
           error?: string;
         };
 
@@ -360,6 +463,21 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
 
         if (!response?.success || !response.profile) {
           throw new Error(response?.error || t("unknownError"));
+        }
+
+        // The claim already ran server-side, AFTER the computation. `used`
+        // distinguishes "just consumed today's comparison" from "replaying
+        // the same person, free". A subscriber response carries no `grant`.
+        if (
+          response.grant?.code === "allowed_free_new" ||
+          response.grant?.code === "allowed_free_existing"
+        ) {
+          setPreviewGrant({
+            code: response.grant.code,
+            used: response.grant.code === "allowed_free_new",
+          });
+        } else {
+          setPreviewGrant(null);
         }
 
         const c = response.chart;
@@ -408,7 +526,15 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
     );
   }
 
-  if (state.tier === "free") {
+  // ── The free-tier lock is the SERVER's decision now (2026-09-15) ─────────
+  //
+  // Free readers get one full comparison per UTC day (the picker RPC admits
+  // them, get-profile-chart gates + claims). This client-side tier check must
+  // NOT lock the surface while the server would serve it — the same class of
+  // bug that broke the natal preview on mobile. `pickerLocked` is set only by
+  // a server refusal: premium_required from the picker (quota NULL — the
+  // rollback state) or insufficient_tier from the edge.
+  if (state.tier === "free" && pickerLocked) {
     return (
       <EmptyState
         eyebrow={t("natalChartNav")}
@@ -431,6 +557,49 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
           </>
         }
       />
+    );
+  }
+
+  // ── 402 loser state: today's comparison was spent on someone else ────────
+  //
+  // The edge answered free_preview_used_other_target with no astrological
+  // data and no identity of today's target. Render the honest state with the
+  // server-computed availability and the upgrade path.
+  if (previewBlocked) {
+    const nextLocal = previewBlocked.nextAvailableUtc
+      ? new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(
+          new Date(previewBlocked.nextAvailableUtc),
+        )
+      : null;
+    return (
+      <div className="rounded-[2rem] border border-border bg-card/90 p-8">
+        <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
+          {t("synastryPreviewEyebrow")}
+        </p>
+        <h2 className="mt-3 text-2xl font-semibold text-white">
+          {t("synastryPreviewUsedTitle")}
+        </h2>
+        <p className="mt-3 text-sm leading-7 text-text-muted">
+          {nextLocal
+            ? t("synastryPreviewUsedBodyAt", { time: nextLocal })
+            : t("synastryPreviewUsedBody")}
+        </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            href="/app/plans"
+            onClick={() => recordPreviewEvent("upgrade_clicked")}
+            className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-gold-soft"
+          >
+            {t("viewPlans")}
+          </Link>
+          <Link
+            href="/app/discover"
+            className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
+          >
+            {t("openDiscover")}
+          </Link>
+        </div>
+      </div>
     );
   }
 
@@ -519,7 +688,33 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
     totalScore != null && shouldShowWatchFor(getScoreBand(totalScore));
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[0.72fr_1.28fr]">
+    <div className="space-y-6">
+      {/* Free daily preview banner — present only when the server attached a
+          grant to this response. `used` distinguishes the comparison just
+          consumed from the free replay of the same person. Subscribers see
+          nothing: their access is not an aperçu. */}
+      {previewGrant && (
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-[2rem] border border-gold/30 bg-gold/5 px-6 py-4">
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
+              {t("synastryPreviewEyebrow")}
+            </p>
+            <p className="mt-1 text-sm text-text-muted">
+              {previewGrant.used
+                ? t("synastryPreviewBannerUsed")
+                : t("synastryPreviewBannerReplay")}
+            </p>
+          </div>
+          <Link
+            href="/app/plans"
+            onClick={() => recordPreviewEvent("upgrade_clicked")}
+            className="shrink-0 rounded-full bg-gold px-4 py-2 text-xs font-semibold text-bg transition-colors hover:bg-gold-soft"
+          >
+            {t("synastryPreviewUpgrade")}
+          </Link>
+        </div>
+      )}
+      <div className="grid gap-6 xl:grid-cols-[0.72fr_1.28fr]">
       <aside className="rounded-[2rem] border border-border bg-card/90 p-6">
         <p className="text-xs uppercase tracking-[0.24em] text-gold-muted">
           {t("synastryMatchListLabel")}
@@ -940,6 +1135,7 @@ export function SynastryOverview({ initialProfileId = null }: { initialProfileId
           </p>
         </div>
       </section>
+      </div>
     </div>
   );
 }

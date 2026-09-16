@@ -128,25 +128,23 @@ describe("AstroPortal — compte gratuit (free)", () => {
     expect(screen.queryByText("astroExploreCosmic")).toBeNull();
   });
 
-  it("raccourcis : natal en essai gratuit SANS cadenas, guide ouvert, synastrie seule verrouillée", async () => {
+  it("raccourcis : natal ET synastrie en essai gratuit SANS cadenas, guide ouvert", async () => {
     accountState.getCurrentAccountState.mockResolvedValue({ userId: "u", tier: "free" });
     renderPortal();
     await waitForPlanLabel("astroPortalPlanFree");
 
-    // Natal : essai gratuit annoncé, AUCUN cadenas — la politique réelle
-    // (free_preview_quota = 1) rend ce raccourci réellement utilisable.
+    // Natal ET synastrie : essai gratuit annoncé, AUCUN cadenas — les
+    // politiques réelles (free_preview_quota = 1 pour natal_chart depuis
+    // 20260823000001, pour synastry depuis 20260915000001) rendent ces deux
+    // raccourcis réellement utilisables par un compte gratuit. Le portail ne
+    // consomme rien en pointant ; la destination décide côté serveur.
     expect(screen.getByText("astroQuickNatalFreeNote")).toBeTruthy();
     expect(screen.getByText("astroQuickGuideFreeNote")).toBeTruthy();
-    // Exactement UN cadenas dans tout le portail : la synastrie (aucun
-    // aperçu gratuit — free_preview_quota NULL, mesuré le 14 sep 2026).
-    expect(screen.getAllByLabelText("astroLockedRequiresCelestial").length).toBe(1);
-    // Le cadenas est sur le lien synastrie, pas sur le natal ni le guide.
-    const synastryLink = screen.getByRole("link", { name: /celestialHubOpenSynastry/ });
-    expect(synastryLink.querySelector('[aria-label="astroLockedRequiresCelestial"]')).not.toBeNull();
-    const natalLink = screen.getByRole("link", { name: /celestialHubOpenNatal/ });
-    expect(natalLink.querySelector('[aria-label="astroLockedRequiresCelestial"]')).toBeNull();
-    const guideLink = screen.getByRole("link", { name: /conversationGuide/ });
-    expect(guideLink.querySelector('[aria-label="astroLockedRequiresCelestial"]')).toBeNull();
+    expect(screen.getByText("astroQuickSynastryFreeNote")).toBeTruthy();
+    // AUCUN cadenas dans tout le portail : le verrou synastrie a été retiré
+    // le 2026-09-15 avec l'aperçu quotidien — un cadenas à côté de « 1
+    // comparaison offerte par jour » est une contradiction.
+    expect(screen.queryByLabelText("astroLockedRequiresCelestial")).toBeNull();
     // Les trois raccourcis pointent vers les vraies routes — accessibles.
     expectLinks([
       { name: "celestialHubOpenNatal", href: "/app/premium/celestial/natal-chart" },
