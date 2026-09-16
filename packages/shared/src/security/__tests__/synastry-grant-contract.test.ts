@@ -664,3 +664,71 @@ describe('préflight 13b — preuve STRUCTURELLE de profiles.gender (incident n�
     expect(runbook).toContain('INDETERMINE');
   });
 });
+
+describe('porte — scalaires, jamais INTO sur champs d’un RECORD (incident n°10)', () => {
+  // v_policy RECORD recevait un SELECT INTO CHAMP PAR CHAMP avant toute
+  // structure : PostgreSQL refuse (« record … has no field … »). Découvert
+  // par le test comportemental — la self-verify de la migration d'origine
+  // ne pouvait pas l'attraper, elle n'APPELLE pas la porte. La migration
+  // d'origine étant APPLIQUÉE, le correctif est une migration DISTINCTE ;
+  // c'est la DERNIÈRE définition (ordre des fichiers) qui doit être saine.
+
+  const files = [
+    'supabase/migrations/20260915000001_synastry_free_grant.sql',
+    'supabase/migrations/20260916000001_synastry_preview_gate_scalars.sql',
+  ];
+  const corrective = readRepoFile(files[1]);
+
+  it('une migration corrective DISTINCTE existe, postérieure à l’originale', () => {
+    expect(files[1] > files[0]).toBe(true); // ordre lexicographique = ordre d'application
+    expect(corrective).toContain('CREATE OR REPLACE FUNCTION public.synastry_preview_gate()');
+    // Le CORPS de la fonction corrigée ne référence plus v_policy — le
+    // fichier, lui, cite le défaut en tête (documentation d'incident) : le
+    // bannissement porte sur le corps, pas sur la prose (leçon n°1/n°6).
+    const body = corrective.slice(
+      corrective.indexOf('CREATE OR REPLACE FUNCTION public.synastry_preview_gate()'),
+      corrective.indexOf('$$;', corrective.indexOf('AS $$')),
+    );
+    expect(body).not.toContain('v_policy');
+    expect(body).toContain('v_required_tier');
+    expect(body).toContain('v_free_preview_quota');
+    expect(body).toMatch(/INTO\s*\r?\n?\s*v_rows,/);
+  });
+
+  it('la définition GAGNANTE (dernière par nom de fichier) est la corrigée', () => {
+    // L'originale conservée telle quelle (historique livré), la corrective
+    // la remplace : la dernière définition l'emporte à l'application.
+    const winners = files.filter((f) =>
+      readRepoFile(f).includes('CREATE OR REPLACE FUNCTION public.synastry_preview_gate()'),
+    );
+    expect(winners.length).toBe(2);
+    expect(winners[winners.length - 1]).toBe(files[1]);
+  });
+
+  it('AUCUN INTO champ-de-RECORD dans la définition gagnante ni dans le claim', () => {
+    // Formes interdites : INTO … v_x.field (record vierge). La clause INTO
+    // est examinée LIGNE PAR LIGNE : un accès de champ s'y voit par un point.
+    const gateDef = corrective.slice(
+      corrective.indexOf('CREATE OR REPLACE FUNCTION public.synastry_preview_gate()'),
+      corrective.indexOf('$$;', corrective.indexOf('AS $$')),
+    );
+    const intoLines = gateDef.split('\n').filter((l) => /\bINTO\b/.test(l) || /^\s*v_(rows|required_tier|free_preview_quota),?\s*$/.test(l));
+    expect(intoLines.join('\n')).not.toMatch(/[a-z_]+\.[a-z_]+/);
+    // Le claim (jamais touché par l'incident) reste sain lui aussi.
+    const claim = readRepoFile(files[0]).slice(
+      readRepoFile(files[0]).indexOf('CREATE OR REPLACE FUNCTION public.claim_synastry_free_grant'),
+      readRepoFile(files[0]).indexOf('$$;', readRepoFile(files[0]).indexOf('AS $$', readRepoFile(files[0]).indexOf('claim_synastry_free_grant'))),
+    );
+    expect(claim).not.toMatch(/INTO[^;\n]*\s[a-z_]+\.[a-z_]+/);
+  });
+
+  it('la self-verify de la corrective borne la clause INTO avant d’y chercher un point', () => {
+    // Leçon des incidents 4 et 9 : un regex non borné verdissait ou
+    // refusait à tort. La preuve extraire INTO→FROM AVANT de chercher '.'.
+    expect(corrective).toMatch(/v_at := position\('INTO' in v_def\)/);
+    expect(corrective).toMatch(/substring\(v_def from v_at for v_from - v_at\)/);
+    expect(corrective).toMatch(/IF v_into LIKE '%\.%' THEN/);
+    // Et l'ACL reste prouvée par inspection réelle.
+    expect(corrective).toMatch(/_acl_public_fn_privilege\('public\.synastry_preview_gate\(\)'::regprocedure\) IS NOT FALSE/);
+  });
+});

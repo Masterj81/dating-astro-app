@@ -4,6 +4,12 @@
 **État : implémenté localement, NON appliqué, NON déployé, NON commité**
 **Branche de travail : `fix/security-wave-2-2026-09-08` (non commité)**
 
+## Incident d'application n°10 (16 sept 2026 — découvert par le test, corrective 20260916000001)
+
+**`synastry_preview_gate` écrivait un `SELECT INTO` champ par champ dans un `RECORD` vierge** (`v_policy.required_tier`, `v_policy.free_preview_quota`) : un RECORD plpgsql n'a aucune structure avant sa première affectation **entière**, PostgreSQL refuse l'accès au champ. La self-verify de la migration d'origine ne pouvait pas l'attraper — elle n'**appelle** pas la porte ; seul le test comportemental l'a fait. La transaction du test a été annulée : zéro résidu (les cinq compteurs à 0, quota à 1 — vérifiés avant correctif).
+
+**Correctif — migration DISTINCTE `20260916000001_synastry_preview_gate_scalars.sql`** (l'historique livré ne s'édite pas en silence) : `CREATE OR REPLACE` avec deux scalaires `v_required_tier` / `v_free_preview_quota`, sémantique inchangée, ACL réaffirmées. Self-verify : définition déployée sans `v_policy`, scalaires présents, clause `INTO` **extraite entre `INTO` et `FROM`** avant d'y chercher un point (un regex non borné verrait `FROM public.` et ferait un faux positif — leçon des incidents 4 et 9), `search_path` vide, ACL par inspection réelle. Régression statique : la définition **gagnante** (dernière par nom de fichier) est la corrective, son corps ne référence plus `v_policy`, le claim reste sain, l'extraction bornée est exigée. Aucun déploiement web/edge n'a eu lieu : le défaut n'a jamais été exposé aux utilisateurs.
+
 ## Incident n°9 (16 sept 2026 — faux POSITIF du préflight, corrigé avant réexécution)
 
 **Le contrôle 13b validait ce qu'il ne prouvait pas.** Il cherchait `female` dans la concaténation de TOUTES les CHECK de `profiles` — et trouvait le mot dans `profiles_looking_for_values_check` (qui contraint `looking_for`, pas `gender`). Le `OK` affiché ne prouvait rien sur la capacité des fixtures à écrire `gender = 'female'`.
