@@ -15,6 +15,16 @@
 // bounding bulk collection — logged its own failures and carried on, so a
 // transient database error turned the endpoint into an unmetered exporter.
 // docs/security-audit-2026-09-07.md, JUNO-02.
+//
+// WHAT CHANGED ON 2026-09-15 (free daily synastry preview)
+// --------------------------------------------------------
+// Entitlement is now read through `synastry_preview_gate()` — an EXPLICIT tier
+// read. `can_use_premium_feature` answers allowed=true for a subscriber AND
+// for a free reader with a quota; once the preview quota was raised the edge
+// could no longer tell whether to claim a grant. The gate returns
+// paid | preview_enabled | preview_disabled | policy_unavailable, and the
+// mapping here is contract: preview_disabled is the no-redeploy ROLLBACK (402,
+// not 503), policy_unavailable is fail-closed.
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -24,7 +34,7 @@ const EDGE_FILE = 'supabase/functions/get-profile-chart/index.ts';
 
 type RpcResult = { data: unknown; error: { message: string } | null };
 type Decision =
-  | { ok: true; reason: 'self' | 'entitled' }
+  | { ok: true; reason: 'self' | 'entitled' | 'preview' }
   | { ok: false; status: number; error: string };
 
 type EdgeModule = {
@@ -32,6 +42,7 @@ type EdgeModule = {
   RATE_LIMIT_ACTION: string;
   CHART_FEATURE_KEY: string;
   NOT_VISIBLE: { status: number; error: string };
+  PREVIEW_GATE_RESPONSES: Record<string, { status: number; error: string }>;
   authorizeChartAccess: (
     deps: {
       rpcAsCaller: (fn: string, args: Record<string, unknown>) => Promise<RpcResult>;
@@ -53,6 +64,7 @@ beforeAll(async () => {
       'RATE_LIMIT_ACTION',
       'CHART_FEATURE_KEY',
       'NOT_VISIBLE',
+      'PREVIEW_GATE_RESPONSES',
       'firstRow',
       'authorizeChartAccess',
     ],
@@ -66,7 +78,7 @@ const TARGET = '22222222-2222-4222-8222-222222222222';
 
 interface ScenarioOptions {
   rateLimit?: RpcResult;
-  entitlement?: RpcResult;
+  gate?: RpcResult;
   visibility?: RpcResult;
 }
 
@@ -74,7 +86,9 @@ interface ScenarioOptions {
 function makeDeps(options: ScenarioOptions = {}) {
   const calls: Array<{ via: 'caller' | 'service'; fn: string; args: Record<string, unknown> }> = [];
   const allow: RpcResult = { data: true, error: null };
-  const entitled: RpcResult = { data: [{ allowed: true, reason: 'ok' }], error: null };
+  // Default gate: a subscriber. Free-path tests override with
+  // preview_enabled / preview_disabled / policy_unavailable.
+  const paid: RpcResult = { data: [{ code: 'paid', required_tier: 'celestial' }], error: null };
 
   const deps = {
     rpcAsService: async (fn: string, args: Record<string, unknown>): Promise<RpcResult> => {
@@ -84,7 +98,7 @@ function makeDeps(options: ScenarioOptions = {}) {
     },
     rpcAsCaller: async (fn: string, args: Record<string, unknown>): Promise<RpcResult> => {
       calls.push({ via: 'caller', fn, args });
-      if (fn === 'can_use_premium_feature') return options.entitlement ?? entitled;
+      if (fn === 'synastry_preview_gate') return options.gate ?? paid;
       if (fn === 'can_view_profile_chart') return options.visibility ?? allow;
       throw new Error(`unexpected caller RPC: ${fn}`);
     },
@@ -92,21 +106,39 @@ function makeDeps(options: ScenarioOptions = {}) {
   return { deps, calls };
 }
 
-describe('JUNO-02 · entitlement', () => {
-  it('serves an entitled account', async () => {
+describe('JUNO-02 · entitlement, read explicitly', () => {
+  it('serves a subscribed account without any claim', async () => {
     const { deps, calls } = makeDeps();
     const decision = await edge.authorizeChartAccess(deps, CALLER, TARGET);
     expect(decision).toEqual({ ok: true, reason: 'entitled' });
     expect(calls.map((c) => c.fn)).toEqual([
       'check_rate_limit',
-      'can_use_premium_feature',
+      'synastry_preview_gate',
       'can_view_profile_chart',
     ]);
   });
 
-  it('refuses a free account with 402 and the server\'s own reason', async () => {
+  it('classifies a free reader with an active preview as reason "preview"', async () => {
+    // NOT a yes: the handler still has to claim after computing. The
+    // authorization merely says "there is something to claim".
     const { deps, calls } = makeDeps({
-      entitlement: { data: [{ allowed: false, reason: 'insufficient_tier' }], error: null },
+      gate: { data: [{ code: 'preview_enabled', required_tier: 'celestial' }], error: null },
+    });
+    const decision = await edge.authorizeChartAccess(deps, CALLER, TARGET);
+    expect(decision).toEqual({ ok: true, reason: 'preview' });
+    expect(calls.map((c) => c.fn)).toEqual([
+      'check_rate_limit',
+      'synastry_preview_gate',
+      'can_view_profile_chart',
+    ]);
+  });
+
+  it('refuses a free account with 402 when the preview quota is NULL — the rollback', async () => {
+    // quota NULL (or 0) is preview_disabled: the ROLLBACK state. It must be a
+    // 402 "pay for it", never a 503 "broken" — and it must not require this
+    // edge function to be redeployed.
+    const { deps, calls } = makeDeps({
+      gate: { data: [{ code: 'preview_disabled', required_tier: 'celestial' }], error: null },
     });
     const decision = await edge.authorizeChartAccess(deps, CALLER, TARGET);
     expect(decision).toEqual({ ok: false, status: 402, error: 'insufficient_tier' });
@@ -114,54 +146,65 @@ describe('JUNO-02 · entitlement', () => {
     expect(calls.map((c) => c.fn)).not.toContain('can_view_profile_chart');
   });
 
-  it('honours a free-preview grant without consuming anything', async () => {
-    // `can_use_premium_feature` is the READ-ONLY counterpart of
-    // `enforce_premium_feature`. Using the enforcing one here would spend the
-    // reader's daily preview on merely opening a profile — the double
-    // consumption bug fixed on 2026-08-23.
+  it('fails CLOSED (503) when the policy row is absent or ambiguous', async () => {
+    const { deps } = makeDeps({
+      gate: { data: [{ code: 'policy_unavailable', required_tier: null }], error: null },
+    });
+    expect(await edge.authorizeChartAccess(deps, CALLER, TARGET)).toEqual({
+      ok: false, status: 503, error: 'policy_unavailable',
+    });
+  });
+
+  it('fails CLOSED on an unknown gate code or a missing row', async () => {
+    // A gate that starts returning something new must not fall through to
+    // "entitled" — the fall-through would be a fail-open.
+    for (const data of [null, [], [{}], [{ code: null }], [{ code: 'new_thing' }]]) {
+      const { deps } = makeDeps({ gate: { data, error: null } });
+      const decision = await edge.authorizeChartAccess(deps, CALLER, TARGET);
+      expect(decision.ok, `gate data ${JSON.stringify(data)} must not allow`).toBe(false);
+      if (!decision.ok) expect(decision.status).toBe(503);
+    }
+  });
+
+  it('the gate never consumes anything', async () => {
+    // `synastry_preview_gate` is the READ-ONLY counterpart of any enforcing
+    // call. Using an enforcing one here would spend the reader's daily preview
+    // on merely opening a profile — the double-consumption bug fixed on
+    // 2026-08-23.
     const { deps, calls } = makeDeps({
-      entitlement: { data: [{ allowed: true, reason: 'free_preview' }], error: null },
+      gate: { data: [{ code: 'preview_enabled', required_tier: 'celestial' }], error: null },
     });
     const decision = await edge.authorizeChartAccess(deps, CALLER, TARGET);
     expect(decision.ok).toBe(true);
     expect(calls.some((c) => c.fn === 'enforce_premium_feature')).toBe(false);
     expect(calls.some((c) => c.fn === 'increment_feature_usage')).toBe(false);
+    expect(calls.some((c) => c.fn === 'claim_synastry_free_grant')).toBe(false);
   });
 
-  it('refuses when the entitlement quota is exhausted', async () => {
-    const { deps } = makeDeps({
-      entitlement: { data: [{ allowed: false, reason: 'quota_exceeded' }], error: null },
-    });
-    expect(await edge.authorizeChartAccess(deps, CALLER, TARGET)).toEqual({
-      ok: false, status: 402, error: 'quota_exceeded',
-    });
-  });
-
-  it('asks about the feature the product actually sells', async () => {
+  it('passes NO arguments to the gate — identity and feature live server-side', async () => {
+    // The RPC takes no user id (identity from auth.uid()) and no feature key
+    // (the key lives in the SQL). An argument here would be a guard someone
+    // can forget to pass, or a feature a client could substitute.
     const { deps, calls } = makeDeps();
     await edge.authorizeChartAccess(deps, CALLER, TARGET);
-    const gate = calls.find((c) => c.fn === 'can_use_premium_feature');
-    expect(gate?.args).toEqual({ p_feature_key: edge.CHART_FEATURE_KEY });
+    const gate = calls.find((c) => c.fn === 'synastry_preview_gate');
+    expect(gate?.args).toEqual({});
     expect(edge.CHART_FEATURE_KEY).toBe('synastry');
   });
 
-  it('never lets the caller name the user whose entitlement is checked', async () => {
-    // The RPC takes no user id: identity comes from auth.uid() inside the
-    // function. A `p_user_id` argument here would be a guard someone can forget.
+  it('runs the gate with the CALLER\'s JWT, never service_role', async () => {
+    // Asked as service_role, `auth.uid()` is null and the gate answers
+    // policy_unavailable. This is the difference between a check and a
+    // formality.
     const { deps, calls } = makeDeps();
     await edge.authorizeChartAccess(deps, CALLER, TARGET);
-    for (const call of calls.filter((c) => c.fn === 'can_use_premium_feature')) {
-      expect(Object.keys(call.args)).toEqual(['p_feature_key']);
-    }
+    expect(calls.find((c) => c.fn === 'synastry_preview_gate')?.via).toBe('caller');
+    expect(calls.find((c) => c.fn === 'can_view_profile_chart')?.via).toBe('caller');
   });
 
-  it('runs the entitlement check with the CALLER\'s JWT, never service_role', async () => {
-    // Asked as service_role, `auth.uid()` is null and the function answers
-    // about nobody. This is the difference between a check and a formality.
-    const { deps, calls } = makeDeps();
-    await edge.authorizeChartAccess(deps, CALLER, TARGET);
-    expect(calls.find((c) => c.fn === 'can_use_premium_feature')?.via).toBe('caller');
-    expect(calls.find((c) => c.fn === 'can_view_profile_chart')?.via).toBe('caller');
+  it('maps the gate codes to the response contract (402 vs 503 is the rollback)', async () => {
+    expect(edge.PREVIEW_GATE_RESPONSES.preview_disabled).toEqual({ status: 402, error: 'insufficient_tier' });
+    expect(edge.PREVIEW_GATE_RESPONSES.policy_unavailable).toEqual({ status: 503, error: 'policy_unavailable' });
   });
 });
 
@@ -230,9 +273,9 @@ describe('rate limiting · server-side and fail-closed', () => {
     expect(calls.map((c) => c.fn)).toEqual(['check_rate_limit']);
   });
 
-  it('REFUSES when the entitlement check errors', async () => {
+  it('REFUSES when the gate itself errors', async () => {
     const { deps } = makeDeps({
-      entitlement: { data: null, error: { message: 'permission denied' } },
+      gate: { data: null, error: { message: 'permission denied' } },
     });
     expect(await edge.authorizeChartAccess(deps, CALLER, TARGET)).toEqual({
       ok: false, status: 503, error: 'entitlement_unavailable',
@@ -284,8 +327,8 @@ describe('rate limiting · server-side and fail-closed', () => {
         throw new Error(fn);
       },
       rpcAsCaller: async (fn: string): Promise<RpcResult> => {
-        if (fn === 'can_use_premium_feature') {
-          return { data: [{ allowed: false, reason: 'insufficient_tier' }], error: null };
+        if (fn === 'synastry_preview_gate') {
+          return { data: [{ code: 'preview_disabled', required_tier: 'celestial' }], error: null };
         }
         return { data: true, error: null };
       },
@@ -302,7 +345,8 @@ describe('rate limiting · server-side and fail-closed', () => {
     const refusals = await Promise.all([
       makeDeps({ rateLimit: { data: false, error: null } }),
       makeDeps({ rateLimit: { data: null, error: { message: 'boom' } } }),
-      makeDeps({ entitlement: { data: [{ allowed: false, reason: 'insufficient_tier' }], error: null } }),
+      makeDeps({ gate: { data: [{ code: 'preview_disabled', required_tier: 'celestial' }], error: null } }),
+      makeDeps({ gate: { data: [{ code: 'policy_unavailable', required_tier: null }], error: null } }),
       makeDeps({ visibility: { data: false, error: null } }),
       makeDeps({ visibility: { data: null, error: { message: 'boom' } } }),
     ].map(({ deps }) => edge.authorizeChartAccess(deps, CALLER, TARGET)));
@@ -329,9 +373,126 @@ describe('JUNO-02 · the source keeps the guarantees the tests rely on', () => {
     expect(authorizeAt).toBeLessThan(readAt);
   });
 
+  it('a target with no birth date costs NO grant — decided, not implicit', () => {
+    // DECISION (revue 2026-09-15): a target without a birth_date answers with
+    // profile only (chart: null, no synastry) BEFORE the claim, so a free
+    // reader's daily comparison is never consumed by a profile that carries
+    // nothing to gate. Asserted on the source: the early return must precede
+    // the claim block, and the slice between them must not call the claim.
+    const noBirthAt = source.indexOf('if (!target.birth_date)');
+    const claimBlockAt = source.indexOf("if (decision.reason === 'preview')");
+    expect(noBirthAt).toBeGreaterThan(0);
+    expect(claimBlockAt).toBeGreaterThan(0);
+    expect(noBirthAt).toBeLessThan(claimBlockAt);
+    const between = source.slice(noBirthAt, claimBlockAt);
+    expect(between.indexOf('claim_synastry_free_grant')).toBe(-1);
+    // And the early RESPONSE publishes no chart and no synastry. Scoped to
+    // the JSON body — the decision comment beside it names the words on
+    // purpose and must stay.
+    const bodyAt = source.indexOf('JSON.stringify({', noBirthAt);
+    expect(bodyAt).toBeGreaterThan(0);
+    expect(bodyAt).toBeLessThan(claimBlockAt);
+    const body = source.slice(bodyAt, bodyAt + 220);
+    expect(body).toContain('chart: null');
+    expect(body.indexOf('synastry')).toBe(-1);
+    expect(body).toContain('profile: sanitizeProfile(target)');
+  });
+
   it('never calls the consuming enforcement RPC', () => {
     expect(source).not.toContain("rpc('enforce_premium_feature'");
     expect(source).not.toContain("'enforce_premium_feature'");
+  });
+
+  it('CLAIMS THE GRANT AFTER THE COMPUTE, NEVER BEFORE', () => {
+    // The ordering defect the design review caught: reserving first and
+    // computing second loses the grant on any failure between the two.
+    // Order in the source must be: gate → visibility → compute → claim → emit.
+    const gateAt = source.indexOf("'synastry_preview_gate'");
+    const claimAt = source.indexOf("'claim_synastry_free_grant'");
+    const computeAt = source.indexOf('buildSynastryView(');
+    const publicChartAt = source.indexOf('const chart = buildPublicChart(');
+    const firstEmitAt = source.indexOf('grant: { code: claimCode');
+
+    expect(gateAt).toBeGreaterThan(0);
+    expect(claimAt).toBeGreaterThan(0);
+    expect(computeAt).toBeGreaterThan(0);
+    expect(publicChartAt).toBeGreaterThan(0);
+    expect(firstEmitAt).toBeGreaterThan(0);
+
+    expect(gateAt).toBeLessThan(computeAt);          // gate before compute
+    expect(publicChartAt).toBeLessThan(claimAt);     // claim AFTER the public chart is built
+    expect(claimAt).toBeLessThan(firstEmitAt);       // nothing emitted before the claim
+  });
+
+  it('the claim runs only on the preview path, with the CALLER\'s JWT', () => {
+    // `decision.reason === 'preview'` is the only branch that claims: a
+    // subscriber never writes a grant row. And jwtClient (not adminClient)
+    // carries the caller's identity into auth.uid() — a service-role claim
+    // would bypass RLS and write grants on behalf of nobody.
+    const claimAt = source.indexOf("if (decision.reason === 'preview')");
+    expect(claimAt).toBeGreaterThan(0);
+    const claimBlock = source.slice(claimAt, claimAt + 1200);
+    expect(claimBlock).toContain("jwtClient.rpc('claim_synastry_free_grant'");
+    expect(claimBlock).not.toContain('adminClient');
+  });
+
+  it('the loser of a race receives NO astrological data', () => {
+    // 402 free_preview_used_other_target must not carry chart, synastry, or
+    // the profile — the computation dies at the claim. Anchored on the
+    // response's own `next_available_utc:` line (unique to it), walking BACK
+    // to the `return new Response(` that encloses it, then forward to the
+    // next branch of the claim so a later `chart` in the subscriber path
+    // cannot mask a leak inside this one.
+    const anchorAt = source.indexOf('next_available_utc: nextAvailableUtc');
+    expect(anchorAt).toBeGreaterThan(0);
+    const responseAt = source.lastIndexOf('return new Response(', anchorAt);
+    expect(responseAt).toBeGreaterThan(0);
+    const loserBlock = source.slice(responseAt, responseAt + 1600);
+    const nextBranch = loserBlock.indexOf('if (claimCode');
+    const responseBody = loserBlock.slice(0, nextBranch > 0 ? nextBranch : 400);
+    expect(responseBody).toContain('next_available_utc');
+    expect(responseBody).toContain('free_preview_used_other_target');
+    expect(responseBody.indexOf('chart')).toBe(-1);
+    expect(responseBody.indexOf('synastry')).toBe(-1);
+    expect(responseBody.indexOf('sanitizeProfile')).toBe(-1);
+  });
+
+  it('target_ineligible answers with the uniform NOT_VISIBLE refusal', () => {
+    // The claim may refuse a target that visibility accepted a moment
+    // earlier. That refusal must be indistinguishable from every other
+    // "not available" — otherwise the claim becomes the UUID oracle the
+    // visibility check refuses to be. Anchored on the claim's own branch
+    // (the bare string also appears in the header comment).
+    const ineligibleAt = source.indexOf("if (claimCode === 'target_ineligible')");
+    expect(ineligibleAt).toBeGreaterThan(0);
+    const block = source.slice(ineligibleAt, ineligibleAt + 400);
+    expect(block).toContain('NOT_VISIBLE.status');
+    expect(block).toContain('NOT_VISIBLE.error');
+  });
+
+  it('a claim RPC error fails CLOSED and never deletes the grant', () => {
+    // "grant survives a lost response" is the operator decision. No DELETE
+    // compensation may exist anywhere in the function — its presence would
+    // resurrect the "A reserves, B replays, A fails and un-reserves" race.
+    expect(source).not.toMatch(/delete.*synastry_free_grant/i);
+    expect(source).not.toMatch(/\.remove\(\s*['"]synastry_free_grant/);
+    expect(source).toContain("'grant_unavailable'");
+  });
+
+  it('telemetry uses only whitelisted preview events, never a target id', () => {
+    // preview_presented | preview_succeeded | preview_reopened |
+    // preview_used_other_target | upgrade_clicked — and record_product_event
+    // never receives a target, chart, or profile argument.
+    const events = source.match(/p_event_name:\s*'([^']+)'/g) ?? [];
+    const allowed = new Set([
+      "p_event_name: 'preview_succeeded'",
+      "p_event_name: 'preview_reopened'",
+      "p_event_name: 'preview_used_other_target'",
+    ]);
+    for (const e of events) expect(allowed.has(e)).toBe(true);
+    // Bounded to the call line: [^)] alone crosses newlines into the profile
+    // sanitizer's legitimate `target.` fields below.
+    expect(source).not.toMatch(/record_product_event[^\n)]*target/i);
   });
 
   it('does not distinguish "not found" from "not allowed" in its replies', () => {

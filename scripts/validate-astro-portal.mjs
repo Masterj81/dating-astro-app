@@ -16,7 +16,11 @@
 //      check fails.
 //   4. The legacy hub routes must stay routes — the portal is additive,
 //      not a replacement; a redirect added there would break deep links.
-//   5. The eighteen portal strings must exist in all eight locales.
+//   5. The portal strings must exist in all eight locales.
+//   6. Since 2026-09-15 (free daily synastry preview), the synastry shortcut
+//      is UNLOCKED for every tier and carries the free-note — the same
+//      contract as the natal shortcut. A lock there would contradict the
+//      note beside it while the server serves the destination.
 //
 // Exits 1 on drift. Wired as `npm run validate:astro-portal`.
 
@@ -89,6 +93,27 @@ check(portal.includes("astroCardCosmicIncludes"), "note d'inclusion descendante 
 const quicks = (portal.match(/<QuickLink/g) || []).length;
 check(quicks === 3, `exactement trois raccourcis (${quicks})`);
 check(portal.includes('"/app/premium/celestial/natal-chart"') && portal.includes('"/app/premium/celestial/synastry"') && portal.includes('"/app/premium/conversation-guide"'), "raccourcis : thème natal, synastrie, guide");
+// ---------------------------------------------------------------------------
+// 2b. Free-preview shortcuts — natal AND synastry open to every tier
+// ---------------------------------------------------------------------------
+// Both features ship a server-granted free daily read (natal since
+// 20260823000001, synastry since 20260915000001). The shortcut pair must be
+// locked={false} with the free note visible for non-subscribers: a lock
+// beside "1 comparaison offerte" is a contradiction, and the portal never
+// consumes quota by linking.
+const quickBlocks = portal.match(/<QuickLink[\s\S]*?\/>/g) ?? [];
+for (const [href, noteKey] of [
+  ["/app/premium/celestial/natal-chart", "astroQuickNatalFreeNote"],
+  ["/app/premium/celestial/synastry", "astroQuickSynastryFreeNote"],
+]) {
+  const block = quickBlocks.find((b) => b.includes(`href="${href}"`));
+  check(!!block, `raccourci ${href} présent`);
+  if (block) {
+    check(/locked=\{false\}/.test(block), `${href} : raccourci non verrouillé (aperçu gratuit servi côté serveur)`);
+    check(block.includes(noteKey), `${href} : note gratuite ${noteKey} affichée pour les non-abonnés`);
+    check(!/astroLockedRequiresCelestial/.test(block), `${href} : aucun libellé de verrou Céleste`);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // 3. Routes — the portal is additive, the hubs are untouched doors
@@ -130,7 +155,7 @@ const ASTRO_KEYS = [
   "astroPortalPlansCta", "astroCardCelestialBody", "astroCardCosmicBody",
   "astroCardCosmicIncludes", "astroExploreCelestial", "astroDiscoverCelestial",
   "astroExploreCosmic", "astroDiscoverCosmic", "astroQuickTitle",
-  "astroLockedRequiresCelestial", "astroQuickNatalFreeNote", "astroQuickGuideFreeNote",
+  "astroLockedRequiresCelestial", "astroQuickNatalFreeNote", "astroQuickGuideFreeNote", "astroQuickSynastryFreeNote",
   "astroItemNatal", "astroItemSynastry", "astroItemDaily", "astroItemGuide",
   "astroItemTarotMonthly", "astroItemMonthly", "astroItemTransits",
   "astroItemWindows", "astroItemRetrograde", "astroItemDateReflection",

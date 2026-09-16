@@ -39,6 +39,39 @@
 //      limiter itself errors, the request is REFUSED. It used to log the error
 //      and continue, which meant a broken limiter was an open door.
 //
+// ── WHAT CHANGED ON 2026-09-15: THE FREE DAILY SYNASTRY PREVIEW ─────────────
+//
+// One free comparison per reader per UTC day, decided by
+// `20260915000001_synastry_free_grant.sql`. The two defects the design review
+// caught are fixed HERE, in code, and both are about ordering:
+//
+//   DEFECT 1 — CLAIM BEFORE COMPUTE. Reserving first and computing after
+//   loses the grant on any failure between the two. The order is now:
+//   gate (read-only) → visibility → read → COMPUTE → claim (atomic) → emit.
+//   Nothing astrological leaves this worker before the claim authorises the
+//   target. A concurrent loser throws its computation away and receives
+//   402 + next_available_utc.
+//
+//   DEFECT 2 — can_use_premium_feature AMBIGUITY. With the preview quota
+//   raised to 1, `can_use_premium_feature('synastry')` answers allowed=true
+//   for BOTH a subscriber and a free reader — it cannot tell the two apart,
+//   so the edge cannot know whether to claim. Entitlement is now read
+//   explicitly through `synastry_preview_gate()`: paid | preview_enabled |
+//   preview_disabled (quota NULL → 402, the no-redeploy rollback) |
+//   policy_unavailable (503, fail-closed).
+//
+// Response contract (free path), the `grant` field is NEW and additive:
+//   allowed_free_new       → 200, grant.code = 'allowed_free_new'
+//   allowed_free_existing  → 200, grant.code = 'allowed_free_existing'
+//   allowed_paid (race)    → 200, no grant field (subscriber mid-request)
+//   free_preview_used_other_target → 402 + next_available_utc, NO astro data,
+//                                    and never any identity of today's target
+//   target_ineligible      → 404, byte-identical to every other NOT_VISIBLE
+//
+// A subscriber never creates a grant row. A grant is never deleted: no DELETE
+// compensation exists anywhere — "A reserved, B replayed, A failed" cannot
+// resurrect a second free target for the same day.
+//
 // WHY MINIMISATION ALONE IS NOT ENOUGH, STATED SO NOBODY RE-DERIVES IT
 // --------------------------------------------------------------------
 // Quantising cannot close the birth-time leak. The ten bodies constrain each
@@ -431,9 +464,10 @@ const RATE_LIMIT_MAX_PER_HOUR = 100
 const RATE_LIMIT_ACTION = 'profile_chart_view'
 
 /**
- * The feature key this endpoint sells. `synastry` already exists in
- * `premium_feature_policy` (celestial, 20/day, no free preview) and is the
- * product this data belongs to: all three call sites are synastry screens
+ * The feature key this endpoint sells. Kept as the documentation anchor and
+ * for validators/tests: the RPC call itself (`synastry_preview_gate`) takes no
+ * argument — the key lives in the SQL, server-side, where a client cannot
+ * substitute it. All three call sites are synastry screens
  * (`apps/mobile/app/premium-screens/synastry.tsx:169`,
  * `apps/web/src/components/SynastryOverview.tsx:240,318`).
  */
@@ -451,7 +485,9 @@ const CHART_FEATURE_KEY = 'synastry'
 const NOT_VISIBLE = { status: 404, error: 'profile_not_available' } as const
 
 export type ChartAccessDecision =
-  | { ok: true; reason: 'self' | 'entitled' }
+  | { ok: true; reason: 'self' }
+  | { ok: true; reason: 'entitled' }       // subscriber — no grant, no claim
+  | { ok: true; reason: 'preview' }        // free reader — MUST claim after compute
   | { ok: false; status: number; error: string }
 
 export interface ChartAccessDeps {
@@ -462,10 +498,22 @@ export interface ChartAccessDeps {
 }
 
 /** First row of a `RETURNS TABLE` result, whatever shape the client gave back. */
-function firstRow(data: unknown): Record<string, unknown> | null {
+export function firstRow(data: unknown): Record<string, unknown> | null {
   if (Array.isArray(data)) return (data[0] ?? null) as Record<string, unknown> | null
   if (data && typeof data === 'object') return data as Record<string, unknown>
   return null
+}
+
+/**
+ * The four verdicts of `synastry_preview_gate()`, as the edge maps them.
+ * Exported for the authz suite: the mapping is a contract, not an
+ * implementation detail — 402 vs 503 is the rollback behaviour.
+ */
+export const PREVIEW_GATE_RESPONSES = {
+  preview_enabled: { status: 200, error: '' },        // proceed to compute + claim
+  paid: { status: 200, error: '' },                   // proceed, no claim
+  preview_disabled: { status: 402, error: 'insufficient_tier' },  // quota NULL — the rollback
+  policy_unavailable: { status: 503, error: 'policy_unavailable' }, // absent/ambiguous — fail closed
 }
 
 /**
@@ -508,30 +556,40 @@ export async function authorizeChartAccess(
     return { ok: false, status: 429, error: 'rate_limited' }
   }
 
-  // 2. Entitlement — the caller's OWN JWT, so `auth.uid()` inside the function
-  //    is the caller and no client-supplied tier can reach it. Read-only on
-  //    purpose: `enforce_premium_feature` would spend a free daily preview
-  //    here, reproducing the double-consumption bug fixed on 2026-08-23.
-  const gate = await deps.rpcAsCaller('can_use_premium_feature', {
-    p_feature_key: CHART_FEATURE_KEY,
-  })
+  // 2. Entitlement — EXPLICIT tier read (2026-09-15).
+  //
+  // This step used to call `can_use_premium_feature`, which was correct until
+  // the free preview quota was raised: from that moment `allowed=true` no
+  // longer distinguished a subscriber from a free reader with a quota, and the
+  // edge cannot decide whether to claim a grant for a caller it cannot
+  // classify. `synastry_preview_gate()` reads the tier the same way
+  // `enforce_premium_feature` does — get_user_tier + tier_at_least, caller's
+  // own JWT, never a client-supplied tier — and classifies the policy row
+  // itself: absent or duplicated → policy_unavailable → 503, fail-closed.
+  // It writes nothing and consumes nothing.
+  const gate = await deps.rpcAsCaller('synastry_preview_gate', {})
   if (gate.error) {
-    console.error('[get-profile-chart] premium check failed:', gate.error.message)
+    console.error('[get-profile-chart] preview gate failed:', gate.error.message)
     return { ok: false, status: 503, error: 'entitlement_unavailable' }
   }
   const gateRow = firstRow(gate.data)
-  if (!gateRow || gateRow.allowed !== true) {
-    const reason = typeof gateRow?.reason === 'string' ? gateRow.reason : 'insufficient_tier'
-    // 402 rather than 403: this is "pay for it", and the clients already
-    // distinguish the two. The reason string comes from the server's own
-    // vocabulary, never from the request.
-    return { ok: false, status: 402, error: reason }
+  const gateCode = typeof gateRow?.code === 'string' ? gateRow.code : null
+  if (gateCode === 'preview_disabled') {
+    // Policy present, quota NULL/0: the preview is OFF. This is the rollback
+    // state — 402, not 503 — and it requires NO redeploy of this function.
+    return { ok: false, status: 402, error: 'insufficient_tier' }
   }
-
+  if (gateCode !== 'paid' && gateCode !== 'preview_enabled') {
+    // policy_unavailable, an unknown code, or no row at all: fail closed.
+    console.error('[get-profile-chart] preview gate verdict:', gateCode)
+    return { ok: false, status: 503, error: 'policy_unavailable' }
+  }
   // 3. Visibility — blocks in both directions, active + onboarded, and either
   //    mutual discoverability or an existing conversation. One SQL function,
   //    shared with get_synastry_candidate_profiles, so the picker and the
-  //    reader cannot disagree about who is visible.
+  //    reader cannot disagree about who is visible. Runs for subscribers AND
+  //    free readers alike — the grant claim re-checks it later as
+  //    defence-in-depth, but the target row must never be read before it.
   const vis = await deps.rpcAsCaller('can_view_profile_chart', { p_target_id: targetUserId })
   if (vis.error) {
     console.error('[get-profile-chart] visibility check failed:', vis.error.message)
@@ -541,6 +599,11 @@ export async function authorizeChartAccess(
     return { ok: false, status: NOT_VISIBLE.status, error: NOT_VISIBLE.error }
   }
 
+  if (gateCode === 'preview_enabled') {
+    // Free reader with an active preview. NOT a yes yet: the claim happens
+    // after the computation (see the handler) and may still refuse.
+    return { ok: true, reason: 'preview' }
+  }
   return { ok: true, reason: 'entitled' }
 }
 
@@ -656,8 +719,19 @@ serve(async (req) => {
     return jsonError(NOT_VISIBLE.status, NOT_VISIBLE.error, origin)
   }
   if (!target.birth_date) {
-    // No birth date on file — return profile without chart so the UI can
-    // show the basic profile but skip the natal section.
+    // No birth date on file — DECIDED EXPLICITLY (revue 2026-09-15), not
+    // left implicit: this early return happens BEFORE the preview claim and
+    // therefore serves the profile WITHOUT consuming the free daily
+    // comparison. Why that is the right reading:
+    //   - nothing astrological exists to gate — `chart: null`, no synastry —
+    //     so consuming the day's grant here would charge for nothing;
+    //   - every field in sanitizeProfile (name, signs, bio, photos…) is
+    //     already served to this same caller by get_synastry_candidate_profiles;
+    //   - the reader who wanted the comparison still HAS it: the claim never
+    //     ran, today's target remains unset.
+    // For a paid caller this path predates the preview and is unchanged.
+    // Asserted structurally by profile-chart-authz.test.ts ("a target with no
+    // birth date costs no grant").
     return new Response(
       JSON.stringify({
         success: true,
@@ -801,6 +875,111 @@ serve(async (req) => {
     planets,
     confidence,
   })
+
+  // 7. Free-reader CLAIM — after the compute, before the first byte leaves.
+  //
+  // decision.reason === 'preview' means the gate classified the caller as a
+  // free reader with an active preview. The computation above is thrown away
+  // unless the atomic claim authorises THIS target. Race semantics, decided
+  // by the PK (viewer, usage_date_utc):
+  //
+  //   - two targets computed concurrently: exactly one INSERT wins; the loser
+  //     gets 402 + next_available_utc and NOTHING astrological;
+  //   - same target replayed: allowed_free_existing, no write, no charge;
+  //   - subscriber mid-request (allowed_paid): served, no grant field;
+  //   - target became ineligible between visibility and claim: 404, byte-
+  //     identical to every other NOT_VISIBLE — the grant is KEPT (a refusal
+  //     must never disclose today's target, and a lost race must never
+  //     resurrect a second free target);
+  //   - quota flipped to NULL mid-request (rollback): 402, no grant.
+  //
+  // A claim RPC that ERRORS after a successful INSERT still keeps the grant:
+  // the operator decision is "grant survives a lost response", and there is no
+  // DELETE compensation anywhere to undo it. Fail-closed = no data emitted.
+  if (decision.reason === 'preview') {
+    const claim = await jwtClient.rpc('claim_synastry_free_grant', { p_target_user_id: targetUserId }) as unknown as {
+      data: unknown
+      error: { message: string } | null
+    }
+    if (claim.error) {
+      // The grant, if the INSERT landed, stays. The response does not carry
+      // the reading. Tomorrow works either way.
+      console.error('[get-profile-chart] grant claim failed:', claim.error.message)
+      return jsonError(503, 'grant_unavailable', origin)
+    }
+    const claimRow = firstRow(claim.data)
+    const claimCode = typeof claimRow?.code === 'string' ? claimRow.code : null
+
+    if (claimCode === 'allowed_free_new' || claimCode === 'allowed_free_existing') {
+      // Best-effort telemetry — the five-event whitelist, no target id, one
+      // row per reader/event/day (idempotent by ux_product_events_preview_daily).
+      // Never let an analytics write affect the reading.
+      try {
+        await jwtClient.rpc('record_product_event', {
+          p_event_name: claimCode === 'allowed_free_new' ? 'preview_succeeded' : 'preview_reopened',
+          p_platform: 'web',
+        })
+      } catch { /* best effort by contract */ }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          profile: sanitizeProfile(target),
+          chart,
+          synastry,
+          grant: { code: claimCode, used: claimCode === 'allowed_free_new' },
+        }),
+        { headers: originPolicy.headers(origin) },
+      )
+    }
+
+    if (claimCode === 'allowed_paid') {
+      // Subscribed between the gate and the claim: serve as a subscriber.
+      // No grant row exists (the claim function returns before any INSERT).
+      return new Response(
+        JSON.stringify({ success: true, profile: sanitizeProfile(target), chart, synastry }),
+        { headers: originPolicy.headers(origin) },
+      )
+    }
+
+    if (claimCode === 'free_preview_used_other_target') {
+      // The other target was today's free comparison. 402 — "come back at"
+      // — with the server-computed availability. NO profile, NO chart, NO
+      // synastry: the computation above dies here. And never the identity
+      // of today's target: the code says "another profile", nothing else.
+      try {
+        await jwtClient.rpc('record_product_event', {
+          p_event_name: 'preview_used_other_target',
+          p_platform: 'web',
+        })
+      } catch { /* best effort by contract */ }
+      const nextAvailableUtc = typeof claimRow?.next_available_utc === 'string'
+        ? claimRow.next_available_utc
+        : null
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'free_preview_used_other_target',
+          next_available_utc: nextAvailableUtc,
+        }),
+        { status: 402, headers: originPolicy.headers(origin) },
+      )
+    }
+
+    if (claimCode === 'target_ineligible') {
+      // Byte-identical to every other NOT_VISIBLE refusal.
+      return jsonError(NOT_VISIBLE.status, NOT_VISIBLE.error, origin)
+    }
+
+    if (claimCode === 'preview_disabled') {
+      // Quota flipped to NULL between gate and claim (the rollback). 402.
+      return jsonError(402, 'insufficient_tier', origin)
+    }
+
+    // unauthorized / policy_unavailable / unknown: fail closed.
+    console.error('[get-profile-chart] claim verdict:', claimCode)
+    return jsonError(503, 'policy_unavailable', origin)
+  }
 
   return new Response(
     JSON.stringify({ success: true, profile: sanitizeProfile(target), chart, synastry }),

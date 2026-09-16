@@ -1,30 +1,30 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
-import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
+import { EmptyState } from "@/components/EmptyState";
+import { FullCardSkeleton } from "@/components/Skeleton";
+import { LuminaryGlyph } from "@/components/ZodiacGlyph";
 import { Link } from "@/i18n/navigation";
-import { isRisingTrustworthy } from "@astro/shared/astrology";
 import { translateSign } from "@/lib/astrology-labels";
 import { resolveImageSrc, shouldBypassImageOptimization } from "@/lib/image-utils";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { getCurrentTier, type WebTier } from "@/lib/web-subscriptions";
-import { FullCardSkeleton } from "@/components/Skeleton";
-import { EmptyState } from "@/components/EmptyState";
-import { LuminaryGlyph } from "@/components/ZodiacGlyph";
+import { isRisingTrustworthy } from "@astro/shared/astrology";
 import {
-  CONNECTION_INTENTIONS,
-  DEFAULT_CONNECTION_INTENTIONS,
-  // findIntent — the legacy `relationship_intent` pill is no longer
-  // rendered on the discover card or the side queue (it conflicted with
-  // the macro `Open to` chip cluster). The field still ships in the RPC
-  // payload, we just don't paint it here.
-  findLifestyleTag,
-  sanitizeConnectionIntentions,
-  sanitizeLifestyleTags,
-  type ConnectionIntention,
+    CONNECTION_INTENTIONS,
+    DEFAULT_CONNECTION_INTENTIONS,
+    // findIntent — the legacy `relationship_intent` pill is no longer
+    // rendered on the discover card or the side queue (it conflicted with
+    // the macro `Open to` chip cluster). The field still ships in the RPC
+    // payload, we just don't paint it here.
+    findLifestyleTag,
+    sanitizeConnectionIntentions,
+    sanitizeLifestyleTags,
+    type ConnectionIntention,
 } from "@astro/shared/profile";
+import { useLocale, useTranslations } from "next-intl";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
 type DiscoverProfile = {
   id: string;
@@ -322,12 +322,15 @@ export function DiscoverOverview() {
 
   const profileImage = resolveImageSrc(currentProfile.image_url, currentProfile.images?.[0]);
   // Paid users (Celestial = "premium", Cosmic = "premium_plus") already
-  // own the synastry feature — route them straight to it. Free users
-  // still see the paywall.
+  // own the synastry feature. Since 2026-09-15, free users get ONE full
+  // comparison per UTC day — so their CTA opens the synastry view too (with
+  // this profile preselected), and the SERVER decides what it costs: the
+  // edge gates, computes, then claims. Nothing is consumed by rendering
+  // this card; the comparison is spent only when the reader goes through
+  // with it. If today's comparison was already used on someone else, the
+  // destination shows the honest 402 state — never a paywall surprise.
+  const compatibilityHref = `/app/premium/celestial/synastry?profileId=${encodeURIComponent(currentProfile.id)}`;
   const isFreeTier = tier === "free";
-  const compatibilityHref = isFreeTier
-    ? "/app/plans"
-    : `/app/premium/celestial/synastry?profileId=${encodeURIComponent(currentProfile.id)}`;
 
   const intentionFilterOptions: { key: DiscoverIntentionFilter; labelKey: string }[] = [
     { key: "all",        labelKey: "discoverFilterIntention_all" },
@@ -552,11 +555,12 @@ export function DiscoverOverview() {
                 );
               })()}
 
-              {/* Premium-gated compatibility CTA — replaces the visible
-                  % score + breakdown that used to live here. Compatibility
-                  detail is now a paid feature, so this teaser only renders
-                  for free users; paid tiers already own the synastry view
-                  and the in-card pitch would be noise for them. */}
+              {/* Compatibility CTA — since 2026-09-15 free readers get
+                  one full comparison per UTC day, so the pitch invites them
+                  to USE it rather than to pay first. Rendering this card
+                  consumes nothing; the comparison is claimed server-side
+                  only when the reader opens the reading. Paid tiers own the
+                  feature outright and the in-card pitch is noise for them. */}
               {isFreeTier ? (
                 <div className="mt-6 rounded-2xl border border-purple/25 bg-[linear-gradient(135deg,rgba(91,84,168,0.10),rgba(201,134,146,0.06))] p-5">
                   <h4 className="text-base font-semibold text-white">
@@ -565,12 +569,20 @@ export function DiscoverOverview() {
                   <p className="mt-1 text-sm leading-6 text-text-muted">
                     {t("findYourCompatibilitySubtitle")}
                   </p>
-                  <Link
-                    href="/app/plans"
-                    className="mt-4 inline-flex items-center gap-2 rounded-full bg-purple/90 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-purple hover:shadow-[0_0_18px_rgba(91,84,168,0.30)]"
-                  >
-                    {t("viewAllPlans")}
-                  </Link>
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <Link
+                      href={`/app/premium/celestial/synastry?profileId=${encodeURIComponent(currentProfile.id)}`}
+                      className="inline-flex items-center gap-2 rounded-full bg-purple/90 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-purple hover:shadow-[0_0_18px_rgba(91,84,168,0.30)]"
+                    >
+                      {t("discoverSynastryFreeCta")}
+                    </Link>
+                    <Link
+                      href="/app/plans"
+                      className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-card-hover"
+                    >
+                      {t("viewAllPlans")}
+                    </Link>
+                  </div>
                 </div>
               ) : null}
             </div>
