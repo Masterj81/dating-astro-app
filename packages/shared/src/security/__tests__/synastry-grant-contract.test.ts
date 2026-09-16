@@ -199,6 +199,97 @@ describe('fixtures du test SQL — le trigger crée les profils (incident n°6)'
     const lastRollback = src.lastIndexOf('ROLLBACK;');
     expect(lastRollback).toBeGreaterThan(src.indexOf('LES DIX SCÉNARIOS'));
   });
+
+  it('subscriptions : source = stripe — JAMAIS test (incident n°8, CHECK réelle)', () => {
+    // subscriptions_source_check (20260312) : source IN (stripe, app_store,
+    // play_store). 'test' violait la CHECK — la contrainte de production ne
+    // se plie jamais à un test. Code seul : le commentaire d'incident
+    // nomme « test » en prose.
+    const codeOnly = src.replace(/^[ \t]*--.*$/gm, '');
+    expect(codeOnly).not.toMatch(/'test'/);
+    expect(codeOnly).toMatch(/'stripe'/);
+  });
+
+  it('le CHECK canonique autorise stripe (lu depuis 20260312, pas supposé)', () => {
+    const canonical = readRepoFile('supabase/migrations/20260312_unified_subscriptions.sql');
+    expect(canonical).toContain("CHECK (source IN ('stripe', 'app_store', 'play_store'))");
+    // …et la fixture n'utilise QUE des valeurs de cette liste.
+    const fixtureBlock = src.slice(
+      src.indexOf('INSERT INTO public.subscriptions'),
+      src.indexOf(';', src.indexOf('INSERT INTO public.subscriptions')),
+    );
+    expect(fixtureBlock).toContain("'stripe'");
+    expect(fixtureBlock).not.toMatch(/'(test|demo|synthetic)'/);
+  });
+
+  it('audit verrouillé : adultes, gender légal, une ligne par utilisateur', () => {
+    // enforce_adult_profile (20260325000001) refuse < 18 ans : toutes les
+    // dates de naissance des fixtures doivent être bien antérieures à 2008.
+    const fixtures = src.slice(0, src.indexOf('LES DIX SCÉNARIOS'));
+    const birthDates = fixtures.match(/'(19\d{2})-\d{2}-\d{2}'::date/g) ?? [];
+    expect(birthDates.length).toBeGreaterThanOrEqual(9);
+    for (const d of birthDates) {
+      const year = Number(d.match(/(19\d{2})/)![1]);
+      expect(year).toBeLessThan(2008);
+    }
+    // gender CHECK (full_schema) : female ∈ valeurs légales, et c'est ce que
+    // les fixtures écrivent — jamais autre chose.
+    expect(fixtures).not.toMatch(/'prefer-not-to-say'/);
+    const genders = fixtures.match(/'(?:male|female|non-binary|other|prefer-not-to-say)'/g) ?? [];
+    for (const g of genders) expect(g).toBe("'female'");
+    // UNIQUE (user_id) + UNIQUE (user_id, source) : exactement une ligne
+    // d'abonnement par utilisateur de fixture.
+    const u2 = "aaaaaaa1-0000-4000-8000-000000000002";
+    const u3 = "aaaaaaa1-0000-4000-8000-000000000003";
+    expect((fixtureBlock2(src, u2).match(new RegExp(u2, 'g')) ?? []).length).toBe(1);
+    expect((fixtureBlock2(src, u3).match(new RegExp(u3, 'g')) ?? []).length).toBe(1);
+  });
+});
+
+function fixtureBlock2(src: string, _uuid: string): string {
+  const at = src.indexOf('INSERT INTO public.subscriptions');
+  return src.slice(at, src.indexOf(';', at));
+}
+
+describe('diagnostic préalable — STRICTEMENT lecture seule', () => {
+  const PREFLIGHT = 'supabase/tests/diagnose_synastry_free_grant_test_preflight.sql';
+  const src = readRepoFile(PREFLIGHT);
+
+  it('aucune écriture : ni DML, ni DDL, ni GRANT/REVOKE (code sans commentaires)', () => {
+    const codeOnly = src.replace(/^[ \t]*--.*$/gm, '');
+    for (const verb of ['INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP',
+                        'GRANT', 'REVOKE', 'TRUNCATE', 'COPY', 'MERGE']) {
+      expect(codeOnly, `le diagnostic contient ${verb}`).not.toMatch(new RegExp(`\\b${verb}\\b`));
+    }
+    // Aucun appel RPC de la mission (rien qui consomme, même innocemment).
+    expect(codeOnly).not.toMatch(/\bpublic\.(synastry_preview_gate|claim_synastry_free_grant|get_synastry_candidate_profiles|record_product_event)\s*\(/);
+  });
+
+  it('les treize familles de contrôles sont présentes, verdict BLOQUANT sur écart', () => {
+    // Un contrôle absent = le diagnostic ne couvre plus ce qu'il prétend.
+    for (const marker of [
+      'trigger_create_profile_on_auth_signup', 'subscriptions_source_check',
+      'subscriptions_tier_check', 'product_events',           // CHECKs (3a-3c, 12)
+      'synastry_preview_gate', 'claim_synastry_free_grant',
+      'get_synastry_candidate_profiles', 'get_user_tier',
+      'tier_at_least', 'profile_chart_visible',                // signatures (4a-4d)
+      'information_schema.columns',                            // colonnes (5)
+      'required_tier', 'free_preview_quota',                   // politique (6-8)
+      'to_regclass(\'public.synastry_free_grant\')', 'idx_synastry_free_grant_purge', // 9
+      'aaaaaaa1-0000-4000-8000-000000000001',                  // les neuf UUID (10)
+      'rpe_overloads',                                         // surcharge record_product_event (11)
+      'schedule_onboarding_emails',                            // trigger welcome (13a)
+      'female',                                                // gender CHECK (13b)
+    ]) {
+      expect(src, `contrôle absent du diagnostic : ${marker}`).toContain(marker);
+    }
+    expect(src).toContain('BLOQUANT');
+    // Jamais de « OK par défaut » : chaque verdict est un CASE explicite.
+    expect(src.match(/BLOQUANT/g)?.length ?? 0).toBeGreaterThanOrEqual(15);
+    // to_regclass partout où l'objet peut manquer — '::regclass' hard-cast
+    // ferait ERREUR au lieu de rapporter BLOQUANT.
+    expect(src).not.toMatch(/'public\.synastry_free_grant'::regclass/);
+  });
 });
 
 describe('harnais de course — fixtures par le trigger, nettoyage POSSÉDÉ (incident n°7)', () => {

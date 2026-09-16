@@ -130,10 +130,13 @@ END
 $fixtures$;
 
 -- u2 = Céleste ('premium'), u3 = Cosmique ('premium_plus') — actifs.
+-- source = 'stripe' : subscriptions_source_check (20260312) n'accepte QUE
+-- stripe/app_store/play_store — 'test' violait la CHECK (incident n°8, la
+-- contrainte de production ne se plie JAMAIS à un test).
 INSERT INTO public.subscriptions (user_id, tier, status, source, expires_at, cancel_at_period_end)
 VALUES
-  ('aaaaaaa1-0000-4000-8000-000000000002', 'premium',      'active', 'test', NOW() + INTERVAL '1 day', false),
-  ('aaaaaaa1-0000-4000-8000-000000000003', 'premium_plus', 'active', 'test', NOW() + INTERVAL '1 day', false);
+  ('aaaaaaa1-0000-4000-8000-000000000002', 'premium',      'active', 'stripe', NOW() + INTERVAL '1 day', false),
+  ('aaaaaaa1-0000-4000-8000-000000000003', 'premium_plus', 'active', 'stripe', NOW() + INTERVAL '1 day', false);
 
 -- Sauvegarde de la ligne de politique pour les scénarios 7-8 (tout finit de
 -- toute façon en ROLLBACK ; ceci protège les ÉTAPES SUIVANTES du test).
