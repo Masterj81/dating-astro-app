@@ -597,3 +597,70 @@ describe('harnais de course — argv interdit, sortie contrôlée, staging only'
     expect(src).toMatch(/residue !== '0'/);
   });
 });
+
+describe('préflight 13b — preuve STRUCTURELLE de profiles.gender (incident n°9)', () => {
+  const PREFLIGHT = 'supabase/tests/diagnose_synastry_free_grant_test_preflight.sql';
+  const src = readRepoFile(PREFLIGHT);
+
+  it('JAMAIS de recherche textuelle de female dans la concaténation des CHECK', () => {
+    // La preuve invalide : prof_checks (TOUTES les CHECK de profiles)
+    // LIKE '%female%' — verdissait sur profiles_looking_for_values_check
+    // sans rien prouver sur gender. Interdite au retour, sous toute forme.
+    expect(src).not.toMatch(/prof_checks\)?[^;]{0,80}LIKE '%female%'/s);
+    expect(src).not.toMatch(/COALESCE\(def,? ?''?\) FROM prof_checks[^;]*LIKE/i);
+    // Le contrôle 13b ne lit plus prof_checks du tout.
+    const arm13b = src.slice(src.indexOf('13b.'), src.indexOf('13b.') + 700);
+    expect(arm13b).not.toContain('prof_checks');
+  });
+
+  it('borné à gender par les CATALOGUES : pg_depend (contrainte→colonne)', () => {
+    // La dépendance contrainte→colonne vit dans pg_depend (refobjsubid =
+    // attnum) : c'est ELLE qui décide quelles contraintes comptent, jamais
+    // une recherche de mot dans une définition.
+    const scoped = src.slice(src.indexOf('gender_checks AS'), src.indexOf('gender_enum_labels AS'));
+    expect(scoped).toContain("dep.refobjsubid");
+    expect(scoped).toContain("ga.attname = 'gender'");
+    expect(scoped).toContain('pg_get_expr(c.conbin, c.conrelid)');
+    expect(scoped).toContain("classid = 'pg_constraint'::regclass");
+    // Type par pg_attribute/pg_type, pas par devinette.
+    expect(src).toContain("a.attname = 'gender'");
+    expect(src).toMatch(/JOIN pg_type t ON t\.oid = a\.atttypid/);
+  });
+
+  it('la matrice de scénarios existe, chaque branche avec SON verdict', () => {
+    // (a) female seulement dans looking_for : impossible de verdir — le
+    //     bornage pg_depend EST la garantie (looking_for n'est pas gender).
+    // (b) contrainte dédiée à gender acceptant female → OK.
+    expect(src).toMatch(/gender_checks WHERE expr LIKE '%female%'\) > 0 THEN 'OK'/);
+    // (c) contrainte dédiée refusant female (allow-list complète sans lui) → BLOQUANT.
+    expect(src).toMatch(/'% IN \(%'\)\s*\r?\n?\s*= gc\.n THEN 'BLOQUANT'/);
+    // (d) texte sans restriction : OK SEULEMENT parce que la structure accepte.
+    expect(src).toMatch(/WHEN COALESCE\(gc\.n, 0\) = 0 THEN 'OK'/);
+    // (e) enum : female doit être un label ; domaine : SES contraintes à lui.
+    expect(src).toMatch(/enumlabel = 'female'\) = 1\s*\r?\n?\s*THEN 'OK' ELSE 'BLOQUANT'/);
+    expect(src).toContain('gender_domain_checks');
+    // Forme illisible ou trigger non prouvé → INDETERMINE, JAMAIS OK.
+    expect(src.match(/'INDETERMINE'/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    // Colonne absente → BLOQUANT, jamais un verdict NULL silencieux
+    // (gender_final rend toujours une ligne : h garantit le join).
+    expect(src).toMatch(/CASE WHEN g\.full_type IS NULL THEN 'COLONNE ABSENTE'/);
+    expect(src).toMatch(/WHEN g\.full_type IS NULL THEN 'BLOQUANT'/);
+    expect(src).toMatch(/FROM \(SELECT count\(\*\) AS has_col FROM gender_col\) h/);
+  });
+
+  it('le trigger éventuel sur gender est CONSERVATIF : trouvé → INDETERMINE', () => {
+    // L'exact inverse du faux positif : une présence non prouvée ne peut
+    // JAMAIS rendre vert — la direction du doute est bloquante.
+    expect(src).toMatch(/WHEN \(SELECT n FROM gender_triggers\) > 0 THEN 'INDETERMINE'/);
+    // Le balayage des triggers est borné à LEUR définition, pas à la table.
+    expect(src).toMatch(/pg_get_triggerdef\(oid\) LIKE '%gender%'/);
+  });
+
+  it('INDETERMINE est traité comme bloquant par la grille du runbook', () => {
+    // Le verdict INDETERMINE n'est pas un vert différé : le runbook fixe la
+    // grille d'acceptation — seuls des OK authentiques rouvrent le test.
+    const runbook = readRepoFile('docs/runbooks/synastry-free-preview-2026-09.md');
+    expect(runbook).toMatch(/incident n°9|13b/i);
+    expect(runbook).toContain('INDETERMINE');
+  });
+});

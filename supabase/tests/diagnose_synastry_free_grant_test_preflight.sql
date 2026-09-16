@@ -61,6 +61,103 @@ ev_checks AS (
     FROM pg_constraint
    WHERE conrelid = 'public.product_events'::regclass AND contype = 'c'
 ),
+-- ── Inspection STRUCTURELLE de profiles.gender (incident n°9) ──────────
+-- Le 13b d'origine cherchait 'female' dans la CONCATÉNATION de toutes les
+-- CHECK de profiles : il verdissait sur profiles_looking_for_values_check
+-- (qui parle de looking_for) sans rien prouver sur gender. La preuve passe
+-- désormais par les catalogues : la colonne (pg_attribute/pg_type) et les
+-- SEULES contraintes qui la référencent réellement — la dépendance
+-- contrainte→colonne vit dans pg_depend (refobjsubid = attnum), jamais
+-- dans une recherche textuelle globale.
+gender_col AS (
+  SELECT a.attnotnull,
+         t.typtype,                         -- b=base, e=enum, d=domaine
+         format_type(a.atttypid, a.atttypmod) AS full_type,
+         pg_get_expr(d.adbin, d.adrelid) AS col_default,
+         t.oid AS type_oid
+    FROM pg_attribute a
+    JOIN pg_type t ON t.oid = a.atttypid
+    LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+   WHERE a.attrelid = 'public.profiles'::regclass
+     AND a.attname = 'gender' AND NOT a.attisdropped
+),
+gender_checks AS (
+  -- Contraintes référençant RÉELLEMENT gender : pg_depend, pas LIKE.
+  SELECT c.conname, pg_get_expr(c.conbin, c.conrelid) AS expr
+    FROM pg_constraint c
+   WHERE c.conrelid = 'public.profiles'::regclass
+     AND c.contype = 'c'
+     AND EXISTS (
+       SELECT 1
+         FROM pg_depend dep
+         JOIN pg_attribute ga ON ga.attrelid = c.conrelid
+                              AND ga.attnum = dep.refobjsubid
+        WHERE dep.classid = 'pg_constraint'::regclass
+          AND dep.objid = c.oid
+          AND dep.refclassid = 'pg_class'::regclass
+          AND dep.refobjid = c.conrelid
+          AND ga.attname = 'gender'
+     )
+),
+gender_enum_labels AS (
+  SELECT e.enumlabel FROM pg_enum e, gender_col g WHERE e.enumtypid = g.type_oid
+),
+gender_domain_checks AS (
+  -- Domaine éventuel : SES contraintes à lui (périmètre restreint au domaine).
+  SELECT pg_get_expr(dc.conbin, dc.conrelid) AS expr
+    FROM pg_constraint dc, gender_col g
+   WHERE dc.contype = 'd' AND dc.conrelid = g.type_oid
+),
+gender_triggers AS (
+  -- Triggers sur profiles dont la définition mentionne gender : périmètre
+  -- = la définition du trigger lui-même, et la direction est CONSERVATIVE
+  -- (trouvé → INDETERMINE, jamais vert) — l'inverse exact du faux positif.
+  SELECT count(*) AS n, COALESCE(string_agg(tgname, ','), '') AS names
+    FROM pg_trigger
+   WHERE tgrelid = 'public.profiles'::regclass
+     AND NOT tgisinternal
+     AND pg_get_triggerdef(oid) LIKE '%gender%'
+),
+gender_final AS (
+  SELECT
+    CASE WHEN g.full_type IS NULL THEN 'COLONNE ABSENTE'
+         ELSE g.full_type
+              || CASE WHEN g.attnotnull THEN ' NOT NULL' ELSE '' END
+              || ', ' || COALESCE(gc.n::text, '0') || ' CHECK(s) [pg_depend]'
+              || (SELECT CASE WHEN n > 0 THEN ', enum: ' || n || ' labels' ELSE '' END
+                    FROM (SELECT count(*) AS n FROM gender_enum_labels) s)
+              || (SELECT CASE WHEN n > 0 THEN ', domaine: ' || n || ' CHECK(s)' ELSE '' END
+                    FROM (SELECT count(*) AS n FROM gender_domain_checks) s)
+              || (SELECT CASE WHEN n > 0 THEN ', trigger(s): ' || names ELSE '' END FROM gender_triggers)
+    END AS observe,
+    CASE
+      WHEN g.full_type IS NULL THEN 'BLOQUANT'
+      -- Un trigger transforme/valide gender sans preuve → INDETERMINE.
+      WHEN (SELECT n FROM gender_triggers) > 0 THEN 'INDETERMINE'
+      -- Enum : female doit être un label du type.
+      WHEN g.typtype = 'e' THEN
+        CASE WHEN (SELECT count(*) FROM gender_enum_labels WHERE enumlabel = 'female') = 1
+             THEN 'OK' ELSE 'BLOQUANT' END
+      -- Domaine : SES contraintes ; sans contrainte, tout texte passe.
+      WHEN g.typtype = 'd' THEN
+        CASE WHEN (SELECT count(*) FROM gender_domain_checks) = 0 THEN 'OK'
+             WHEN (SELECT count(*) FROM gender_domain_checks WHERE expr LIKE '%female%') > 0 THEN 'OK'
+             ELSE 'BLOQUANT' END
+      -- Texte sans AUCUNE contrainte référençant gender : structure accepte.
+      WHEN COALESCE(gc.n, 0) = 0 THEN 'OK'
+      -- Texte avec contraintes : allow-list contenant female → OK ;
+      -- allow-list complète sans female → BLOQUANT ; forme illisible → INDETERMINE.
+      WHEN (SELECT count(*) FROM gender_checks WHERE expr LIKE '%female%') > 0 THEN 'OK'
+      WHEN (SELECT count(*) FROM gender_checks WHERE expr ILIKE '%ANY%' OR expr ILIKE '% IN (%')
+             = gc.n THEN 'BLOQUANT'
+      ELSE 'INDETERMINE'
+    END AS verdict
+    -- h garantit TOUJOURS une ligne : une colonne absente doit rendre
+    -- « COLONNE ABSENTE / BLOQUANT », jamais un verdict NULL silencieux.
+    FROM (SELECT count(*) AS has_col FROM gender_col) h
+    LEFT JOIN gender_col g ON TRUE
+    LEFT JOIN (SELECT count(*) AS n FROM gender_checks) gc ON TRUE
+),
 fn AS (
   SELECT
     (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
@@ -271,9 +368,9 @@ SELECT contrôle, observé, attendu, verdict FROM (
                       AND c.relname='profiles' AND p.proname='schedule_onboarding_emails') = 1
               THEN 'OK' ELSE 'BLOQUANT' END
   UNION ALL
-  SELECT '13b. CHECK gender de profiles couvre female',
-         (SELECT COALESCE(def,'ABSENTE') FROM prof_checks),
-         'la liste des CHECK contient female',
-         CASE WHEN (SELECT COALESCE(def,'') FROM prof_checks) LIKE '%female%' THEN 'OK' ELSE 'BLOQUANT' END
+  SELECT '13b. profiles.gender : contraintes réellement liées, compatibilité female',
+         (SELECT observe || ' ⇒ ' || verdict FROM gender_final),
+         'preuve structurelle (pg_attribute/pg_type/pg_depend) que female est légal — jamais une recherche textuelle globale',
+         (SELECT verdict FROM gender_final)
 ) AS diag
 ORDER BY substring(contrôle from '^[0-9]+')::int;

@@ -4,6 +4,16 @@
 **État : implémenté localement, NON appliqué, NON déployé, NON commité**
 **Branche de travail : `fix/security-wave-2-2026-09-08` (non commité)**
 
+## Incident n°9 (16 sept 2026 — faux POSITIF du préflight, corrigé avant réexécution)
+
+**Le contrôle 13b validait ce qu'il ne prouvait pas.** Il cherchait `female` dans la concaténation de TOUTES les CHECK de `profiles` — et trouvait le mot dans `profiles_looking_for_values_check` (qui contraint `looking_for`, pas `gender`). Le `OK` affiché ne prouvait rien sur la capacité des fixtures à écrire `gender = 'female'`.
+
+**Nouvelle preuve — structurelle, jamais textuelle** : la colonne est inspectée via `pg_attribute`/`pg_type` (type réel, nullabilité, défaut, enum/domaine éventuel), et seules comptent les contraintes qui **dépendent réellement** de `gender` — la dépendance contrainte→colonne vit dans `pg_depend` (`refobjsubid = attnum`), pas dans une définition concaténée. Matrice de verdicts : enum → `female` doit être un label (`pg_enum`) ; domaine → SES contraintes à lui ; texte sans contrainte liée → OK **parce que la structure accepte** ; contrainte dédiée contenant `female` → OK ; allow-list complète sans `female` → `BLOQUANT` ; forme illisible **ou trigger touchant `gender`** → `INDETERMINE` — jamais `OK`. Une colonne absente rend `BLOQUANT`, jamais un verdict NULL (`gender_final` produit toujours une ligne).
+
+**Grille d'acceptation pour le prochain préflight** : seuls des verdicts `OK` **authentiques** rouvrent le test comportemental ; tout `BLOQUANT` **ou `INDETERMINE`** le laisse fermé.
+
+**Balayage des antipatterns similaires** dans le préflight : les contrôles 3a/3b/3c affichent la concaténation mais ne fondent **aucun verdict** sur une correspondance de mot (3a/3b : « la liste est lisible » ; 3c : « AUCUNE CHECK attendue » — conservateur, l'apparition d'une CHECK rend BLOQUANT) ; 2 et 12 ciblent les contraintes **par nom** (`subscriptions_source_check`, `subscriptions_tier_check`) ; 13a compte par nom de fonction de trigger ; 13b est réécrit. Aucun autre verdict ne repose sur une recherche textuelle ambiguë.
+
 ## Incident n°8 + mission d'audit exhaustif (16 sept 2026 — avant réexécution)
 
 **`subscriptions_source_check` violé** : les fixtures inséraient `source = 'test'` alors que la CHECK réelle (20260312) n'accepte que `stripe` / `app_store` / `play_store`. Corrigé en `source = 'stripe'` — la contrainte de production ne se plie jamais à un test.
