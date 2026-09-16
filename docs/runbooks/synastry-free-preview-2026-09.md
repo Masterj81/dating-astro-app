@@ -4,6 +4,58 @@
 **État : implémenté localement, NON appliqué, NON déployé, NON commité**
 **Branche de travail : `fix/security-wave-2-2026-09-08` (non commité)**
 
+## Incident prévenu n°7 (16 sept 2026 — revue, avant push de 1b80296)
+
+**Le harnais de course contournait le trigger Auth et pouvait supprimer une collision préexistante lors du finally.** Deux défauts : (1) ses fixtures inséraient directement dans `public.profiles` avec `ON CONFLICT DO NOTHING` — collision masquée **et** profils incomplets (sans `name`/`onboarding_completed`) qui auraient fait échouer `profile_chart_visible` → `target_ineligible` au lieu de tester la concurrence ; (2) son nettoyage inconditionnel pouvait effacer des lignes qu'il n'avait pas créées si les UUID synthétiques préexistaient.
+
+**Correctif** : (1) **précontrôle** dans la même transaction que les fixtures, avant toute mutation — les trois UUID absents des cinq surfaces (`auth.users`, `profiles`, `subscriptions`, `synastry_free_grant` viewer **ou** `target`, `product_events`), toute collision lève, **zéro `ON CONFLICT`** dans le code fonctionnel ; (2) les **trois identités** passent par `auth.users` — le trigger crée les profils — puis `UPDATE … FROM (VALUES)` fixant les six champs exigés, `GET DIAGNOSTICS` refusant tout compte ≠ 3 ; (3) **ownership du nettoyage** : `fixturesCommitted` part `false` et ne passe `true` qu'après le retour réussi de la transaction de fixtures ; le `finally` arrête/rollback **toujours** les workers, mais n'exécute les `DELETE` (bornés aux trois UUID, grants viewer ET target, ordre compatible FK, cinq surfaces) **que** si `fixturesCommitted` ; en cas de collision préexistante, message explicite « nettoyage non exécuté » et aucune ligne touchée ; la preuve de résidu couvre les mêmes cinq surfaces et n'a de sens que pour ce qui était possédé. Régression statique : six tests, dont un **négatif structurel** — la branche collision ne contient aucun appel de nettoyage.
+
+## Incident de test n°6 (16 sept 2026 — collision interceptée avant les assertions)
+
+Le test SQL rollback-safe a échoué **avant les scénarios** : `duplicate key profiles_pkey` sur u1. Cause confirmée en production : `trigger_create_profile_on_auth_signup` (`AFTER INSERT ON auth.users` → `handle_new_auth_user_profile()`) **crée automatiquement le profil** de chaque nouveau compte — l'INSERT explicite dans `public.profiles` recréait les mêmes lignes.
+
+**Test adapté à l'architecture réelle** : (1) **précontrôle obligatoire** avant toute mutation — aucun des neuf UUID synthétiques ne doit exister dans `auth.users`, `public.profiles`, `public.subscriptions`, `public.synastry_free_grant` ni `public.product_events`, toute collision lève, et **aucun `ON CONFLICT`** ne masque une collision antérieure ; (2) **neuf** comptes créés dans `auth.users` (u1-u6 + cibles A/B/C) — le trigger crée les neuf profils ; (3) **zéro INSERT dans `profiles`** : un `UPDATE … FROM (VALUES)` fixe explicitement `email`, `name`, `birth_date`, `gender`, `is_active`, `onboarding_completed` (ce que `profile_chart_visible` exige), suivi de `GET DIAGNOSTICS v_updated = ROW_COUNT` qui refuse tout compte ≠ 9 ; (4) le `ROLLBACK` final emporte users, profils, abonnements, grants, événements et changements de politique. Régression statique dans `synastry-grant-contract.test.ts` : neuf UUID exigés dans l'INSERT `auth.users`, INSERT `profiles` interdit dans les fixtures, `UPDATE … FROM` exigé avec ses six champs, `GET DIAGNOSTICS ≠ 9` refusé, précontrôle cinq tables avant insertion, `ON CONFLICT` interdit (sur le code sans commentaires), `ROLLBACK` final exigé.
+
+## Incident prévenu avant application n°5 (16 sept 2026 — revue, aucun dry-run consommé)
+
+**`indkey` est un `int2vector` 0-based, alors que `pg_get_indexdef(index_oid, column_no, …)` est 1-based.** La vérification structurelle de l'incident n°4 utilisait `indkey[1]/[2]/[3]` : `attname1` aurait lu `event_name`, `attname2` aurait résolu l'`attnum` 0 (donc `NULL`), `indkey3` serait sorti des bornes (`NULL`) — un cinquième échec certain de la self-verify, attrapé en revue avant tout dry-run. **Correctif** : `indkey[0]` = `user_id`, `indkey[1]` = `event_name`, `indkey[2]` = `0` (expression) ; alias renommés `first/second/third_key_attnum` et `first/second_key_column` selon la base réelle ; le `3` de `pg_get_indexdef(…, 3, true)` reste correct (convention 1-based, distincte). Régression : `indkey[3]` interdit, rôles `[0]/[1]/[2]` exigés nommément, résolution des colonnes sur les mêmes indices.
+
+## Incident d'application n°4 (16 sept 2026, dry-run transactionnel — ANNULÉ AVANT COMMIT)
+
+**Représentation normalisée de `pg_get_indexdef` comparée textuellement.** La self-verify refusait `colonnes/expression != (user_id, event_name, jour UTC)` : la définition de l'index était comparée à une chaîne attendue dans laquelle `AT TIME ZONE 'utc'` apparaît tel qu'écrit — or PostgreSQL peut le normaliser en `timezone('utc'::text, …)`. Le lot s'est terminé par `ROLLBACK` : rien d'appliqué, et **la définition de l'index n'a pas changé** (elle est correcte) — seul le contrôle était en tort.
+
+**Correctif — preuve structurelle, jamais textuelle** : vérification via les catalogues, sans comparer le rendu de `pg_get_indexdef` pour la définition entière : (1) existence sur `product_events` (`indrelid` dans le WHERE) ; (2) `indisunique` ; (3) `indnkeyatts = 3` ; (4) clé 1 = colonne `user_id` exactement ; (5) clé 2 = colonne `event_name` exactement ; (6) clé 3 = **expression** (`indkey[3] = 0`) ; (7) l'élément 3 seul, via `pg_get_indexdef(indexrelid, 3, true)`, contient sémantiquement `created_at`, `utc`, une conversion vers `date` ; (8) le prédicat via `pg_get_expr(indpred, indrelid)` contient chacun des cinq événements ; (9) **exactement cinq** constantes d'événement (compte des `'::text` du rendu) — un sixième ajout silencieux, ou un renommage, change le compte. Régression statique correspondante dans `synastry-grant-contract.test.ts` : les deux formes textuelles fragiles sont interdites au retour, et chaque exigence structurelle est exigée nommément.
+
+## Incident d'application n°3 (16 sept 2026, dry-run transactionnel — ANNULÉ AVANT COMMIT)
+
+Le dry-run transactionnel (terminé par `ROLLBACK`) a compilé au-delà des deux incidents précédents, puis la self-verification a refusé l'état réel : **`service_role détient DELETE sur synastry_free_grant`**. Cause : l'état Supabase réel diffère de l'hypothèse locale — Supabase accorde `ALL` à `service_role` sur toute **nouvelle** table via ses default privileges (précédent documenté : `20260911000001`), et le `GRANT SELECT` de la migration **ajoute** sans jamais retirer. Intercepté avant commit : rien d'appliqué.
+
+**Correctif** : `REVOKE ALL ON TABLE … FROM PUBLIC, anon, authenticated, service_role` **d'abord**, puis `GRANT SELECT … TO service_role` seul et séparé. Self-verify renforcée : SELECT positif exigé, et **chacun** des six privilèges de mutation (`INSERT`, `UPDATE`, `DELETE`, `TRUNCATE`, `REFERENCES`, `TRIGGER`) refusé individuellement pour `service_role` — les contrôles `PUBLIC` (ACL réelle, `grantee = 0`), `anon` et `authenticated` restent distincts. Régression statique dans `synastry-grant-contract.test.ts` : `service_role` exigé dans le `REVOKE ALL`, `GRANT SELECT` séparé et postérieur, couverture des six privilèges vérifiée.
+
+## Incident d'application n°2 (16 sept 2026, production — ANNULÉ PROPREMENT)
+
+Deuxième application (après le correctif PK) : la self-verification a échoué sur
+
+```
+ERROR 42601: a column definition list is redundant for a function with OUT parameters
+```
+
+Les deux helpers ACL portaient `aclexplode(...) AS a(grantor OID, grantee OID, privilege_type TEXT, is_grantable BOOLEAN)` — or `aclexplode` **déclare ses paramètres OUT** : la liste de colonnes est redondante et PostgreSQL la refuse. La migration a de nouveau été intégralement annulée par sa self-verify (table absente, quota NULL, zéro fonction).
+
+**Correctif** : alias nu `) AS a` sur `CROSS JOIN LATERAL pg_catalog.aclexplode(COALESCE(...))` dans les deux helpers — les noms de colonnes viennent des OUT. Régression dans `synastry-grant-contract.test.ts` : toute liste de définition après `aclexplode` (fenêtre de 220 caractères) ou tout `AS x(grantor…)` est un échec ; `CROSS JOIN LATERAL` + `) AS a` + références `a.grantee`/`a.privilege_type` exigés dans chaque helper.
+
+## Incident d'application n°1 (16 sept 2026, production — ANNULÉ PROPREMENT)
+
+Première application de `20260915000001` : la self-verification a échoué sur
+
+```
+ERROR 42883: operator does not exist: smallint || smallint
+```
+
+Le contrôle de PK concaténait les deux `pg_attribute.attnum` (`smallint`) — opérateur inexistant en PostgreSQL. **La transaction a été intégralement annulée** ; preuves mesurées après coup : `grant_table = NULL`, `free_preview_quota = NULL`, `created_functions = 0`. La production est revenue à son état exact d'avant : aucun aperçu actif, aucun nettoyage nécessaire. C'est la self-verify qui a refusé de committer — le mécanisme a fait son travail.
+
+**Correctif** (commit `fix(security): validate synastry grant primary key portably`) : vérification portable par `unnest(i.indkey) WITH ORDINALITY` + `array_agg(attname ORDER BY ordinality)` comparé à `ARRAY['viewer_user_id','usage_date_utc']::name[]`. Régression ajoutée à `synastry-grant-contract.test.ts` : le motif `attnum … || … attnum`, toute comparaison directe `indkey = (…`, l'absence de `WITH ORDINALITY` et l'absence des deux noms dans l'ordre sont chacun des échecs de suite.
+
 ## Corrections de la revue du 16 sept 2026 (quatrième passe — toutes appliquées)
 
 10. **`STRICT` retiré des helpers ACL (P0).** `p_privilege DEFAULT NULL` + `STRICT` faisait retourner NULL **sans exécuter la requête** à tout appel mono-argument — et `IF NULL` ne levant pas en PL/pgSQL, le self-verify de la table était un faux vert intégral. Les deux helpers sont désormais en plpgsql sans STRICT ; corollaire : un nom de privilège inconnu lève une **exception** (jamais un FALSE silencieux), et la seule façon d'obtenir FALSE est l'absence réelle d'entrée `grantee = 0`. **Tous** les sites d'appel (self-verifies des deux migrations, test SQL) comparent explicitement : baseline `IS FALSE` / `IS NOT FALSE`, injection `IS TRUE` — un NULL éventuel échoue toujours.

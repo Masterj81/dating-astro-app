@@ -75,8 +75,17 @@ ALTER TABLE public.synastry_free_grant ENABLE ROW LEVEL SECURITY;
 -- les lectures par service_role (diagnostics) — même posture que
 -- premium_usage après 20260823000001 : un registre que son sujet peut
 -- réécrire n'est pas un registre.
-REVOKE ALL ON public.synastry_free_grant FROM PUBLIC, anon, authenticated;
-GRANT SELECT ON public.synastry_free_grant TO service_role;
+--
+-- INCIDENT D'APPLICATION n°3 (16 sept 2026, dry-run transactionnel ROLLBACK) :
+-- la self-verify a refusé « service_role détient DELETE ». Supabase accorde
+-- ALL à service_role sur toute NOUVELLE table via ses default privileges
+-- (précédent 20260911000001) : un GRANT SELECT AJOUTE, il ne RETIRE rien.
+-- L'ordre correct est donc : REVOKE ALL (service_role compris) D'ABORD,
+-- puis GRANT SELECT seul, séparé.
+REVOKE ALL ON TABLE public.synastry_free_grant
+  FROM PUBLIC, anon, authenticated, service_role;
+GRANT SELECT ON TABLE public.synastry_free_grant
+  TO service_role;
 
 -- =============================================================================
 -- 2) La PORTE — lecture seule, tier EXPLICITE (défaut n°2 de la revue)
@@ -458,9 +467,14 @@ BEGIN
   END IF;
   RETURN EXISTS (
     SELECT 1
-      FROM pg_catalog.pg_proc f,
-           pg_catalog.aclexplode(COALESCE(f.proacl, pg_catalog.acldefault('f', f.proowner)))
-             AS a(grantor OID, grantee OID, privilege_type TEXT, is_grantable BOOLEAN)
+      FROM pg_catalog.pg_proc f
+           CROSS JOIN LATERAL pg_catalog.aclexplode(
+             COALESCE(f.proacl, pg_catalog.acldefault('f', f.proowner))
+           ) AS a
+   -- PAS de liste de définition de colonnes sur aclexplode (incident n°2,
+   -- 16 sept 2026 : erreur 42601 « redundant for a function with OUT
+   -- parameters » — les noms grantor/grantee/privilege_type/is_grantable
+   -- viennent des paramètres OUT déclarés par aclexplode elle-même).
      WHERE f.oid = p_func_oid
        AND a.grantee = 0                 -- 0 = pseudo-rôle PUBLIC
        AND a.privilege_type = p_privilege
@@ -485,9 +499,11 @@ BEGIN
   END IF;
   RETURN EXISTS (
     SELECT 1
-      FROM pg_catalog.pg_class c,
-           pg_catalog.aclexplode(COALESCE(c.relacl, pg_catalog.acldefault('r', c.relowner)))
-             AS a(grantor OID, grantee OID, privilege_type TEXT, is_grantable BOOLEAN)
+      FROM pg_catalog.pg_class c
+           CROSS JOIN LATERAL pg_catalog.aclexplode(
+             COALESCE(c.relacl, pg_catalog.acldefault('r', c.relowner))
+           ) AS a
+   -- Même correctif que ci-dessus : alias nu, jamais de liste de colonnes.
      WHERE c.oid = p_table_oid
        AND a.grantee = 0                 -- 0 = pseudo-rôle PUBLIC
        AND (p_privilege IS NULL OR a.privilege_type = p_privilege)
@@ -516,23 +532,36 @@ DECLARE
   v_nargs    INTEGER;
   v_over     INTEGER;
   v_event    TEXT;
+  v_ix       RECORD;
 BEGIN
   IF to_regclass('public.synastry_free_grant') IS NULL THEN
     RAISE EXCEPTION 'synastry_free_grant absente';
   END IF;
 
   -- PK exacte : (viewer, usage_date_utc) — LA garantie une-cible-par-jour.
-  SELECT COUNT(*) = 1 INTO v_pk_ok
-    FROM pg_index i
-    JOIN pg_class c ON c.oid = i.indrelid
-   WHERE c.relname = 'synastry_free_grant' AND i.indisprimary
-     AND i.indkey = (
-       (SELECT attnum FROM pg_attribute
-         WHERE attrelid = 'public.synastry_free_grant'::regclass AND attname = 'viewer_user_id')
-       ||
-       (SELECT attnum FROM pg_attribute
-         WHERE attrelid = 'public.synastry_free_grant'::regclass AND attname = 'usage_date_utc')
-     );
+  --
+  -- INCIDENT D'APPLICATION (16 sept 2026, production, ANNULE PROPREMENT) :
+  -- la première mouture comparait i.indkey à la concaténation des deux
+  -- pg_attribute.attnum — `smallint || smallint` n'existe pas (erreur
+  -- 42883), la self-verify a refusé de committer, tout a été annulé (table
+  -- absente, quota NULL, zéro fonction : mesuré). Forme portable ci-dessous :
+  -- les colonnes de la PK, agrégées DANS L'ORDRE de indkey via unnest WITH
+  -- ORDINALITY, comparées aux deux noms attendus.
+  SELECT EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_index i
+    WHERE i.indrelid = 'public.synastry_free_grant'::regclass
+      AND i.indisprimary
+      AND (
+        SELECT pg_catalog.array_agg(a.attname ORDER BY key_col.ordinality)
+        FROM pg_catalog.unnest(i.indkey)
+             WITH ORDINALITY AS key_col(attnum, ordinality)
+        JOIN pg_catalog.pg_attribute a
+          ON a.attrelid = i.indrelid
+         AND a.attnum = key_col.attnum
+      ) = ARRAY['viewer_user_id', 'usage_date_utc']::name[]
+  )
+  INTO v_pk_ok;
   IF NOT v_pk_ok THEN
     RAISE EXCEPTION 'PK de synastry_free_grant != (viewer_user_id, usage_date_utc)';
   END IF;
@@ -563,9 +592,17 @@ BEGIN
   IF NOT has_table_privilege('service_role', 'public.synastry_free_grant', 'SELECT') THEN
     RAISE EXCEPTION 'service_role ne peut pas lire synastry_free_grant (diagnostics)';
   END IF;
-  IF has_table_privilege('service_role', 'public.synastry_free_grant', 'DELETE') THEN
-    RAISE EXCEPTION 'service_role détient DELETE sur synastry_free_grant : inutile et refusé';
-  END IF;
+  -- service_role : LECTURE seule (incident n°3). Chaque privilège de
+  -- mutation est refusé INDÉPENDAMMMENT — la base a prouvé qu'elle accorde
+  -- ALL par défaut, chaque droit retiré doit donc être vérifié retiré.
+  FOR v_event IN SELECT unnest(ARRAY[
+    'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'
+  ])
+  LOOP
+    IF has_table_privilege('service_role', 'public.synastry_free_grant', v_event) IS TRUE THEN
+      RAISE EXCEPTION 'service_role détient % sur synastry_free_grant : lecture seule, refusé', v_event;
+    END IF;
+  END LOOP;
 
   -- ── ACL des fonctions : PUBLIC par inspection réelle, une par une,
   --    IS NOT FALSE partout (NULL échoue, jamais un vert silencieux).
@@ -663,34 +700,79 @@ BEGIN
     RAISE EXCEPTION 'télémétrie : la garantie « jamais réattribuer » (COALESCE + WHERE IS NULL) a disparu';
   END IF;
 
-  -- L'index partiel lui-même : existence PUIS définition, élément par élément.
-  SELECT pg_get_indexdef(i.indexrelid) INTO v_idx
-    FROM pg_index i
-   WHERE i.indexrelid = 'public.ux_product_events_preview_daily'::regclass;
-  IF v_idx IS NULL THEN
-    RAISE EXCEPTION 'index d idempotence télémétrique absent';
+  -- L'index partiel : preuve STRUCTURELLE, jamais textuelle
+  -- (incident n°4 : pg_get_indexdef NORMALISE sa sortie — « AT TIME ZONE
+  -- 'utc' » peut y être rendu « timezone('utc'::text, …) », et comparer la
+  -- définition entière à une chaîne attendue teste le FORMATAGE choisi par
+  -- PostgreSQL, pas l’index). Ci-dessous : les trois clés et le prédicat,
+  -- position par position, sur les catalogues.
+  --
+  -- INCIDENT PRÉVENU AVANT APPLICATION n°5 : indkey est un int2vector
+  -- INDEXÉ À PARTIR DE 0 — indkey[0] = première clé, indkey[1] = deuxième,
+  -- indkey[2] = troisième (= 0 : expression). La 1-based de pg_get_indexdef
+  -- (index_oid, column_no, …) est une AUTRE convention : son « 3 » désigne
+  -- bien la troisième clé et reste correct. Ne jamais confondre les deux.
+  SELECT i.indisunique              AS indisunique,
+         i.indnkeyatts              AS indnkeyatts,
+         i.indkey[0]                AS first_key_attnum,
+         i.indkey[1]                AS second_key_attnum,
+         i.indkey[2]                AS third_key_attnum,
+         (SELECT a.attname FROM pg_catalog.pg_attribute a
+           WHERE a.attrelid = i.indrelid AND a.attnum = i.indkey[0]) AS first_key_column,
+         (SELECT a.attname FROM pg_catalog.pg_attribute a
+           WHERE a.attrelid = i.indrelid AND a.attnum = i.indkey[1]) AS second_key_column,
+         pg_catalog.pg_get_expr(i.indpred, i.indrelid) AS pred_expr
+    INTO v_ix
+    FROM pg_catalog.pg_index i
+   WHERE i.indexrelid = 'public.ux_product_events_preview_daily'::regclass
+     -- l'index doit être SUR product_events : sinon NOT FOUND ci-dessous.
+     AND i.indrelid = 'public.product_events'::regclass;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'index d idempotence télémétrique absent (ou pas sur product_events)';
   END IF;
-  v_norm := regexp_replace(v_idx, '\s+', ' ', 'g');
-  IF v_norm NOT LIKE 'CREATE UNIQUE INDEX ux_product_events_preview_daily ON public.product_events%' THEN
-    RAISE EXCEPTION 'ux_product_events_preview_daily : plus unique ou plus sur product_events';
+  IF v_ix.indisunique IS DISTINCT FROM TRUE THEN
+    RAISE EXCEPTION 'ux_product_events_preview_daily : plus unique';
   END IF;
-  IF v_norm NOT LIKE '%(user_id, event_name, ((created_at AT TIME ZONE ''utc''::text)::date))%' THEN
-    RAISE EXCEPTION 'ux_product_events_preview_daily : colonnes/expression != (user_id, event_name, jour UTC)';
+  IF v_ix.indnkeyatts <> 3 THEN
+    RAISE EXCEPTION 'ux_product_events_preview_daily : % clé(s) — attendu exactement 3', v_ix.indnkeyatts;
   END IF;
+  -- Positions 1 et 2 : les colonnes nommées, EXACTEMENT (0-based : [0], [1]).
+  IF v_ix.first_key_column IS DISTINCT FROM 'user_id' THEN
+    RAISE EXCEPTION 'ux_product_events_preview_daily : clé 1 = «%» — attendu user_id', v_ix.first_key_column;
+  END IF;
+  IF v_ix.second_key_column IS DISTINCT FROM 'event_name' THEN
+    RAISE EXCEPTION 'ux_product_events_preview_daily : clé 2 = «%» — attendu event_name', v_ix.second_key_column;
+  END IF;
+  -- Position 3 : une EXPRESSION (indkey[2] = 0 marque l'absence de colonne).
+  IF v_ix.third_key_attnum IS DISTINCT FROM 0 THEN
+    RAISE EXCEPTION 'ux_product_events_preview_daily : la clé 3 doit être une expression (indkey[2] = 0), pas une colonne';
+  END IF;
+  -- L'expression de la clé 3, SÉMANTIQUEMENT : created_at, UTC, conversion
+  -- en date — quelle que soit la forme rendue (AT TIME ZONE ou timezone()).
+  -- NB : pg_get_indexdef est 1-based : « 3 » = bien la TROISIÈME clé.
+  SELECT pg_catalog.pg_get_indexdef('public.ux_product_events_preview_daily'::regclass, 3, true) INTO v_idx;
+  v_norm := lower(v_idx);
+  IF v_norm NOT LIKE '%created_at%'
+     OR v_norm NOT LIKE '%utc%'
+     OR v_norm NOT LIKE '%date%' THEN
+    RAISE EXCEPTION 'ux_product_events_preview_daily : clé 3 != jour UTC de created_at (rendue : %)', v_idx;
+  END IF;
+  -- Le prédicat partiel, par pg_get_expr : chacun des cinq événements…
   FOR v_event IN SELECT unnest(ARRAY[
     'preview_presented', 'preview_succeeded', 'preview_reopened',
     'preview_used_other_target', 'upgrade_clicked'
   ])
   LOOP
-    IF v_norm NOT LIKE '%' || v_event || '%' THEN
+    IF v_ix.pred_expr NOT LIKE '%' || v_event || '%' THEN
       RAISE EXCEPTION 'ux_product_events_preview_daily : le prédicat ne couvre plus «%»', v_event;
     END IF;
   END LOOP;
-  -- NB : pg_get_indexdef NORMALISE le prédicat — `event_name IN (...)` tel
-  -- qu'écrit dans CREATE INDEX est rendu `event_name = ANY (ARRAY[...])`.
-  -- La forme sémantique est assertée, pas la frappe d'origine.
-  IF v_norm NOT LIKE '%event_name = ANY (ARRAY[%' THEN
-    RAISE EXCEPTION 'ux_product_events_preview_daily : le prédicat partial a disparu';
+  -- …ET exactement cinq constantes d'événement : un sixième ajout silencieux
+  -- (ou un renommage) change le compte — chaque constante normalisée porte
+  -- un « ::text » dans le rendu du prédicat.
+  IF (length(v_ix.pred_expr) - length(replace(v_ix.pred_expr, '''::text', '')))
+       / length('''::text') <> 5 THEN
+    RAISE EXCEPTION 'ux_product_events_preview_daily : le prédicat porte un nombre de constantes != 5 — ajout ou retrait silencieux';
   END IF;
   IF to_regclass('public.ux_product_events_client_event_id') IS NULL THEN
     RAISE EXCEPTION 'index d attribution client_event_id (20260831000002) absent : la migration l aurait détruit';
