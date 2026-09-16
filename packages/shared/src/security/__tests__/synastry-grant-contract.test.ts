@@ -12,6 +12,11 @@
 //      requête, et `IF NULL` ne lève pas en PL/pgSQL — faux vert intégral.
 //   2. les appels en condition booléenne nue (`IF helper(...)`), où un NULL
 //      éventuel passe pour un faux.
+//   3. (incidents d’application) la PK vérifiée par `attnum || attnum`
+//      (42883 : l’opérateur n’existe pas pour smallint), puis aclexplode
+//      alourdie d’une liste de définition de colonnes (42601 : redondante
+//      pour une fonction avec paramètres OUT). Chacun a annulé proprement
+//      la migration en self-verify — et chacun a sa régression ci-dessous.
 //
 // Ces tests relisent les sources du dépôt et refusent le retour de l'un ou
 // l'autre : pas de STRICT sur les helpers ACL, aucune condition booléenne
@@ -57,13 +62,33 @@ describe('ACL helpers — jamais STRICT, jamais de condition nullable', () => {
   it('les deux helpers retournent BOOLEAN en lisant l’ACL réelle, défaut inclus', () => {
     for (const name of ['_acl_public_fn_privilege', '_acl_public_tbl_privilege']) {
       const block = helperBlock(name);
-      expect(block).toContain('aclexplode(COALESCE(');
+      // aclexplode sur l’ACL réelle, défaut appliqué — la forme exacte
+      // (alias nu, CROSS JOIN LATERAL) est vérifiée par le test 42601.
+      expect(block).toMatch(/aclexplode\(\s*\r?\n\s*COALESCE\(/);
       expect(block).toMatch(/grantee = 0/);
     }
     // acldefault est la moitié de la preuve : sans proacl explicite, EXECUTE
     // va à PUBLIC PAR DÉFAUT, et c’est ce que le défaut encode.
     expect(migration).toContain("acldefault('f'");
     expect(migration).toContain("acldefault('r'");
+  });
+
+  it('JAMAIS de liste de définition de colonnes sur aclexplode (incident n°2, 42601)', () => {
+    // aclexplode déclare ses paramètres OUT : `AS a(grantor OID, …)` est
+    // REDONDANT et PostgreSQL le refuse (« a column definition list is
+    // redundant for a function with OUT parameters »). Deuxième application
+    // annulée proprement en self-verify pour ça. Alias nu uniquement.
+    expect(migration).not.toMatch(/aclexplode[\s\S]{0,220}?AS\s+\w+\s*\(/i);
+    expect(migration).not.toMatch(/AS\s+\w+\s*\(\s*grantor/i);
+    for (const name of ['_acl_public_fn_privilege', '_acl_public_tbl_privilege']) {
+      const block = helperBlock(name);
+      expect(block).toContain('CROSS JOIN LATERAL pg_catalog.aclexplode(');
+      expect(block).toContain(') AS a');
+      // Les colonnes référencées viennent des OUT : elles doivent l’être
+      // sans aucune redéclaration.
+      expect(block).toMatch(/a\.grantee = 0/);
+      expect(block).toMatch(/a\.privilege_type/);
+    }
   });
 });
 

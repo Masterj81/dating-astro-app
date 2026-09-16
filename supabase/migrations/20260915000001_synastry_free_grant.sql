@@ -458,9 +458,14 @@ BEGIN
   END IF;
   RETURN EXISTS (
     SELECT 1
-      FROM pg_catalog.pg_proc f,
-           pg_catalog.aclexplode(COALESCE(f.proacl, pg_catalog.acldefault('f', f.proowner)))
-             AS a(grantor OID, grantee OID, privilege_type TEXT, is_grantable BOOLEAN)
+      FROM pg_catalog.pg_proc f
+           CROSS JOIN LATERAL pg_catalog.aclexplode(
+             COALESCE(f.proacl, pg_catalog.acldefault('f', f.proowner))
+           ) AS a
+   -- PAS de liste de définition de colonnes sur aclexplode (incident n°2,
+   -- 16 sept 2026 : erreur 42601 « redundant for a function with OUT
+   -- parameters » — les noms grantor/grantee/privilege_type/is_grantable
+   -- viennent des paramètres OUT déclarés par aclexplode elle-même).
      WHERE f.oid = p_func_oid
        AND a.grantee = 0                 -- 0 = pseudo-rôle PUBLIC
        AND a.privilege_type = p_privilege
@@ -485,9 +490,11 @@ BEGIN
   END IF;
   RETURN EXISTS (
     SELECT 1
-      FROM pg_catalog.pg_class c,
-           pg_catalog.aclexplode(COALESCE(c.relacl, pg_catalog.acldefault('r', c.relowner)))
-             AS a(grantor OID, grantee OID, privilege_type TEXT, is_grantable BOOLEAN)
+      FROM pg_catalog.pg_class c
+           CROSS JOIN LATERAL pg_catalog.aclexplode(
+             COALESCE(c.relacl, pg_catalog.acldefault('r', c.relowner))
+           ) AS a
+   -- Même correctif que ci-dessus : alias nu, jamais de liste de colonnes.
      WHERE c.oid = p_table_oid
        AND a.grantee = 0                 -- 0 = pseudo-rôle PUBLIC
        AND (p_privilege IS NULL OR a.privilege_type = p_privilege)

@@ -4,6 +4,18 @@
 **État : implémenté localement, NON appliqué, NON déployé, NON commité**
 **Branche de travail : `fix/security-wave-2-2026-09-08` (non commité)**
 
+## Incident d'application n°2 (16 sept 2026, production — ANNULÉ PROPREMENT)
+
+Deuxième application (après le correctif PK) : la self-verification a échoué sur
+
+```
+ERROR 42601: a column definition list is redundant for a function with OUT parameters
+```
+
+Les deux helpers ACL portaient `aclexplode(...) AS a(grantor OID, grantee OID, privilege_type TEXT, is_grantable BOOLEAN)` — or `aclexplode` **déclare ses paramètres OUT** : la liste de colonnes est redondante et PostgreSQL la refuse. La migration a de nouveau été intégralement annulée par sa self-verify (table absente, quota NULL, zéro fonction).
+
+**Correctif** : alias nu `) AS a` sur `CROSS JOIN LATERAL pg_catalog.aclexplode(COALESCE(...))` dans les deux helpers — les noms de colonnes viennent des OUT. Régression dans `synastry-grant-contract.test.ts` : toute liste de définition après `aclexplode` (fenêtre de 220 caractères) ou tout `AS x(grantor…)` est un échec ; `CROSS JOIN LATERAL` + `) AS a` + références `a.grantee`/`a.privilege_type` exigés dans chaque helper.
+
 ## Incident d'application n°1 (16 sept 2026, production — ANNULÉ PROPREMENT)
 
 Première application de `20260915000001` : la self-verification a échoué sur
