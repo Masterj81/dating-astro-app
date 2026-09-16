@@ -129,6 +129,78 @@ describe('privilèges table — service_role en lecture STRICTEMENT seule', () =
   });
 });
 
+describe('fixtures du test SQL — le trigger crée les profils (incident n°6)', () => {
+  const src = readRepoFile(TEST_SQL);
+  // EN PRODUCTION, trigger_create_profile_on_auth_signup (AFTER INSERT ON
+  // auth.users) crée le profil de chaque compte : l'INSERT explicite dans
+  // profiles provoquait « duplicate key profiles_pkey ». Le test doit suivre
+  // l'architecture réelle : neuf comptes Auth → trigger → UPDATE des profils.
+
+  const NINE_UUIDS = [
+    'aaaaaaa1-0000-4000-8000-000000000001', 'aaaaaaa1-0000-4000-8000-000000000002',
+    'aaaaaaa1-0000-4000-8000-000000000003', 'aaaaaaa1-0000-4000-8000-000000000004',
+    'aaaaaaa1-0000-4000-8000-000000000005', 'aaaaaaa1-0000-4000-8000-000000000006',
+    'aaaaaaa2-0000-4000-8000-00000000000a', 'aaaaaaa2-0000-4000-8000-00000000000b',
+    'aaaaaaa2-0000-4000-8000-00000000000c',
+  ];
+
+  it('les NEUF UUID sont dans l’INSERT auth.users (lecteurs ET cibles)', () => {
+    const insertAt = src.indexOf('INSERT INTO auth.users');
+    expect(insertAt).toBeGreaterThan(0);
+    const insertBlock = src.slice(insertAt, src.indexOf(';', insertAt));
+    for (const uuid of NINE_UUIDS) {
+      expect(insertBlock, `${uuid} absent de l'INSERT auth.users`).toContain(uuid);
+    }
+  });
+
+  it('AUCUN INSERT INTO public.profiles dans les fixtures', () => {
+    const fixturesEnd = src.indexOf('LES DIX SCÉNARIOS');
+    const fixtures = src.slice(0, fixturesEnd > 0 ? fixturesEnd : src.length);
+    expect(fixtures).not.toMatch(/INSERT\s+INTO\s+public\.profiles/i);
+  });
+
+  it('les profils du trigger sont MIS À JOUR via UPDATE … FROM (VALUES)', () => {
+    const fixturesEnd = src.indexOf('LES DIX SCÉNARIOS');
+    const fixtures = src.slice(0, fixturesEnd > 0 ? fixturesEnd : src.length);
+    expect(fixtures).toMatch(/UPDATE public\.profiles p\s+SET/i);
+    expect(fixtures).toMatch(/FROM \(VALUES/i);
+    // Champs exigés par profile_chart_visible, fixés explicitement.
+    expect(fixtures).toMatch(/SET email = v\.email/);
+    expect(fixtures).toMatch(/name\s+= v\.name/);
+    expect(fixtures).toMatch(/birth_date = v\.birth_date/);
+    expect(fixtures).toMatch(/gender = v\.gender/);
+    expect(fixtures).toMatch(/is_active = v\.is_active/);
+    expect(fixtures).toMatch(/onboarding_completed = TRUE/);
+  });
+
+  it('exactement NEUF profils préparés — GET DIAGNOSTICS refuse tout autre compte', () => {
+    expect(src).toContain('GET DIAGNOSTICS v_updated = ROW_COUNT');
+    expect(src).toMatch(/v_updated <> 9/);
+  });
+
+  it('précontrôle de collision AVANT toute mutation, cinq tables, sans ON CONFLICT', () => {
+    const preCheckAt = src.indexOf('collision préexistante');
+    const insertAt = src.indexOf('INSERT INTO auth.users');
+    expect(preCheckAt).toBeGreaterThan(0);
+    expect(preCheckAt).toBeLessThan(insertAt);
+    const preCheck = src.slice(0, insertAt);
+    for (const table of ['auth.users', 'public.profiles', 'public.subscriptions',
+                         'public.synastry_free_grant', 'public.product_events']) {
+      expect(preCheck, `${table} absent du précontrôle`).toContain(table);
+    }
+    // Jamais de ON CONFLICT pour masquer une collision antérieure — sur le
+    // CODE seul : le commentaire d'incident ci-dessus nomme légitimement
+    // « ON CONFLICT » en prose (même piège que l'incident n°1).
+    const codeOnly = src.replace(/^[ \t]*--.*$/gm, '');
+    expect(codeOnly).not.toMatch(/ON CONFLICT/i);
+  });
+
+  it('le ROLLBACK final est bien là — rien ne survit au test', () => {
+    const lastRollback = src.lastIndexOf('ROLLBACK;');
+    expect(lastRollback).toBeGreaterThan(src.indexOf('LES DIX SCÉNARIOS'));
+  });
+});
+
 describe('index télémétrique — preuve STRUCTURELLE, jamais textuelle (incident n°4)', () => {
   const src = readRepoFile(MIGRATION_1);
   // Le dry-run n°4 a échoué sur une comparaison textuelle de pg_get_indexdef :

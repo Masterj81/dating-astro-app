@@ -26,33 +26,108 @@
 BEGIN;
 
 -- =============================================================================
--- FIXTURES
+-- FIXTURES — adaptées à l'architecture RÉELLE (incident de test n°6)
 -- =============================================================================
 -- u1 gratuit · u2 Céleste (premium) · u3 Cosmique (premium_plus)
 -- u4 roulement UTC · u5 purge · u6 télémétrie
 -- tA/tB admissibles (actives, gender défini, looking_for par défaut = tout)
 -- tC invisible (is_active = false)
-INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password,
-                        email_confirmed_at, created_at, updated_at)
-VALUES
-  ('00000000-0000-0000-0000-000000000000', 'aaaaaaa1-0000-4000-8000-000000000001', 'authenticated', 'authenticated', 'syn.u1@juno.invalid', '', NOW(), NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000000', 'aaaaaaa1-0000-4000-8000-000000000002', 'authenticated', 'authenticated', 'syn.u2@juno.invalid', '', NOW(), NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000000', 'aaaaaaa1-0000-4000-8000-000000000003', 'authenticated', 'authenticated', 'syn.u3@juno.invalid', '', NOW(), NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000000', 'aaaaaaa1-0000-4000-8000-000000000004', 'authenticated', 'authenticated', 'syn.u4@juno.invalid', '', NOW(), NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000000', 'aaaaaaa1-0000-4000-8000-000000000005', 'authenticated', 'authenticated', 'syn.u5@juno.invalid', '', NOW(), NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000000', 'aaaaaaa1-0000-4000-8000-000000000006', 'authenticated', 'authenticated', 'syn.u6@juno.invalid', '', NOW(), NOW(), NOW());
+--
+-- EN PRODUCTION, `trigger_create_profile_on_auth_signup` (AFTER INSERT ON
+-- auth.users → handle_new_auth_user_profile()) CRÉE AUTOMATIQUEMENT le
+-- profil de chaque nouveau compte : l'INSERT explicite dans profiles
+-- provoquait `duplicate key profiles_pkey`. Le protocole est donc :
+--   1. PRÉCONTRÔLE : aucun des neuf UUID ne doit exister nulle part —
+--      toute collision lève AVANT toute mutation (jamais de ON CONFLICT
+--      pour masquer une collision antérieure) ;
+--   2. neuf INSERT dans auth.users : le trigger crée les neuf profils ;
+--   3. UPDATE ... FROM (VALUES) des neuf profils créés par le trigger,
+--      avec GET DIAGNOSTICS : exactement neuf, sinon échec.
+-- Le ROLLBACK final emporte tout (users, profils, abonnements, grants,
+-- événements, politique).
+DO $fixtures$
+DECLARE
+  v_collisions BIGINT;
+  v_updated    INTEGER;
+BEGIN
+  -- 1. Précontrôle de collision, AVANT toute mutation.
+  SELECT
+      (SELECT COUNT(*) FROM auth.users u WHERE u.id IN (
+         'aaaaaaa1-0000-4000-8000-000000000001','aaaaaaa1-0000-4000-8000-000000000002',
+         'aaaaaaa1-0000-4000-8000-000000000003','aaaaaaa1-0000-4000-8000-000000000004',
+         'aaaaaaa1-0000-4000-8000-000000000005','aaaaaaa1-0000-4000-8000-000000000006',
+         'aaaaaaa2-0000-4000-8000-00000000000a','aaaaaaa2-0000-4000-8000-00000000000b',
+         'aaaaaaa2-0000-4000-8000-00000000000c'))
+    + (SELECT COUNT(*) FROM public.profiles p WHERE p.id IN (
+         'aaaaaaa1-0000-4000-8000-000000000001','aaaaaaa1-0000-4000-8000-000000000002',
+         'aaaaaaa1-0000-4000-8000-000000000003','aaaaaaa1-0000-4000-8000-000000000004',
+         'aaaaaaa1-0000-4000-8000-000000000005','aaaaaaa1-0000-4000-8000-000000000006',
+         'aaaaaaa2-0000-4000-8000-00000000000a','aaaaaaa2-0000-4000-8000-00000000000b',
+         'aaaaaaa2-0000-4000-8000-00000000000c'))
+    + (SELECT COUNT(*) FROM public.subscriptions s WHERE s.user_id IN (
+         'aaaaaaa1-0000-4000-8000-000000000001','aaaaaaa1-0000-4000-8000-000000000002',
+         'aaaaaaa1-0000-4000-8000-000000000003','aaaaaaa1-0000-4000-8000-000000000004',
+         'aaaaaaa1-0000-4000-8000-000000000005','aaaaaaa1-0000-4000-8000-000000000006',
+         'aaaaaaa2-0000-4000-8000-00000000000a','aaaaaaa2-0000-4000-8000-00000000000b',
+         'aaaaaaa2-0000-4000-8000-00000000000c'))
+    + (SELECT COUNT(*) FROM public.synastry_free_grant g WHERE g.viewer_user_id IN (
+         'aaaaaaa1-0000-4000-8000-000000000001','aaaaaaa1-0000-4000-8000-000000000002',
+         'aaaaaaa1-0000-4000-8000-000000000003','aaaaaaa1-0000-4000-8000-000000000004',
+         'aaaaaaa1-0000-4000-8000-000000000005','aaaaaaa1-0000-4000-8000-000000000006',
+         'aaaaaaa2-0000-4000-8000-00000000000a','aaaaaaa2-0000-4000-8000-00000000000b',
+         'aaaaaaa2-0000-4000-8000-00000000000c'))
+    + (SELECT COUNT(*) FROM public.product_events e WHERE e.user_id IN (
+         'aaaaaaa1-0000-4000-8000-000000000001','aaaaaaa1-0000-4000-8000-000000000002',
+         'aaaaaaa1-0000-4000-8000-000000000003','aaaaaaa1-0000-4000-8000-000000000004',
+         'aaaaaaa1-0000-4000-8000-000000000005','aaaaaaa1-0000-4000-8000-000000000006',
+         'aaaaaaa2-0000-4000-8000-00000000000a','aaaaaaa2-0000-4000-8000-00000000000b',
+         'aaaaaaa2-0000-4000-8000-00000000000c'))
+    INTO v_collisions;
+  IF v_collisions <> 0 THEN
+    RAISE EXCEPTION 'collision préexistante : % ligne(s) portent déjà les UUID synthétiques — base non vierge pour ce test', v_collisions;
+  END IF;
 
-INSERT INTO public.profiles (id, email, name, birth_date, gender, is_active, onboarding_completed)
-VALUES
-  ('aaaaaaa1-0000-4000-8000-000000000001', 'syn.u1@juno.invalid', 'Test U1', '1994-05-05', 'female', true, true),
-  ('aaaaaaa1-0000-4000-8000-000000000002', 'syn.u2@juno.invalid', 'Test U2', '1992-02-02', 'female', true, true),
-  ('aaaaaaa1-0000-4000-8000-000000000003', 'syn.u3@juno.invalid', 'Test U3', '1990-10-10', 'female', true, true),
-  ('aaaaaaa1-0000-4000-8000-000000000004', 'syn.u4@juno.invalid', 'Test U4', '1991-11-11', 'female', true, true),
-  ('aaaaaaa1-0000-4000-8000-000000000005', 'syn.u5@juno.invalid', 'Test U5', '1993-09-09', 'female', true, true),
-  ('aaaaaaa1-0000-4000-8000-000000000006', 'syn.u6@juno.invalid', 'Test U6', '1995-03-03', 'female', true, true),
-  ('aaaaaaa2-0000-4000-8000-00000000000a', 'syn.ta@juno.invalid', 'Cible A',  '1993-03-13', 'female', true, true),
-  ('aaaaaaa2-0000-4000-8000-00000000000b', 'syn.tb@juno.invalid', 'Cible B',  '1991-01-21', 'female', true, true),
-  ('aaaaaaa2-0000-4000-8000-00000000000c', 'syn.tc@juno.invalid', 'Cible C',  '1990-06-06', 'female', false, true);
+  -- 2. Les neuf comptes Auth : le trigger crée les neuf profils.
+  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password,
+                          email_confirmed_at, created_at, updated_at)
+  VALUES
+    ('00000000-0000-0000-0000-000000000000', 'aaaaaaa1-0000-4000-8000-000000000001', 'authenticated', 'authenticated', 'syn.u1@juno.invalid', '', NOW(), NOW(), NOW()),
+    ('00000000-0000-0000-0000-000000000000', 'aaaaaaa1-0000-4000-8000-000000000002', 'authenticated', 'authenticated', 'syn.u2@juno.invalid', '', NOW(), NOW(), NOW()),
+    ('00000000-0000-0000-0000-000000000000', 'aaaaaaa1-0000-4000-8000-000000000003', 'authenticated', 'authenticated', 'syn.u3@juno.invalid', '', NOW(), NOW(), NOW()),
+    ('00000000-0000-0000-0000-000000000000', 'aaaaaaa1-0000-4000-8000-000000000004', 'authenticated', 'authenticated', 'syn.u4@juno.invalid', '', NOW(), NOW(), NOW()),
+    ('00000000-0000-0000-0000-000000000000', 'aaaaaaa1-0000-4000-8000-000000000005', 'authenticated', 'authenticated', 'syn.u5@juno.invalid', '', NOW(), NOW(), NOW()),
+    ('00000000-0000-0000-0000-000000000000', 'aaaaaaa1-0000-4000-8000-000000000006', 'authenticated', 'authenticated', 'syn.u6@juno.invalid', '', NOW(), NOW(), NOW()),
+    ('00000000-0000-0000-0000-000000000000', 'aaaaaaa2-0000-4000-8000-00000000000a', 'authenticated', 'authenticated', 'syn.ta@juno.invalid', '', NOW(), NOW(), NOW()),
+    ('00000000-0000-0000-0000-000000000000', 'aaaaaaa2-0000-4000-8000-00000000000b', 'authenticated', 'authenticated', 'syn.tb@juno.invalid', '', NOW(), NOW(), NOW()),
+    ('00000000-0000-0000-0000-000000000000', 'aaaaaaa2-0000-4000-8000-00000000000c', 'authenticated', 'authenticated', 'syn.tc@juno.invalid', '', NOW(), NOW(), NOW());
+
+  -- 3. AUCUN INSERT dans profiles : on MET À JOUR les profils du trigger.
+  UPDATE public.profiles p
+     SET email = v.email,
+         name  = v.name,
+         birth_date = v.birth_date,
+         gender = v.gender,
+         is_active = v.is_active,
+         onboarding_completed = TRUE
+    FROM (VALUES
+      ('aaaaaaa1-0000-4000-8000-000000000001'::uuid, 'syn.u1@juno.invalid', 'Test U1',   '1994-05-05'::date, 'female', true),
+      ('aaaaaaa1-0000-4000-8000-000000000002'::uuid, 'syn.u2@juno.invalid', 'Test U2',   '1992-02-02'::date, 'female', true),
+      ('aaaaaaa1-0000-4000-8000-000000000003'::uuid, 'syn.u3@juno.invalid', 'Test U3',   '1990-10-10'::date, 'female', true),
+      ('aaaaaaa1-0000-4000-8000-000000000004'::uuid, 'syn.u4@juno.invalid', 'Test U4',   '1991-11-11'::date, 'female', true),
+      ('aaaaaaa1-0000-4000-8000-000000000005'::uuid, 'syn.u5@juno.invalid', 'Test U5',   '1993-09-09'::date, 'female', true),
+      ('aaaaaaa1-0000-4000-8000-000000000006'::uuid, 'syn.u6@juno.invalid', 'Test U6',   '1995-03-03'::date, 'female', true),
+      ('aaaaaaa2-0000-4000-8000-00000000000a'::uuid, 'syn.ta@juno.invalid', 'Cible A',   '1993-03-13'::date, 'female', true),
+      ('aaaaaaa2-0000-4000-8000-00000000000b'::uuid, 'syn.tb@juno.invalid', 'Cible B',   '1991-01-21'::date, 'female', true),
+      ('aaaaaaa2-0000-4000-8000-00000000000c'::uuid, 'syn.tc@juno.invalid', 'Cible C',   '1990-06-06'::date, 'female', false)
+    ) AS v(id, email, name, birth_date, gender, is_active)
+   WHERE p.id = v.id;
+
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  IF v_updated <> 9 THEN
+    RAISE EXCEPTION 'fixtures : % profil(s) préparés — attendu exactement 9 (trigger + UPDATE)', v_updated;
+  END IF;
+END
+$fixtures$;
 
 -- u2 = Céleste ('premium'), u3 = Cosmique ('premium_plus') — actifs.
 INSERT INTO public.subscriptions (user_id, tier, status, source, expires_at, cancel_at_period_end)
