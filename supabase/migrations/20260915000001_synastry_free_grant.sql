@@ -532,6 +532,7 @@ DECLARE
   v_nargs    INTEGER;
   v_over     INTEGER;
   v_event    TEXT;
+  v_ix       RECORD;
 BEGIN
   IF to_regclass('public.synastry_free_grant') IS NULL THEN
     RAISE EXCEPTION 'synastry_free_grant absente';
@@ -699,34 +700,72 @@ BEGIN
     RAISE EXCEPTION 'télémétrie : la garantie « jamais réattribuer » (COALESCE + WHERE IS NULL) a disparu';
   END IF;
 
-  -- L'index partiel lui-même : existence PUIS définition, élément par élément.
-  SELECT pg_get_indexdef(i.indexrelid) INTO v_idx
-    FROM pg_index i
-   WHERE i.indexrelid = 'public.ux_product_events_preview_daily'::regclass;
-  IF v_idx IS NULL THEN
-    RAISE EXCEPTION 'index d idempotence télémétrique absent';
+  -- L'index partiel : preuve STRUCTURELLE, jamais textuelle
+  -- (incident n°4 : pg_get_indexdef NORMALISE sa sortie — « AT TIME ZONE
+  -- 'utc' » peut y être rendu « timezone('utc'::text, …) », et comparer la
+  -- définition entière à une chaîne attendue teste le FORMATAGE choisi par
+  -- PostgreSQL, pas l’index). Ci-dessous : les trois clés et le prédicat,
+  -- position par position, sur les catalogues.
+  SELECT i.indisunique              AS indisunique,
+         i.indnkeyatts              AS indnkeyatts,
+         i.indkey[1]                AS indkey1,
+         i.indkey[2]                AS indkey2,
+         i.indkey[3]                AS indkey3,
+         (SELECT a.attname FROM pg_catalog.pg_attribute a
+           WHERE a.attrelid = i.indrelid AND a.attnum = i.indkey[1]) AS attname1,
+         (SELECT a.attname FROM pg_catalog.pg_attribute a
+           WHERE a.attrelid = i.indrelid AND a.attnum = i.indkey[2]) AS attname2,
+         pg_catalog.pg_get_expr(i.indpred, i.indrelid) AS pred_expr
+    INTO v_ix
+    FROM pg_catalog.pg_index i
+   WHERE i.indexrelid = 'public.ux_product_events_preview_daily'::regclass
+     -- l'index doit être SUR product_events : sinon NOT FOUND ci-dessous.
+     AND i.indrelid = 'public.product_events'::regclass;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'index d idempotence télémétrique absent (ou pas sur product_events)';
   END IF;
-  v_norm := regexp_replace(v_idx, '\s+', ' ', 'g');
-  IF v_norm NOT LIKE 'CREATE UNIQUE INDEX ux_product_events_preview_daily ON public.product_events%' THEN
-    RAISE EXCEPTION 'ux_product_events_preview_daily : plus unique ou plus sur product_events';
+  IF v_ix.indisunique IS DISTINCT FROM TRUE THEN
+    RAISE EXCEPTION 'ux_product_events_preview_daily : plus unique';
   END IF;
-  IF v_norm NOT LIKE '%(user_id, event_name, ((created_at AT TIME ZONE ''utc''::text)::date))%' THEN
-    RAISE EXCEPTION 'ux_product_events_preview_daily : colonnes/expression != (user_id, event_name, jour UTC)';
+  IF v_ix.indnkeyatts <> 3 THEN
+    RAISE EXCEPTION 'ux_product_events_preview_daily : % clé(s) — attendu exactement 3', v_ix.indnkeyatts;
   END IF;
+  -- Positions 1 et 2 : les colonnes nommées, EXACTEMENT.
+  IF v_ix.attname1 IS DISTINCT FROM 'user_id' THEN
+    RAISE EXCEPTION 'ux_product_events_preview_daily : clé 1 = «%» — attendu user_id', v_ix.attname1;
+  END IF;
+  IF v_ix.attname2 IS DISTINCT FROM 'event_name' THEN
+    RAISE EXCEPTION 'ux_product_events_preview_daily : clé 2 = «%» — attendu event_name', v_ix.attname2;
+  END IF;
+  -- Position 3 : une EXPRESSION (indkey = 0 marque l'absence de colonne).
+  IF v_ix.indkey3 IS DISTINCT FROM 0 THEN
+    RAISE EXCEPTION 'ux_product_events_preview_daily : la clé 3 doit être une expression (indkey = 0), pas une colonne';
+  END IF;
+  -- L'expression de la clé 3, SÉMANTIQUEMENT : created_at, UTC, conversion
+  -- en date — quelle que soit la forme rendue (AT TIME ZONE ou timezone()).
+  SELECT pg_catalog.pg_get_indexdef('public.ux_product_events_preview_daily'::regclass, 3, true) INTO v_idx;
+  v_norm := lower(v_idx);
+  IF v_norm NOT LIKE '%created_at%'
+     OR v_norm NOT LIKE '%utc%'
+     OR v_norm NOT LIKE '%date%' THEN
+    RAISE EXCEPTION 'ux_product_events_preview_daily : clé 3 != jour UTC de created_at (rendue : %)', v_idx;
+  END IF;
+  -- Le prédicat partiel, par pg_get_expr : chacun des cinq événements…
   FOR v_event IN SELECT unnest(ARRAY[
     'preview_presented', 'preview_succeeded', 'preview_reopened',
     'preview_used_other_target', 'upgrade_clicked'
   ])
   LOOP
-    IF v_norm NOT LIKE '%' || v_event || '%' THEN
+    IF v_ix.pred_expr NOT LIKE '%' || v_event || '%' THEN
       RAISE EXCEPTION 'ux_product_events_preview_daily : le prédicat ne couvre plus «%»', v_event;
     END IF;
   END LOOP;
-  -- NB : pg_get_indexdef NORMALISE le prédicat — `event_name IN (...)` tel
-  -- qu'écrit dans CREATE INDEX est rendu `event_name = ANY (ARRAY[...])`.
-  -- La forme sémantique est assertée, pas la frappe d'origine.
-  IF v_norm NOT LIKE '%event_name = ANY (ARRAY[%' THEN
-    RAISE EXCEPTION 'ux_product_events_preview_daily : le prédicat partial a disparu';
+  -- …ET exactement cinq constantes d'événement : un sixième ajout silencieux
+  -- (ou un renommage) change le compte — chaque constante normalisée porte
+  -- un « ::text » dans le rendu du prédicat.
+  IF (length(v_ix.pred_expr) - length(replace(v_ix.pred_expr, '''::text', '')))
+       / length('''::text') <> 5 THEN
+    RAISE EXCEPTION 'ux_product_events_preview_daily : le prédicat porte un nombre de constantes != 5 — ajout ou retrait silencieux';
   END IF;
   IF to_regclass('public.ux_product_events_client_event_id') IS NULL THEN
     RAISE EXCEPTION 'index d attribution client_event_id (20260831000002) absent : la migration l aurait détruit';

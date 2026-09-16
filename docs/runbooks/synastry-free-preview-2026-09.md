@@ -4,6 +4,12 @@
 **État : implémenté localement, NON appliqué, NON déployé, NON commité**
 **Branche de travail : `fix/security-wave-2-2026-09-08` (non commité)**
 
+## Incident d'application n°4 (16 sept 2026, dry-run transactionnel — ANNULÉ AVANT COMMIT)
+
+**Représentation normalisée de `pg_get_indexdef` comparée textuellement.** La self-verify refusait `colonnes/expression != (user_id, event_name, jour UTC)` : la définition de l'index était comparée à une chaîne attendue dans laquelle `AT TIME ZONE 'utc'` apparaît tel qu'écrit — or PostgreSQL peut le normaliser en `timezone('utc'::text, …)`. Le lot s'est terminé par `ROLLBACK` : rien d'appliqué, et **la définition de l'index n'a pas changé** (elle est correcte) — seul le contrôle était en tort.
+
+**Correctif — preuve structurelle, jamais textuelle** : vérification via les catalogues, sans comparer le rendu de `pg_get_indexdef` pour la définition entière : (1) existence sur `product_events` (`indrelid` dans le WHERE) ; (2) `indisunique` ; (3) `indnkeyatts = 3` ; (4) clé 1 = colonne `user_id` exactement ; (5) clé 2 = colonne `event_name` exactement ; (6) clé 3 = **expression** (`indkey[3] = 0`) ; (7) l'élément 3 seul, via `pg_get_indexdef(indexrelid, 3, true)`, contient sémantiquement `created_at`, `utc`, une conversion vers `date` ; (8) le prédicat via `pg_get_expr(indpred, indrelid)` contient chacun des cinq événements ; (9) **exactement cinq** constantes d'événement (compte des `'::text` du rendu) — un sixième ajout silencieux, ou un renommage, change le compte. Régression statique correspondante dans `synastry-grant-contract.test.ts` : les deux formes textuelles fragiles sont interdites au retour, et chaque exigence structurelle est exigée nommément.
+
 ## Incident d'application n°3 (16 sept 2026, dry-run transactionnel — ANNULÉ AVANT COMMIT)
 
 Le dry-run transactionnel (terminé par `ROLLBACK`) a compilé au-delà des deux incidents précédents, puis la self-verification a refusé l'état réel : **`service_role détient DELETE sur synastry_free_grant`**. Cause : l'état Supabase réel diffère de l'hypothèse locale — Supabase accorde `ALL` à `service_role` sur toute **nouvelle** table via ses default privileges (précédent documenté : `20260911000001`), et le `GRANT SELECT` de la migration **ajoute** sans jamais retirer. Intercepté avant commit : rien d'appliqué.

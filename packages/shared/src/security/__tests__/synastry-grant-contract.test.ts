@@ -129,6 +129,56 @@ describe('privilèges table — service_role en lecture STRICTEMENT seule', () =
   });
 });
 
+describe('index télémétrique — preuve STRUCTURELLE, jamais textuelle (incident n°4)', () => {
+  const src = readRepoFile(MIGRATION_1);
+  // Le dry-run n°4 a échoué sur une comparaison textuelle de pg_get_indexdef :
+  // PostgreSQL normalise « AT TIME ZONE 'utc' » en « timezone('utc'::text, …) »
+  // selon sa version/son rendu. La preuve doit porter sur les TROIS clés et le
+  // prédicat via les catalogues — jamais sur le formatage choisi.
+
+  it('aucune comparaison textuelle de la définition entière de l’index', () => {
+    // Les deux formes fragiles d’avant l’incident, interdites au retour.
+    expect(src).not.toMatch(/NOT LIKE '%\(user_id, event_name, \(\(created_at/s);
+    expect(src).not.toMatch(/NOT LIKE 'CREATE UNIQUE INDEX ux_product_events_preview_daily/s);
+    expect(src).not.toContain("AT TIME ZONE ''utc''::text)::date))%");
+  });
+
+  it('la preuve passe par le catalogue : unique, exactement 3 clés', () => {
+    expect(src).toMatch(/indisunique IS DISTINCT FROM TRUE/);
+    expect(src).toMatch(/indnkeyatts <> 3/);
+    // Et l’appartenance à product_events est dans le WHERE du catalogue,
+    // pas dans un préfixe de définition textuelle.
+    expect(src).toMatch(/i\.indrelid = 'public\.product_events'::regclass/);
+  });
+
+  it('les positions 1, 2 et 3 sont vérifiées SÉPARÉMENT', () => {
+    expect(src).toMatch(/i\.indkey\[1\]/);
+    expect(src).toMatch(/i\.indkey\[2\]/);
+    expect(src).toMatch(/i\.indkey\[3\]/);
+    expect(src).toMatch(/attname1 IS DISTINCT FROM 'user_id'/);
+    expect(src).toMatch(/attname2 IS DISTINCT FROM 'event_name'/);
+  });
+
+  it('la clé 3 est vérifiée EXPRESSIONNELLE (indkey = 0), puis sémantique', () => {
+    expect(src).toMatch(/indkey3 IS DISTINCT FROM 0/);
+    // pg_get_indexdef(regclass, 3, true) : l’élément SEUL, pas la définition.
+    expect(src).toContain("pg_get_indexdef('public.ux_product_events_preview_daily'::regclass, 3, true)");
+    // Trois marqueurs sémantiques, insensibles à la forme rendue.
+    expect(src).toMatch(/v_norm NOT LIKE '%created_at%'/);
+    expect(src).toMatch(/v_norm NOT LIKE '%utc%'/);
+    expect(src).toMatch(/v_norm NOT LIKE '%date%'/);
+  });
+
+  it('le prédicat est prouvé par pg_get_expr, avec ses cinq événements exactement', () => {
+    expect(src).toMatch(/pg_get_expr\(i\.indpred, i\.indrelid\)/);
+    expect(src).toMatch(/pred_expr NOT LIKE '%' \|\| v_event \|\| '%'/);
+    // Compte exact des constantes : un sixième événement ajouté
+    // silencieusement change le compte et fait échouer.
+    expect(src).toMatch(/replace\(v_ix\.pred_expr, '''::text', ''\)/);
+    expect(src).toMatch(/length\('''::text'\) <> 5/);
+  });
+});
+
 describe('sites d’appel — comparaisons explicites, jamais une condition nue', () => {
   for (const file of [MIGRATION_1, MIGRATION_2]) {
     const src = readRepoFile(file);
