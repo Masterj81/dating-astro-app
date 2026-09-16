@@ -4,6 +4,12 @@
 **État : implémenté localement, NON appliqué, NON déployé, NON commité**
 **Branche de travail : `fix/security-wave-2-2026-09-08` (non commité)**
 
+## Incident prévenu n°7 (16 sept 2026 — revue, avant push de 1b80296)
+
+**Le harnais de course contournait le trigger Auth et pouvait supprimer une collision préexistante lors du finally.** Deux défauts : (1) ses fixtures inséraient directement dans `public.profiles` avec `ON CONFLICT DO NOTHING` — collision masquée **et** profils incomplets (sans `name`/`onboarding_completed`) qui auraient fait échouer `profile_chart_visible` → `target_ineligible` au lieu de tester la concurrence ; (2) son nettoyage inconditionnel pouvait effacer des lignes qu'il n'avait pas créées si les UUID synthétiques préexistaient.
+
+**Correctif** : (1) **précontrôle** dans la même transaction que les fixtures, avant toute mutation — les trois UUID absents des cinq surfaces (`auth.users`, `profiles`, `subscriptions`, `synastry_free_grant` viewer **ou** `target`, `product_events`), toute collision lève, **zéro `ON CONFLICT`** dans le code fonctionnel ; (2) les **trois identités** passent par `auth.users` — le trigger crée les profils — puis `UPDATE … FROM (VALUES)` fixant les six champs exigés, `GET DIAGNOSTICS` refusant tout compte ≠ 3 ; (3) **ownership du nettoyage** : `fixturesCommitted` part `false` et ne passe `true` qu'après le retour réussi de la transaction de fixtures ; le `finally` arrête/rollback **toujours** les workers, mais n'exécute les `DELETE` (bornés aux trois UUID, grants viewer ET target, ordre compatible FK, cinq surfaces) **que** si `fixturesCommitted` ; en cas de collision préexistante, message explicite « nettoyage non exécuté » et aucune ligne touchée ; la preuve de résidu couvre les mêmes cinq surfaces et n'a de sens que pour ce qui était possédé. Régression statique : six tests, dont un **négatif structurel** — la branche collision ne contient aucun appel de nettoyage.
+
 ## Incident de test n°6 (16 sept 2026 — collision interceptée avant les assertions)
 
 Le test SQL rollback-safe a échoué **avant les scénarios** : `duplicate key profiles_pkey` sur u1. Cause confirmée en production : `trigger_create_profile_on_auth_signup` (`AFTER INSERT ON auth.users` → `handle_new_auth_user_profile()`) **crée automatiquement le profil** de chaque nouveau compte — l'INSERT explicite dans `public.profiles` recréait les mêmes lignes.

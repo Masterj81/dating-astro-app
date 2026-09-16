@@ -201,6 +201,111 @@ describe('fixtures du test SQL — le trigger crée les profils (incident n°6)'
   });
 });
 
+describe('harnais de course — fixtures par le trigger, nettoyage POSSÉDÉ (incident n°7)', () => {
+  const src = readRepoFile(RACE_MJS);
+  // TROIS identités (viewer, cible A, cible B). Le harnais contournait le
+  // trigger Auth (INSERT direct dans profiles = collision pkey + profils
+  // incomplets → target_ineligible au lieu de la course) et son finally
+  // pouvait SUPPRIMER une collision préexistante. Corrigé : précontrôle,
+  // trigger, UPDATE des profils, et nettoyage conditionné à ce que CE harnais
+  // ait commité ses fixtures.
+
+  const RACE_UUIDS = [
+    'd17a5ace-0000-4000-8000-00000000f001',
+    'd17a5ace-0000-4000-8000-00000000f00a',
+    'd17a5ace-0000-4000-8000-00000000f00b',
+  ];
+
+  /** Code fonctionnel : commentaires JS et SQL retirés (les commentaires
+   *  d'incident nomment légitimement les motifs interdits au code). */
+  const codeOnly = src.replace(/^[ \t]*(\/\/|--).*$/gm, '');
+
+  it('les TROIS identités sont déclarées et insérées via auth.users', () => {
+    for (const uuid of RACE_UUIDS) {
+      expect(src).toContain(uuid);
+    }
+    const insertAt = codeOnly.indexOf('INSERT INTO auth.users');
+    expect(insertAt).toBeGreaterThan(0);
+    const insertBlock = codeOnly.slice(insertAt, codeOnly.indexOf(';', insertAt));
+    for (const ref of ['${SYNTH.viewer}', '${SYNTH.targetA}', '${SYNTH.targetB}']) {
+      expect(insertBlock).toContain(ref);
+    }
+  });
+
+  it('AUCUN INSERT direct dans profiles — UPDATE … FROM (VALUES), trois profils', () => {
+    expect(codeOnly).not.toMatch(/INSERT\s+INTO\s+public\.profiles/i);
+    expect(codeOnly).toMatch(/UPDATE public\.profiles p\s+SET/i);
+    expect(codeOnly).toMatch(/FROM \(VALUES/i);
+    for (const field of ['email = v.email', 'name  = v.name', 'birth_date = v.birth_date',
+                         'gender = v.gender', 'is_active = v.is_active', 'onboarding_completed = TRUE']) {
+      expect(src).toContain(field);
+    }
+    expect(src).toContain('v_updated <> 3');
+  });
+
+  it('AUCUN ON CONFLICT dans le code fonctionnel, précontrôle AVANT mutation', () => {
+    expect(codeOnly).not.toMatch(/ON CONFLICT/i);
+    // MÊME système de coordonnées pour les deux recherches (codeOnly) :
+    // comparer un offset « src brut » à un offset « codeOnly » est toujours
+    // faux — les commentaires gonflent les premiers.
+    const preCheckAt = codeOnly.indexOf('collision préexistante');
+    const insertAt = codeOnly.indexOf('INSERT INTO auth.users');
+    expect(preCheckAt).toBeGreaterThan(0);
+    expect(preCheckAt).toBeLessThan(insertAt);
+    // Cinq surfaces, grants inspectés viewer ET target.
+    const preCheck = codeOnly.slice(0, insertAt);
+    for (const surface of ['auth.users', 'public.profiles', 'public.subscriptions',
+                           'public.synastry_free_grant', 'public.product_events']) {
+      expect(preCheck).toContain(surface);
+    }
+    expect(preCheck).toMatch(/viewer_user_id IN/);
+    expect(preCheck).toMatch(/target_user_id IN/);
+  });
+
+  it('fixturesCommitted : false à l’origine, true APRÈS le COMMIT des fixtures', () => {
+    expect(src).toMatch(/let fixturesCommitted = false;/);
+    const commitAt = src.indexOf("COMMIT;`, 'fixtures')");
+    const flagTrueAt = src.indexOf('fixturesCommitted = true;');
+    expect(commitAt).toBeGreaterThan(0);
+    expect(flagTrueAt).toBeGreaterThan(commitAt);
+    // Une seule passe à true : jamais ailleurs.
+    expect((src.match(/fixturesCommitted = true;/g) ?? []).length).toBe(1);
+  });
+
+  it('nettoyage CONDITIONNÉ à fixturesCommitted, complet et borné aux trois UUID', () => {
+    const guardAt = src.indexOf('if (fixturesCommitted) {');
+    expect(guardAt).toBeGreaterThan(0);
+    const guardBlock = src.slice(guardAt, src.indexOf('} else if', guardAt));
+    expect(guardBlock).toContain('psqlScript(CLEANUP_SQL');
+    // Le nettoyage n'est appelé NULLE PART ailleurs.
+    expect((src.match(/psqlScript\(CLEANUP_SQL/g) ?? []).length).toBe(1);
+    // Grants purgés viewer ET target ; auth.users pour les trois.
+    expect(src).toMatch(/DELETE FROM public\.synastry_free_grant[\s\S]{0,120}viewer_user_id IN/);
+    expect(src).toMatch(/OR target_user_id IN/);
+    expect(src).toMatch(/DELETE FROM auth\.users WHERE id IN/);
+    // Résidu : les mêmes cinq surfaces, les mêmes trois UUID.
+    const residueAt = src.indexOf('const RESIDUE_SQL');
+    const residueBlock = src.slice(residueAt, src.indexOf(';', src.indexOf('(SELECT COUNT(*) FROM public.product_events', residueAt)));
+    for (const surface of ['auth.users', 'public.profiles', 'public.subscriptions',
+                           'public.synastry_free_grant', 'public.product_events']) {
+      expect(residueBlock).toContain(surface);
+    }
+  });
+
+  it('NÉGATIF : un finally ne supprime JAMAIS les fixtures d’une collision préexistante', () => {
+    // La branche collision est explicite, annoncée, et ne contient AUCUN
+    // appel de nettoyage — le seul psqlScript(CLEANUP_SQL du fichier vit
+    // dans le garde if (fixturesCommitted), atteint uniquement après un
+    // COMMIT réussi des fixtures de CETTE exécution.
+    const collisionAt = src.indexOf('NETTOYAGE NON EXÉCUTÉ');
+    expect(collisionAt).toBeGreaterThan(0);
+    const collisionBranch = src.slice(collisionAt, src.indexOf('if (failure)', collisionAt));
+    expect(collisionBranch).not.toContain('psqlScript');
+    expect(collisionBranch).not.toContain('CLEANUP_SQL');
+    expect(collisionBranch).not.toContain('DELETE FROM');
+  });
+});
+
 describe('index télémétrique — preuve STRUCTURELLE, jamais textuelle (incident n°4)', () => {
   const src = readRepoFile(MIGRATION_1);
   // Le dry-run n°4 a échoué sur une comparaison textuelle de pg_get_indexdef :

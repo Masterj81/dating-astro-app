@@ -187,18 +187,37 @@ function spawnWorker(label) {
 // ── Nettoyage et preuves, TOUJOURS exécutés (même après échec) ─────────────
 const workers = []; // déclaré avant runRace pour le finally
 
+// OWNERSHIP DU NETTOYAGE (incident prévenu n°7) : le harnais ne doit JAMAIS
+// supprimer des lignes qu’il n’a pas créées. Ce drapeau ne passe à true
+// qu’après le retour RÉUSSI de la transaction de fixtures (celle qui porte
+// son propre COMMIT) — si le précontrôle détecte une collision préexistante,
+// la transaction échoue, le drapeau reste false, et le finally ne supprime
+// ABSOLUMENT rien de ce qui existait avant lui.
+let fixturesCommitted = false;
+
+const SYNTH_ID_LIST = `'${SYNTH_IDS.join("','")}'`;
+
+// Nettoyage COMPLET et BORNÉ aux trois UUID, dans un ordre compatible avec
+// les FK (grants sans FK d’abord, auth.users — source des cascades — en
+// dernier). Les grants sont purgés côté viewer ET côté target.
 const CLEANUP_SQL = `BEGIN;
-DELETE FROM public.synastry_free_grant WHERE viewer_user_id = '${SYNTH.viewer}';
-DELETE FROM public.product_events WHERE user_id = '${SYNTH.viewer}';
-DELETE FROM public.profiles WHERE id IN ('${SYNTH_IDS.join("','")}');
-DELETE FROM auth.users WHERE id = '${SYNTH.viewer}';
+DELETE FROM public.synastry_free_grant
+ WHERE viewer_user_id IN (${SYNTH_ID_LIST})
+    OR target_user_id IN (${SYNTH_ID_LIST});
+DELETE FROM public.product_events WHERE user_id IN (${SYNTH_ID_LIST});
+DELETE FROM public.subscriptions WHERE user_id IN (${SYNTH_ID_LIST});
+DELETE FROM public.profiles WHERE id IN (${SYNTH_ID_LIST});
+DELETE FROM auth.users WHERE id IN (${SYNTH_ID_LIST});
 COMMIT;`;
 
+// Preuve de résidu : les MÊMES cinq surfaces, les MÊMES trois UUID.
 const RESIDUE_SQL = `SELECT
-    (SELECT COUNT(*) FROM auth.users WHERE id = '${SYNTH.viewer}') +
-    (SELECT COUNT(*) FROM public.profiles WHERE id IN ('${SYNTH_IDS.join("','")}')) +
-    (SELECT COUNT(*) FROM public.synastry_free_grant WHERE viewer_user_id = '${SYNTH.viewer}') +
-    (SELECT COUNT(*) FROM public.product_events WHERE user_id = '${SYNTH.viewer}')`;
+    (SELECT COUNT(*) FROM auth.users WHERE id IN (${SYNTH_ID_LIST})) +
+    (SELECT COUNT(*) FROM public.profiles WHERE id IN (${SYNTH_ID_LIST})) +
+    (SELECT COUNT(*) FROM public.subscriptions WHERE user_id IN (${SYNTH_ID_LIST})) +
+    (SELECT COUNT(*) FROM public.synastry_free_grant
+      WHERE viewer_user_id IN (${SYNTH_ID_LIST}) OR target_user_id IN (${SYNTH_ID_LIST})) +
+    (SELECT COUNT(*) FROM public.product_events WHERE user_id IN (${SYNTH_ID_LIST}))`;
 
 /**
  * Arrêt des workers, borné et idempotent : ROLLBACK si le stdin est encore
@@ -226,29 +245,78 @@ async function teardownWorkers() {
 
 // ── Course principale : chaque échec JETTE, jamais de sortie directe ────────
 async function runRace() {
-  // 2. Fixtures préparées et COMMITTÉES avant la course.
-  console.log('[fixtures] préparation (une transaction, commit avant course)…');
+  // Fixtures — TROIS identités (viewer, cible A, cible B), par le trigger
+  // Auth (incident prévenu n°7 : INSERT direct dans profiles = collision
+  // pkey + profils incomplets). Une seule transaction : précontrôle PUIS
+  // insertions PUIS mise à jour des profils créés par le trigger, COMMIT.
+  // Aucun ON CONFLICT : une collision préexistante doit ÉCHOUER, pas se
+  // masquer — c’est ce qui protège le nettoyage (fixturesCommitted).
+  console.log('[fixtures] préparation (précontrôle, trigger Auth, une transaction)…');
   psqlScript(`BEGIN;
-INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password,
-                        email_confirmed_at, created_at, updated_at)
-VALUES ('00000000-0000-0000-0000-000000000000', '${SYNTH.viewer}',
-        'authenticated', 'authenticated', '${EMAILS[0]}', '', NOW(), NOW(), NOW())
-ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.profiles (id, email, name, birth_date, gender, is_active, onboarding_completed)
-VALUES
-  ('${SYNTH.viewer}', '${EMAILS[0]}', 'SynRace Viewer',   '1994-04-04', 'female', true, true),
-  ('${SYNTH.targetA}', '${EMAILS[1]}', 'SynRace Cible A', '1993-03-03', 'female', true, true),
-  ('${SYNTH.targetB}', '${EMAILS[2]}', 'SynRace Cible B', '1992-02-02', 'female', true, true)
-ON CONFLICT (id) DO NOTHING;
-DELETE FROM public.synastry_free_grant WHERE viewer_user_id = '${SYNTH.viewer}';
+DO $fixtures$
+DECLARE
+  v_collisions BIGINT;
+  v_updated    INTEGER;
+BEGIN
+  -- Précontrôle : les trois UUID absents des cinq surfaces, AVANT toute
+  -- mutation (grats inspectés côté viewer ET côté target).
+  SELECT
+      (SELECT COUNT(*) FROM auth.users u WHERE u.id IN ('${SYNTH_IDS.join("','")}'))
+    + (SELECT COUNT(*) FROM public.profiles p WHERE p.id IN ('${SYNTH_IDS.join("','")}'))
+    + (SELECT COUNT(*) FROM public.subscriptions s WHERE s.user_id IN ('${SYNTH_IDS.join("','")}'))
+    + (SELECT COUNT(*) FROM public.synastry_free_grant g
+        WHERE g.viewer_user_id IN ('${SYNTH_IDS.join("','")}')
+           OR g.target_user_id IN ('${SYNTH_IDS.join("','")}'))
+    + (SELECT COUNT(*) FROM public.product_events e WHERE e.user_id IN ('${SYNTH_IDS.join("','")}'))
+    INTO v_collisions;
+  IF v_collisions <> 0 THEN
+    RAISE EXCEPTION 'collision préexistante : % ligne(s) portent déjà les UUID synthétiques — refus avant toute mutation', v_collisions;
+  END IF;
+
+  -- Les trois comptes Auth : le trigger crée les trois profils.
+  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password,
+                          email_confirmed_at, created_at, updated_at)
+  VALUES
+    ('00000000-0000-0000-0000-000000000000', '${SYNTH.viewer}',
+     'authenticated', 'authenticated', '${EMAILS[0]}', '', NOW(), NOW(), NOW()),
+    ('00000000-0000-0000-0000-000000000000', '${SYNTH.targetA}',
+     'authenticated', 'authenticated', '${EMAILS[1]}', '', NOW(), NOW(), NOW()),
+    ('00000000-0000-0000-0000-000000000000', '${SYNTH.targetB}',
+     'authenticated', 'authenticated', '${EMAILS[2]}', '', NOW(), NOW(), NOW());
+
+  -- AUCUN INSERT direct dans profiles : on MET À JOUR les profils du
+  -- trigger, avec tout ce que profile_chart_visible exige.
+  UPDATE public.profiles p
+     SET email = v.email,
+         name  = v.name,
+         birth_date = v.birth_date,
+         gender = v.gender,
+         is_active = v.is_active,
+         onboarding_completed = TRUE
+    FROM (VALUES
+      ('${SYNTH.viewer}'::uuid,  '${EMAILS[0]}', 'SynRace Viewer',   '1994-04-04'::date, 'female', true),
+      ('${SYNTH.targetA}'::uuid, '${EMAILS[1]}', 'SynRace Cible A',  '1993-03-03'::date, 'female', true),
+      ('${SYNTH.targetB}'::uuid, '${EMAILS[2]}', 'SynRace Cible B',  '1992-02-02'::date, 'female', true)
+    ) AS v(id, email, name, birth_date, gender, is_active)
+   WHERE p.id = v.id;
+
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  IF v_updated <> 3 THEN
+    RAISE EXCEPTION 'fixtures : % profil(s) mis à jour — attendu exactement 3 (trigger + UPDATE)', v_updated;
+  END IF;
+END
+$fixtures$;
 COMMIT;`, 'fixtures');
+  // Uniquement maintenant — la transaction de fixtures (et son COMMIT) est
+  // revenue sans erreur : ce harnais possède ce qu’il a créé, et rien d’autre.
+  fixturesCommitted = true;
   {
     const policy = psql("SELECT COALESCE(free_preview_quota::text,'NULL') FROM public.premium_feature_policy WHERE feature_key='synastry';");
     if (policy !== '1') {
       fail(`politique synastry free_preview_quota = ${policy} (attendu 1) — la base n'est pas dans l'état de la course.`);
     }
   }
-  console.log('[fixtures] commitées ; politique quota=1 confirmée.');
+  console.log('[fixtures] commitées (3 comptes, 3 profils) ; politique quota=1 confirmée.');
 
   // 3-5. Workers, ready, barrière, libération réelle.
   console.log('[course] démarrage des deux workers…');
@@ -356,19 +424,31 @@ try {
 } catch (e) {
   incidents.push(`workers non arrêtés : ${e.message}`);
 }
-try {
-  psqlScript(CLEANUP_SQL, 'nettoyage borné aux UUID synthétiques');
-} catch (e) {
-  incidents.push(`nettoyage échoué : ${e.message}`);
-}
+
+// Nettoyage UNIQUEMENT si ce harnais a commité ses fixtures : une collision
+// préexistante (ou un échec avant COMMIT) ne doit jamais déclencher un
+// DELETE sur des lignes que cette exécution n’a pas créées.
 let residue = null;
-try {
-  residue = psql(RESIDUE_SQL);
-} catch (e) {
-  incidents.push(`résidu illisible : ${e.message}`);
-}
-if (residue !== null && residue !== '0') {
-  incidents.push(`résidu synthétique = ${residue} (attendu 0)`);
+if (fixturesCommitted) {
+  try {
+    psqlScript(CLEANUP_SQL, 'nettoyage borné aux UUID synthétiques (possédés)');
+  } catch (e) {
+    incidents.push(`nettoyage échoué : ${e.message}`);
+  }
+  try {
+    residue = psql(RESIDUE_SQL);
+  } catch (e) {
+    incidents.push(`résidu illisible : ${e.message}`);
+  }
+  if (residue !== null && residue !== '0') {
+    incidents.push(`résidu synthétique = ${residue} (attendu 0)`);
+  }
+} else if (failure && /collision préexistante/i.test(failure.message)) {
+  console.error(
+    '[NETTOYAGE NON EXÉCUTÉ] collision préexistante détectée : ' +
+    'les UUID synthétiques existaient AVANT ce test — aucune de ces lignes ' +
+    'n’a été supprimée (elles ne sont pas à nous).',
+  );
 }
 
 if (failure) {
@@ -377,7 +457,7 @@ if (failure) {
 for (const inc of incidents) {
   console.error(`[INCIDENT CRITIQUE DE NETTOYAGE] ${inc}`);
 }
-if (!failure && incidents.length === 0 && residue === '0') {
+if (!failure && fixturesCommitted && incidents.length === 0 && residue === '0') {
   console.log('[11] zéro fixture synthétique résiduelle — OK');
   console.log('\nRACE PASS — la PK a arbitré sous concurrence réelle, base laissée propre.');
 }
