@@ -75,8 +75,17 @@ ALTER TABLE public.synastry_free_grant ENABLE ROW LEVEL SECURITY;
 -- les lectures par service_role (diagnostics) — même posture que
 -- premium_usage après 20260823000001 : un registre que son sujet peut
 -- réécrire n'est pas un registre.
-REVOKE ALL ON public.synastry_free_grant FROM PUBLIC, anon, authenticated;
-GRANT SELECT ON public.synastry_free_grant TO service_role;
+--
+-- INCIDENT D'APPLICATION n°3 (16 sept 2026, dry-run transactionnel ROLLBACK) :
+-- la self-verify a refusé « service_role détient DELETE ». Supabase accorde
+-- ALL à service_role sur toute NOUVELLE table via ses default privileges
+-- (précédent 20260911000001) : un GRANT SELECT AJOUTE, il ne RETIRE rien.
+-- L'ordre correct est donc : REVOKE ALL (service_role compris) D'ABORD,
+-- puis GRANT SELECT seul, séparé.
+REVOKE ALL ON TABLE public.synastry_free_grant
+  FROM PUBLIC, anon, authenticated, service_role;
+GRANT SELECT ON TABLE public.synastry_free_grant
+  TO service_role;
 
 -- =============================================================================
 -- 2) La PORTE — lecture seule, tier EXPLICITE (défaut n°2 de la revue)
@@ -582,9 +591,17 @@ BEGIN
   IF NOT has_table_privilege('service_role', 'public.synastry_free_grant', 'SELECT') THEN
     RAISE EXCEPTION 'service_role ne peut pas lire synastry_free_grant (diagnostics)';
   END IF;
-  IF has_table_privilege('service_role', 'public.synastry_free_grant', 'DELETE') THEN
-    RAISE EXCEPTION 'service_role détient DELETE sur synastry_free_grant : inutile et refusé';
-  END IF;
+  -- service_role : LECTURE seule (incident n°3). Chaque privilège de
+  -- mutation est refusé INDÉPENDAMMMENT — la base a prouvé qu'elle accorde
+  -- ALL par défaut, chaque droit retiré doit donc être vérifié retiré.
+  FOR v_event IN SELECT unnest(ARRAY[
+    'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'
+  ])
+  LOOP
+    IF has_table_privilege('service_role', 'public.synastry_free_grant', v_event) IS TRUE THEN
+      RAISE EXCEPTION 'service_role détient % sur synastry_free_grant : lecture seule, refusé', v_event;
+    END IF;
+  END LOOP;
 
   -- ── ACL des fonctions : PUBLIC par inspection réelle, une par une,
   --    IS NOT FALSE partout (NULL échoue, jamais un vert silencieux).

@@ -92,6 +92,43 @@ describe('ACL helpers — jamais STRICT, jamais de condition nullable', () => {
   });
 });
 
+describe('privilèges table — service_role en lecture STRICTEMENT seule', () => {
+  const src = readRepoFile(MIGRATION_1);
+
+  it('REVOKE ALL cite service_role : un GRANT ne retire rien (incident n°3)', () => {
+    // Supabase accorde ALL à service_role sur toute NOUVELLE table via ses
+    // default privileges (précédent 20260911000001). Le dry-run du 16 sept
+    // l'a prouvé : la self-verify a refusé « service_role détient DELETE ».
+    // Le REVOKE doit donc TOUJOURS nommer service_role, et le GRANT SELECT
+    // vit SEUL, séparé — jamais l'un pour l'autre.
+    const revokeAt = src.indexOf('REVOKE ALL ON TABLE public.synastry_free_grant');
+    expect(revokeAt).toBeGreaterThan(0);
+    const revokeStmt = src.slice(revokeAt, src.indexOf(';', revokeAt));
+    for (const role of ['PUBLIC', 'anon', 'authenticated', 'service_role']) {
+      expect(revokeStmt).toContain(role);
+    }
+    const grantAt = src.indexOf('GRANT SELECT ON TABLE public.synastry_free_grant');
+    expect(grantAt).toBeGreaterThan(revokeAt); // après le REVOKE
+    const grantStmt = src.slice(grantAt, src.indexOf(';', grantAt));
+    expect(grantStmt).toContain('TO service_role');
+    expect(grantStmt).not.toContain('REVOKE');
+  });
+
+  it('la self-verify refuse CHAQUE privilège de mutation pour service_role', () => {
+    // Refuser seulement DELETE (forme d’avant l’incident) ne suffit pas :
+    // la base accorde ALL par défaut. Les six privilèges de mutation sont
+    // refusés individuellement, chacun capable d’échouer seul.
+    const verifyAt = src.indexOf('Auto-vérification');
+    const verifyBlock = src.slice(verifyAt);
+    for (const priv of ['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER']) {
+      expect(verifyBlock, `privilège ${priv} non couvert par le refus service_role`).toContain(`'${priv}'`);
+    }
+    expect(verifyBlock).toMatch(/has_table_privilege\('service_role', 'public\.synastry_free_grant', v_event\) IS TRUE/);
+    // Le positif reste : SELECT accordé, refusé s'il manque.
+    expect(verifyBlock).toMatch(/NOT has_table_privilege\('service_role', 'public\.synastry_free_grant', 'SELECT'\)/);
+  });
+});
+
 describe('sites d’appel — comparaisons explicites, jamais une condition nue', () => {
   for (const file of [MIGRATION_1, MIGRATION_2]) {
     const src = readRepoFile(file);

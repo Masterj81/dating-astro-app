@@ -4,6 +4,12 @@
 **État : implémenté localement, NON appliqué, NON déployé, NON commité**
 **Branche de travail : `fix/security-wave-2-2026-09-08` (non commité)**
 
+## Incident d'application n°3 (16 sept 2026, dry-run transactionnel — ANNULÉ AVANT COMMIT)
+
+Le dry-run transactionnel (terminé par `ROLLBACK`) a compilé au-delà des deux incidents précédents, puis la self-verification a refusé l'état réel : **`service_role détient DELETE sur synastry_free_grant`**. Cause : l'état Supabase réel diffère de l'hypothèse locale — Supabase accorde `ALL` à `service_role` sur toute **nouvelle** table via ses default privileges (précédent documenté : `20260911000001`), et le `GRANT SELECT` de la migration **ajoute** sans jamais retirer. Intercepté avant commit : rien d'appliqué.
+
+**Correctif** : `REVOKE ALL ON TABLE … FROM PUBLIC, anon, authenticated, service_role` **d'abord**, puis `GRANT SELECT … TO service_role` seul et séparé. Self-verify renforcée : SELECT positif exigé, et **chacun** des six privilèges de mutation (`INSERT`, `UPDATE`, `DELETE`, `TRUNCATE`, `REFERENCES`, `TRIGGER`) refusé individuellement pour `service_role` — les contrôles `PUBLIC` (ACL réelle, `grantee = 0`), `anon` et `authenticated` restent distincts. Régression statique dans `synastry-grant-contract.test.ts` : `service_role` exigé dans le `REVOKE ALL`, `GRANT SELECT` séparé et postérieur, couverture des six privilèges vérifiée.
+
 ## Incident d'application n°2 (16 sept 2026, production — ANNULÉ PROPREMENT)
 
 Deuxième application (après le correctif PK) : la self-verification a échoué sur
