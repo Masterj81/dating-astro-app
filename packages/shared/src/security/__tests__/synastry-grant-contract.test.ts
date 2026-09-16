@@ -151,17 +151,29 @@ describe('index télémétrique — preuve STRUCTURELLE, jamais textuelle (incid
     expect(src).toMatch(/i\.indrelid = 'public\.product_events'::regclass/);
   });
 
-  it('les positions 1, 2 et 3 sont vérifiées SÉPARÉMENT', () => {
+  it('les positions 1, 2 et 3 sont vérifiées SÉPARÉMENT — indkey est 0-based', () => {
+    // INCIDENT PRÉVENU AVANT APPLICATION n°5 : pg_index.indkey est un
+    // int2vector INDEXÉ À PARTIR DE 0. La forme 1-based ([1]/[2]/[3]) lit
+    // event_name en clé 1, résout attnum 0 en clé 2 (NULL) et sort des
+    // bornes en clé 3 (NULL) — faux négatif certain. Les bons indices :
+    // [0] = user_id, [1] = event_name, [2] = 0 (expression).
+    expect(src).toMatch(/i\.indkey\[0\]/);
     expect(src).toMatch(/i\.indkey\[1\]/);
     expect(src).toMatch(/i\.indkey\[2\]/);
-    expect(src).toMatch(/i\.indkey\[3\]/);
-    expect(src).toMatch(/attname1 IS DISTINCT FROM 'user_id'/);
-    expect(src).toMatch(/attname2 IS DISTINCT FROM 'event_name'/);
+    // Le mauvais indice est INTERDIT : aucun indkey[3] ne doit exister.
+    expect(src).not.toMatch(/i\.indkey\[3\]/);
+    // Chaque rôle, nommé selon sa base réelle.
+    expect(src).toMatch(/first_key_column IS DISTINCT FROM 'user_id'/);
+    expect(src).toMatch(/second_key_column IS DISTINCT FROM 'event_name'/);
+    // La résolution des colonnes utilise les mêmes indices 0-based.
+    expect(src).toMatch(/a\.attnum = i\.indkey\[0\]/);
+    expect(src).toMatch(/a\.attnum = i\.indkey\[1\]/);
   });
 
-  it('la clé 3 est vérifiée EXPRESSIONNELLE (indkey = 0), puis sémantique', () => {
-    expect(src).toMatch(/indkey3 IS DISTINCT FROM 0/);
-    // pg_get_indexdef(regclass, 3, true) : l’élément SEUL, pas la définition.
+  it('la clé 3 est vérifiée EXPRESSIONNELLE (indkey[2] = 0), puis sémantique', () => {
+    expect(src).toMatch(/third_key_attnum IS DISTINCT FROM 0/);
+    // pg_get_indexdef(regclass, 3, true) : 1-BASED, une AUTRE convention que
+    // indkey — son « 3 » désigne bien la TROISIÈME clé et reste correct.
     expect(src).toContain("pg_get_indexdef('public.ux_product_events_preview_daily'::regclass, 3, true)");
     // Trois marqueurs sémantiques, insensibles à la forme rendue.
     expect(src).toMatch(/v_norm NOT LIKE '%created_at%'/);

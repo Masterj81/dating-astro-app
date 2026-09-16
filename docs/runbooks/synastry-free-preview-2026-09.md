@@ -4,6 +4,10 @@
 **État : implémenté localement, NON appliqué, NON déployé, NON commité**
 **Branche de travail : `fix/security-wave-2-2026-09-08` (non commité)**
 
+## Incident prévenu avant application n°5 (16 sept 2026 — revue, aucun dry-run consommé)
+
+**`indkey` est un `int2vector` 0-based, alors que `pg_get_indexdef(index_oid, column_no, …)` est 1-based.** La vérification structurelle de l'incident n°4 utilisait `indkey[1]/[2]/[3]` : `attname1` aurait lu `event_name`, `attname2` aurait résolu l'`attnum` 0 (donc `NULL`), `indkey3` serait sorti des bornes (`NULL`) — un cinquième échec certain de la self-verify, attrapé en revue avant tout dry-run. **Correctif** : `indkey[0]` = `user_id`, `indkey[1]` = `event_name`, `indkey[2]` = `0` (expression) ; alias renommés `first/second/third_key_attnum` et `first/second_key_column` selon la base réelle ; le `3` de `pg_get_indexdef(…, 3, true)` reste correct (convention 1-based, distincte). Régression : `indkey[3]` interdit, rôles `[0]/[1]/[2]` exigés nommément, résolution des colonnes sur les mêmes indices.
+
 ## Incident d'application n°4 (16 sept 2026, dry-run transactionnel — ANNULÉ AVANT COMMIT)
 
 **Représentation normalisée de `pg_get_indexdef` comparée textuellement.** La self-verify refusait `colonnes/expression != (user_id, event_name, jour UTC)` : la définition de l'index était comparée à une chaîne attendue dans laquelle `AT TIME ZONE 'utc'` apparaît tel qu'écrit — or PostgreSQL peut le normaliser en `timezone('utc'::text, …)`. Le lot s'est terminé par `ROLLBACK` : rien d'appliqué, et **la définition de l'index n'a pas changé** (elle est correcte) — seul le contrôle était en tort.

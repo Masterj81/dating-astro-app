@@ -706,15 +706,21 @@ BEGIN
   -- définition entière à une chaîne attendue teste le FORMATAGE choisi par
   -- PostgreSQL, pas l’index). Ci-dessous : les trois clés et le prédicat,
   -- position par position, sur les catalogues.
+  --
+  -- INCIDENT PRÉVENU AVANT APPLICATION n°5 : indkey est un int2vector
+  -- INDEXÉ À PARTIR DE 0 — indkey[0] = première clé, indkey[1] = deuxième,
+  -- indkey[2] = troisième (= 0 : expression). La 1-based de pg_get_indexdef
+  -- (index_oid, column_no, …) est une AUTRE convention : son « 3 » désigne
+  -- bien la troisième clé et reste correct. Ne jamais confondre les deux.
   SELECT i.indisunique              AS indisunique,
          i.indnkeyatts              AS indnkeyatts,
-         i.indkey[1]                AS indkey1,
-         i.indkey[2]                AS indkey2,
-         i.indkey[3]                AS indkey3,
+         i.indkey[0]                AS first_key_attnum,
+         i.indkey[1]                AS second_key_attnum,
+         i.indkey[2]                AS third_key_attnum,
          (SELECT a.attname FROM pg_catalog.pg_attribute a
-           WHERE a.attrelid = i.indrelid AND a.attnum = i.indkey[1]) AS attname1,
+           WHERE a.attrelid = i.indrelid AND a.attnum = i.indkey[0]) AS first_key_column,
          (SELECT a.attname FROM pg_catalog.pg_attribute a
-           WHERE a.attrelid = i.indrelid AND a.attnum = i.indkey[2]) AS attname2,
+           WHERE a.attrelid = i.indrelid AND a.attnum = i.indkey[1]) AS second_key_column,
          pg_catalog.pg_get_expr(i.indpred, i.indrelid) AS pred_expr
     INTO v_ix
     FROM pg_catalog.pg_index i
@@ -730,19 +736,20 @@ BEGIN
   IF v_ix.indnkeyatts <> 3 THEN
     RAISE EXCEPTION 'ux_product_events_preview_daily : % clé(s) — attendu exactement 3', v_ix.indnkeyatts;
   END IF;
-  -- Positions 1 et 2 : les colonnes nommées, EXACTEMENT.
-  IF v_ix.attname1 IS DISTINCT FROM 'user_id' THEN
-    RAISE EXCEPTION 'ux_product_events_preview_daily : clé 1 = «%» — attendu user_id', v_ix.attname1;
+  -- Positions 1 et 2 : les colonnes nommées, EXACTEMENT (0-based : [0], [1]).
+  IF v_ix.first_key_column IS DISTINCT FROM 'user_id' THEN
+    RAISE EXCEPTION 'ux_product_events_preview_daily : clé 1 = «%» — attendu user_id', v_ix.first_key_column;
   END IF;
-  IF v_ix.attname2 IS DISTINCT FROM 'event_name' THEN
-    RAISE EXCEPTION 'ux_product_events_preview_daily : clé 2 = «%» — attendu event_name', v_ix.attname2;
+  IF v_ix.second_key_column IS DISTINCT FROM 'event_name' THEN
+    RAISE EXCEPTION 'ux_product_events_preview_daily : clé 2 = «%» — attendu event_name', v_ix.second_key_column;
   END IF;
-  -- Position 3 : une EXPRESSION (indkey = 0 marque l'absence de colonne).
-  IF v_ix.indkey3 IS DISTINCT FROM 0 THEN
-    RAISE EXCEPTION 'ux_product_events_preview_daily : la clé 3 doit être une expression (indkey = 0), pas une colonne';
+  -- Position 3 : une EXPRESSION (indkey[2] = 0 marque l'absence de colonne).
+  IF v_ix.third_key_attnum IS DISTINCT FROM 0 THEN
+    RAISE EXCEPTION 'ux_product_events_preview_daily : la clé 3 doit être une expression (indkey[2] = 0), pas une colonne';
   END IF;
   -- L'expression de la clé 3, SÉMANTIQUEMENT : created_at, UTC, conversion
   -- en date — quelle que soit la forme rendue (AT TIME ZONE ou timezone()).
+  -- NB : pg_get_indexdef est 1-based : « 3 » = bien la TROISIÈME clé.
   SELECT pg_catalog.pg_get_indexdef('public.ux_product_events_preview_daily'::regclass, 3, true) INTO v_idx;
   v_norm := lower(v_idx);
   IF v_norm NOT LIKE '%created_at%'
