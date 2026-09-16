@@ -4,6 +4,19 @@
 **État : implémenté localement, NON appliqué, NON déployé, NON commité**
 **Branche de travail : `fix/security-wave-2-2026-09-08` (non commité)**
 
+## Vérification fonctionnelle en production — RÉUSSIE (16 sept 2026, exploitant)
+
+Après le déploiement de l'edge `get-profile-chart` (par l'exploitant, `supabase functions deploy`, sortie 0), la vérification contrôlée de l'aperçu quotidien gratuit a été menée sur un compte gratuit face à la base production. **Preuves mesurées et validées par l'exploitant** :
+
+1. **la deuxième personne est bloquée** — 402 `free_preview_used_other_target`, exactement le contrat ;
+2. **aucune donnée de synastrie n'est affichée** — le perdant ne reçoit ni thème ni lecture ;
+3. **l'identité de la première personne n'est pas révélée** — aucun oracle d'UUID, aucune divulgation de la cible du jour ;
+4. **la prochaine disponibilité est indiquée à 20 h** — minuit UTC rendu en heure locale de Toronto, calcul serveur ;
+5. **les choix « View plans » et « Start discovering » sont disponibles** — l'état honnête propose l'upgrade et la sortie, pas une impasse ;
+6. **la même première personne demeure consultable** — rejeu gratuit de LA cible du jour, illimité jusqu'à demain.
+
+**La vérification fonctionnelle de l'aperçu quotidien gratuit est donc réussie.** État : migrations 1 + corrective + 2 appliquées et prouvées, edge déployé, test comportemental rollback-safe passé (zéro résidu), vérification contrôlée verte. Historique Git : tout est poussé (`a346717` sur origin). Reste au pipeline du runbook : confirmation du déploiement Vercel de production (la preuve ci-dessus a été constatée sur un client web connecté à la base production) et, à J+1, l'observation télémétrique.
+
 ## Incident d'application n°10 — CONCLU ET VERT (16 sept 2026)
 
 **Séquence exécutée (ordres opérateur)** : (0) résidus du test échoué mesurés — **0/0/0/0/0, quota = 1**, la transaction annulée n'avait rien laissé ; (1) migration corrective `20260916000001` appliquée — sa première passe s'est annulée proprement sur sa propre self-verify (`position('INTO')` tombait dans un **commentaire** du corps citant « SELECT INTO » : dépouillage des commentaires avant extraction, corrective re-appliquée avec succès) ; (2) définition déployée vérifiée : `v_policy` absent, scalaires présents, `search_path` vide, PUBLIC refusé / authenticated accordé / anon refusé ; (3) préflight rejoué **15/15 OK** ; (4) **test comportemental rollback-safe : SUCCÈS** — scénarios 1-10, purge P1-P6, structurel S1-S3, télémétrie T1-T9, picker K1-K5, ACL R1-R4, sans une seule exception, `ROLLBACK` final ; (5) résidus post-test **0/0/0/0/0, quota 1**.
