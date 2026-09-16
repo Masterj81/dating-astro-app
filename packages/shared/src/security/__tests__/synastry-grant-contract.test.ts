@@ -199,6 +199,97 @@ describe('fixtures du test SQL — le trigger crée les profils (incident n°6)'
     const lastRollback = src.lastIndexOf('ROLLBACK;');
     expect(lastRollback).toBeGreaterThan(src.indexOf('LES DIX SCÉNARIOS'));
   });
+
+  it('subscriptions : source = stripe — JAMAIS test (incident n°8, CHECK réelle)', () => {
+    // subscriptions_source_check (20260312) : source IN (stripe, app_store,
+    // play_store). 'test' violait la CHECK — la contrainte de production ne
+    // se plie jamais à un test. Code seul : le commentaire d'incident
+    // nomme « test » en prose.
+    const codeOnly = src.replace(/^[ \t]*--.*$/gm, '');
+    expect(codeOnly).not.toMatch(/'test'/);
+    expect(codeOnly).toMatch(/'stripe'/);
+  });
+
+  it('le CHECK canonique autorise stripe (lu depuis 20260312, pas supposé)', () => {
+    const canonical = readRepoFile('supabase/migrations/20260312_unified_subscriptions.sql');
+    expect(canonical).toContain("CHECK (source IN ('stripe', 'app_store', 'play_store'))");
+    // …et la fixture n'utilise QUE des valeurs de cette liste.
+    const fixtureBlock = src.slice(
+      src.indexOf('INSERT INTO public.subscriptions'),
+      src.indexOf(';', src.indexOf('INSERT INTO public.subscriptions')),
+    );
+    expect(fixtureBlock).toContain("'stripe'");
+    expect(fixtureBlock).not.toMatch(/'(test|demo|synthetic)'/);
+  });
+
+  it('audit verrouillé : adultes, gender légal, une ligne par utilisateur', () => {
+    // enforce_adult_profile (20260325000001) refuse < 18 ans : toutes les
+    // dates de naissance des fixtures doivent être bien antérieures à 2008.
+    const fixtures = src.slice(0, src.indexOf('LES DIX SCÉNARIOS'));
+    const birthDates = fixtures.match(/'(19\d{2})-\d{2}-\d{2}'::date/g) ?? [];
+    expect(birthDates.length).toBeGreaterThanOrEqual(9);
+    for (const d of birthDates) {
+      const year = Number(d.match(/(19\d{2})/)![1]);
+      expect(year).toBeLessThan(2008);
+    }
+    // gender CHECK (full_schema) : female ∈ valeurs légales, et c'est ce que
+    // les fixtures écrivent — jamais autre chose.
+    expect(fixtures).not.toMatch(/'prefer-not-to-say'/);
+    const genders = fixtures.match(/'(?:male|female|non-binary|other|prefer-not-to-say)'/g) ?? [];
+    for (const g of genders) expect(g).toBe("'female'");
+    // UNIQUE (user_id) + UNIQUE (user_id, source) : exactement une ligne
+    // d'abonnement par utilisateur de fixture.
+    const u2 = "aaaaaaa1-0000-4000-8000-000000000002";
+    const u3 = "aaaaaaa1-0000-4000-8000-000000000003";
+    expect((fixtureBlock2(src, u2).match(new RegExp(u2, 'g')) ?? []).length).toBe(1);
+    expect((fixtureBlock2(src, u3).match(new RegExp(u3, 'g')) ?? []).length).toBe(1);
+  });
+});
+
+function fixtureBlock2(src: string, _uuid: string): string {
+  const at = src.indexOf('INSERT INTO public.subscriptions');
+  return src.slice(at, src.indexOf(';', at));
+}
+
+describe('diagnostic préalable — STRICTEMENT lecture seule', () => {
+  const PREFLIGHT = 'supabase/tests/diagnose_synastry_free_grant_test_preflight.sql';
+  const src = readRepoFile(PREFLIGHT);
+
+  it('aucune écriture : ni DML, ni DDL, ni GRANT/REVOKE (code sans commentaires)', () => {
+    const codeOnly = src.replace(/^[ \t]*--.*$/gm, '');
+    for (const verb of ['INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP',
+                        'GRANT', 'REVOKE', 'TRUNCATE', 'COPY', 'MERGE']) {
+      expect(codeOnly, `le diagnostic contient ${verb}`).not.toMatch(new RegExp(`\\b${verb}\\b`));
+    }
+    // Aucun appel RPC de la mission (rien qui consomme, même innocemment).
+    expect(codeOnly).not.toMatch(/\bpublic\.(synastry_preview_gate|claim_synastry_free_grant|get_synastry_candidate_profiles|record_product_event)\s*\(/);
+  });
+
+  it('les treize familles de contrôles sont présentes, verdict BLOQUANT sur écart', () => {
+    // Un contrôle absent = le diagnostic ne couvre plus ce qu'il prétend.
+    for (const marker of [
+      'trigger_create_profile_on_auth_signup', 'subscriptions_source_check',
+      'subscriptions_tier_check', 'product_events',           // CHECKs (3a-3c, 12)
+      'synastry_preview_gate', 'claim_synastry_free_grant',
+      'get_synastry_candidate_profiles', 'get_user_tier',
+      'tier_at_least', 'profile_chart_visible',                // signatures (4a-4d)
+      'information_schema.columns',                            // colonnes (5)
+      'required_tier', 'free_preview_quota',                   // politique (6-8)
+      'to_regclass(\'public.synastry_free_grant\')', 'idx_synastry_free_grant_purge', // 9
+      'aaaaaaa1-0000-4000-8000-000000000001',                  // les neuf UUID (10)
+      'rpe_overloads',                                         // surcharge record_product_event (11)
+      'schedule_onboarding_emails',                            // trigger welcome (13a)
+      'female',                                                // gender CHECK (13b)
+    ]) {
+      expect(src, `contrôle absent du diagnostic : ${marker}`).toContain(marker);
+    }
+    expect(src).toContain('BLOQUANT');
+    // Jamais de « OK par défaut » : chaque verdict est un CASE explicite.
+    expect(src.match(/BLOQUANT/g)?.length ?? 0).toBeGreaterThanOrEqual(15);
+    // to_regclass partout où l'objet peut manquer — '::regclass' hard-cast
+    // ferait ERREUR au lieu de rapporter BLOQUANT.
+    expect(src).not.toMatch(/'public\.synastry_free_grant'::regclass/);
+  });
 });
 
 describe('harnais de course — fixtures par le trigger, nettoyage POSSÉDÉ (incident n°7)', () => {
@@ -504,5 +595,143 @@ describe('harnais de course — argv interdit, sortie contrôlée, staging only'
     expect(src).toContain("id IN ('${SYNTH_IDS.join(\"','\")}')");
     expect(src).toContain('const RESIDUE_SQL');
     expect(src).toMatch(/residue !== '0'/);
+  });
+});
+
+describe('préflight 13b — preuve STRUCTURELLE de profiles.gender (incident n°9)', () => {
+  const PREFLIGHT = 'supabase/tests/diagnose_synastry_free_grant_test_preflight.sql';
+  const src = readRepoFile(PREFLIGHT);
+
+  it('JAMAIS de recherche textuelle de female dans la concaténation des CHECK', () => {
+    // La preuve invalide : prof_checks (TOUTES les CHECK de profiles)
+    // LIKE '%female%' — verdissait sur profiles_looking_for_values_check
+    // sans rien prouver sur gender. Interdite au retour, sous toute forme.
+    expect(src).not.toMatch(/prof_checks\)?[^;]{0,80}LIKE '%female%'/s);
+    expect(src).not.toMatch(/COALESCE\(def,? ?''?\) FROM prof_checks[^;]*LIKE/i);
+    // Le contrôle 13b ne lit plus prof_checks du tout.
+    const arm13b = src.slice(src.indexOf('13b.'), src.indexOf('13b.') + 700);
+    expect(arm13b).not.toContain('prof_checks');
+  });
+
+  it('borné à gender par les CATALOGUES : pg_depend (contrainte→colonne)', () => {
+    // La dépendance contrainte→colonne vit dans pg_depend (refobjsubid =
+    // attnum) : c'est ELLE qui décide quelles contraintes comptent, jamais
+    // une recherche de mot dans une définition.
+    const scoped = src.slice(src.indexOf('gender_checks AS'), src.indexOf('gender_enum_labels AS'));
+    expect(scoped).toContain("dep.refobjsubid");
+    expect(scoped).toContain("ga.attname = 'gender'");
+    expect(scoped).toContain('pg_get_expr(c.conbin, c.conrelid)');
+    expect(scoped).toContain("classid = 'pg_constraint'::regclass");
+    // Type par pg_attribute/pg_type, pas par devinette.
+    expect(src).toContain("a.attname = 'gender'");
+    expect(src).toMatch(/JOIN pg_type t ON t\.oid = a\.atttypid/);
+  });
+
+  it('la matrice de scénarios existe, chaque branche avec SON verdict', () => {
+    // (a) female seulement dans looking_for : impossible de verdir — le
+    //     bornage pg_depend EST la garantie (looking_for n'est pas gender).
+    // (b) contrainte dédiée à gender acceptant female → OK.
+    expect(src).toMatch(/gender_checks WHERE expr LIKE '%female%'\) > 0 THEN 'OK'/);
+    // (c) contrainte dédiée refusant female (allow-list complète sans lui) → BLOQUANT.
+    expect(src).toMatch(/'% IN \(%'\)\s*\r?\n?\s*= gc\.n THEN 'BLOQUANT'/);
+    // (d) texte sans restriction : OK SEULEMENT parce que la structure accepte.
+    expect(src).toMatch(/WHEN COALESCE\(gc\.n, 0\) = 0 THEN 'OK'/);
+    // (e) enum : female doit être un label ; domaine : SES contraintes à lui.
+    expect(src).toMatch(/enumlabel = 'female'\) = 1\s*\r?\n?\s*THEN 'OK' ELSE 'BLOQUANT'/);
+    expect(src).toContain('gender_domain_checks');
+    // Forme illisible ou trigger non prouvé → INDETERMINE, JAMAIS OK.
+    expect(src.match(/'INDETERMINE'/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    // Colonne absente → BLOQUANT, jamais un verdict NULL silencieux
+    // (gender_final rend toujours une ligne : h garantit le join).
+    expect(src).toMatch(/CASE WHEN g\.full_type IS NULL THEN 'COLONNE ABSENTE'/);
+    expect(src).toMatch(/WHEN g\.full_type IS NULL THEN 'BLOQUANT'/);
+    expect(src).toMatch(/FROM \(SELECT count\(\*\) AS has_col FROM gender_col\) h/);
+  });
+
+  it('le trigger éventuel sur gender est CONSERVATIF : trouvé → INDETERMINE', () => {
+    // L'exact inverse du faux positif : une présence non prouvée ne peut
+    // JAMAIS rendre vert — la direction du doute est bloquante.
+    expect(src).toMatch(/WHEN \(SELECT n FROM gender_triggers\) > 0 THEN 'INDETERMINE'/);
+    // Le balayage des triggers est borné à LEUR définition, pas à la table.
+    expect(src).toMatch(/pg_get_triggerdef\(oid\) LIKE '%gender%'/);
+  });
+
+  it('INDETERMINE est traité comme bloquant par la grille du runbook', () => {
+    // Le verdict INDETERMINE n'est pas un vert différé : le runbook fixe la
+    // grille d'acceptation — seuls des OK authentiques rouvrent le test.
+    const runbook = readRepoFile('docs/runbooks/synastry-free-preview-2026-09.md');
+    expect(runbook).toMatch(/incident n°9|13b/i);
+    expect(runbook).toContain('INDETERMINE');
+  });
+});
+
+describe('porte — scalaires, jamais INTO sur champs d’un RECORD (incident n°10)', () => {
+  // v_policy RECORD recevait un SELECT INTO CHAMP PAR CHAMP avant toute
+  // structure : PostgreSQL refuse (« record … has no field … »). Découvert
+  // par le test comportemental — la self-verify de la migration d'origine
+  // ne pouvait pas l'attraper, elle n'APPELLE pas la porte. La migration
+  // d'origine étant APPLIQUÉE, le correctif est une migration DISTINCTE ;
+  // c'est la DERNIÈRE définition (ordre des fichiers) qui doit être saine.
+
+  const files = [
+    'supabase/migrations/20260915000001_synastry_free_grant.sql',
+    'supabase/migrations/20260916000001_synastry_preview_gate_scalars.sql',
+  ];
+  const corrective = readRepoFile(files[1]);
+
+  it('une migration corrective DISTINCTE existe, postérieure à l’originale', () => {
+    expect(files[1] > files[0]).toBe(true); // ordre lexicographique = ordre d'application
+    expect(corrective).toContain('CREATE OR REPLACE FUNCTION public.synastry_preview_gate()');
+    // Le CORPS de la fonction corrigée ne référence plus v_policy — le
+    // fichier, lui, cite le défaut en tête (documentation d'incident) : le
+    // bannissement porte sur le corps, pas sur la prose (leçon n°1/n°6).
+    const body = corrective.slice(
+      corrective.indexOf('CREATE OR REPLACE FUNCTION public.synastry_preview_gate()'),
+      corrective.indexOf('$$;', corrective.indexOf('AS $$')),
+    );
+    expect(body).not.toContain('v_policy');
+    expect(body).toContain('v_required_tier');
+    expect(body).toContain('v_free_preview_quota');
+    expect(body).toMatch(/INTO\s*\r?\n?\s*v_rows,/);
+  });
+
+  it('la définition GAGNANTE (dernière par nom de fichier) est la corrigée', () => {
+    // L'originale conservée telle quelle (historique livré), la corrective
+    // la remplace : la dernière définition l'emporte à l'application.
+    const winners = files.filter((f) =>
+      readRepoFile(f).includes('CREATE OR REPLACE FUNCTION public.synastry_preview_gate()'),
+    );
+    expect(winners.length).toBe(2);
+    expect(winners[winners.length - 1]).toBe(files[1]);
+  });
+
+  it('AUCUN INTO champ-de-RECORD dans la définition gagnante ni dans le claim', () => {
+    // Formes interdites : INTO … v_x.field (record vierge). La clause INTO
+    // est examinée LIGNE PAR LIGNE : un accès de champ s'y voit par un point.
+    const gateDef = corrective.slice(
+      corrective.indexOf('CREATE OR REPLACE FUNCTION public.synastry_preview_gate()'),
+      corrective.indexOf('$$;', corrective.indexOf('AS $$')),
+    );
+    const intoLines = gateDef.split('\n').filter((l) => /\bINTO\b/.test(l) || /^\s*v_(rows|required_tier|free_preview_quota),?\s*$/.test(l));
+    expect(intoLines.join('\n')).not.toMatch(/[a-z_]+\.[a-z_]+/);
+    // Le claim (jamais touché par l'incident) reste sain lui aussi.
+    const claim = readRepoFile(files[0]).slice(
+      readRepoFile(files[0]).indexOf('CREATE OR REPLACE FUNCTION public.claim_synastry_free_grant'),
+      readRepoFile(files[0]).indexOf('$$;', readRepoFile(files[0]).indexOf('AS $$', readRepoFile(files[0]).indexOf('claim_synastry_free_grant'))),
+    );
+    expect(claim).not.toMatch(/INTO[^;\n]*\s[a-z_]+\.[a-z_]+/);
+  });
+
+  it('la self-verify de la corrective borne la clause INTO avant d’y chercher un point', () => {
+    // Leçon des incidents 4, 9 et 10-bis : un regex non borné verdissait ou
+    // refusait à tort, ET pg_get_functiondef préserve la prose du corps —
+    // nos propres commentaires citent « INTO » et « FROM ». La preuve
+    // dépouille les commentaires AVANT d’extraire INTO→FROM.
+    expect(corrective).toContain("v_code := regexp_replace(v_def, '--[^\\n\\r]*', '', 'g')");
+    expect(corrective).toContain("v_at := position('INTO' in v_code)");
+    expect(corrective).toContain('substring(v_code from v_at for v_from - v_at)');
+    expect(corrective).toContain("IF v_into LIKE '%.%' THEN");
+    // Et l'ACL reste prouvée par inspection réelle.
+    expect(corrective).toMatch(/_acl_public_fn_privilege\('public\.synastry_preview_gate\(\)'::regprocedure\) IS NOT FALSE/);
   });
 });
