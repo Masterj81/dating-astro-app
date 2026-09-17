@@ -1032,6 +1032,7 @@
     "callbackWait": "サインインを完了しています。少々お待ちください。",
     "callbackErrorTitle": "問題が発生しました",
     "callbackErrorBody": "サインインを完了できませんでした。セッションの期限切れやリンクの再使用が原因かもしれません。もう一度サインインしてください。",
+    "callbackImplicitRejected": "このログインリンクはサポートされなくなりました。JUNOから再度ログインしてください。",
     "discoverLoadingTitle": "宇宙をスキャン中...",
     "discoverLoadingBody": "あなたの出生チャートに合うプロフィールを探しています。少々お待ちください。",
     "setupProgress": "セットアップの進捗",

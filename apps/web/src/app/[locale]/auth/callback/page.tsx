@@ -103,22 +103,27 @@ export default function AuthCallbackPage() {
                 .replace(/^\?$/, "") || ""
             }`;
             window.history.replaceState({}, document.title, cleanUrl);
-          } else if (accessToken && refreshToken) {
-            const { error: setSessionError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            });
-
-            if (setSessionError) {
-              console.error("[AuthCallback] setSession error:", setSessionError.message);
-              setErrorMessage(setSessionError.message);
-              setStatus("error");
-              return;
+          } else if (accessToken || refreshToken) {
+            // JUNO-10 (audit 2026-09-07): tokens in the URL fragment are
+            // attacker-controllable — a crafted link could impose someone
+            // else's session on this browser (session fixation). The nominal
+            // paths are PKCE (`?code=`) and email links (`?token_hash=`);
+            // nothing legitimate ever arrives as #access_token. Reject the
+            // flow, show a neutral localized message, NEVER call setSession,
+            // and scrub the fragment (replaceState only: no router
+            // navigation, no loop). The warning is generic on purpose — no
+            // token value reaches a log, the UI or telemetry.
+            console.warn("[AuthCallback] implicit tokens rejected");
+            setErrorMessage(t("callbackImplicitRejected"));
+            setStatus("error");
+            if (window.location.hash) {
+              window.history.replaceState(
+                {},
+                document.title,
+                `${window.location.origin}${window.location.pathname}${window.location.search}`,
+              );
             }
-
-            // Remove tokens from the address bar once we have stored the session.
-            const cleanUrl = `${window.location.origin}${window.location.pathname}${window.location.search}`;
-            window.history.replaceState({}, document.title, cleanUrl);
+            return;
           }
         }
 
@@ -166,7 +171,7 @@ export default function AuthCallbackPage() {
     };
 
     handleCallback();
-  }, [locale, router]);
+  }, [locale, router, t]);
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">

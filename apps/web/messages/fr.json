@@ -1980,6 +1980,7 @@
     "callbackWait": "Finalisation de ta connexion. Quelques secondes seulement.",
     "callbackErrorTitle": "Une erreur est survenue",
     "callbackErrorBody": "Impossible de finaliser la connexion. Cela peut arriver si la session a expiré ou si un lien a été utilisé deux fois. Réessaie de te connecter.",
+    "callbackImplicitRejected": "Ce lien de connexion n'est plus pris en charge. Recommence la connexion depuis JUNO.",
     "discoverLoadingTitle": "Scan du cosmos...",
     "discoverLoadingBody": "Recherche de profils alignés avec ton thème natal. Quelques secondes seulement.",
     "setupProgress": "Progression de la configuration",

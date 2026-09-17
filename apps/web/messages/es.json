@@ -1033,6 +1033,7 @@
     "callbackWait": "Finalizando tu inicio de sesión. Solo tomará un momento.",
     "callbackErrorTitle": "Algo salió mal",
     "callbackErrorBody": "No pudimos completar el inicio de sesión. Esto puede ocurrir si la sesión expiró o si un enlace se usó dos veces. Intenta iniciar sesión de nuevo.",
+    "callbackImplicitRejected": "Este enlace de inicio de sesión ya no es compatible. Vuelve a iniciar sesión desde JUNO.",
     "discoverLoadingTitle": "Escaneando el cosmos...",
     "discoverLoadingBody": "Buscando perfiles que se alineen con tu carta natal. Solo tomará un momento.",
     "setupProgress": "Progreso de configuración",

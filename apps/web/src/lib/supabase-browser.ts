@@ -15,9 +15,11 @@ export function getSupabaseBrowser() {
     // OAuth flow alignment: PKCE matches the mobile client and is the
     // Supabase default for new projects. With PKCE, signInWithOAuth stores
     // a code_verifier in storage and the callback page exchanges the `code`
-    // query param via exchangeCodeForSession. The implicit branch in the
-    // callback (setSession with hash tokens) remains as a defensive
-    // fallback for any edge case but should normally never fire.
+    // query param via exchangeCodeForSession. The implicit branch
+    // (setSession from #access_token/#refresh_token hash tokens) was
+    // REMOVED on 2026-09-17 (JUNO-10): fragment tokens are attacker-
+    // controllable, and the callback now rejects them outright — same rule
+    // the mobile client adopted in services/socialAuth.ts.
     //
     // detectSessionInUrl is left false because the callback page does the
     // exchange manually with explicit error handling and routing — we
