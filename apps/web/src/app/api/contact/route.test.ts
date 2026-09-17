@@ -25,8 +25,15 @@
  * No real email is sent (Resend is mocked); the Turnstile endpoint is a
  * mocked fetch; every token below is obviously synthetic.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHmac } from "crypto";
+import fs from "node:fs";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import {
+  CONTACT_CATEGORIES,
+  CONTACT_CATEGORY_VALUES,
+} from "@/lib/contact-categories";
 
 const sendSpy = vi.fn();
 vi.mock("@/lib/resend", () => ({
@@ -148,6 +155,54 @@ describe("JUNO-07 · envoi unique, destination interne uniquement", () => {
     }
     expect(sendSpy).not.toHaveBeenCalled();
     expect(rpcSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("JUNO-07 · contrat de catégories canoniques (indépendant de la langue)", () => {
+  it("chaque valeur canonique est acceptée (200), et la catégorie ne contrôle JAMAIS le destinataire", async () => {
+    for (const category of CONTACT_CATEGORY_VALUES) {
+      sendSpy.mockClear();
+      const res = await POST(makeRequest(basePayload({ category })));
+      expect(res.status, `catégorie « ${category} » doit être acceptée`).toBe(200);
+      expect(sendSpy, `catégorie « ${category} » → un seul envoi`).toHaveBeenCalledTimes(1);
+      // Le destinataire reste la boîte interne quelle que soit la catégorie.
+      expect(sendSpy.mock.calls[0][0].to).toBe(INTERNAL_INBOX);
+      expect(sendSpy.mock.calls[0][0].replyTo).toBe("visitor@example.net");
+    }
+  });
+
+  it("TRANCHANT: « Question générale » (valeur localisée FR soumise telle quelle) → 400, aucun envoi", async () => {
+    const res = await POST(makeRequest(basePayload({ category: "Question générale" })));
+    expect(res.status).toBe(400);
+    expect(sendSpy).not.toHaveBeenCalled();
+    expect(rpcSpy).not.toHaveBeenCalled();
+  });
+
+  it("les étiquettes LOCALISÉES des 8 locales sont rejetées quand elles diffèrent du canonique (et en.json coïncide par construction)", async () => {
+    const messagesDir = path.resolve(process.cwd(), "messages");
+    const files = fs.readdirSync(messagesDir).filter((f) => f.endsWith(".json"));
+    expect(files.length).toBe(8);
+
+    let differingLabels = 0;
+    for (const file of files) {
+      const dict = JSON.parse(
+        fs.readFileSync(path.join(messagesDir, file), "utf8"),
+      ) as { contact: Record<string, string> };
+      for (const { value, labelKey } of CONTACT_CATEGORIES) {
+        const label = dict.contact[labelKey];
+        expect(label, `${file}: ${labelKey} doit exister`).toBeTruthy();
+        if (label === value) continue; // en.json : l'étiquette EST la valeur
+        differingLabels += 1;
+        const res = await POST(makeRequest(basePayload({ category: label })));
+        expect(
+          res.status,
+          `${file}: l'étiquette localisée « ${label} » ne doit PAS être acceptée`,
+        ).toBe(400);
+      }
+    }
+    // Garde anti-vide : au moins une locale localise réellement ses catégories.
+    expect(differingLabels).toBeGreaterThan(0);
+    expect(sendSpy).not.toHaveBeenCalled();
   });
 });
 

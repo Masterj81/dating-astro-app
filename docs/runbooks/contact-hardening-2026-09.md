@@ -95,8 +95,47 @@ L'opérateur a exécuté la procédure du §7 (widget Turnstile créé, variable
 
 **Smoke à reprendre sur la nouvelle Preview** (après push autorisé + Preview Ready) : widget visible ; envoi valide → 200 et un seul courriel interne ; aucun accusé public ; jeton manquant → 400 ; journaux sans données sensibles.
 
+## 7quater. Défaut fonctionnel post-fusion : catégories localisées rejetées (17 sept 2026, soir)
+
+**Contexte** : PR #39 fusionnée dans `master` (`722c677`). Fumée **anglaise** réussie : Turnstile visible, CSP corrigée, validation acceptée, envoi Resend fonctionnel, **exactement un** courriel reçu dans `support@junosynastry.com`.
+
+**Défaut observé** : `/en/contact` fonctionne ; `/fr/contact` retourne HTTP 400 `{"error":"invalid_request"}`.
+
+**Cause racine** : `ContactForm.tsx` rendait `<option value={t(key)}>{t(key)}</option>` — la **traduction servait de valeur HTML**, donc le navigateur soumettait `Question générale` alors que la liste blanche de la route n'accepte que les valeurs canoniques anglaises. **Toutes les locales non anglaises** étaient rejetées avant même la validation Turnstile. (Ce défaut était déjà noté en §8 comme « hors périmètre i18n » ; la fumée production l'a promu en défaut bloquant.)
+
+**Correction — contrat canonique / étiquettes localisées** :
+
+1. nouveau module partagé **sans dépendance** `apps/web/src/lib/contact-categories.ts` : table `CONTACT_CATEGORIES` (`value` canonique + `labelKey` de traduction), `CONTACT_CATEGORY_VALUES` et `isContactCategory()` dérivés — jamais redéclarés ailleurs ;
+2. `ContactForm.tsx` : `<option key={value} value={value}>{t(labelKey)}</option>` — l'étiquette visible est localisée, la valeur soumise est canonique ;
+3. `route.ts` : la liste locale `VALID_CATEGORIES` est supprimée, la validation passe par `isContactCategory` — le formulaire et l'API lisent **la même table**, divergence redevient impossible ;
+4. l'API **continue de rejeter** toute chaîne localisée (« Question générale » → 400) : le contrat reste indépendant de la langue ;
+5. tout le reste est inchangé : liste blanche serveur, Turnstile, limites de débit, échappement HTML, neutralisation CRLF, envoi unique vers `support@junosynastry.com` (jamais contrôlable par la catégorie), `replyTo` = adresse du visiteur.
+
+**Tests** (discriminants, prouvés) : `ContactForm.test.tsx` — 10 **échecs** contre l'ancien rendu (`git stash`), 11 réussites après : FR affiche « Question générale » / valeur « General Question » / soumission `category: "General Question"` (200 avec CAPTCHA et dépendances mockés) ; les 8 locales rendent 7 étiquettes non vides avec les 7 valeurs canoniques exactes, aucune traduction comme valeur. `route.test.ts` +3 : chaque valeur canonique acceptée avec destinataire **toujours** la boîte interne ; « Question générale » soumis tel quel → 400 ; les étiquettes localisées des 8 locales rejetées quand elles diffèrent du canonique. Aucun contact réel (Resend/Cloudflare/Supabase mockés).
+
+**Validations** : suite web 61/61 ; transactional-emails 34/34 ; `validate:email-templates` 1 149 ; locales + contrat propres ; `tsc` + lint ciblés sans erreur ; `build:web` compilé ; `git diff --check` propre ; recherche finale : plus aucun `value={t(` dans les composants.
+
+**Fermeture JUNO-07/JUNO-14** : la fumée **anglaise** a réussi ; la fermeture définitive attend encore la **fumée française** décrite au §9 (deux adresses distinctes, `Question générale`, un seul envoi interne, `Répondre` vers le visiteur).
+
 ## 8. Notes résiduelles
 
 - `check_rate_limit` n'a **pas** de `REVOKE … FROM PUBLIC` explicite dans la migration d'origine (défaut PostgreSQL = exécutable) — préexistant, hors périmètre du chantier ; le rappeler au prochain chantier base si on veut le durcir.
 - Défaut préexistant observé sans être touché : `ContactForm` envoie la catégorie **traduite** alors que la liste blanche serveur est anglaise — hors périmètre JUNO-07/14, à traiter comme chantier i18n produit.
 - Les seuils (5/h origine, 3/h adresse, 3/h suppression) sont des valeurs de départ raisonnées, ajustables côté code après observation des `429`.
+
+## 9. Fumée française après déploiement du correctif catégories
+
+Après push autorisé, CI verte et déploiement Production du nouveau SHA :
+
+1. ouvrir `/fr/contact` ;
+2. utiliser une adresse contrôlée **différente** de `support@junosynastry.com` ;
+3. sélectionner `Question générale` ;
+4. compléter Turnstile ;
+5. envoyer **un seul** message identifié comme test ;
+6. confirmer HTTP 200 ;
+7. confirmer **exactement un** courriel dans `support@junosynastry.com` ;
+8. confirmer **zéro** courriel à l'adresse du visiteur ;
+9. confirmer que **Répondre** cible l'adresse du visiteur ;
+10. vérifier les logs sans afficher de données sensibles.
+
+Ne pas provoquer volontairement le rate limit lors de cette fumée.
