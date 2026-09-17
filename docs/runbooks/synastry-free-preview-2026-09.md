@@ -1,8 +1,29 @@
 # Runbook — Synastrie offerte : une comparaison gratuite par jour (PWA)
 
 **Date de conception : 15 septembre 2026**
-**État : implémenté localement, NON appliqué, NON déployé, NON commité**
-**Branche de travail : `fix/security-wave-2-2026-09-08` (non commité)**
+**État : EN PRODUCTION — appliqué, déployé, vérifié fonctionnellement, suivi J+1 fermé (17 sept 2026)**
+**Branche de livraison : `fix/security-wave-2-2026-09-08`, poussée (`08ba65d` et suivants)**
+
+## Suivi J+1 — TERMINÉ, réussi avec réserve (17 sept 2026)
+
+Mesure agrégée exécutée le 17 septembre (lecture seule, requête du handoff) :
+
+| jour UTC | grants | presented | succeeded | reopened | used_other | upgrade | frustration | conversion après blocage |
+|---|---|---|---|---|---|---|---|---|
+| 2026-09-16 | 1 | 1 | 1 | 0 | 1 | 0 | 100,0 % | 0,0 % |
+| 2026-09-17 | 0 | 0 | 0 | 0 | 0 | 0 | NULL | NULL |
+
+**Interprétation arrêtée (aucune donnée personnelle, cible ou astrologique consignée — agrégats seuls)** :
+
+- **la télémétrie fonctionne** — les cinq événements de la liste blanche arrivent, les grants se comptent, les ratios se calculent ;
+- **le 16 septembre correspond au test contrôlé** : un grant, une présentation, une réussite, un blocage sur une autre cible — exactement le parcours de la vérification fonctionnelle ;
+- **aucune réouverture** (`preview_reopened = 0`) n'a été mesurée après le déploiement final ;
+- **aucun clic vers un forfait** (`upgrade_clicked = 0`) ;
+- **les pourcentages n'ont aucune valeur statistique avec n = 1** — `frustration_pct = 100 %` et `conversion = 0 %` disent seulement que le numérateur et le dénominateur du test contrôlé sont cohérents entre eux ;
+- **les zéros du 17 septembre signifient seulement qu'aucun parcours n'avait encore eu lieu** au moment de la mesure — pas une panne ;
+- les pourcentages `NULL` du 17 sont des dénominateurs à zéro, par construction.
+
+**Verdict : suivi J+1 marqué RÉUSSI — la chaîne télémétrique et la mécanique quota sont prouvées en production — avec la réserve explicite : volume insuffisant pour une conclusion produit.** La première lecture produit utile viendra d'un volume réel de parcours ; la même requête agrégée se rejouera alors telle quelle. Aucune action sur la logique, les migrations ou les tests SQL n'a eu lieu pour cette fermeture.
 
 ## Vérification fonctionnelle en production — RÉUSSIE (16 sept 2026, exploitant)
 
@@ -15,7 +36,7 @@ Après le déploiement de l'edge `get-profile-chart` (par l'exploitant, `supabas
 5. **les choix « View plans » et « Start discovering » sont disponibles** — l'état honnête propose l'upgrade et la sortie, pas une impasse ;
 6. **la même première personne demeure consultable** — rejeu gratuit de LA cible du jour, illimité jusqu'à demain.
 
-**La vérification fonctionnelle de l'aperçu quotidien gratuit est donc réussie.** État : migrations 1 + corrective + 2 appliquées et prouvées, edge déployé, test comportemental rollback-safe passé (zéro résidu), vérification contrôlée verte. Historique Git : tout est poussé (`a346717` sur origin). Reste au pipeline du runbook : confirmation du déploiement Vercel de production (la preuve ci-dessus a été constatée sur un client web connecté à la base production) et, à J+1, l'observation télémétrique.
+**La vérification fonctionnelle de l'aperçu quotidien gratuit est donc réussie.** État : migrations 1 + corrective + 2 appliquées et prouvées, edge déployé, test comportemental rollback-safe passé (zéro résidu), vérification contrôlée verte, Vercel Production confirmé `Ready` par l'exploitant. Historique Git : tout est poussé (`08ba65d` sur origin au moment de la fermeture J+1). Dernière marche du pipeline initial : l'observation télémétrique — **faite, voir « Suivi J+1 » ci-dessus.**
 
 ## Incident d'application n°10 — CONCLU ET VERT (16 sept 2026)
 
