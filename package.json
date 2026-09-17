@@ -31,6 +31,8 @@
     "validate:chart-privacy": "npm run test --workspace=@astro/shared -- src/astrology/__tests__/chart-payload-privacy.test.ts",
     "validate:edge-security": "npm run test --workspace=@astro/shared -- src/security",
     "validate:rls-contract": "node scripts/validate-rls-contract.mjs",
+    "validate:pwa-kill-switch": "node scripts/validate-pwa-kill-switch.mjs",
+    "test:pwa-legacy-recovery": "node scripts/pwa-legacy-recovery.mjs",
     "validate:repo-hygiene": "node scripts/validate-repo-hygiene.mjs",
     "validate:cron-secrets": "node scripts/validate-cron-secrets.mjs",
     "validate:media-purge": "node scripts/validate-media-purge.mjs",
