@@ -18,6 +18,14 @@ const ALLOWED_IMAGE_HOSTS = [
 // whitelisted so dev and prod behave the same and CSP errors don't surface.
 const VERCEL_INSIGHTS = "https://va.vercel-scripts.com";
 const VERCEL_VITALS = "https://vitals.vercel-insights.com";
+// Cloudflare Turnstile (JUNO-07, 2026-09-17): the contact form's widget loads
+// its api.js from this exact origin and renders its challenge in an iframe.
+// Discovered the hard way: a Preview smoke test showed the script blocked by
+// script-src-elem, and frame-src was 'none'. The MINIMAL Cloudflare-documented
+// fix is script-src + script-src-elem + frame-src scoped to THIS origin only —
+// no wildcard, and NO connect-src entry: siteverify runs SERVER-side, so the
+// browser never talks to Cloudflare beyond the script and the frame.
+const TURNSTILE_ORIGIN = "https://challenges.cloudflare.com";
 const isDev = process.env.NODE_ENV !== "production";
 
 // Content-Security-Policy directives
@@ -29,8 +37,8 @@ const cspDirectives = [
   // (hash/nonce would be better but Next.js injects inline scripts for hydration
   // that change every build, so 'unsafe-inline' is the practical choice until
   // Next.js supports nonces natively in the App Router).
-  `script-src 'self' 'unsafe-inline' ${VERCEL_INSIGHTS}${isDev ? " 'unsafe-eval'" : ""}`,
-  `script-src-elem 'self' 'unsafe-inline' ${VERCEL_INSIGHTS}`,
+  `script-src 'self' 'unsafe-inline' ${VERCEL_INSIGHTS} ${TURNSTILE_ORIGIN}${isDev ? " 'unsafe-eval'" : ""}`,
+  `script-src-elem 'self' 'unsafe-inline' ${VERCEL_INSIGHTS} ${TURNSTILE_ORIGIN}`,
   // Styles: self + inline (Next.js / CSS-in-JS)
   `style-src 'self' 'unsafe-inline'`,
   // Images: self + allowed profile image sources + data URIs + blobs
@@ -41,8 +49,11 @@ const cspDirectives = [
   `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST} ${VERCEL_INSIGHTS} ${VERCEL_VITALS}`,
   // Media: none needed currently
   `media-src 'self'`,
-  // Frames: none (matches X-Frame-Options DENY)
-  `frame-src 'none'`,
+  // Frames: Turnstile's challenge iframe ONLY (was 'none' until 2026-09-17 —
+  // the widget cannot render without it). Single explicit origin, no wildcard.
+  // X-Frame-Options: DENY stays: it governs who may frame US; frame-src
+  // governs what WE frame. The two coexist by design.
+  `frame-src ${TURNSTILE_ORIGIN}`,
   // Form actions: self only
   `form-action 'self'`,
   // Base URI: self only

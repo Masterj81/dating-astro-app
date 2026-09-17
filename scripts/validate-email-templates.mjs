@@ -733,13 +733,18 @@ check('contact (source): every reader field is escaped before the HTML',
   ['name', 'email', 'category', 'message'].every((k) => new RegExp(`const safe\\w* = htmlEscape\\(${k}\\)`).test(contactSrc)));
 check('contact (source): only the escaped variables reach the HTML',
   (() => {
-    // Both html: renderEmailShell({ … }) calls, and not one raw field inside.
+    // JUNO-07: exactly ONE html: renderEmailShell({ … }) call — the internal
+    // delivery. The public auto-acknowledgement is GONE; if a second shell
+    // reappears, this fails. And not one raw field inside.
     const calls = [...contactSrc.matchAll(/html: renderEmailShell\(\{[\s\S]*?\}\),/g)].map((m) => m[0]);
-    return calls.length === 2 && calls.every((c) => !/\$\{(name|email|category|message)\}/.test(c));
+    return calls.length === 1 && calls.every((c) => !/\$\{(name|email|category|message)\}/.test(c));
   })());
 check('contact (source): auto-reply does not say "reply to this email"', !/just reply to this email/i.test(contactSrc));
-check('contact (source): sends to the verified JUNO support inbox',
-  /to: "support@junosynastry\.com"/.test(contactSrc) && /functional JUNO inbox/.test(contactSrc));
+check('contact (source): sends to the verified JUNO support inbox — one delivery, server-constant recipient (JUNO-07)',
+  /const SUPPORT_INBOX = "support@junosynastry\.com"/.test(contactSrc)
+    && /to: SUPPORT_INBOX/.test(contactSrc)
+    && [...contactSrc.matchAll(/resend\.emails\.send\(/g)].length === 1
+    && !/to: email/.test(contactSrc));
 
 for (const [label, src] of [['delete-account', deleteSrc], ['stripe-webhook', stripeSrc], ['contact', contactSrc], ['lifecycle templates', readFileSync(TEMPLATES_TS, 'utf8')]]) {
   for (const [re, why] of LEGACY_COLOURS) check(`${label} (source): free of the ${why}`, !re.test(src));
