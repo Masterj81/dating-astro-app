@@ -1039,14 +1039,14 @@ données publiées à côté (JUNO-01).
 | **JUNO-04** | Secrets / Infra | `SUPABASE_SERVICE_ROLE_KEY` conservée dans `marketingagent/.env` sur le poste de développement, pour un outil qui a besoin de quatre opérations | **Haute** | Haute | Confirmé — **fermé le 10 sep 2026** |
 | **JUNO-05** | PWA / Web | Jetons de session en `localStorage` + CSP `script-src 'unsafe-inline'` | **Haute** | Haute | Confirmé |
 | **JUNO-06** | Mobile | 9 fonctionnalités premium sur 11 gatées côté client uniquement | **Haute** | Haute | Confirmé |
-| **JUNO-07** | Web / API | `/api/contact` : relais mail non authentifié, sans limite de débit ni captcha | **Moyenne** | Haute | Confirmé |
+| **JUNO-07** | Web / API | `/api/contact` : relais mail non authentifié, sans limite de débit ni captcha | **Moyenne** | Haute | Confirmé — **corrigé LOCALEMENT le 17 sep 2026** (accusé public supprimé, Turnstile fail-closed + double limite durable ; see runbook contact-hardening — activation en production bloquée sur la configuration Turnstile/HMAC, non encore déployée) |
 | **JUNO-08** | Backend / DB | `messages` : UPDATE accordé + policy sans `WITH CHECK` → réécriture de messages livrés | **Moyenne** | Moyenne | Probable |
 | **JUNO-09** | Vie privée | Aucun nettoyage du stockage à la suppression de compte (photos, voix, vidéos de vérification) | **Moyenne** | Haute | Confirmé — **FERMÉ le 11 sep 2026** : phase B livrée le 10 sep, rattrapage des 5 orphelins historiques exécuté le 11 sep (`5/0/0`) |
 | **JUNO-10** | Web / Auth | Branche implicite résiduelle dans `auth/callback` → fixation de session | **Moyenne** | Moyenne | Confirmé — **FERMÉ le 17 sep 2026** : branche supprimée, jetons du fragment rejetés, régression vitest 8/8 (voir la section JUNO-10) |
 | **JUNO-11** | Infra / CORS | Les listes blanches retombent en mode permissif si `ENVIRONMENT ≠ production` | **Moyenne** | Moyenne | À vérifier dynamiquement |
 | **JUNO-12** | Supply chain | 47 vulnérabilités npm ; `next`, `next-intl`, `undici` atteignables à l'exécution | **Moyenne** | Haute | Confirmé |
 | **JUNO-13** | Web | CSP sans nonce, `frame-ancestors` absent, pas de COOP/CORP/COEP | **Moyenne** | Haute | Confirmé |
-| **JUNO-14** | Web / API | Limitation de débit en mémoire sur du serverless = inopérante | **Moyenne** | Haute | Confirmé |
+| **JUNO-14** | Web / API | Limitation de débit en mémoire sur du serverless = inopérante | **Moyenne** | Haute | Confirmé — **corrigé LOCALEMENT le 17 sep 2026** (`request-deletion` : Map remplacée par `check_rate_limit` par compte vérifié, fail-closed ; non encore déployé) |
 | **JUNO-15** | Infra / DB | Historique de migrations désynchronisé : l'état réel de la base n'est pas prouvable | **Moyenne** | Haute | Confirmé |
 | **JUNO-16** | Service worker | Cache runtime PWA non cloisonné par compte, jamais purgé ; `notificationclick` ouvre une URL du payload | **Moyenne** | Moyenne | À vérifier dynamiquement |
 | **JUNO-17** | Android | `allowBackup="true"`, pas de `dataExtractionRules`, pas de Network Security Config | **Moyenne** | Moyenne | Probable |

@@ -67,7 +67,7 @@ type StripeFn = {
   }) => string;
 };
 type ContactRoute = {
-  SUPPORT_EMAIL: string;
+  SUPPORT_INBOX: string;
   htmlEscape: (v: string) => string;
   renderEmailShell: (input: { eyebrow: string; title: string; intro: string; body: string }) => string;
 };
@@ -92,7 +92,7 @@ beforeAll(async () => {
   contact = await loadEdgeModule<ContactRoute>({
     file: CONTACT_ROUTE,
     label: 'contact-email',
-    declarations: ['SUPPORT_EMAIL', 'htmlEscape', 'renderEmailShell'],
+    declarations: ['SUPPORT_INBOX', 'htmlEscape', 'renderEmailShell'],
   });
 });
 
@@ -466,7 +466,7 @@ describe('payment confirmation · the reader\'s name is escaped, and the email h
 // ===========================================================================
 // Contact form
 // ===========================================================================
-describe('contact form · escaped in, honest out', () => {
+describe('contact form · escaped in, honest out, ONE delivery (JUNO-07)', () => {
   it('escapes every reader-typed field before it reaches the shell', () => {
     const e = contact.htmlEscape;
     expect(e(`<script>alert("x")</script>&'`)).toBe('&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;&amp;&#x27;');
@@ -476,29 +476,33 @@ describe('contact form · escaped in, honest out', () => {
     }
     // Only the escaped variables reach the HTML; the raw ones are text-only.
     const htmlCalls = [...src.matchAll(/html: renderEmailShell\(\{[\s\S]*?\}\),/g)].map((m) => m[0]);
-    expect(htmlCalls).toHaveLength(2);
+    // JUNO-07: exactly ONE email leaves this route — the internal delivery.
+    // The auto-acknowledgement to the caller-provided address is GONE.
+    expect(htmlCalls).toHaveLength(1);
     for (const call of htmlCalls) {
       expect(call).not.toMatch(/\$\{(name|email|category|message)\}/);
     }
   });
 
-  it('the auto-reply is sent from noreply@ and therefore does not say "reply to this email"', () => {
+  it('sends exactly ONE email — no public acknowledgement can come back (JUNO-07)', () => {
     const src = readRepoFile(CONTACT_ROUTE);
+    // A single Resend call in the whole route.
+    expect([...src.matchAll(/resend\.emails\.send\(/g)]).toHaveLength(1);
+    // …whose recipient is the server-constant inbox, never a body value.
+    expect(src).toMatch(/to: SUPPORT_INBOX/);
+    expect(src).not.toMatch(/to: email/);
     expect(src).not.toMatch(/just reply to this email/i);
-    expect(src).toMatch(/Write to <a href="mailto:\$\{SUPPORT_EMAIL\}"/);
   });
 
   it('sends to the verified JUNO inbox — the same address the reader is shown', () => {
     // Until 11 Sep 2026 the functional inbox was the legacy AstroDating
-    // mailbox and this test pinned it there, because nothing proved the brand
-    // mailbox received. Inbound delivery was then verified and the route
-    // switched; the comment above the send records that. The two addresses
-    // must now agree, so a reader who writes back reaches the inbox we read.
+    // mailbox; inbound delivery to the brand mailbox was then verified.
+    // Since 17 Sep 2026 (JUNO-07) that address is a server-side constant —
+    // the request body can no longer influence any recipient.
     const src = readRepoFile(CONTACT_ROUTE);
-    expect(src).toMatch(/to: "support@junosynastry\.com"/);
-    expect(src).not.toMatch(/to: "support@astrodatingapp\.com"/);
-    expect(src).toMatch(/verified before replacing the legacy AstroDating mailbox/);
-    expect(contact.SUPPORT_EMAIL).toBe(SUPPORT);
+    expect(src).toMatch(/const SUPPORT_INBOX = "support@junosynastry\.com"/);
+    expect(src).not.toMatch(/support@astrodatingapp\.com/);
+    expect(contact.SUPPORT_INBOX).toBe(SUPPORT);
   });
 
   it('is brand-clean and client-safe', () => {
