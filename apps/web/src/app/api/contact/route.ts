@@ -1,24 +1,25 @@
-import { NextResponse } from "next/server";
-import { getResend, EMAIL_FROM } from "@/lib/resend";
-import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { isContactCategory } from "@/lib/contact-categories";
 import {
-  CONTACT_ADDR_MAX,
-  CONTACT_ORIGIN_MAX,
-  CONTACT_WINDOW_SECONDS,
-  getClientOrigin,
-  hmacBucket,
-  verifyTurnstile,
+    CONTACT_ADDR_MAX,
+    CONTACT_ORIGIN_MAX,
+    CONTACT_WINDOW_SECONDS,
+    getClientOrigin,
+    hmacBucket,
+    verifyTurnstile,
 } from "@/lib/contact-protection";
+import { EMAIL_FROM, getResend } from "@/lib/resend";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { NextResponse } from "next/server";
 
 /** The functional JUNO inbox. Server-side constant only — never a value the
  *  request body can influence (JUNO-07: the destination of the ONLY email
  *  this route sends must not be caller-controlled). */
 const SUPPORT_INBOX = "support@junosynastry.com";
 
-const VALID_CATEGORIES = [
-  "General Question", "Account Issue", "Billing & Subscription",
-  "Bug Report", "Safety Concern", "Feature Request", "Other",
-];
+// Accepted categories come from the shared canonical table
+// (`@/lib/contact-categories`) — the SAME source the form renders from, so
+// the values sent and the values accepted cannot drift. Localized labels
+// are deliberately NOT accepted: the contract is language-independent.
 
 function htmlEscape(text: string): string {
   const map: Record<string, string> = {
@@ -120,7 +121,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "invalid_request" }, { status: 400 });
     }
 
-    if (!VALID_CATEGORIES.includes(category)) {
+    if (!isContactCategory(category)) {
       return NextResponse.json({ error: "invalid_request" }, { status: 400 });
     }
 

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { CONTACT_CATEGORIES } from "@/lib/contact-categories";
 import { useTranslations } from "next-intl";
+import { useEffect, useRef, useState } from "react";
 
 // JUNO-07: the public form carries a Cloudflare Turnstile widget. The SITE
 // key is public by design; the SECRET lives only on the server, and the API
@@ -53,16 +54,6 @@ const ERROR_KEYS: Record<string, string> = {
   captcha_invalid: "contactCaptchaInvalid",
   unavailable: "contactUnavailable",
 };
-
-const CATEGORY_KEYS = [
-  "catGeneral",
-  "catAccount",
-  "catBilling",
-  "catBug",
-  "catSafety",
-  "catFeature",
-  "catOther",
-] as const;
 
 export function ContactForm() {
   const t = useTranslations("contact");
@@ -209,8 +200,11 @@ export function ContactForm() {
           className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-white outline-none focus:border-purple-light"
         >
           <option value="">{t("categoryPlaceholder")}</option>
-          {CATEGORY_KEYS.map((key) => (
-            <option key={key} value={t(key)}>{t(key)}</option>
+          {/* The VALUE is the canonical, language-independent contract the
+              API whitelists; only the LABEL is translated. Sending the
+              translation used to 400 every non-English locale. */}
+          {CONTACT_CATEGORIES.map(({ value, labelKey }) => (
+            <option key={value} value={value}>{t(labelKey)}</option>
           ))}
         </select>
       </div>
