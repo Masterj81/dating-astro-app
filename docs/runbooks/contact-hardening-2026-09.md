@@ -74,6 +74,27 @@ Mission d'activation exécutée le 17 sept : **le commit `328f22c` n'est PAS pou
 
 **Rollback** : redéployer la révision précédente ; les compteurs `edge_rate_limits`/`rate_limits` sont sans danger (fenêtres tombantes d'une heure). Aucune donnée à nettoyer.
 
+## 7ter. Blocage CSP découvert au smoke Preview (17 sept 2026) et correction
+
+L'opérateur a exécuté la procédure du §7 (widget Turnstile créé, variables Vercel posées, Preview déployé). Le smoke a alors révélé un **défaut dans notre CSP** — pas dans la barrière elle-même :
+
+- le script du widget `https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit` était **refusé** par `script-src-elem 'self' 'unsafe-inline' https://va.vercel-scripts.com` (l'origine Turnstile n'était autorisée nulle part) ;
+- `frame-src 'none'` aurait refusé l'iframe du défi à l'étape suivante.
+
+**Correction (minimale, documentée Cloudflare)** — `apps/web/next.config.ts` :
+
+1. constante unique `TURNSTILE_ORIGIN = "https://challenges.cloudflare.com"` ;
+2. `TURNSTILE_ORIGIN` ajouté à `script-src` **et** `script-src-elem` ;
+3. `frame-src` passe de `'none'` à `TURNSTILE_ORIGIN` **seul** (aucun autre origine, aucun wildcard) ;
+4. **aucune** entrée `connect-src` : `siteverify` est appelé **côté serveur** (`contact-protection.ts`), le navigateur ne parle jamais à Cloudflare au-delà du script et de l'iframe ;
+5. `X-Frame-Options: DENY` **conservé** : il régit qui peut nous cadrer ; `frame-src` régit ce que **nous** cadrons. Les deux coexistent par conception.
+
+**Test structurel** : `apps/web/src/lib/__tests__/csp-turnstile.test.ts` (7 tests) échoue si l'une des trois autorisations disparaît, si `frame-src` s'élargit au-delà de l'origine seule, si un wildcard apparaît, si l'origine fuit dans `connect-src`, ou si `X-Frame-Options: DENY` saute. Vérifié discriminant : **5 échecs** sur `next.config.ts` d'origine, **7 réussites** après correction.
+
+**Validation** : suite web 47/47 ; `validate:web:locales` + `validate:locale-contract` propres ; `tsc --noEmit` et lint sans erreur ; `build:web` compilé (15,5 s, deux warnings préexistants hors périmètre) ; `git diff --check` propre.
+
+**Smoke à reprendre sur la nouvelle Preview** (après push autorisé + Preview Ready) : widget visible ; envoi valide → 200 et un seul courriel interne ; aucun accusé public ; jeton manquant → 400 ; journaux sans données sensibles.
+
 ## 8. Notes résiduelles
 
 - `check_rate_limit` n'a **pas** de `REVOKE … FROM PUBLIC` explicite dans la migration d'origine (défaut PostgreSQL = exécutable) — préexistant, hors périmètre du chantier ; le rappeler au prochain chantier base si on veut le durcir.
