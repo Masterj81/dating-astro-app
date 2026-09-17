@@ -47,7 +47,25 @@ La `Map` est **supprimée**. Ordre : parsing → validation → **vérification 
 
 Clés de test officielles Cloudflare (documentées dans `.env.example`) : site `1x00000000000000000000AA` / secret `1x0000000000000000000000000000000AA` (passent toujours) ; variantes `2x…` (bloquent toujours) pour exercer les refus. **Aucun secret n'a été créé ou modifié à distance** — c'est la configuration Vercel restante.
 
-## 7. Ordre de déploiement (à exécuter sur autorisation) et rollback
+## 7. État d'activation — 17 septembre 2026 : BLOQUÉ (accès externes manquants)
+
+Mission d'activation exécutée le 17 sept : **le commit `328f22c` n'est PAS poussé, volontairement** — la configuration Vercel doit précéder le push (sinon le déploiement rend le formulaire honnêtement indisponible : widget absent + API 503, par conception fail-closed).
+
+**Vérifié ce jour** : CI de `6714f58` **verte** (run 35236003646, `pull_request`, success) ; `328f22c` local, origin à `6714f58`, écart 1 ; le commit ne contient **aucun secret réel** (uniquement les clés de test officielles et un espace réservé `generate-a-random-…`) ; l'environnement de l'agent ne détient **ni** CLI `vercel`, **ni** CLI `wrangler`, **ni** token Cloudflare/Vercel (env + coffre d'identifiants inspectés) — la création du widget Turnstile et la pose des variables Vercel sont donc des **opérations opérateur**.
+
+### Procédure opérateur exacte (puis reprendre l'agent pour la suite)
+
+1. **Cloudflare** (dashboard, compte autorisé) → Turnstile → Add widget : mode *Managed* ; hostname `junosynastry.com` ; conserver le **sitekey** (publique) et le **secret** (jamais dans le dépôt, un ticket ou un rapport). Option : second widget Preview (ou clés de test `1x…` si le Preview est strictement contrôlé).
+2. **Générer `CONTACT_HASH_SECRET`** (PowerShell, RNG cryptographique — jamais `Get-Random`, pas un mot de passe réutilisé) :
+   ```powershell
+   $b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)
+   ```
+   (à saisir directement dans Vercel, sans le consigner ailleurs)
+3. **Vercel** → projet JUNO → Settings → Environment Variables — Production : `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (vraie clé), `TURNSTILE_SECRET_KEY` (vrai secret), `CONTACT_HASH_SECRET` (valeur de l'étape 2). Preview : mêmes noms, valeurs Preview/test + un `CONTACT_HASH_SECRET` propre au Preview.
+4. **Redéployer** après configuration (`NEXT_PUBLIC_*` est injecté au build).
+5. Autoriser le push de `328f22c` ; CI ; déploiement Production **du SHA exact** ; puis la fumée du §7 ci-dessous.
+
+## 7bis. Ordre de déploiement (à exécuter sur autorisation) et rollback
 
 1. Configurer dans Vercel : `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, `CONTACT_HASH_SECRET` (production + preview).
 2. Pousser la branche, fusionner, laisser Vercel déployer le web. (Aucune migration à appliquer ; l'edge n'est pas concerné.)
