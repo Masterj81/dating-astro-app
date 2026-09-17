@@ -1042,7 +1042,7 @@ données publiées à côté (JUNO-01).
 | **JUNO-07** | Web / API | `/api/contact` : relais mail non authentifié, sans limite de débit ni captcha | **Moyenne** | Haute | Confirmé |
 | **JUNO-08** | Backend / DB | `messages` : UPDATE accordé + policy sans `WITH CHECK` → réécriture de messages livrés | **Moyenne** | Moyenne | Probable |
 | **JUNO-09** | Vie privée | Aucun nettoyage du stockage à la suppression de compte (photos, voix, vidéos de vérification) | **Moyenne** | Haute | Confirmé — **FERMÉ le 11 sep 2026** : phase B livrée le 10 sep, rattrapage des 5 orphelins historiques exécuté le 11 sep (`5/0/0`) |
-| **JUNO-10** | Web / Auth | Branche implicite résiduelle dans `auth/callback` → fixation de session | **Moyenne** | Moyenne | Probable |
+| **JUNO-10** | Web / Auth | Branche implicite résiduelle dans `auth/callback` → fixation de session | **Moyenne** | Moyenne | Confirmé — **FERMÉ le 17 sep 2026** : branche supprimée, jetons du fragment rejetés, régression vitest 8/8 (voir la section JUNO-10) |
 | **JUNO-11** | Infra / CORS | Les listes blanches retombent en mode permissif si `ENVIRONMENT ≠ production` | **Moyenne** | Moyenne | À vérifier dynamiquement |
 | **JUNO-12** | Supply chain | 47 vulnérabilités npm ; `next`, `next-intl`, `undici` atteignables à l'exécution | **Moyenne** | Haute | Confirmé |
 | **JUNO-13** | Web | CSP sans nonce, `frame-ancestors` absent, pas de COOP/CORP/COEP | **Moyenne** | Haute | Confirmé |
@@ -1724,6 +1724,8 @@ dont le premier segment n'existe plus dans `auth.users`.
 ---
 
 ### JUNO-10 — La branche implicite résiduelle du callback web
+
+**CORRIGÉ le 17 septembre 2026.** Comportement vulnérable initial : le callback lisait `access_token`/`refresh_token` depuis `window.location.hash` et appelait `supabase.auth.setSession()` — aucun échange PKCE, aucun `state`, aucun `nonce` : un lien fabriqué pouvait imposer au navigateur de la victime la session d'un compte attaquant (fixation de session). **Correction** (`apps/web/src/app/[locale]/auth/callback/page.tsx`) : la branche est supprimée ; tout jeton implicite détecté dans le fragment (l'un OU l'autre) est rejeté — `setSession` jamais appelé, message localisé neutre (`callbackImplicitRejected`, les 8 locales), état d'erreur normal, fragment purgé par `replaceState` (aucune navigation, aucune boucle), avertissement générique `[AuthCallback] implicit tokens rejected` sans aucune valeur de jeton. Le commentaire obsolète de `supabase-browser.ts` (« defensive fallback ») est mis à jour ; la référence mobile (`socialAuth.ts`) avait déjà retiré ce flux. **Tests** : `apps/web/src/app/[locale]/auth/callback/page.test.tsx` (8 tests) — prouvés tranchants : les 3 cas implicites **échouaient** contre le code d'avant correction et passent après ; PKCE (`exchangeCodeForSession`) et `token_hash` (`verifyOtp`) restent sur leurs parcours nominaux, la redirection non sûre reste confinée à `/app`, aucune journalisation ni affichage de jeton. **Limites de la preuve** : locale, à base de mocks et de jetons synthétiques ; aucun test offensif en production — le verdict d'exploitabilité dynamique côté navigateur reste « à confirmer », le correctif rendant la question sans objet côté code.
 
 | | |
 |---|---|

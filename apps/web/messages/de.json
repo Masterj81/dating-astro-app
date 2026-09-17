@@ -1016,6 +1016,7 @@
     "callbackWait": "Anmeldung wird abgeschlossen. Nur einen Moment.",
     "callbackErrorTitle": "Etwas ist schiefgelaufen",
     "callbackErrorBody": "Anmeldung konnte nicht abgeschlossen werden. Das kann passieren, wenn eine Sitzung abgelaufen ist oder ein Link doppelt verwendet wurde. Versuche es erneut.",
+    "callbackImplicitRejected": "Dieser Anmeldelink wird nicht mehr unterstützt. Bitte melde dich erneut über JUNO an.",
     "discoverLoadingTitle": "Kosmos wird gescannt...",
     "discoverLoadingBody": "Suche nach Profilen, die zu deinem Geburtshoroskop passen. Nur einen Moment.",
     "setupProgress": "Einrichtungsfortschritt",

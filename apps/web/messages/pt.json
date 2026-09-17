@@ -1016,6 +1016,7 @@
     "callbackWait": "Finalizando o seu login. Apenas um momento.",
     "callbackErrorTitle": "Algo deu errado",
     "callbackErrorBody": "Não foi possível concluir o login. Isso pode ocorrer se a sessão expirou ou se um link foi usado duas vezes. Tente entrar novamente.",
+    "callbackImplicitRejected": "Este link de login não é mais compatível. Faça login novamente pelo JUNO.",
     "discoverLoadingTitle": "Escaneando o cosmos...",
     "discoverLoadingBody": "Procurando perfis alinhados com seu mapa natal. Apenas um momento.",
     "setupProgress": "Progresso da configuração",

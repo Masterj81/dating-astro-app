@@ -1032,6 +1032,7 @@
     "callbackWait": "正在完成登录。请稍候。",
     "callbackErrorTitle": "出了点问题",
     "callbackErrorBody": "无法完成登录。这可能是因为会话已过期或链接被使用了两次。请再次尝试登录。",
+    "callbackImplicitRejected": "此登录链接已不再受支持。请从 JUNO 重新登录。",
     "discoverLoadingTitle": "正在扫描宇宙...",
     "discoverLoadingBody": "正在寻找与你出生星盘契合的资料。请稍候。",
     "setupProgress": "设置进度",
