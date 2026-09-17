@@ -72,7 +72,30 @@ Drapeau : `supabase/functions/get-profile-chart/index.ts` (`const PUBLISH_LEGACY
 **Les deux portes avant la bascule** (le validateur `validate:pwa-kill-switch` refuse un `false` sans les deux preuves datées ci-dessous) :
 
 - **Porte 1 — mécanisme PWA ancien → nouveau prouvé : FAITE le 2026-09-17** (harnais `pwa-legacy-recovery.mjs`, 15/15 — section 2). Un ancien client web finit par charger un bundle consommant `response.synastry`.
-- **Porte 2 — adoption Android ≥ 95 % pendant 7 jours consécutifs : NON FAITE — c'est la seule dépendance externe restante.** Méthode (consignée au plan PWA §10.5) : Play Console → Statistiques → Utilisateurs actifs → quotidien, groupé par version d'app, export CSV daté ; seuil ≥ 95 % de la base active sur `versionCode 130` pendant 7 jours consécutifs (délai de données Play : 24–48 h). Quand le seuil est atteint : dater la Porte 2 ci-dessous, basculer le drapeau, redéployer l'edge, et `npm run validate:chart-privacy` (qui couvre les deux modes) reste vert par construction.
+- **Porte 2 — adoption Android ≥ 95 % pendant 7 jours consécutifs : NON FAITE — dépendance externe.**
+
+### Évaluation Porte 2 du 17 septembre 2026 — BLOQUÉ (doublement)
+
+1. **Aucune preuve accessible** : aucun export Play Console exploitable n'existe dans l'environnement (le seul historique connu, `Overview_2026-08-17…csv`, a disparu du TEMP et, daté d'avant la sortie du build 130, ne pourrait de toute façon rien prouver sur son adoption). Aucun chiffre n'a été inventé ni extrapolé.
+2. **Le seuil est mathématiquement invérifiable avant le 19–20 septembre**, même avec adoption parfaite : `versionCode 130` est sorti le **11 sept 2026** (`docs/app-store/release-notes-130.md`), les données Play remontent avec **24–48 h de délai**, donc le premier jour réglé est le 12 ou 13 sept — une fenêtre de **7 jours consécutifs** ne peut être complète au plus tôt que **12 → 18 sept**, évaluable le **19–20 sept**.
+
+**Procédure d'export exacte (opérateur)** : Play Console → l'app JUNO → **Statistics** (Statistiques) → **Active users** (Utilisateurs actifs) → granularité **Daily** (Quotidien) → dimension **Group by: App version** (Grouper par : version d'application) → plage couvrant **au moins le 12 sept → jour J** → **Export CSV** ; conserver le fichier daté (c'est la référence de preuve à citer).
+
+**Verdict mécanique — `scripts/check-android-adoption-gate.mjs`** (testé le 17 sept sur trois scénarios : conforme, seuil non atteint, jour manquant) :
+
+```
+node scripts/check-android-adoption-gate.mjs <export.csv>            # défauts : 130, 95 %, 7 jours
+```
+
+Il agrège par (jour, version), calcule la part de `versionCode ≥ 130`, exige une fenêtre **réellement consécutive** (un jour absent casse la fenêtre, jamais comblé), et rend soit `CONFORME` + la ligne datée prête à coller ci-dessous, soit `NON CONFORME` — exit 1, exit 2 si le CSV est inutilisable. **La ligne « FAITE le » ne se colle qu'après un CONFORME constaté sur l'export réel.**
+
+**Tableau des 7 journées — à remplir au moment de l'export** (le script l'imprime automatiquement) :
+
+| jour | actifs | sur ≥ 130 | part | ≥ 95 % ? |
+|---|---|---|---|---|
+| (à mesurer) | | | | |
+
+**Quand le seuil est atteint** : coller la ligne `FAITE le <date>` fournie par le script à la place du NON FAITE ci-dessus (avec la référence du CSV), basculer le drapeau (section suivante), redéployer l'edge seul, et `npm run validate:chart-privacy` (qui couvre les deux modes) reste vert par construction.
 
 ## 7. Preuves exécutées (17 sept 2026)
 
