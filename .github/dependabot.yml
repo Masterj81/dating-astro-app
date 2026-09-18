@@ -1,0 +1,32 @@
+# JUNO-18 — Dependabot.
+#
+# Deux écosystèmes, racine uniquement :
+#  - npm : le lockfile racine couvre les workspaces (@astro/web, @astro/mobile,
+#    @astro/shared). `marketingagent/` est VOLONTAIREMENT absent : chantier
+#    étranger non stabilisé (son propre manifest, sa propre cadence) — à
+#    configurer quand il sera isolé.
+#  - github-actions : propose les nouveaux SHA correspondant aux versions des
+#    actions épinglées par commit (le commentaire `# vX.Y.Z` en bout de ligne
+#    permet à Dependabot de suivre la version).
+#
+# AUCUN auto-merge configuré — les majors arrivent en PR individuelles
+# (hors groupe patch/minor) et demandent une revue.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      compatible-patch-minor:
+        update-types:
+          - patch
+          - minor
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
