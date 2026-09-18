@@ -137,7 +137,8 @@
         }
       ],
       "expo-video",
-      "./plugins/withMonorepoNativePaths"
+      "./plugins/withMonorepoNativePaths",
+      "./plugins/withAndroidSecurityConfig"
     ],
     "experiments": {
       "typedRoutes": true,
