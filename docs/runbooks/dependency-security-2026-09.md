@@ -1,6 +1,6 @@
 # Runbook — JUNO-12 : audit et correction maîtrisée des dépendances runtime
 
-**Date de reproduction : 18 septembre 2026 · État : corrigé localement, commit local non poussé — aucune preuve Production tant que le SHA n'est pas déployé sur Vercel.**
+**Date de reproduction : 18 septembre 2026 · État : FERMÉ EN PRODUCTION le 18 septembre 2026 au soir — merge `9a5cedd` (PR #41) déployé et vérifié (voir §8).**
 
 ## 1. Méthode de reproduction
 
@@ -137,3 +137,21 @@ Reproductibilité : `npm ci --dry-run` → `up to date` (lockfile et manifestes 
 **Reste à faire pour fermer JUNO-12 côté production** :
 1. confirmer le SHA promu en Production (build logs Vercel : `next@15.5.25`), ou fusionner la PR #41 et laisser le déploiement master→Production rendre la chose non ambiguë ;
 2. re-vérifier `/en/contact` + une page image après ce déploiement.
+
+### 8bis. Fermeture — 18 septembre 2026, 13h20 UTC : FERMÉ EN PRODUCTION
+
+- **PR #41 fusionnée** à 13h20:43Z : merge `9a5cedd`, contenant `e7e703b` (dépendances) + `a7b2ed6` (audit) ; déploiement Production Vercel suivi en direct.
+- **Preuve du déploiement frais** : `Age: 0` + `X-Vercel-Cache: MISS` sur `/en/contact`, et la **CSP servie porte les trois permissions Turnstile** (`challenges.cloudflare.com` dans `script-src`, `script-src-elem` et `frame-src` seule origine) — cette CSP n'existe que depuis `2365ca5`, la production sert donc bien un build post-PR #41.
+- **Fumée complète sur `www.junosynastry.com`** :
+
+| Point contrôlé | Résultat |
+|---|---|
+| Pages marketing EN / FR / ES (`/contact`, `/`) | 200, rendus complets ✅ |
+| `/en/app` (shell applicatif) | 200 ✅ |
+| Image Optimization (`/_next/image`, `chat.png`) | 200 `image/png` 166 Ko (source 624 Ko) — optimizer + sharp 0.35.4 opérationnels ✅ |
+| Changement de langue EN→FR **en navigation client** | `/en/contact` → `/fr/contact`, page entièrement française, catégories localisées ✅ |
+| Formulaire Contact FR | 7 étiquettes françaises, hôte Turnstile rendu, **défi complété** (bouton d'envoi activé) ✅ |
+| Erreurs serveur | aucune (200 partout) ✅ |
+| Console navigateur | erreurs `%c%d NaN` **préexistantes** (présentes sur le déploiement précédent à 13h15 — pas une régression JUNO-12) ; `ERR_NAME_NOT_RESOLVED` = DNS du bac à sable de test |
+
+**JUNO-12 est fermé en production.** Restent documentées au §6 : `postcss` 8.4.31 épinglé par next (build-time, non atteignable) et la chaîne Expo SDK 54 (chantier majeur séparé).
