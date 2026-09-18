@@ -99,6 +99,14 @@ jobs:
       - name: Validate RLS contract
         run: npm run validate:rls-contract
 
+      # JUNO-15: local migration-history invariants (canonical names, no dupes,
+      # privilege migrations self-verify, cron migrations fail closed). CI
+      # cannot reach the production history — that comparison is the operator
+      # tool scripts/compare-migration-history.mjs, documented in
+      # docs/runbooks/migration-reconciliation-2026-09.md.
+      - name: Validate migration history invariants
+        run: npm run validate:migration-history
+
       # ── Second remediation wave, 8 Sep 2026 ───────────────────────────────
       # JUNO-18, JUNO-20 and the JUNO-21 decoupling. Structural, not
       # behavioural: it guards this workflow's own `permissions:` block, keeps
