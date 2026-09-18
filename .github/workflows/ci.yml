@@ -107,6 +107,14 @@ jobs:
       - name: Validate migration history invariants
         run: npm run validate:migration-history
 
+      # JUNO-17: executes the REAL Expo config plugin module — manifest
+      # attributes, backup/data-extraction rules, network security config,
+      # fail-fast surface, app.json registration. The AAB-level proof is the
+      # operator procedure in docs/runbooks/android-security-config-2026-09.md
+      # (CI cannot build a signed Release artifact).
+      - name: Validate Android security config contract
+        run: npm run validate:android-security-config
+
       # ── Second remediation wave, 8 Sep 2026 ───────────────────────────────
       # JUNO-18, JUNO-20 and the JUNO-21 decoupling. Structural, not
       # behavioural: it guards this workflow's own `permissions:` block, keeps
