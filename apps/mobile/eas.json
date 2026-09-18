@@ -48,6 +48,10 @@
       "android": {
         "buildType": "apk"
       }
+    },
+    "juno17-proof": {
+      "extends": "production",
+      "autoIncrement": false
     }
   },
   "submit": {

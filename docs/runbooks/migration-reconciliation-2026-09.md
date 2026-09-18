@@ -1,7 +1,7 @@
 # Runbook — JUNO-15 : réconciliation de l'historique des migrations Supabase
 
 **Date du diagnostic : 18 septembre 2026 · Projet : Astro-dating (`qtihezzbuubnyvrjdkjd`, us-east-1, lié, Production). Aucun staging n'existe.**
-**Statut : DIAGNOSTIQUÉ — procédure de repair révisée le 18 sept (soir) après revue opérateur (deux vagues, §5/§10) ; autorisation de repair toujours requise. `supabase db push` reste INTERDIT.**
+**Statut : FERMÉ le 18 sept 2026 — réconciliation exécutée en deux vagues (§10bis/§10ter), revue humaine favorable : 109/109 versions alignées, 0 locale-seule, 0 distant-seul, watchdog PII actif, 6 validateurs verts. `supabase db push` reste INTERDIT (§12).**
 
 ## 1. Règle absolue
 
@@ -49,7 +49,7 @@ La cause est documentée : depuis le 28 août 2026, chaque migration a été app
 | 20260903000001 | DML révoqué sur `conversations` + `discoverable_profiles` pour `authenticated` **et** `anon` (24 combinaisons testées, 0 violation) | **appliquée** |
 | 20260903000002 | **0** privilège **SELECT** colonne pour `authenticated` sur les 5 colonnes sensibles (`email`, `birth_time`, `birth_latitude`, `birth_longitude`, `push_token`) — les INSERT/UPDATE/REFERENCES restants au niveau table sont légitimes (profil propre) | **appliquée** |
 | 20260903000003 | SELECT table révoqué sur `profiles` (authenticated + anon) + re-grant colonne par colonne (subset public) | **appliquée** |
-| 20260903000004 | table `security_posture_alerts` + RLS + les 2 fonctions + `check_profiles_pii_posture()` renvoie `ok=true, offenders=[]` — **MAIS le cron `profiles-pii-posture` (17 3 * * *) est ABSENT de `cron.job`** : le bloc de planification du fichier avale sa propre défaillance (`EXCEPTION WHEN OTHERS → RAISE NOTICE`, anti-pattern JUNO-29) | **PARTIELLE** — voir §7 |
+| 20260903000004 | table `security_posture_alerts` + RLS + les 2 fonctions + `check_profiles_pii_posture()` renvoie `ok=true, offenders=[]` — **MAIS le cron `profiles-pii-posture` (17 3 * * *) est ABSENT de `cron.job`** : le bloc de planification du fichier avale sa propre défaillance (`EXCEPTION WHEN OTHERS → RAISE NOTICE`, anti-pattern JUNO-29) | **PARTIELLE** — état AVANT réconciliation ; corrigée et enregistrée au §10ter |
 | 20260907000001 | `profile_chart_visible` + `can_view_profile_chart` (EXECUTE authenticated seul) | **appliquée** |
 | 20260907000002 | `messages` : UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER révoqués pour authenticated + anon (0 violation) | **appliquée** |
 | 20260907000003 | grants EXECUTE persistants du picker (corps supplanté par 20260915000002) | **appliquée** |
@@ -95,12 +95,14 @@ Erreurs de classement corrigées pendant l'audit (assertions initiales trop larg
 
 `migration repair` n'écrit que `supabase_migrations.schema_migrations` : aucun DDL, aucune donnée, aucun cron, aucun courriel. Le risque réel est d'enregistrer une migration qui ne serait PAS appliquée — c'est ce que les preuves du §4 excluent pour les 29 candidates. Pour `20260901000003` (effet purement données), la preuve rétrospective est un agrégat (0 profil aux coordonnées de Montréal hors « montr ») : l'état ne peut provenir que de cette mise à NULL (aucune autre écriture de coordonnées n'existe depuis — le géocodage local a été supprimé le 4 sept et l'onboarding n'écrit plus de coordonnées sans ville résolue). Classée appliquée sur cette base ; le doute résiduel est consigné ici.
 
-## 7. La partielle : 20260903000004 — le watchdog PII ne tourne pas
+## 7. Historique du défaut : 20260903000004 — le watchdog PII qui n'a jamais tourné
 
-- **Constat** : `check_profiles_pii_posture()` existe et répond `ok=true`, mais **aucun job `profiles-pii-posture`** dans `cron.job`. La vérification quotidienne de posture PII (réapparition d'un `GRANT SELECT` table sur `profiles`) **ne s'exécute pas** depuis l'origine.
-- **Cause** : le bloc de planification du fichier avale sa défaillance (`EXCEPTION WHEN OTHERS THEN RAISE NOTICE`) — l'anti-pattern JUNO-29 à l'intérieur même d'une migration. La transaction a commis ; la planification a échoué en silence (pg_cron indisponible au moment de l'application manuelle, selon toute vraisemblance).
-- **Correctif proposé** : `supabase/migrations/20260918000001_reschedule_profiles_pii_posture_watchdog.sql` — fail-closed, postcondition `RAISE EXCEPTION` (job présent, actif, ciblant la vraie fonction), conforme à la règle R4 du validateur. **Non appliquée** : l'opérateur l'exécute via la Management API sur autorisation.
-- **Risque tant que le watchdog est absent** : une réapparition d'un privilège table hors contrôle de version (celle du 3 sept est déjà arrivée une fois) ne serait détectée par personne.
+> **État final (18 sept 2026, §10ter) : migration corrective `20260918000001` APPLIQUÉE ; cron `profiles-pii-posture` PRÉSENT et ACTIF à `17 3 * * *`, appelant `public.record_profiles_pii_posture()` ; repair de `20260903000004` ENREGISTRÉ dans l'historique distant.** Ce qui suit est le récit du défaut, conservé comme leçon.
+
+- **Constat (au diagnostic)** : `check_profiles_pii_posture()` existait et répondait `ok=true`, mais **aucun job `profiles-pii-posture`** dans `cron.job` — la vérification quotidienne de posture PII ne s'était **jamais exécutée** depuis l'origine.
+- **Cause** : le bloc de planification du fichier migrait sa défaillance (`EXCEPTION WHEN OTHERS THEN RAISE NOTICE`) — l'anti-pattern JUNO-29 à l'intérieur même d'une migration : la transaction commettait, la planification échouait en silence (pg_cron vraisemblablement indisponible au moment de l'application manuelle).
+- **Résolution** : `20260918000001` (fail-closed, postcondition `RAISE EXCEPTION`, conforme à la règle R4 du validateur) appliquée transactionnellement sous seconde autorisation ; quatre postconditions vérifiées vraies (présent, actif, planification, fonction appelée) avant le repair de `20260903000004`.
+- **Leçon durable** : le risque qu'une réapparition de privilège table hors contrôle de version (celle du 3 sept a existé) reste invisible **n'existe plus** — c'est précisément ce que la règle R4 de `validate:migration-history` (postcondition obligatoire, avalement interdit) empêche de reproduire.
 
 ## 8. État distant sans fichier local
 
@@ -151,14 +153,51 @@ npx supabase migration repair --status reverted <version>
 
 (La version initiale de ce runbook affirmait qu'un DELETE manuel dans `supabase_migrations.schema_migrations` était la seule voie : c'était faux pour cette CLI, et cette affirmation n'aurait pas dû être consignée sans vérification — corrigé.)
 
-## 11. Conditions de fermeture de JUNO-15
+### 10bis. Exécution de la vague 1 — 18 septembre 2026 : 29/29
 
-1. vague 1 exécutée : repair des **29** versions, preuve par preuve (§10, étape 2) ;
-2. `20260918000001` **appliquée** et le job `profiles-pii-posture` constaté actif, à `17 3 * * *`, appelant la bonne fonction (§10, étapes 3–4) ;
-3. vague 2 exécutée dans l'ordre : repair de `20260903000004` **puis** de `20260918000001` (§10, étapes 5–6) ;
-4. `compare-migration-history.mjs` : **0 locale-seule et 0 distant-seul** (§10, étape 7) ;
-5. validateurs reposés verts (§10, étape 8) ; revue humaine du tableau final ;
-6. alors — et seulement alors — décider collectivement si l'interdiction `db push` est levée. Ce runbook recommande de la maintenir tant que l'application manuelle est la voie nommée.
+Autorisation opérateur (formulation exacte archivée dans la session) : les 29 repairs **individuels** du §5 sur la Production, comparaison et preuve pivot après chaque version, arrêt immédiat à la première anomalie ; **explicitement exclus** : `db push`, l'application de `20260918000001`, la vague 2.
+
+Exécution par pilote fail-stop (une version à la fois : `repair --linked` → vérification de l'enregistrement dans `supabase_migrations.schema_migrations` → **preuve pivot du §4 re-exécutée** → journal) :
+
+| Contrôle | Résultat |
+|---|---|
+| Repairs exécutés | **29/29**, exit 0 chacun, aucun arrêt |
+| Enregistrement vérifié (schema_migrations) | 29/29 |
+| Preuves pivots re-exécutées après repair | 29/29 OK |
+| Historique distant | 78 → **107** versions |
+| Locales-seules | 31 → **2** (exactement `20260903000004` + `20260918000001`, la paire de vague 2) |
+| Distantes-seules | **0** |
+| `cron.job` | **7 jobs, inchangé** — un repair n'a créé/activé/modifié aucun cron, aucune donnée, aucun schéma |
+
+Journal complet (29 lignes `version|exit|registered|pivot`) : chaque ligne `yes|yes`. Les états avant/après (`migration list --linked`) sont archivés côté opérateur (`juno15-wave1-before.txt` / `-after.txt`).
+
+**Reste la seconde autorisation** : étapes 3–6 du §10 (application transactionnelle de `20260918000001`, vérification du watchdog, repair `20260903000004` puis `20260918000001`), puis 7–8 (compare 0/0 + validateurs).
+
+### 10ter. Seconde phase — 18 septembre 2026 : exécutée intégralement
+
+Autorisation opérateur (bornée) : appliquer **uniquement** `20260918000001`, vérifier ses quatre postconditions, et seulement si toutes vraies exécuter les deux repairs dans l'ordre ; interdits maintenus : `db push`, toute autre migration, modification de données, cron ou configuration.
+
+| Étape | Résultat |
+|---|---|
+| 3. Application transactionnelle de `20260918000001` (Management API) | exécutée sans erreur (script `begin; … commit;` à postcondition `RAISE EXCEPTION`) |
+| 4. Postconditions du watchdog | **présent ✅ · actif ✅ · `17 3 * * *` ✅ · appelle `record_profiles_pii_posture()` ✅** — `cron.job` passe de 7 à **8** jobs (exactement le job autorisé, aucun autre changement) |
+| 5. Repair `20260903000004` | exit 0, enregistré (sa postcondition manquante — le cron — est désormais restaurée) |
+| 6. Repair `20260918000001` | exit 0, enregistré (fondé sur son exécution réelle à l'étape 3) |
+| 7. Compare final | **local=109 · remote=109 · both=109 · 0 locale-seule · 0 distant-seul** — « historique local et distant alignés » |
+| 8. Validateurs | `validate:migration-history`, `validate:rls-contract`, `validate:cron-secrets`, `validate:repo-hygiene`, `validate:media-purge`, `validate:orphan-purge` — **6/6 exit 0** |
+
+Aucune anomalie, aucun arrêt. Les seules mutations Production de cette phase : une ligne dans `cron.job` (le watchdog) et deux lignes dans `supabase_migrations.schema_migrations`.
+
+**Revue humaine effectuée le 18 sept 2026 : favorable** — 109/109 versions alignées ; 0 locale-seule ; 0 distant-seul ; watchdog présent, actif, correctement planifié ; réparations exécutées dans l'ordre autorisé ; six validateurs verts ; aucune mutation étrangère au périmètre. **Toutes les conditions du §11 sont remplies : JUNO-15 est FERMÉ.** `supabase db push` demeure INTERDIT (§12).
+
+## 11. Conditions de fermeture de JUNO-15 — TOUTES REMPLIES le 18 sept 2026
+
+1. ✅ vague 1 exécutée : repair des **29** versions, preuve par preuve (§10bis) ;
+2. ✅ `20260918000001` appliquée et job `profiles-pii-posture` constaté actif, à `17 3 * * *`, appelant la bonne fonction (§10ter, étapes 3–4) ;
+3. ✅ vague 2 exécutée dans l'ordre : repair `20260903000004` puis `20260918000001` (§10ter, étapes 5–6) ;
+4. ✅ `compare-migration-history.mjs` : **0 locale-seule et 0 distant-seul** (109/109) ;
+5. ✅ validateurs verts (6/6) **et revue humaine du tableau final effectuée — favorable** ;
+6. ✅ décision rendue : **`db push` reste interdit** (§12) — l'application manuelle demeure la voie nommée, et les migrations historiques non rejouables n'ont pas changé de nature.
 
 ## 12. Interdiction persistante
 

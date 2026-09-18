@@ -1047,9 +1047,9 @@ données publiées à côté (JUNO-01).
 | **JUNO-12** | Supply chain | 47 vulnérabilités npm ; `next`, `next-intl`, `undici` atteignables à l'exécution | **Moyenne** | Haute | Confirmé — **FERMÉ le 18 sep 2026** : audit reproduit (50 complètes / 43 runtime, pas 47) ; `next` 15.5.14→15.5.25 (critical : RCE Image Optimization AVIF, bypass middleware), `next-intl` 4.8.3→4.14.5 (open redirect), `sharp` 0.34.5→0.35.4, `ws`/`undici`/`js-yaml`/`brace-expansion` en plage, `@anthropic-ai/sdk` morte retirée ; runtime 43→35, **zéro advisory web runtime atteignable restante** ; prouvé en production (merge `9a5cedd`, PR #41 : CSP fraîche, images optimizer, changement de langue, formulaire FR + Turnstile) ; résiduel documenté = chaîne Expo SDK 54 (build/dev, correctif = SDK 57 majeure, chantier séparé) et `postcss` 8.4.31 épinglé par next (build-time, non atteignable) — voir runbook dependency-security |
 | **JUNO-13** | Web | CSP sans nonce, `frame-ancestors` absent, pas de COOP/CORP/COEP | **Moyenne** | Haute | Confirmé |
 | **JUNO-14** | Web / API | Limitation de débit en mémoire sur du serverless = inopérante | **Moyenne** | Haute | Confirmé — **FERMÉ le 18 sep 2026** : `request-deletion` sur `check_rate_limit` par compte vérifié (fail-closed), `/api/contact` sur double limite durable HMAC ; prouvé en production avec JUNO-07 |
-| **JUNO-15** | Infra / DB | Historique de migrations désynchronisé : l'état réel de la base n'est pas prouvable | **Moyenne** | Haute | Confirmé — **DIAGNOSTIQUÉ le 18 sep 2026** : la dérive reproduite est de **30 migrations locales-seules** (tout ce qui a été appliqué à la main depuis le 28 août, + `20260824000001` entrelacée), 0 distant-seul ; **29 prouvées appliquées** par vérifications lecture seule (catalogues + agrégats), **1 partielle** (`20260903000004` : le watchdog PII `profiles-pii-posture` n'a jamais été planifié — son bloc cron avale sa propre défaillance, anti-pattern JUNO-29) ; correctif additif `20260918000001` prêt (non appliqué), validateur `validate:migration-history` câblé CI (canari prouvé discriminant) ; repair des 29 en attente d'autorisation version par version ; `db push` toujours interdit — voir runbook migration-reconciliation |
+| **JUNO-15** | Infra / DB | Historique de migrations désynchronisé : l'état réel de la base n'est pas prouvable | **Moyenne** | Haute | Confirmé — **FERMÉ le 18 sep 2026** (revue humaine favorable) : dérive reproduite à **30 locales-seules** ; 29 prouvées puis réparées avec preuve pivot par version ; correctif fail-closed `20260918000001` appliqué → watchdog PII `profiles-pii-posture` **présent, actif, 17 3 * * *, appelant `record_profiles_pii_posture()`** (il n'avait jamais tourné — bloc cron avalant sa défaillance) ; repairs `20260903000004` puis `20260918000001` ; **historique 109/109 aligné (0/0)**, 6 validateurs verts, `validate:migration-history` câblé CI (canari discriminant) ; **`db push` reste interdit** — voir runbook migration-reconciliation §10bis/§10ter |
 | **JUNO-16** | Service worker | Cache runtime PWA non cloisonné par compte, jamais purgé ; `notificationclick` ouvre une URL du payload | **Moyenne** | Moyenne | À vérifier dynamiquement |
-| **JUNO-17** | Android | `allowBackup="true"`, pas de `dataExtractionRules`, pas de Network Security Config | **Moyenne** | Moyenne | Probable |
+| **JUNO-17** | Android | `allowBackup="true"`, pas de `dataExtractionRules`, pas de Network Security Config | **Moyenne** | Moyenne | Confirmé — **corrigé LOCALEMENT le 18 sep 2026** : constat reproduit sur le prebuild (`allowBackup=true`, aucun des 4 attributs/règles) ; plugin versionné `withAndroidSecurityConfig` (5 attributs imposés + 3 XML générés : exclusions cloud-backup **et** device-transfer sur 5 domaines ×2 générations Android, cleartext interdit, CA système seules, zéro pinning, debug-overrides borné à Metro) ; prebuild contrôlé **prouvé** (attributs + ressources, idempotence bit-à-bit) ; 16 tests + validateur CI discriminant (canari) ; build Release local bloqué par un bug de jointure de chemin Metro/Windows (bundle OK en entry absolu : 8,7 Mo / 2 754 modules ; EAS/Linux non affecté — build 130 en preuve) ; **build EAS préparé, sur autorisation** — voir runbook android-security-config |
 | **JUNO-18** | CI/CD | Workflow sans bloc `permissions`, actions épinglées par tag, aucun scan de dépendances ni de secrets | **Faible** | Haute | Confirmé |
 | **JUNO-19** | Web / Compte | Deux parcours de suppression divergents : le web supprime définitivement sans ré-authentification ni délai de grâce | **Faible** | Haute | Confirmé |
 | **JUNO-20** | Dépôt | `apps/mobile/app/appaD.zip` : instantané de 147 Ko du code pré-durcissement, versionné dans le routeur | **Faible** | Haute | Confirmé |
@@ -1980,7 +1980,7 @@ puisqu'il n'y a pas de compte.
 | **Plateforme** | Infrastructure / base de données |
 | **Sévérité** | **Moyenne** (méta-constat : il conditionne la confiance de tout le §3) |
 | **Confiance** | Haute |
-| **Statut** | **Confirmé** — ouvert depuis le 3 sep |
+| **Statut** | **FERMÉ le 18 septembre 2026** — réconcilié en deux vagues sous autorisation (runbook migration-reconciliation §10bis/§10ter) : 109/109 versions alignées, 0 locale-seule, 0 distant-seul ; watchdog PII `profiles-pii-posture` actif ; 6 validateurs verts, `validate:migration-history` câblé CI ; revue humaine favorable ; **`supabase db push` reste interdit** |
 | **Référentiels** | ASVS V14.1.1 ; NIST SSDF PO.3 |
 | **Priorité / effort** | P1 · ~1 journée |
 
@@ -2457,9 +2457,12 @@ WHERE table_schema = 'public' AND privilege_type = 'TRUNCATE'
 ```
 
 **D. Réconciliation des migrations — JUNO-15.**
-`supabase migration list --linked` ; comparer avec `supabase/migrations/`. Les neuf migrations
+`supabase migration list --linked` ; comparer avec `supabase/migrations/`. ~~Les neuf migrations
 `20260824000001` → `20260902000001` doivent être tranchées une par une, puis
-`supabase migration repair --status applied`.
+`supabase migration repair --status applied`.~~ **Fait — fermé le 18 sep 2026** : la dérive réelle
+était de 30 locales-seules ; réconciliation complète en deux vagues (109/109, 0/0), outil
+`scripts/compare-migration-history.mjs`, procédure et preuves dans
+`docs/runbooks/migration-reconciliation-2026-09.md`.
 
 **E. Réglages d'authentification du projet hébergé.** `config.toml` ne décrit que l'environnement
 local. À lire dans *Authentication → Providers / Sessions / Rate limits* :
@@ -2576,11 +2579,13 @@ cohabitent.
 
 ## 12. Risques résiduels après correction
 
-- **La confiance dans l'état de la base reste dérivée du dépôt.** Tant que JUNO-15 n'est pas
-  soldé, chaque affirmation sur un privilège est une inférence. L'incident du `GRANT` hors contrôle
-  de version des 2-3 septembre montre que la dérive est réelle et silencieuse. Le job `pg_cron` de
-  `20260903000004` couvre les neuf colonnes de `profiles` ; il ne couvre ni `messages`, ni
-  `conversations`, ni les buckets.
+- **La confiance dans l'état de la base n'est plus dérivée du seul dépôt — mais la surveillance
+  reste bornée.** JUNO-15 soldé le 18 sep 2026 (109/109, 0/0, runbook migration-reconciliation) :
+  l'historique décrit désormais la base réelle, et le watchdog `profiles-pii-posture` tourne
+  quotidiennement. **Limite persistante** : ce job couvre les colonnes de `profiles` ; il ne couvre
+  ni `messages`, ni `conversations`, ni les buckets — un `GRANT` hors contrôle de version sur ces
+  objets resterait invisible jusqu'au prochain audit. L'incident du `GRANT` des 2-3 septembre
+  reste la preuve que la dérive est réelle et silencieuse.
 - **L'arrondi de JUNO-01 est un rideau, pas un mur.** À 0,01°, la Lune laisse encore une fenêtre
   d'environ une minute sur l'instant de naissance. La vraie protection est cumulative :
   arrondi **plus** contrôle de tier et de blocage (JUNO-02) **plus** limite de débit stricte. Ne pas
