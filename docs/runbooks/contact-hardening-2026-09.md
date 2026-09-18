@@ -1,6 +1,6 @@
 # Runbook — Durcissement `/api/contact` et limites de débit durables (JUNO-07 + JUNO-14)
 
-**Date : 17 septembre 2026 · Statut : CORRIGÉ LOCALEMENT — commit local, non poussé, non déployé ; activation production conditionnée à la configuration Turnstile/HMAC (voir §7).**
+**Date : 17 septembre 2026 · Statut : FERMÉ EN PRODUCTION le 18 septembre 2026 — fumées anglaise et françaises réussies (voir §9 et §10).**
 
 ## 1. Constats (audit 2026-09-07) et reproduction
 
@@ -115,7 +115,7 @@ L'opérateur a exécuté la procédure du §7 (widget Turnstile créé, variable
 
 **Validations** : suite web 61/61 ; transactional-emails 34/34 ; `validate:email-templates` 1 149 ; locales + contrat propres ; `tsc` + lint ciblés sans erreur ; `build:web` compilé ; `git diff --check` propre ; recherche finale : plus aucun `value={t(` dans les composants.
 
-**Fermeture JUNO-07/JUNO-14** : la fumée **anglaise** a réussi ; la fermeture définitive attend encore la **fumée française** décrite au §9 (deux adresses distinctes, `Question générale`, un seul envoi interne, `Répondre` vers le visiteur).
+**Fermeture JUNO-07/JUNO-14** : les fumées anglaise **et** française ont réussi — voir §10 pour la preuve de production du 18 septembre 2026.
 
 ## 8. Notes résiduelles
 
@@ -139,3 +139,23 @@ Après push autorisé, CI verte et déploiement Production du nouveau SHA :
 10. vérifier les logs sans afficher de données sensibles.
 
 Ne pas provoquer volontairement le rate limit lors de cette fumée.
+
+## 10. Preuve de fermeture en production — 18 septembre 2026
+
+Fumées exécutées en production par l'opérateur après le déploiement du merge
+`3abc3eb` (PR #40, contenant `2365ca5` — CSP Turnstile — et `0c39391` —
+catégories canoniques). Aucune donnée personnelle n'est consignée ici.
+
+| Point contrôlé | Résultat |
+|---|---|
+| Date du test production | 18 septembre 2026 |
+| SHA déployé | merge `3abc3eb` (PR #40), inclut `0c39391` + `2365ca5` |
+| `/en/contact` — widget Turnstile | visible et validé ✅ |
+| `/fr/contact` — catégorie « Question générale » | envoi réussi ✅ |
+| Courriels reçus dans `support@junosynastry.com` | **exactement un** ✅ |
+| Courriel accusé au visiteur | **zéro** ✅ |
+| `replyTo` du courriel interne | adresse du visiteur ✅ |
+| Journaux | sans secret ni donnée sensible ✅ |
+
+**JUNO-07 et JUNO-14 sont fermés en production.** Les seuils de débit
+(5/h origine, 3/h adresse) restent sous surveillance via les `429`.
