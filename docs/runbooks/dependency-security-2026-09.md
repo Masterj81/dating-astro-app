@@ -115,12 +115,25 @@ Reproductibilité : `npm ci --dry-run` → `up to date` (lockfile et manifestes 
 | `validate:premium-gating` | propre ✅ |
 | `git diff --check` | propre ✅ |
 
-## 8. Correction locale vs preuve Production
+## 8. Correction locale vs preuve Production — suivi du 18 septembre (soir)
 
-Ce runbook prouve l'état **local**. Rien n'est fermé en production tant que :
-1. le push n'est pas autorisé ;
-2. la CI n'est pas verte ;
-3. Vercel n'a pas déployé le SHA exact ;
-4. la fumée web de base n'a pas confirmé le site en ligne (une seule passe : marketing, `/app`, `/en/contact` avec widget Turnstile visible).
+État Git au suivi : `a7b2ed6` poussé, CI **verte** (run 35348476421), **PR #41 ouverte, non fusionnée** — `origin/master` = `3abc3eb` (PR #40, **avant** JUNO-12).
 
-Après déploiement, re-vérifier côté Vercel que la version déployée embarque bien `next` 15.5.25 (`x-vercel-id` + build logs).
+**Fumée opérateur** : Resend n'étant pas configuré en Preview, la fumée a été exécutée **en Production** (formulaire Contact validé). Pour que cette preuve couvre JUNO-12, le déploiement promu en Production doit être celui du SHA `a7b2ed6` — **à confirmer dans les build logs Vercel** (aucun fingerprint de version `next` n'est observable de l'extérieur). Si la Production courante est encore celle de `3abc3eb`, la fumée n'a prouvé que le correctif catégories (déjà fusionné), pas les dépendances.
+
+**Vérification externe du 18 sept (www.junosynastry.com)** :
+
+| Point contrôlé | Résultat |
+|---|---|
+| `www/en/contact`, `www/fr/contact` | 200, rendus complets (header, footer, formulaire) ✅ |
+| Catégories EN | 7 valeurs canoniques ✅ |
+| Catégories FR | 7 étiquettes localisées (« Question générale »…) ✅ |
+| Turnstile | hôte rendu ; **défi complété automatiquement** dans un navigateur réel (bouton d'envoi activé sans jeton manquant) ✅ |
+| Envoi sans jeton | bouton désactivé (fail-closed) ✅ |
+| `app.` hosts → segments marketing | 307 vers `/{locale}/app` — **voulu** par `middleware.ts` (`MARKETING_SEGMENTS`), pas une régression ✅ |
+| `apex → www` | 307 ✅ |
+| Console | aucune erreur applicative ; les `ERR_NAME_NOT_RESOLVED` observés venaient du DNS du bac à sable de test, pas du site |
+
+**Reste à faire pour fermer JUNO-12 côté production** :
+1. confirmer le SHA promu en Production (build logs Vercel : `next@15.5.25`), ou fusionner la PR #41 et laisser le déploiement master→Production rendre la chose non ambiguë ;
+2. re-vérifier `/en/contact` + une page image après ce déploiement.
