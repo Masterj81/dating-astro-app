@@ -76,14 +76,48 @@ Le rapport du Manifest Merger Release sera produit par le build EAS (`app/build/
 - **Le pipeline JS est sain** : la même commande `export:embed` avec `--entry-file` **absolu** produit le bundle Release complet — **8,7 Mo, 2 754 modules, 46 assets, 20 s**.
 - EAS/Linux n'est pas affecté (le build 130 de production a été produit par ce même flux le 11 sept). **Aucun contournement versionné** : un patch d'artefact local (entry absolu dans le build.gradle généré) a été testé puis l'artefact entier supprimé — jamais commis, jamais proposé comme solution.
 
-## 7. Build EAS — commande préparée, AUTORISATION EXPLICITE REQUISE
+## 7. Build EAS — profil `juno17-proof` préparé et VÉRIFIÉ, AUTORISATION EXPLICITE REQUISE
+
+**Deux risques identifiés en revue (18 sept soir) — écartés par conception du profil :**
+1. le profil `production` porte `autoIncrement: true` + `appVersionSource: remote` : même sans `eas submit`, un build aurait **incrémenté le `versionCode` distant** — interdit sans autorisation ;
+2. l'arbre de travail contient des changements étrangers non commités : un build lancé depuis ce workspace les embarquerait dans l'archive.
+
+**Profil dédié** (`apps/mobile/eas.json`) :
+
+```json
+"juno17-proof": {
+  "extends": "production",
+  "autoIncrement": false
+}
+```
+
+**Résolution effective vérifiée par la CLI** (`npx eas config --platform android --profile juno17-proof`, eas-cli, lecture seule) :
 
 ```
-# depuis apps/mobile — profil production (gradleCommand :app:bundleRelease), autoIncrement géré par EAS (versionCode distant), AUCUNE soumission Play :
-npx eas build --platform android --profile production --non-interactive --no-wait
+Build profile "juno17-proof"
+{
+  "credentialsSource": "remote",
+  "distribution": "store",
+  "autoIncrement": false,
+  "env": { "APP_ENV": "production", "SENTRY_DISABLE_AUTO_UPLOAD": "true" },
+  "gradleCommand": ":app:bundleRelease --stacktrace --info"
+}
 ```
 
-À vérifier avant lancement : le SHA source est le commit JUNO-17 ; conserver l'identifiant de build ; **jamais** `eas submit`. Après build : télécharger l'AAB, puis preuve §8.
+Soit exactement : **AAB Release** (bundleRelease) · **`versionCode` distant conservé** (autoIncrement=false) · **aucune soumission Play** (rien dans le profil ne soumet ; `eas submit` est une commande distincte, interdite ici) · **`SENTRY_DISABLE_AUTO_UPLOAD=true`** hérité. La config résolue confirme aussi que `./plugins/withAndroidSecurityConfig` figure dans les plugins du build.
+
+**Procédure opérateur (après push des commits JUNO-17, CI verte) :**
+
+```powershell
+# 1. worktree PROPRE au SHA exact — jamais depuis l'arbre sale :
+git worktree add C:\temp\juno17-proof <SHA-exact-du-commit-JUNO-17>
+cd C:\temp\juno17-proof\apps\mobile
+# 2. build sans attente ni publication :
+npx eas build --platform android --profile juno17-proof --non-interactive --no-wait
+# 3. JAMAIS : npx eas submit (quel que soit le profil)
+# 4. AAB terminé → télécharger, puis preuve §8 (bundletool déjà en %TEMP%)
+# 5. nettoyage : git worktree remove
+```
 
 ## 8. Preuve AAB attendue (§11 du brief) — procédure prête
 
