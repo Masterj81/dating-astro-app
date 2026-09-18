@@ -39,10 +39,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # JUNO-18: SHA immuable (tag v4.4.0) — un tag est réassignable, un commit
+        # ne l'est pas. persist-credentials: false retire le token GitHub de la
+        # config git locale dès la fin de l'étape : aucune étape suivante (ni
+        # action tierce) ne peut pousser avec.
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           # 22.18+ is a hard requirement, not a preference:
           # scripts/validate-email-templates.mjs imports the edge-function
@@ -58,6 +64,15 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # JUNO-18: la surface publiée (web) reste sans vulnérabilité runtime
+      # high/critical. Baseline bornée à l'unique postcss épinglé par next
+      # (scripts/audit-web-runtime-baseline.json) — la chaîne Expo SDK 54 est
+      # une dette MOBILE documentée (runbook dependency-security §6.2), hors
+      # de cette porte volontairement : la racine entière resterait rouge sans
+      # information nouvelle à chaque run.
+      - name: Audit web runtime dependencies
+        run: node scripts/audit-web-runtime.mjs
 
       - name: Validate locales
         run: npm run validate:locales
@@ -128,6 +143,15 @@ jobs:
       # for a real secret scanner: it reads the working tree, not the history.
       - name: Validate repository hygiene
         run: npm run validate:repo-hygiene
+
+      # JUNO-18: garde auto-protectrice de CE pipeline — actions épinglées par
+      # SHA + version en commentaire, permissions minimales (write seulement
+      # au job qui le justifie), jamais pull_request_target, checkout sans
+      # credentials persistants, aucune interpolation non fiable dans run:,
+      # et PRÉSENCE des gardes elles-mêmes (audit web, gitleaks, dependabot,
+      # codeql). Testée par injection : chaque retrait fait échouer ce step.
+      - name: Validate CI security invariants
+        run: node scripts/validate-ci-security.mjs
 
       - name: Validate lifecycle email templates
         run: npm run validate:email-templates
