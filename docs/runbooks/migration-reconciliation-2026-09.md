@@ -1,7 +1,7 @@
 # Runbook — JUNO-15 : réconciliation de l'historique des migrations Supabase
 
 **Date du diagnostic : 18 septembre 2026 · Projet : Astro-dating (`qtihezzbuubnyvrjdkjd`, us-east-1, lié, Production). Aucun staging n'existe.**
-**Statut : DIAGNOSTIQUÉ — procédure de repair révisée le 18 sept (soir) après revue opérateur (deux vagues, §5/§10) ; autorisation de repair toujours requise. `supabase db push` reste INTERDIT.**
+**Statut : VAGUE 1 EXÉCUTÉE le 18 sept (29/29 repairs, §10bis) — en attente de la seconde autorisation : application de `20260918000001` puis vague 2. `supabase db push` reste INTERDIT.**
 
 ## 1. Règle absolue
 
@@ -150,6 +150,26 @@ npx supabase migration repair --status reverted <version>
 ```
 
 (La version initiale de ce runbook affirmait qu'un DELETE manuel dans `supabase_migrations.schema_migrations` était la seule voie : c'était faux pour cette CLI, et cette affirmation n'aurait pas dû être consignée sans vérification — corrigé.)
+
+### 10bis. Exécution de la vague 1 — 18 septembre 2026 : 29/29
+
+Autorisation opérateur (formulation exacte archivée dans la session) : les 29 repairs **individuels** du §5 sur la Production, comparaison et preuve pivot après chaque version, arrêt immédiat à la première anomalie ; **explicitement exclus** : `db push`, l'application de `20260918000001`, la vague 2.
+
+Exécution par pilote fail-stop (une version à la fois : `repair --linked` → vérification de l'enregistrement dans `supabase_migrations.schema_migrations` → **preuve pivot du §4 re-exécutée** → journal) :
+
+| Contrôle | Résultat |
+|---|---|
+| Repairs exécutés | **29/29**, exit 0 chacun, aucun arrêt |
+| Enregistrement vérifié (schema_migrations) | 29/29 |
+| Preuves pivots re-exécutées après repair | 29/29 OK |
+| Historique distant | 78 → **107** versions |
+| Locales-seules | 31 → **2** (exactement `20260903000004` + `20260918000001`, la paire de vague 2) |
+| Distantes-seules | **0** |
+| `cron.job` | **7 jobs, inchangé** — un repair n'a créé/activé/modifié aucun cron, aucune donnée, aucun schéma |
+
+Journal complet (29 lignes `version|exit|registered|pivot`) : chaque ligne `yes|yes`. Les états avant/après (`migration list --linked`) sont archivés côté opérateur (`juno15-wave1-before.txt` / `-after.txt`).
+
+**Reste la seconde autorisation** : étapes 3–6 du §10 (application transactionnelle de `20260918000001`, vérification du watchdog, repair `20260903000004` puis `20260918000001`), puis 7–8 (compare 0/0 + validateurs).
 
 ## 11. Conditions de fermeture de JUNO-15
 
