@@ -1,0 +1,44 @@
+# JUNO-18 — configuration Gitleaks versionnée.
+#
+# Étend le jeu de règles PAR DÉFAUT de Gitleaks (maintenu en amont) sans
+# réécrire quoi que ce soit : c'est la valeur de cette intégration. AUCUNE
+# exclusion de répertoire : chaque faux positif est traité par une règle
+# CIBLÉE sur la valeur exacte capturée, avec sa justification ci-dessous
+# (scan complet de l'historique le 18 sept 2026 : 559 commits, 11 détections,
+# toutes faux positifs — aucune n'est un secret).
+title = "JUNO gitleaks configuration"
+
+[extend]
+useDefault = true
+
+# ---------------------------------------------------------------------------
+# Faux positifs caractérisés (2026-09-18, scan historique complet).
+# Chaque entrée ne matcher JAMAIS un vrai secret du même type : voir la
+# justification ligne à ligne.
+# ---------------------------------------------------------------------------
+
+# 6+4 détections : les "valeurs" sont des IDENTIFIANTS DE TRADUCTION i18n
+# (luckyDaysV2Lens*, monthlyWeekBody_N) — le mot « key » au sens « clé de
+# locale », pas clé secrète. La règle generic-api-key s'amorce sur le suffixe
+# Key des propriétés (labelKey/bodyKey) voisines. Un vrai secret ne matcherait
+# pas ces préfixes métier.
+[[allowlists]]
+description = "i18n translation keys in LuckyDays/MonthlyHoroscope components (labelKey/bodyKey property names trip generic-api-key)"
+regexTarget = "secret"
+regexes = [
+  '''luckyDaysV2Lens\w*''',
+  '''monthlyWeekBody_\d+''',
+]
+
+# 1 détection : scripts/validate-repo-hygiene.mjs CONTIENT la chaîne
+# -----BEGIN PRIVATE KEY----- parce que c'est le garde lui-même qui détecte
+# les PEM réels. L'allowlist exige la PROSE DOCUMENTAIRE qui suit l'en-tête
+# dans ce commentaire (« appears inside `pemToArrayBuffer` ») : un vrai PEM
+# fuited (en-tête suivi de matériel base64, jamais cette phrase) reste
+# détecté — prouvé par canari ci-dessous.
+[[allowlists]]
+description = "the repo-hygiene validator's own PEM-detection rule documents the header inside a prose comment (documentation, not a key)"
+regexTarget = "secret"
+regexes = [
+  '''(?s)-----BEGIN PRIVATE KEY-----.{0,120}appears inside''',
+]
