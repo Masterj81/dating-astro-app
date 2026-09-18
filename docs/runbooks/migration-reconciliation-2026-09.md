@@ -1,7 +1,7 @@
 # Runbook — JUNO-15 : réconciliation de l'historique des migrations Supabase
 
 **Date du diagnostic : 18 septembre 2026 · Projet : Astro-dating (`qtihezzbuubnyvrjdkjd`, us-east-1, lié, Production). Aucun staging n'existe.**
-**Statut : DIAGNOSTIQUÉ — autorisation de repair requise, version par version. `supabase db push` reste INTERDIT.**
+**Statut : DIAGNOSTIQUÉ — procédure de repair révisée le 18 sept (soir) après revue opérateur (deux vagues, §5/§10) ; autorisation de repair toujours requise. `supabase db push` reste INTERDIT.**
 
 ## 1. Règle absolue
 
@@ -69,9 +69,9 @@ La cause est documentée : depuis le 28 août 2026, chaque migration a été app
 
 Erreurs de classement corrigées pendant l'audit (assertions initiales trop larges, aucune n'était une dérive réelle) : 20260828000001 (quota lu dans un commentaire), 20260831000002 (le DROP de l'ancienne signature est dans le fichier), 20260903000002 (les INSERT/UPDATE table s'étendent aux colonnes — la propriété de sécurité porte sur SELECT seul), 20260909000001 (l'armement est l'état final voulu), 20260915000001 (le GRANT SELECT vise service_role).
 
-## 5. Réparations proposées — autorisation requise, version par version
+## 5. Réparations proposées — autorisation requise, version par version, EN DEUX VAGUES
 
-**Candidates au repair** (effets intégralement prouvés, §4) — 29 versions :
+**Vague 1 — candidates au repair immédiat** (effets intégralement prouvés, §4) — 29 versions :
 
 ```
 20260824000001 20260828000001 20260830000001 20260831000001 20260831000002
@@ -82,13 +82,14 @@ Erreurs de classement corrigées pendant l'audit (assertions initiales trop larg
 20260914000001 20260915000001 20260915000002 20260916000001
 ```
 
-Commande unitaire (une à la fois, jamais en boucle) :
+**Vague 2 — repairs CONDITIONNELS, uniquement après application et vérification du correctif** (§10, étapes 3–4) :
 
-```
-npx supabase migration repair --status applied <version>
-```
+| Version | Condition qui débloque son repair |
+|---|---|
+| `20260903000004` | `20260918000001` appliquée ET job `profiles-pii-posture` constaté (présent, actif, `17 3 * * *`, appelle `record_profiles_pii_posture`) — la postcondition manquante de 03000004 est alors restaurée, tous ses effets sont réellement présents |
+| `20260918000001` | avoir été exécutée manuellement (étape 3) — c'est l'exécution qui fonde le marquage, pas l'existence du fichier |
 
-**Hors repair** : `20260903000004` (un effet absent — le cron — interdit le marquage « appliquée ») et `20260918000001` (créée par ce chantier, non appliquée).
+**Jamais en vrac** : chaque repair est unitaire, dans cet ordre (29 × vague 1, puis 03000004, puis 18000001). L'ordre de la vague 2 est significatif : 03000004 ne devient « appliquée » que PARCE QUE 18000001 restaure son effet manquant.
 
 ## 6. Risques de chaque repair
 
@@ -119,23 +120,45 @@ Les motifs sont testés sur le **code sans commentaires** (leçon documentée du
 
 `scripts/compare-migration-history.mjs` mesure la dérive local/distant côté opérateur. **Limite documentée** : la CI n'a pas d'accès au projet Production et ne peut pas prouver l'état distant — le compare est une opération opérateur, à consigner dans ce runbook à chaque chantier base.
 
-## 10. Procédure de repair (après autorisation explicite, par version exacte)
+## 10. Procédure de réconciliation complète (chaque étape sur autorisation explicite)
 
-Pour CHAQUE version autorisée :
-1. état avant : `node scripts/compare-migration-history.mjs` (archive la sortie) ;
-2. `npx supabase migration repair --status applied <version>` ;
-3. vérifier : code de sortie 0, la version apparaît en colonne remote, **et re-vérifier UNE preuve pivot du §4 pour cette version** (le repair ne touche que les métadonnées ; toute différence de schéma = arrêt immédiat) ;
-4. consigner la ligne dans ce runbook avant de passer à la suivante.
+> Séquence révisée le 18 sept (soir) après revue opérateur : la version initiale de ce
+> runbook excluait définitivement `20260903000004` et `20260918000001` du repair tout en
+> exigeant « aucune locale-seule » en fermeture — incohérent. Les deux versions sont
+> désormais des repairs **conditionnels de vague 2** (§5), dans cet ordre exact :
 
-**Arrêt immédiat** si un repair produit un résultat inattendu ; jamais de `db push` pour « remettre d'aplomb ». Rollback des métadonnées : il n'existe pas de `repair --status reverted` sûr — la ligne d'historique erronée se corrige par DELETE manuel dans `supabase_migrations.schema_migrations` (documenté, décision opérateur).
+1. **Pousser** les commits du chantier et obtenir une **CI verte** (PR #42).
+2. **Vague 1** — repair des **29 versions** prouvées, UNE À UNE. Pour chacune :
+   - état avant : `node scripts/compare-migration-history.mjs` (archiver la sortie) ;
+   - `npx supabase migration repair --status applied <version>` ;
+   - vérifier : code de sortie 0, version en colonne remote, **et re-vérifier UNE preuve pivot du §4 pour cette version** ;
+   - consigner la ligne ici avant de passer à la suivante.
+3. **Appliquer transactionnellement `20260918000001`** via la Management API (le fichier est `begin; … commit;` avec postcondition `RAISE EXCEPTION` : une exécution partielle est impossible).
+4. **Vérifier le watchdog** : `profiles-pii-posture` présent dans `cron.job`, `active=true`, `schedule='17 3 * * *'`, commande appelant `record_profiles_pii_posture`. Toute divergence = arrêt (la migration n'a pas pu passer sa propre postcondition — ne pas « arranger » à la main).
+5. **Repair `20260903000004`** (`--status applied`) — légitime à partir de maintenant : sa postcondition manquante (le cron) est restaurée, TOUS ses effets sont présents.
+6. **Repair `20260918000001`** (`--status applied`) — elle vient d'être réellement exécutée à l'étape 3.
+7. **Re-comparer** : `compare-migration-history` → **0 locale-seule, 0 distant-seul**.
+8. **Relancer tous les validateurs** : `validate:migration-history`, `validate:rls-contract`, `validate:cron-secrets`, `validate:repo-hygiene`, `validate:media-purge`, `validate:orphan-purge`.
+9. **`db push` demeure INTERDIT** (§12) — la réconciliation de l'historique ne change pas la nature non rejouable des migrations historiques.
+
+**Arrêt immédiat** si une commande produit un résultat inattendu ; jamais de `db push` pour « remettre d'aplomb ».
+
+**Rollback des métadonnées** — fait vérifié le 18 sept 2026 sur la CLI installée (`supabase 2.117.0`, `npx supabase migration repair --help`) : le drapeau `--status` accepte **`applied` et `reverted`**. Un repair erroné s'annule donc par la commande symétrique :
+
+```
+npx supabase migration repair --status reverted <version>
+```
+
+(La version initiale de ce runbook affirmait qu'un DELETE manuel dans `supabase_migrations.schema_migrations` était la seule voie : c'était faux pour cette CLI, et cette affirmation n'aurait pas dû être consignée sans vérification — corrigé.)
 
 ## 11. Conditions de fermeture de JUNO-15
 
-1. repair des 29 versions autorisées, preuve par preuve (§10) ;
-2. `20260918000001` appliquée et le job `profiles-pii-posture` constaté actif dans `cron.job` ;
-3. `compare-migration-history.mjs` : plus aucune locale-seule, zéro distant-seul ;
-4. validateurs RLS/cron/médias reposés verts ; revue humaine du tableau final ;
-5. alors — et seulement alors — décider collectivement si l'interdiction `db push` est levée. Ce runbook recommande de la maintenir tant que l'application manuelle est la voie nommée.
+1. vague 1 exécutée : repair des **29** versions, preuve par preuve (§10, étape 2) ;
+2. `20260918000001` **appliquée** et le job `profiles-pii-posture` constaté actif, à `17 3 * * *`, appelant la bonne fonction (§10, étapes 3–4) ;
+3. vague 2 exécutée dans l'ordre : repair de `20260903000004` **puis** de `20260918000001` (§10, étapes 5–6) ;
+4. `compare-migration-history.mjs` : **0 locale-seule et 0 distant-seul** (§10, étape 7) ;
+5. validateurs reposés verts (§10, étape 8) ; revue humaine du tableau final ;
+6. alors — et seulement alors — décider collectivement si l'interdiction `db push` est levée. Ce runbook recommande de la maintenir tant que l'application manuelle est la voie nommée.
 
 ## 12. Interdiction persistante
 
