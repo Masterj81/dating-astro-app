@@ -1,0 +1,22 @@
+# JUNO-18 — périmètre CodeQL (javascript-typescript).
+#
+# Le code ANALYSÉ, pas le dépôt entier : les trois workspaces applicatifs.
+# node_modules est exclu par CodeQL lui-même ; les artefacts générés le sont
+# ici explicitement — analyser du code généré produit du bruit sans risque
+# réel (le bundle engine est régénéré + gardé par validate:edge-astrology).
+name: 'JUNO CodeQL config'
+
+paths:
+  - apps/web/src
+  - apps/mobile/app
+  - apps/mobile/services
+  - apps/mobile/contexts
+  - apps/mobile/utils
+  - apps/mobile/plugins
+  - packages/shared/src
+
+paths-ignore:
+  - '**/*.generated.ts'
+  - '**/*.generated.js'
+  - '**/__tests__/**'
+  - '**/*.test.*'

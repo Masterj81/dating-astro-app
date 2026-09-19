@@ -1,6 +1,6 @@
 # Runbook — JUNO-17 : durcissement de la configuration Android et preuve du manifeste Release
 
-**Date : 18 septembre 2026 · Statut : CORRIGÉ LOCALEMENT — build Release requis (EAS sur autorisation) ; `android:allowBackup=true` constaté reproduit puis éliminé du prebuild ; preuve AAB en attente de build.**
+**Date : 18 septembre 2026 · Statut : PROUVÉ DANS L'AAB le 18 sept (build EAS `2ac55534-2b68-4e11-bedc-e5054a1a83a2`, profil `juno17-proof`, SHA `6a7283e`) — les cinq protections sont dans le manifeste Release fusionné et les trois ressources dans l'artefact ; AUCUNE publication effectuée. `allowBackup=true` éliminé.**
 
 ## 1. État initial reproduit (18 sept 2026)
 
@@ -119,22 +119,30 @@ npx eas build --platform android --profile juno17-proof --non-interactive --no-w
 # 5. nettoyage : git worktree remove
 ```
 
-## 8. Preuve AAB attendue (§11 du brief) — procédure prête
+## 8. Preuve AAB — 18 sept 2026, EXÉCUTÉE
 
-`bundletool.jar` 1.17.0 ( officiel Google) déjà posé en `%TEMP%` :
+Build unique sous autorisation bornée : profil `juno17-proof`, worktree propre détaché au SHA exact `6a7283e`, archive 17,6 Mo, `--no-wait`, **aucune soumission**. `bundletool.jar` 1.17.0 (officiel Google).
 
-```
-java -jar bundletool.jar dump manifest --bundle=app-release.aab   → vérifier les 5 attributs
-java -jar bundletool.jar build-apks --bundle=app-release.aab --output=apks.apks  (+ aapt2 des build-tools 36) → présence/contenu compilé des 3 res/xml
-```
+**Contraintes d'autorisation vérifiées** : `versionCode` de l'AAB = **130** (= le distant actuel : `autoIncrement=false` n'a RIEN modifié), `versionName` 2.1.1 ; aucun `eas submit` ; inspection lecture seule.
 
-| Propriété | Expo config | Prebuild | AAB Release |
+`bundletool dump manifest` sur l'AAB Release :
+
+| Propriété | Expo config | Prebuild | **AAB Release** |
 |---|---|---|---|
-| allowBackup=false | oui (plugin) | **oui (prouvé)** | à prouver |
-| dataExtractionRules | oui (plugin) | **oui (prouvé)** | à prouver |
-| fullBackupContent | oui (plugin) | **oui (prouvé)** | à prouver |
-| cleartext interdit | oui (plugin) | **oui (prouvé)** | à prouver |
-| networkSecurityConfig | oui (plugin) | **oui (prouvé)** | à prouver |
+| allowBackup=false | oui (plugin) | oui (prouvé) | **`false` ✅** |
+| dataExtractionRules | oui (plugin) | oui (prouvé) | **`@xml/data_extraction_rules` ✅** |
+| fullBackupContent | oui (plugin) | oui (prouvé) | **`@xml/backup_rules` ✅** |
+| cleartext interdit | oui (plugin) | oui (prouvé) | **`usesCleartextTraffic="false"` ✅** |
+| networkSecurityConfig | oui (plugin) | oui (prouvé) | **`@xml/network_security_config` ✅** |
+
+**Contenu compilé des ressources** (aapt2 dump xmltree sur l'universal.apk extrait de l'AAB) :
+- `data_extraction_rules.xml` : `<cloud-backup>` **et** `<device-transfer>`, chacun avec les 5 exclusions `root`/`file`/`database`/`sharedpref`/`external` — vérifiés élément par élément ;
+- `backup_rules.xml` : `full-backup-content` + les 5 mêmes exclusions (schéma héritage, aucun domaine API 31+) ;
+- `network_security_config.xml` : `base-config cleartextTrafficPermitted=false` + ancres `system` seules ; `debug-overrides cleartextTrafficPermitted=true` + ancres `system` (aucune CA utilisateur, aucun pin-set).
+
+**Permissions du manifeste Release fusionné** (audit §9 tranché sur l'artefact) : `FOREGROUND_SERVICE_MEDIA_PLAYBACK` **ABSENT** (le `blockedPermissions` opère bien en Release) ; `SYSTEM_ALERT_WINDOW` **présent** (défaut du template React Native main, pas du manifeste debug — sans risque de fuite de données ; son retrait est un chantier fonctionnel séparé) ; `READ/WRITE_EXTERNAL_STORAGE` présents sans `maxSdkVersion` (héritage template RN ; scoped storage les neutralise sur target actuel — retrait à étudier avec tests photo/vidéo) ; le reste = contributions SDK standard (expo-notifications : `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`, `WAKE_LOCK` ; RevenueCat : `BILLING` ; Sentry/boot : `ACCESS_NETWORK_STATE`, `FOREGROUND_SERVICE` ; bibliothèques de badges constructeurs).
+
+Verdict : le tableau §11 du brief est **entièrement ✅ sur la colonne AAB Release**. Restent hors de ce statut : tests fonctionnels (§12) et `bmgr` (§13) sur l'artefact installé, et la publication Play — toutes deux hors périmètre du présent build.
 
 ## 9. Tests et validations exécutés
 

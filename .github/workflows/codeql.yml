@@ -1,0 +1,51 @@
+name: CodeQL
+
+# JUNO-18 — CodeQL en configuration AVANCÉE (default setup vérifié
+# "not-configured" le 18 sept 2026, zéro analyse existante : aucune double
+# analyse possible). Workflow séparé de Quality Gates pour trois raisons :
+# permissions (seul CE job écrit le SARIF), durée, et comportement sur forks.
+#
+# javascript-typescript ne nécessite PAS de build (pas d'autobuild) : les
+# sources sont analysées telles quelles, périmètre restreint par
+# .github/codeql/codeql-config.yml.
+#
+# Forks : `pull_request` (jamais pull_request_target) — GitHub retire les
+# secrets des runs de forks ; l'action CodeQL officielle détecte l'absence de
+# token en écriture et saute l'upload SARIF sans faire échouer l'analyse.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    - cron: '30 5 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (javascript-typescript)
+    runs-on: ubuntu-latest
+    permissions:
+      # pourquoi: seul ce job écrit le rapport SARIF dans code scanning.
+      # Le niveau workflow reste contents: read — un job ajouté plus tard
+      # hérite du read, jamais du write.
+      security-events: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@3ea06614dafe36dec890db3446326e0d40ce53d4 # v3.38.1
+        with:
+          languages: javascript-typescript
+          config-file: .github/codeql/codeql-config.yml
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@3ea06614dafe36dec890db3446326e0d40ce53d4 # v3.38.1
+        with:
+          category: '/language:javascript-typescript'

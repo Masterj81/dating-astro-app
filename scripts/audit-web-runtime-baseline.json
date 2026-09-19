@@ -1,0 +1,20 @@
+{
+  "_comment": "JUNO-18 — baseline des vulnérabilités runtime WEB (high/critical) ACCEPTÉES. Chaque entrée est délimitée par : package + nœud exact dans l'arbre + sévérité + version installée + ensemble EXACT des identifiants d'advisory. Le script scripts/audit-web-runtime.mjs échoue sur : tout advisory non listé (élargissement), toute entrée dont l'advisory a disparu (entrée périmée à retirer), tout changement de version (réévaluation obligatoire), et toute échéance dépassée. La chaîne Expo SDK 54 (mobile) n'est PAS couverte ici : dette bornée au runbook dependency-security-2026-09.md §6.2, chantier majeur séparé.",
+  "entries": [
+    {
+      "package": "postcss",
+      "node": "node_modules/next/node_modules/postcss",
+      "severity": "high",
+      "version": "8.4.31",
+      "advisories": [
+        "GHSA-qx2v-qp2m-jg93",
+        "GHSA-6g55-p6wh-862q",
+        "GHSA-fxqj-rqcc-2cmp",
+        "GHSA-r28c-9q8g-f849"
+      ],
+      "justification": "Épinglé exactement par next@15.5.25 (postcss est une dépendance interne du framework, pas un choix de JUNO). Build-time uniquement : les quatre advisories exigent du CSS ou un sourceMappingURL contrôlé par l'attaquant, et PostCSS ne s'exécute chez JUNO qu'au build sur nos propres feuilles de style — analyse d'atteignabilité complète dans docs/runbooks/dependency-security-2026-09.md §6.1 (JUNO-12, fermé le 18 sep 2026).",
+      "deadline": "2026-12-31",
+      "review": "Réévaluer à chaque bump de next. Retirer l'entrée dès que les advisories disparaissent — le script échoue sur toute entrée périmée, la suppression ne peut pas être oubliée."
+    }
+  ]
+}
