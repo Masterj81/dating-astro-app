@@ -1,6 +1,6 @@
 # Runbook — JUNO-18 : durcissement de la chaîne CI/CD GitHub
 
-**Date : 18 septembre 2026 · Statut : CORRIGÉ LOCALEMENT — preuve GitHub requise (CI réelle des nouveaux workflows, Dependabot reconnu, CodeQL exécuté) avant fermeture.**
+**Date : 18-19 septembre 2026 · Statut : FERMÉ le 19 sept 2026 — PR #45 fusionnée (`4b349d7`, autorisation explicite malgré un check Vercel tiers mort — §14) ; trois workflows verts sur `master`, Dependabot reconnu sur les deux écosystèmes, CodeQL publie — voir §13/§14.**
 
 ## 1. Reproduction des sous-constats historiques (18 sept 2026, avant correction)
 
@@ -91,6 +91,33 @@ Default setup vérifié `not-configured` (zéro double analyse). Workflow dédi�
 
 `git revert` des commits du chantier (le validateur CI-security échouerait s'il restait présent sans gitleaks/dependabot — le retirer aussi). Ne jamais « dérouler » en remettant un tag mutable ou `persist-credentials` par commodité : chaque retrait rouvre la porte que le validateur garde fermée.
 
-## 13. Conditions de fermeture
+## 13. Preuves GitHub réelles (19 sept 2026) et fermeture
 
-Workflows poussés → PR avec CI verte (Quality Gates + Gitleaks + CodeQL) → Dependabot reconnu (première PR ou vue config) → permissions effectives vérifiées → alors `JUNO-18 FERMÉ`.
+PR #45 (`fix/juno-18-ci-security`) — checks : Quality Gates ✅ 1m24s · CodeQL Analyze ✅ 1m15s (+ wrapper 4s) · Gitleaks ✅ 13s · Vercel **principal** ✅ deployment completed.
+
+Après fusion (`4b349d7`), sur `master` :
+
+| Workflow | Résultat | Durée |
+|---|---|---|
+| CI (Quality Gates) | ✅ success | **1m02s** |
+| Secret Scan (Gitleaks) | ✅ success | **16s** |
+| CodeQL | ✅ success | **1m52s** |
+
+**Dependabot reconnu — les deux écosystèmes opèrent** : run `github_actions in /. - Update` ✅ 2m54s, run `npm_and_yarn` en cours, et **5+ PR npm déjà ouvertes** (resend, typescript, expo-linking, react-native-url-polyfill, expo-linear-gradient…). Les majors arrivent en PR individuelles, hors groupe, zéro auto-merge — conformément à la configuration ; leur triage est un chantier produit séparé. Note : l'API `dependabot/alerts` répond 403 « disabled » — le réglage d'alertes Dependabot est éteint côté GitHub (les updates version fonctionnent) ; à activer dans Settings → Advanced Security si voulu.
+
+**CodeQL publie** : analyses `code-scanning` présentes (catégorie `/language:javascript-typescript`, y compris sur les PR Dependabot — la chaîne vit de bout en bout).
+
+### Première alerte CodeQL — traitée en deux temps, clôturée structurellement le 21 sept
+
+Le premier scan `master` a ouvert **1 alerte HIGH** : `js/incomplete-multi-character-sanitization`, `apps/mobile/utils/validation.ts` (`sanitizeText`).
+- **19 sept (v1)** : boucle jusqu'à stabilité + tests d'invariant. **Insuffisant** : CodeQL a re-signalé (PR #62) — à raison structurellement : dépiler des balises par regex reste une sanitisation multi-caractères qu'aucune analyse statique ne peut prouver complète, et le contournement par imbrication n'est jamais qu'à un rétrécissement de regex d'apparaître.
+- **21 sept (v2, définitif)** : **politique structurelle « texte brut sans chevrons »** — les bios sont du texte brut React Native, les balises n'ont rien à y faire : `sanitizeText` supprime chaque caractère `<` et `>` **individuellement** (parcours caractère par caractère ; plus AUCUNE regex de sanitization, plus de boucle), puis normalise les espaces. Rien ne peut « passer » : il n'existe plus de motif à contourner. Suite de 12 tests (`utils/validation.test.ts`) sur des sorties **mesurées** : `<script>alert(1)</script>`, `<scr<script>ipt>`, variantes fermées, `<<script>`, attributs mêlés, chevrons isolés, hostile long, idempotence, limite 500. Consommateur unique vérifié (`profile/edit.tsx` → `validateBio`) : aucun contrat ne dépend de la présence de chevrons. Discriminant : 9 échecs sur l'ancien code, 12/12 sur le nouveau.
+- L'alerte doit se refermer au scan de la PR #62 ; **aucun dismissal, aucune suppression CodeQL** — la preuve attendue est la fermeture réelle par l'analyseur.
+
+## 14. Anomalie Vercel `dating-astro-app-59x1` (hors périmètre)
+
+Le check Vercel du projet **dupliqué** `dating-astro-app-59x1` est resté « deploying » 45+ min sur la PR #45 (il passait en 0 s sur la #42), alors que le projet Vercel **principal** terminait normalement. Fusion autorisée explicitement malgré ce check tiers (tous les contrôles fonctionnels et sécurité verts, `master` sans protection de branche, aucun conflit, aucune modification applicative). **Nettoyage de ce projet dupliqué = petit chantier Vercel séparé, avec accès dashboard — hors JUNO-18.**
+
+## 15. Conditions de fermeture — remplies
+
+Workflows poussés ✅ (PR #45) · PR avec CI verte ✅ (Quality Gates + Gitleaks + CodeQL) · Dependabot reconnu ✅ (deux écosystèmes) · permissions effectives vérifiées ✅ (validateur CI en CI + checks verts sans élévation) · CodeQL actif ✅. **JUNO-18 FERMÉ.**
