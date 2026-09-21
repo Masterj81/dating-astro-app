@@ -60,6 +60,15 @@ const cspDirectives = [
   `base-uri 'self'`,
   // Object/embed: none
   `object-src 'none'`,
+  // Workers: the PWA kill-switch service worker (same origin). Added
+  // 2026-09-21 (JUNO-13) — absent before, service workers fell back to
+  // default-src 'self' which happened to allow it; explicit now.
+  `worker-src 'self'`,
+  // Framing of THIS site: nobody. X-Frame-Options: DENY covers legacy
+  // browsers; frame-ancestors is the CSP-native control modern browsers
+  // honor (and the one that also applies to nested frames). Added
+  // 2026-09-21 (JUNO-13).
+  `frame-ancestors 'none'`,
 ];
 
 const contentSecurityPolicy = cspDirectives.join("; ");
@@ -86,6 +95,16 @@ const nextConfig: NextConfig = {
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
           { key: 'X-DNS-Prefetch-Control', value: 'on' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          // JUNO-13 (2026-09-21) — isolation headers, static-safe (no impact
+          // on rendering). COOP same-origin: our OAuth flows are full-page
+          // redirects (no popups), so cutting window.opener across origins
+          // breaks nothing and closes silent tab-nabbing. CORP same-origin:
+          // our resources may not be embedded cross-origin. COEP is
+          // DELIBERATELY absent: it would require CORP/credentialless on
+          // every cross-origin resource we consume (Supabase, Turnstile,
+          // Unsplash/Google images) — unproven, deferred (runbook §CSP).
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
         ],
       },
     ];
