@@ -7,7 +7,7 @@ import { fileURLToPath } from "url";
 export default {
   test: {
     environment: "node",
-    include: ["plugins/**/*.test.{js,mjs}", "src/**/*.test.{ts,tsx}"],
+    include: ["plugins/**/*.test.{js,mjs}", "src/**/*.test.{ts,tsx}", "utils/**/*.test.{ts,tsx}"],
   },
   resolve: {
     alias: {},
