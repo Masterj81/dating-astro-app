@@ -145,7 +145,10 @@ describe("JUNO-14 · garde structurelle : plus AUCUNE Map locale", () => {
 
   it("aucun limiter en mémoire (new Map) — la limite vit en base", () => {
     expect(source).not.toMatch(/new Map\s*\(/);
-    expect(source).toContain('rpc(\n      "check_rate_limit"');
-    expect(source).toContain("p_action: RATE_LIMIT_ACTION");
+    // Line-ending tolerant: a CRLF checkout (core.autocrlf on Windows
+    // worktrees) broke the literal \n match without changing any behavior.
+    const normalized = source.replace(/\r\n/g, "\n");
+    expect(normalized).toContain('rpc(\n      "check_rate_limit"');
+    expect(normalized).toContain("p_action: RATE_LIMIT_ACTION");
   });
 });
