@@ -84,9 +84,19 @@ Aujourd'hui : **zéro surface cookie-auth** (les 4 routes API = Bearer ; webhook
 
 **Unique source de vérité enforcement** : le middleware ne pose **pas** de CSP de réponse (aucun doublon de header — deux CSP s'intersectent et l'une bloque toujours plus) ; il ne pose que le Report-Only.
 
+## 6bis. Production au SHA `bd61436` (fusion PR #63, 21 sept 15h40Z) — fumée et DÉFAUT MESURÉ
+
+**Verts (mesurés)** : Report-Only présent sur `/en/app` uniquement, nonce **différent par réponse** ; enforcement global renforcé servi partout (`frame-ancestors 'none'`, `worker-src 'self'`, COOP+CORP same-origin) ; marketing (`/en/contact`) **sans** Report-Only ; `/service-worker.js` CSP correcte + `public, max-age=0, must-revalidate` (vercel.json ajouté) ; `Cache-Control: private, no-store` sur `/en/app`.
+
+**DÉFAUT (la fenêtre Report-Only fait son travail)** : sur la production Vercel, **aucun script inline du HTML servi ne porte le nonce** (0/16), alors que le même build en local en porte 34. Preuves : deux GET → HTML **bit-à-bit identique** (256 360 o) pendant que les headers RO changent à chaque réponse → le runtime sert un rendu **mis en cache** dont les headers sont régénérés ; l'injection de `x-nonce`/CSP côté client n'atteint pas le rendu. Hypothèse principale : le sous-arbre `/app` reste servi comme prérendu revalidé (le `headers()` du layout n'a pas suffi sur ce déploiement), donc Next n'applique jamais la CSP de requête au rendu.
+
+**Conséquence honnête** : la politique RO ne peut PAS être validée en l'état (elle rapporterait des violations fantômes : scripts inline sans nonce sous une politique qui l'exigerait). **La phase 2 (enforcement) est BLOQUÉE jusqu'à correction.**
+
+**Plan correctif (à autoriser)** : garantir le rendu par requête réel du sous-arbre sur Vercel — options mesurables : (a) lire `headers()` dans la **page** `/app` (pas seulement le layout) ; (b) `export const revalidate = 0` + `dynamic` au niveau page ; (c) si Vercel serve un shell prérendu, rendre la lecture de nonce explicite (composant serveur qui consomme `x-nonce`) pour forcer l'opt-in dynamique. Chaque option sera prouvée par la même mesure (HTML ≠ entre deux requêtes ET nonces portés) avant tout changement d'enforcement.
+
 ## 6. Plan Report-Only → enforcement
 
-- **Phase 1 (ce commit)** : dual-header sur `/app` (enforcement global + Report-Only nonce). Aucun blocage nouveau possible.
+- **Phase 1 (ce commit)**ment global + Report-Only nonce). Aucun blocage nouveau possible.
 - **Fenêtre d'observation** : navigations réelles EN/FR/ES sur `/app` (login, discover, chat, premium, settings, logout) — **console ouverte, zéro violation Report-Only attendue**. Pas de collecteur de rapports (aucun endpoint configuré — personne ne prétend le contraire) : l'observation est navigateur + inspection manuelle, selon la mission.
 - **Critère de passage** : zéro violation sur les parcours ci-dessus, Turnstile `/contact` toujours fonctionnel, PWA installable.
 - **Phase 2 (un changement d'une ligne, documenté ici)** : remplacer l'enforcement du sous-arbre `/app` par la politique à nonce (le middleware devient la source d'enforcement pour `/app`, `next.config` reste la source pour le marketing) — sous nouvelle autorisation, après re-vérification.
