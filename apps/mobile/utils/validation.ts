@@ -1,5 +1,4 @@
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const HTML_TAG_REGEX = /<[^>]*>/g;
 const WHITESPACE_COLLAPSE_REGEX = /\s{2,}/g;
 const PURE_NUMBERS_REGEX = /^\d+$/;
 const PURE_SPECIAL_REGEX = /^[^a-zA-Z\u00C0-\u024F\u1E00-\u1EFF]+$/;
@@ -116,8 +115,23 @@ export function validateBio(bio: string): { valid: boolean; sanitized: string; e
 }
 
 export function sanitizeText(text: string): string {
-  return text
-    .replace(HTML_TAG_REGEX, '')
-    .replace(WHITESPACE_COLLAPSE_REGEX, ' ')
+  // Plain-text policy — no angle brackets, ever. Biographies are rendered as
+  // plain React Native text; tags have no meaning to preserve, so the safe
+  // transform is to drop every '<' and '>' INDIVIDUALLY, character by
+  // character. This closes the CodeQL finding for good
+  // (js/incomplete-multi-character-sanitization, 2026-09-19/21): there is no
+  // multi-character sanitization pattern left to bypass — nested payloads
+  // ('<scr<script>ipt>'), half-tags, attributes, all reduce to text. The
+  // previous replace(/<[^>]*>/g, '') approach — even looped to a fixed point
+  // — still smelled like tag STRIPPING to static analysis, and rightly so:
+  // stripping is a losing race; not letting brackets exist at all is not.
+  let withoutAngleBrackets = "";
+  for (const character of text) {
+    if (character !== "<" && character !== ">") {
+      withoutAngleBrackets += character;
+    }
+  }
+  return withoutAngleBrackets
+    .replace(WHITESPACE_COLLAPSE_REGEX, " ")
     .trim();
 }
