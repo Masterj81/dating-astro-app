@@ -130,6 +130,16 @@ jobs:
       - name: Validate Android security config contract
         run: npm run validate:android-security-config
 
+      # JUNO-05/JUNO-13: web session in cookies (@supabase/ssr), no token in
+      # Web Storage outside the legacy purge, cookie contract, middleware
+      # refresh + per-request nonce, app-subtree dynamic split, CSP
+      # confinement set, no cookie-auth API route without the origin guard.
+      # Runtime proofs (nonce per response, no localStorage token) are the
+      # vitest suites; the AAB-style Production proof is the operator
+      # procedure in docs/runbooks/web-session-csp-2026-09.md.
+      - name: Validate web session and CSP contract
+        run: node scripts/validate-web-session-csp.mjs
+
       # ── Second remediation wave, 8 Sep 2026 ───────────────────────────────
       # JUNO-18, JUNO-20 and the JUNO-21 decoupling. Structural, not
       # behavioural: it guards this workflow's own `permissions:` block, keeps
