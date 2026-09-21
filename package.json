@@ -33,6 +33,7 @@
     "validate:rls-contract": "node scripts/validate-rls-contract.mjs",
     "validate:migration-history": "node scripts/validate-migration-history.mjs",
     "validate:android-security-config": "node scripts/validate-android-security-config.mjs",
+    "validate:web-session-csp": "node scripts/validate-web-session-csp.mjs",
     "validate:ci-security": "node scripts/validate-ci-security.mjs",
     "audit:web-runtime": "node scripts/audit-web-runtime.mjs",
     "validate:pwa-kill-switch": "node scripts/validate-pwa-kill-switch.mjs",
