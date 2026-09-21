@@ -109,6 +109,38 @@ if (existsSync(path.join(ROOT, appLayout))) {
 } else {
   fail("app/layout.tsx ABSENT — le sous-arbre /app resterait statique");
 }
+// R6b — CAUSE RACINE du défaut Vercel (bd61436) : generateStaticParams du
+// layout [locale] prérend /app/** et Vercel sert ce prérendu SANS ré-exécuter
+// le rendu → aucun nonce injecté (0/16 scripts). Portée vérifiée le 21 sept
+// (31 routes du sous-arbre) : le layout `headers()` couvre TOUT /app/** sur
+// un build propre ; page.tsx (double garde) et revalidate=0 sont exigés
+// aussi — le périmètre Report-Only entier doit être dynamique.
+const appLayoutContent = read(appLayout);
+const layoutHasHeaders = /await headers\(\)/.test(appLayoutContent);
+const layoutHasDynamic = /force-dynamic/.test(appLayoutContent);
+if (layoutHasHeaders && layoutHasDynamic) {
+  ok("[locale]/app/layout.tsx headers() + force-dynamic (couvre TOUT le sous-arbre)");
+} else {
+  fail(
+    "[locale]/app/layout.tsx SANS headers() ET force-dynamic tous deux présents" +
+      ` (headers:${layoutHasHeaders} dynamic:${layoutHasDynamic}) — Vercel servira des prérendus sans nonce sur une partie du sous-arbre`,
+  );
+}
+const appPage = "apps/web/src/app/[locale]/app/page.tsx";
+if (existsSync(path.join(ROOT, appPage))) {
+  const page = read(appPage);
+  const hasDyn = /export const dynamic\s*=\s*"force-dynamic"/.test(page);
+  const hasRevalidate = /export const revalidate\s*=\s*0/.test(page);
+  if (hasDyn && hasRevalidate) {
+    ok("[locale]/app/page.tsx dynamic=force-dynamic + revalidate=0 (double garde, correctif bd61436)");
+  } else {
+    fail(
+      "[locale]/app/page.tsx SANS dynamic=force-dynamic + revalidate=0 — risque de retour du prérendu sans nonce (défaut bd61436)",
+    );
+  }
+} else {
+  fail("[locale]/app/page.tsx introuvable");
+}
 const rootLayout = read("apps/web/src/app/[locale]/layout.tsx");
 if (/force-dynamic|headers\(\)/.test(rootLayout)) {
   fail("[locale]/layout.tsx (racine, marketing inclus) est dynamique — régression du rendu statique globale");
