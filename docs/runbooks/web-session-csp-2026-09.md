@@ -84,9 +84,33 @@ Aujourd'hui : **zéro surface cookie-auth** (les 4 routes API = Bearer ; webhook
 
 **Unique source de vérité enforcement** : le middleware ne pose **pas** de CSP de réponse (aucun doublon de header — deux CSP s'intersectent et l'une bloque toujours plus) ; il ne pose que le Report-Only.
 
+## 6bis. Production au SHA `bd61436` (fusion PR #63, 21 sept 15h40Z) — fumée et DÉFAUT MESURÉ
+
+**Verts (mesurés)** : Report-Only présent sur `/en/app` uniquement, nonce **différent par réponse** ; enforcement global renforcé servi partout (`frame-ancestors 'none'`, `worker-src 'self'`, COOP+CORP same-origin) ; marketing (`/en/contact`) **sans** Report-Only ; `/service-worker.js` CSP correcte + `public, max-age=0, must-revalidate` (vercel.json ajouté) ; `Cache-Control: private, no-store` sur `/en/app`.
+
+**DÉFAUT (la fenêtre Report-Only fait son travail)** : sur la production Vercel, **aucun script inline du HTML servi ne porte le nonce** (0/16), alors que le même build en local en porte 34. Preuves : deux GET → HTML **bit-à-bit identique** (256 360 o) pendant que les headers RO changent à chaque réponse → le runtime sert un rendu **mis en cache** dont les headers sont régénérés ; l'injection de `x-nonce`/CSP côté client n'atteint pas le rendu. Hypothèse principale : le sous-arbre `/app` reste servi comme prérendu revalidé (le `headers()` du layout n'a pas suffi sur ce déploiement), donc Next n'applique jamais la CSP de requête au rendu.
+
+**Conséquence honnête** : la politique RO ne peut PAS être validée en l'état (elle rapporterait des violations fantômes : scripts inline sans nonce sous une politique qui l'exigerait). **La phase 2 (enforcement) est BLOQUÉE jusqu'à correction.**
+
+**Plan correctif (à autoriser)** : garantir le rendu par requête réel du sous-arbre sur Vercel — options mesurables : (a) lire `headers()` dans la **page** `/app` (pas seulement le layout) ; (b) `export const revalidate = 0` + `dynamic` au niveau page ; (c) si Vercel serve un shell prérendu, rendre la lecture de nonce explicite (composant serveur qui consomme `x-nonce`) pour forcer l'opt-in dynamique. Chaque option sera prouvée par la même mesure (HTML ≠ entre deux requêtes ET nonces portés) avant tout changement d'enforcement.
+
+### 6ter. Correctif — cause racine confirmée, variante (b) appliquée (21 sept, local)
+
+**Cause racine exacte (code source Next 15.5.25 inspecté)** : `server/app-render/app-render.js` lit `headers['content-security-policy'] || headers['content-security-policy-report-only']` et en extrait le nonce — **uniquement pendant un rendu**. Notre middleware transmet correctement la CSP de requête (`NextResponse.next({ request: { headers } })`). Mais `generateStaticParams` du layout `[locale]` **prérend tous les chemins, y compris `/app/**`**, et Vercel sert ces prérendus **sans ré-exécuter app-render** : le middleware tourne (header RO présent, nonce frais) mais aucun rendu n'a lieu → 0 nonce injecté. La transmission du header était donc CORRECTE ; le défaut était le **chemin de rendu** (l'hypothèse prioritaire de l'opérateur est confirmée : le cache était la conséquence, pas la cause).
+
+**Variante retenue (une seule modification)** : `export const dynamic = "force-dynamic"` **+** `export const revalidate = 0` au niveau de la **PAGE** `[locale]/app/page.tsx` (le layout seul s'était montré sans effet sur ce déploiement). Le glyphe ● du tableau de build reste trompeur — le juge de paix est l'artefact et le runtime.
+
+**Preuves locales (build propre, `next start`)** : aucun `page.html` prérendu sous `.next/server/app/en/app` ; deux requêtes → **HTML différents** (uniquement par les nonces) ; **nonce A dans le header A et sur les scripts inline de HTML A, nonce B ≠ sur HTML B** ; 34 attributs nonce couvrant les 15 scripts inline ; `Cache-Control: private, no-cache, no-store` ; marketing inchangé (○, prérendus conservés) ; `/service-worker.js` intact.
+
+**Vérification de PORTÉE (exigée avant push)** — le sous-arbre compte 30 pages (toutes les routes imbriquées incluses) ; la config `dynamic` d'une page ne s'applique pas aux sœurs. Mesuré sur un build de production propre (`next start`, sonde sur 31 routes EN + FR/ES) : **31/31 OK** — nonces distincts par réponse, nonce présent sur **tous** les scripts inline de chaque route (y compris routes profondes `premium/cosmic/*`, `chat`, `profile`, `setup`), HTML différents entre deux requêtes, `Cache-Control: private, no-cache, no-store` partout. Fait technique : sur un build **propre**, le `headers()` du layout `/app` couvre à lui seul tout le sous-arbre (aucun prérendu résiduel sous `<locale>/app/` — les mesures antérieures « ● statique » venaient d'un `.next` incrémental) ; le `force-dynamic`/`revalidate=0` de `page.tsx` est conservé en double garde et R6b exige désormais **les deux niveaux**.
+
+**Garde structurelle** : le validateur `validate-web-session-csp` (R6b) **échoue** si `page.tsx` de `/app` perd `dynamic=force-dynamic` + `revalidate=0` — canari prouvé (retrait → exit 1, restauration → exit 0).
+
+**Preuve Preview/Production encore requise** (le défaut était spécifique au rendu Vercel) : PR → déploiement → deux GET sans cache navigateur → nonces différents dans les headers ET portés par chaque script inline → zéro script inline sans nonce → HTML non identique → cache privé → aucune violation RO sur `/en/app` → login/refresh/logout/réouverture → Turnstile `/fr/contact` → EN/FR/ES → callback PKCE/token_hash → SW kill-switch intact.
+
 ## 6. Plan Report-Only → enforcement
 
-- **Phase 1 (ce commit)** : dual-header sur `/app` (enforcement global + Report-Only nonce). Aucun blocage nouveau possible.
+- **Phase 1 (ce commit)**ment global + Report-Only nonce). Aucun blocage nouveau possible.
 - **Fenêtre d'observation** : navigations réelles EN/FR/ES sur `/app` (login, discover, chat, premium, settings, logout) — **console ouverte, zéro violation Report-Only attendue**. Pas de collecteur de rapports (aucun endpoint configuré — personne ne prétend le contraire) : l'observation est navigateur + inspection manuelle, selon la mission.
 - **Critère de passage** : zéro violation sur les parcours ci-dessus, Turnstile `/contact` toujours fonctionnel, PWA installable.
 - **Phase 2 (un changement d'une ligne, documenté ici)** : remplacer l'enforcement du sous-arbre `/app` par la politique à nonce (le middleware devient la source d'enforcement pour `/app`, `next.config` reste la source pour le marketing) — sous nouvelle autorisation, après re-vérification.
