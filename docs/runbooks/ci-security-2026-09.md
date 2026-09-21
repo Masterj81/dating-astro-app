@@ -114,6 +114,12 @@ Le premier scan `master` a ouvert **1 alerte HIGH** : `js/incomplete-multi-chara
 - **21 sept (v2, définitif)** : **politique structurelle « texte brut sans chevrons »** — les bios sont du texte brut React Native, les balises n'ont rien à y faire : `sanitizeText` supprime chaque caractère `<` et `>` **individuellement** (parcours caractère par caractère ; plus AUCUNE regex de sanitization, plus de boucle), puis normalise les espaces. Rien ne peut « passer » : il n'existe plus de motif à contourner. Suite de 12 tests (`utils/validation.test.ts`) sur des sorties **mesurées** : `<script>alert(1)</script>`, `<scr<script>ipt>`, variantes fermées, `<<script>`, attributs mêlés, chevrons isolés, hostile long, idempotence, limite 500. Consommateur unique vérifié (`profile/edit.tsx` → `validateBio`) : aucun contrat ne dépend de la présence de chevrons. Discriminant : 9 échecs sur l'ancien code, 12/12 sur le nouveau.
 - L'alerte doit se refermer au scan de la PR #62 ; **aucun dismissal, aucune suppression CodeQL** — la preuve attendue est la fermeture réelle par l'analyseur.
 
+### Fermeture définitive — 21 sept 2026, preuves mesurées
+
+PR #62 fusionnée à 14h07:27Z (merge `49b8602` sur `master`, Production Vercel **Ready** au même SHA). Le scan CodeQL de `master` a suivi à 14h08:55Z et a **refermé l'alerte n°1 automatiquement** : état **`fixed`** (`fixed_at: 2026-09-21T14:08:55Z`), `dismissed_at: null` — **aucun dismissal manuel, aucune suppression de règle**. **0 alerte ouverte** sur le dépôt. La chaîne a fonctionné exactement comme conçue : l'analyseur a trouvé, le code a été corrigé structurellement, l'analyseur a constaté la disparition.
+
+**JUNO-18 FERMÉ — CI/CD durci, prouvé sur master, alerte CodeQL résolue par correction réelle.**
+
 ## 14. Anomalie Vercel `dating-astro-app-59x1` (hors périmètre)
 
 Le check Vercel du projet **dupliqué** `dating-astro-app-59x1` est resté « deploying » 45+ min sur la PR #45 (il passait en 0 s sur la #42), alors que le projet Vercel **principal** terminait normalement. Fusion autorisée explicitement malgré ce check tiers (tous les contrôles fonctionnels et sécurité verts, `master` sans protection de branche, aucun conflit, aucune modification applicative). **Nettoyage de ce projet dupliqué = petit chantier Vercel séparé, avec accès dashboard — hors JUNO-18.**
