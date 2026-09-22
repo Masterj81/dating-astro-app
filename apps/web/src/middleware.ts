@@ -61,11 +61,11 @@ function handleAppRequest(request: NextRequest): NextResponse {
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
 
-  // B1: public response carries BOTH policies — enforced CSP (browser) and
-  // the nonce'd Report-Only. The question under test: does the fold re-inject
-  // the enforced CSP into the render's request, killing the RO fallback?
+  // B2: enforcement moved to vercel.json route headers for /app — this
+  // response carries NO enforced CSP. Does a platform-level route header
+  // still fold into the render's request? (x-mw-saw-csp will tell whether
+  // it was even present at middleware ENTRY.)
   response.headers.set("x-mw-res-probe", "1");
-  response.headers.set("Content-Security-Policy", ENFORCEMENT_CSP);
   response.headers.set("Content-Security-Policy-Report-Only", nonceCsp);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
