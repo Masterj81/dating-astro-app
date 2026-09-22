@@ -28,7 +28,7 @@ type PremiumGateProps = {
 };
 
 export default function PremiumGate({ feature, children, isDataLoading }: PremiumGateProps) {
-  const { tier, loading, canAccessFeature, consumeTrial, triggerPaywall } = usePremium();
+  const { tier, loading, canAccessFeature, triggerPaywall } = usePremium();
   const { t } = useLanguage();
   const [accessState, setAccessState] = useState<'checking' | 'granted' | 'denied'>('checking');
   const [trialConsumed, setTrialConsumed] = useState(false);
@@ -46,78 +46,76 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
         return;
       }
 
-      // 2. Server-enforced features: the server decides everything in one
-      //    atomic call — entitlement, free daily preview and quota. We do NOT
-      //    short-circuit on the local entitlement here, because that is what
-      //    used to let the client spend a preview the server then refused.
+      // 2. SERVER DECISION — every feature maps to a canonical policy key
+      //    (JUNO-06: the map is exhaustive). One atomic call resolves
+      //    entitlement, free daily preview and quota. There is NO legacy
+      //    client-side branch anymore.
       const serverFeatureKey = SERVER_ENFORCED_FEATURES[feature];
-      if (serverFeatureKey) {
-        try {
-          const decision = await enforcePremiumFeature(serverFeatureKey);
-          if (!isMounted) return;
-
-          if (decision.allowed) {
-            setAccessState('granted');
-            setTrialConsumed(decision.isFreePreview);
-            return;
-          }
-
-          // Never paywall someone who is actually paying. A network failure,
-          // or a subscription the store has confirmed but the billing webhook
-          // has not yet written, both surface here — fall back to the
-          // entitlement the device already verified, which is the same
-          // optimistic policy PremiumContext applies to the tier itself.
-          if (
-            (decision.reason === 'error' || decision.reason === 'insufficient_tier') &&
-            canAccessFeature(feature)
-          ) {
-            setAccessState('granted');
-            setTrialConsumed(false);
-            return;
-          }
-
-          setDenialReason(decision.reason);
+      if (!serverFeatureKey) {
+        // Defensive: a new FeatureKey added without a policy mapping must
+        // fail CLOSED, not silently fall back to a client guess.
+        if (isMounted) {
+          setDenialReason('unknown_feature');
           setAccessState('denied');
-        } catch (error) {
-          console.error('PremiumGate server check failed:', error);
-          if (!isMounted) return;
-          if (canAccessFeature(feature)) {
-            setAccessState('granted');
-          } else {
-            setDenialReason('error');
-            setAccessState('denied');
-          }
         }
         return;
       }
-
-      // 3. Legacy client-side path for features that have not been migrated
-      //    to server enforcement yet.
-      const hasAccess = canAccessFeature(feature);
-      if (hasAccess) {
-        if (isMounted) setAccessState('granted');
-        return;
-      }
-
-      // 4. Attempt trial consumption
       try {
-        const result = await consumeTrial(feature);
+        const decision = await enforcePremiumFeature(serverFeatureKey);
         if (!isMounted) return;
 
-        if (result.success) {
+        if (decision.allowed) {
           setAccessState('granted');
-          setTrialConsumed(true);
-        } else {
-          setDenialReason('free_preview_exhausted');
-          setAccessState('denied');
+          setTrialConsumed(decision.isFreePreview);
+          return;
         }
+
+        // SYNASTRY EXCEPTION (documented in SERVER_ENFORCED_FEATURES): its
+        // policy row deliberately has NO premium_usage preview — the free
+        // synastry comparison is a per-TARGET contract that only the
+        // synastry flow (synastry_preview_gate + claim_synastry_free_grant)
+        // can judge. A server 'insufficient_tier' here does not mean the
+        // reader has no free comparison left; the screen continues into its
+        // own server-gated flow, which makes the final call.
+        if (feature === 'synastry' && decision.reason === 'insufficient_tier') {
+          if (isMounted) setAccessState('granted');
+          return;
+        }
+
+        // Never paywall someone who is actually paying. A network failure,
+        // or a subscription the store has confirmed but the billing webhook
+        // has not yet written, both surface here — fall back to the
+        // entitlement the device already verified, which is the same
+        // optimistic policy PremiumContext applies to the tier itself.
+        // JUNO-06 boundary: this fallback opens the SCREEN for a subscriber
+        // in a transient state; it can never grant a free-tier account
+        // anything (canAccessFeature requires a paid tier), and the server
+        // stays the authority — the webhook reconciliation (RevenueCat
+        // listener) corrects the tier and the next call decides honestly.
+        if (
+          (decision.reason === 'error' || decision.reason === 'insufficient_tier') &&
+          canAccessFeature(feature)
+        ) {
+          setAccessState('granted');
+          setTrialConsumed(false);
+          return;
+        }
+
+        setDenialReason(decision.reason);
+        setAccessState('denied');
       } catch (error) {
-        console.error('PremiumGate check failed:', error);
-        if (isMounted) {
-          setDenialReason('free_preview_exhausted');
+        console.error('PremiumGate server check failed:', error);
+        if (!isMounted) return;
+        // Fail-closed on exceptions too: an entitlement the device holds
+        // still covers the subscriber-transient case above.
+        if (canAccessFeature(feature)) {
+          setAccessState('granted');
+        } else {
+          setDenialReason('error');
           setAccessState('denied');
         }
       }
+      return;
     };
 
     performCheck();
@@ -195,8 +193,17 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
 
     // Say what actually happened. Claiming "you used your free preview" to
     // someone who was never offered one is how a paywall loses trust.
+    // unknown_feature: a key with no policy mapping is a build defect
+    // (JUNO-06 defensive branch) — the copy says so instead of inventing a
+    // tier story, and the console carries the key for the fix.
     const deniedCopy = (() => {
       switch (denialReason) {
+        case 'unknown_feature':
+          console.warn('[PremiumGate] feature key with no policy mapping:', feature);
+          return {
+            title: t('premiumFeature') || 'Premium Feature',
+            body: t('premiumRequired') || 'Access natal charts, synastry, horoscopes and more',
+          };
         case 'quota_exceeded':
           return {
             title: t('dailyLimitReached') || 'Daily limit reached',

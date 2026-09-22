@@ -5,9 +5,6 @@ import { debugLog } from '../utils/debug';
 import {
   FeatureKey,
   FEATURE_TIERS,
-  hasTrialRemaining,
-  incrementFeatureUsage,
-  getFeatureUsageToday,
 } from '../services/premiumUsage';
 import { getUserTier, SubscriptionTier } from '../services/subscriptionService';
 
@@ -34,8 +31,6 @@ type PremiumContextType = {
   tier: SubscriptionTier;
   loading: boolean;
   canAccessFeature: (feature: FeatureKey) => boolean;
-  hasTrialRemaining: (feature: FeatureKey) => Promise<boolean>;
-  consumeTrial: (feature: FeatureKey) => Promise<{ success: boolean; showPaywall: boolean }>;
   triggerPaywall: (feature: FeatureKey) => void;
   dismissPaywall: () => void;
   refreshSubscription: () => Promise<void>;
@@ -255,6 +250,13 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
 
   const canAccessFeature = useCallback(
     (feature: FeatureKey): boolean => {
+      // JUNO-06 BOUNDARY: this is a UX helper, not a gate. PremiumGate calls
+      // enforce_premium_feature for EVERY feature; `canAccessFeature` is only
+      // consulted AFTER a server refusal, to decide whether the refusal is a
+      // subscriber-transient state (webhook lag) worth smoothing over — and
+      // smoothing requires a PAID tier the device verified. It can never
+      // grant a free account a premium surface, and no screen may use it as
+      // its authorization.
       const requiredTier = FEATURE_TIERS[feature];
 
       if (tier === 'premium_plus') {
@@ -268,46 +270,6 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
       return false;
     },
     [tier]
-  );
-
-  const checkTrialRemaining = useCallback(
-    async (feature: FeatureKey): Promise<boolean> => {
-      if (!user) return false;
-
-      if (canAccessFeature(feature)) {
-        return true;
-      }
-
-      return hasTrialRemaining(user.id, feature);
-    },
-    [user, canAccessFeature]
-  );
-
-  const consumeTrial = useCallback(
-    async (feature: FeatureKey): Promise<{ success: boolean; showPaywall: boolean }> => {
-      if (!user) {
-        return { success: false, showPaywall: true };
-      }
-
-      if (canAccessFeature(feature)) {
-        return { success: true, showPaywall: false };
-      }
-
-      const currentUsage = await getFeatureUsageToday(user.id, feature);
-
-      if (currentUsage >= 1) {
-        return { success: false, showPaywall: true };
-      }
-
-      const result = await incrementFeatureUsage(user.id, feature);
-
-      if (result.success) {
-        return { success: true, showPaywall: false };
-      }
-
-      return { success: false, showPaywall: true };
-    },
-    [user, canAccessFeature]
   );
 
   const triggerPaywall = useCallback((feature: FeatureKey) => {
@@ -332,14 +294,12 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
       tier,
       loading,
       canAccessFeature,
-      hasTrialRemaining: checkTrialRemaining,
-      consumeTrial,
       triggerPaywall,
       dismissPaywall,
       refreshSubscription,
       paywallState,
     }),
-    [tier, loading, canAccessFeature, checkTrialRemaining, consumeTrial, triggerPaywall, dismissPaywall, refreshSubscription, paywallState]
+    [tier, loading, canAccessFeature, triggerPaywall, dismissPaywall, refreshSubscription, paywallState]
   );
 
   return <PremiumContext.Provider value={value}>{children}</PremiumContext.Provider>;

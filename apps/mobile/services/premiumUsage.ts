@@ -57,14 +57,35 @@ export const FEATURE_TIERS: Record<FeatureKey, 'premium' | 'premium_plus'> = {
 // what the server decides — entitlement, free daily preview and quota all
 // resolve in one atomic call.
 //
-// This is what fixes the free preview bug: the client used to grant and
-// record a preview under 'natal-chart' while the server judged 'natal_chart'
-// with no notion of previews, so a free user burned their allowance and got
-// the paywall anyway.
+// JUNO-06 (2026-09-22): the map is now EXHAUSTIVE — all 11 features resolve
+// through the server. What makes each migration honest, per feature:
 //
-// Features absent from this map keep the legacy client-side trial path. To
-// migrate one, give it a `free_preview_quota` in `premium_feature_policy`
-// (see migration 20260823000001) and add it here.
+//   synastry            — the reading was already server-owned (edge
+//                         get-profile-chart + synastry_preview_gate +
+//                         claim_synastry_free_grant, JUNO-01/preview work);
+//                         this row routes the ENTRY screen through the same
+//                         authority. Its policy preview stays NULL on
+//                         purpose: the free synastry preview is a per-TARGET
+//                         contract that lives in synastry_free_grant, not in
+//                         premium_usage (20260915000001, « POURQUOI UNE TABLE
+//                         DÉDIÉE »).
+//   daily/monthly_horoscope, lucky_days, date_planner — deterministic local
+//                         labels computed from the user's own sun sign
+//                         (category B): the compute stays client-side, the
+//                         ACCESS became a short, verifiable server
+//                         authorization (1 free preview/day preserved).
+//   planetary_transits, retrograde_alerts — static bundled consts (category
+//                         C): the gate protects ACCESS; the bytes are public
+//                         inert facts and the runbook says so.
+//   weekly/monthly-tarot — the bundled shared engine produces a full reading
+//                         locally (proven by premium-bypass.test.ts); same
+//                         category-B answer, keys tarot_cosmic/tarot_monthly
+//                         from 20260511000002.
+//
+// The legacy client-side trial path (hasTrialRemaining +
+// increment_feature_usage called as an AUTHORIZATION) is deleted: increment
+// counts, it never decided. PremiumContext keeps a device tier for UX
+// optimism on the SUBSCRIPTION state only — it can no longer open a gate.
 //
 // `conversation-guide` is server-enforced WITHOUT going through PremiumGate.
 // Its screen calls `enforcePremiumFeature` itself, on the first tap of a
@@ -74,9 +95,18 @@ export const FEATURE_TIERS: Record<FeatureKey, 'premium' | 'premium_plus'> = {
 // app ships no analytics SDK, so those rows are how opens, next-day return and
 // preview→subscribe conversion get measured. See
 // docs/conversation-coach-feature-plan-2026-08.md §11.2.
-export const SERVER_ENFORCED_FEATURES: Partial<Record<FeatureKey, string>> = {
+export const SERVER_ENFORCED_FEATURES: Record<FeatureKey, string> = {
   'natal-chart': 'natal_chart',
   'conversation-guide': 'conversation_guide',
+  'synastry': 'synastry',
+  'daily-horoscope': 'daily_horoscope',
+  'monthly-horoscope': 'monthly_horoscope',
+  'lucky-days': 'lucky_days',
+  'date-planner': 'date_planner',
+  'planetary-transits': 'planetary_transits',
+  'retrograde-alerts': 'retrograde_alerts',
+  'weekly-tarot': 'tarot_cosmic',
+  'monthly-tarot': 'tarot_monthly',
 };
 
 // Reason codes returned by `enforce_premium_feature`, plus 'error' for a
@@ -134,105 +164,16 @@ export async function enforcePremiumFeature(
   }
 }
 
-// Check if a feature has been used today
-export async function getFeatureUsageToday(
-  userId: string,
-  featureKey: FeatureKey
-): Promise<number> {
-  try {
-    // Guard: RLS should enforce this, but verify on the client too
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || user.id !== userId) return 0;
-
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-
-    const { data, error } = await supabase
-      .from('premium_usage')
-      .select('view_count')
-      .eq('user_id', userId)
-      .eq('feature_key', featureKey)
-      .eq('usage_date', today)
-      .maybeSingle();
-
-    if (error) {
-      return 0;
-    }
-
-    return data?.view_count || 0;
-  } catch (error) {
-    return 0;
-  }
-}
-
-// Increment feature usage (called when user views content)
-export async function incrementFeatureUsage(
-  userId: string,
-  featureKey: FeatureKey
-): Promise<{ success: boolean; viewCount: number }> {
-  try {
-    // Guard: the RPC is SECURITY DEFINER and accepts any user_id
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || user.id !== userId) {
-      return { success: false, viewCount: 0 };
-    }
-
-    // The RPC is the only write path. Migration 20260823000001 revoked
-    // INSERT/UPDATE/DELETE on `premium_usage` from `authenticated`, because a
-    // quota the billed account can rewrite is not a quota. The previous
-    // direct-upsert fallback would now fail silently, so it is gone.
-    const { data: rpcData, error: rpcError } = await supabase
-      .rpc('increment_feature_usage', {
-        p_user_id: userId,
-        p_feature_key: featureKey,
-      });
-
-    if (rpcError || rpcData === null) {
-      return { success: false, viewCount: 0 };
-    }
-
-    return { success: true, viewCount: rpcData };
-  } catch (error) {
-    return { success: false, viewCount: 0 };
-  }
-}
-
-// Check if user has trial remaining (1 free view per feature per day)
-export async function hasTrialRemaining(
-  userId: string,
-  featureKey: FeatureKey
-): Promise<boolean> {
-  const usageCount = await getFeatureUsageToday(userId, featureKey);
-  return usageCount < 1; // 1 free view per day
-}
-
-// Get all usage for today (for debugging/analytics)
-export async function getTodayUsage(
-  userId: string
-): Promise<Record<FeatureKey, number>> {
-  try {
-    // Guard: only allow querying own usage
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || user.id !== userId) return {} as Record<FeatureKey, number>;
-
-    const today = new Date().toISOString().split('T')[0];
-
-    const { data, error } = await supabase
-      .from('premium_usage')
-      .select('feature_key, view_count')
-      .eq('user_id', userId)
-      .eq('usage_date', today);
-
-    if (error) {
-      return {} as Record<FeatureKey, number>;
-    }
-
-    const usage: Record<string, number> = {};
-    data?.forEach((row) => {
-      usage[row.feature_key] = row.view_count;
-    });
-
-    return usage as Record<FeatureKey, number>;
-  } catch (error) {
-    return {} as Record<FeatureKey, number>;
-  }
-}
+// JUNO-06: the legacy client-side trial helpers are GONE on purpose.
+//
+// getFeatureUsageToday / incrementFeatureUsage / hasTrialRemaining /
+// getTodayUsage implemented the client-counted trial: the client read its own
+// usage row and incremented it as an AUTHORIZATION (premium-bypass.test.ts
+// documents the before-proof). Their remaining legitimate uses:
+//   * reading today's usage for UX counters -> can_use_premium_feature
+//     returns `remaining` server-side; use that;
+//   * telemetry -> premium_usage is written by enforce_premium_feature
+//     itself; no client write path exists (20260823000001 revoked them).
+// increment_feature_usage (the RPC) survives for the conversation-guide
+// telemetry path and any server-side caller; no mobile code calls it as an
+// authorization anymore.
