@@ -51,14 +51,19 @@ function handleAppRequest(request: NextRequest): NextResponse {
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
 
-  // JUNO-13 (2026-09-22): the middleware owns the enforcement CSP because a
-  // headers() entry in next.config gets injected by Vercel into the REQUEST
-  // the render reads, clobbering the nonce'd request CSP above (see
-  // src/lib/csp-static.ts). App responses therefore carry BOTH policies:
-  // enforcement (static, unsafe-inline — unchanged behaviour) and the
-  // nonce'd policy in Report-Only — phase 1 of the documented plan (observe,
-  // then switch enforcement, phase 2).
-  response.headers.set("Content-Security-Policy", ENFORCEMENT_CSP);
+  // JUNO-13 (2026-09-22, measured): on Vercel the render reads a MERGED view
+  // of request + response headers, and a response Content-Security-Policy —
+  // from next.config headers() OR set here — OVERWRITES the nonce'd request
+  // CSP above (Next extracts the nonce from the request's
+  // `content-security-policy`, preferring it over the Report-Only one).
+  // Therefore this response must NOT carry an enforcement CSP: it lives in
+  // vercel.json (platform routing headers, applied after the render, never
+  // folded into the request) for the /app subtree, and on the intl branch
+  // below for everything else. /en/app/csp-diag proved both halves of this.
+  //
+  // Report-Only: the nonce'd policy, observed without blocking anything —
+  // phase 1 of the documented plan (observe, then switch enforcement, phase 2
+  // — which will fold these two back into one response header).
   response.headers.set("Content-Security-Policy-Report-Only", nonceCsp);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

@@ -5,6 +5,15 @@
   "framework": "nextjs",
   "headers": [
     {
+      "source": "/:locale([a-z]{2}(?:-[a-z]{2})?)/app/:path*",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://challenges.cloudflare.com; script-src-elem 'self' 'unsafe-inline' https://va.vercel-scripts.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://qtihezzbuubnyvrjdkjd.supabase.co https://lh3.googleusercontent.com https://randomuser.me https://images.unsplash.com data: blob:; font-src 'self'; connect-src 'self' https://qtihezzbuubnyvrjdkjd.supabase.co wss://qtihezzbuubnyvrjdkjd.supabase.co https://va.vercel-scripts.com https://vitals.vercel-insights.com; media-src 'self'; frame-src https://challenges.cloudflare.com; form-action 'self'; base-uri 'self'; object-src 'none'; worker-src 'self'; frame-ancestors 'none'"
+        }
+      ]
+    },
+    {
       "source": "/service-worker.js",
       "headers": [
         {
