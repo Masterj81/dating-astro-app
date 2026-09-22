@@ -39,7 +39,7 @@ const source = fs.readFileSync(PREMIUM_USAGE, "utf8");
 // Client side: the server-key map and the reason union
 // ---------------------------------------------------------------------------
 const mapBlock = source.match(
-  /SERVER_ENFORCED_FEATURES:\s*Partial<Record<FeatureKey,\s*string>>\s*=\s*\{([\s\S]*?)\}/
+  /SERVER_ENFORCED_FEATURES:\s*(?:Partial<)?Record<FeatureKey,\s*string>?\s*=?\s*\{([\s\S]*?)\n\};/
 );
 if (!mapBlock) {
   console.error("Could not find SERVER_ENFORCED_FEATURES in apps/mobile/services/premiumUsage.ts");
@@ -122,6 +122,37 @@ for (const file of migrations) {
     for (const m of body.matchAll(/'([a-z_]+)'::TEXT/g)) serverReasons.add(m[1]);
     for (const m of body.matchAll(/\b(?:THEN|ELSE)\s+'([a-z_]+)'/g)) serverReasons.add(m[1]);
   }
+}
+
+// ---------------------------------------------------------------------------
+// JUNO-06: the map must be EXHAUSTIVE — every FEATURE_TIERS key carries a
+// policy mapping. Before the remediation only 2 of 11 did; a feature added
+// without a mapping silently fell back to the (now deleted) client path.
+// Today the gate fails closed on an unmapped key, so this check is what
+// turns "fails closed" into "never ships".
+// ---------------------------------------------------------------------------
+const tierKeysBlock = source.match(
+  /export const FEATURE_TIERS:\s*Record<FeatureKey,[^>]+>\s*=\s*\{([\s\S]*?)\n\};/
+);
+if (!tierKeysBlock) {
+  console.error("Could not find FEATURE_TIERS in apps/mobile/services/premiumUsage.ts");
+  process.exit(2);
+}
+const tierKeys = [...tierKeysBlock[1].matchAll(/'([\w-]+)'\s*:/g)].map((m) => m[1]);
+const mappedClientKeys = new Set(serverEnforced.map((e) => e.clientKey));
+for (const key of tierKeys) {
+  if (!mappedClientKeys.has(key)) {
+    issues.push(
+      `FEATURE_TIERS lists '${key}' but SERVER_ENFORCED_FEATURES does not map it — the gate ` +
+        `fails closed (unknown_feature). Add the canonical policy key or remove the feature.`
+    );
+  }
+}
+if (tierKeys.length !== serverEnforced.length) {
+  issues.push(
+    `Coverage mismatch: ${serverEnforced.length}/${tierKeys.length} features server-enforced. ` +
+      `JUNO-06 requires full coverage — the client-side trial path no longer exists as a fallback.`
+  );
 }
 
 // ---------------------------------------------------------------------------
