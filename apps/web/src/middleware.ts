@@ -3,6 +3,7 @@ import createMiddleware from "next-intl/middleware";
 import { NextRequest, NextResponse } from "next/server";
 import { routing } from "./i18n/routing";
 import { buildAppNonceCsp, isAppPath } from "./lib/csp-app";
+import { ENFORCEMENT_CSP } from "./lib/csp-static";
 
 const intlMiddleware = createMiddleware(routing);
 
@@ -24,10 +25,15 @@ const MARKETING_SEGMENTS = new Set([
  * 1. NONCE CSP (JUNO-13, split policy): a fresh nonce per request is placed
  *    on the REQUEST headers (x-nonce + Content-Security-Policy) so Next.js
  *    applies it to its inline scripts during the dynamic render ([locale]/app
- *    is force-dynamic for exactly this reason). The response keeps ENFORCEMENT
- *    as the global static policy (set in next.config.ts) and carries the
- *    nonce policy as Content-Security-Policy-Report-Only — phase 1 of the
- *    documented plan (observe, then switch enforcement, phase 2).
+ *    is force-dynamic for exactly this reason). The response carries the
+ *    nonce policy as the ENFORCED Content-Security-Policy — phase 2 of the
+ *    documented plan, deployed 2026-09-22 (operator option-A decision): the
+ *    enforced nonce'd header covers every /app document from the first
+ *    byte, including the pre-hydration __next_error__ shell of an uncaught
+ *    500, which the earlier meta architecture could not reach. Marketing
+ *    paths get the static ENFORCEMENT_CSP from the intl branch below
+ *    (src/lib/csp-static.ts — never a next.config headers() entry, which
+ *    Vercel folds into render requests, killing the nonce; runbook §6quater).
  *
  * 2. SESSION REFRESH (JUNO-05, official @supabase/ssr pattern): a server
  *    client reads cookies from the request; getUser() refreshes an expiring
@@ -50,10 +56,18 @@ function handleAppRequest(request: NextRequest): NextResponse {
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
 
-  // Report-Only: the new policy, observed without blocking anything. The
-  // ENFORCEMENT header comes from next.config.ts (global) — one source of
-  // truth, no duplicate CSP headers.
-  response.headers.set("Content-Security-Policy-Report-Only", nonceCsp);
+  // PHASE 2 (operator decision 2026-09-22, option A): the nonce'd policy as
+  // an ENFORCED response header. Why this shape is the only complete one:
+  // a response header applies from the FIRST BYTE of every /app document —
+  // including the pre-hydration __next_error__ shell of an uncaught 500,
+  // which no layout can reach (measured: 19 scripts, zero policy, injection
+  // possible until hydration under the previous meta architecture). The
+  // Vercel fold (response headers folded into the render's request) becomes
+  // HARMLESS here: the folded policy carries the SAME nonce the render
+  // extracted — proven end-to-end on Preview (26 direct routes nonced,
+  // shell 500 injection blocked at DOMContentLoaded, zero legitimate script
+  // blocked). Marketing keeps the static ENFORCEMENT_CSP below.
+  response.headers.set("Content-Security-Policy", nonceCsp);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -81,7 +95,7 @@ function handleAppRequest(request: NextRequest): NextResponse {
   return response;
 }
 
-export default function middleware(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
   const host = request.headers.get("host")?.toLowerCase() ?? "";
   const pathname = request.nextUrl.pathname;
 
@@ -115,13 +129,20 @@ export default function middleware(request: NextRequest) {
   }
 
   // App subtree (both hosts — marketing pages may link into /app): dynamic
-  // render + nonce Report-Only + cookie session refresh. Must run AFTER the
+  // render + enforced nonce'd CSP + cookie session refresh. Must run AFTER the
   // host redirects above so marketing segments on app hosts still redirect.
   if (isAppPath(pathname)) {
     return handleAppRequest(request);
   }
 
-  return intlMiddleware(request);
+  // Marketing/intl paths: the static enforced CSP, set HERE — a headers()
+  // entry in next.config would be folded by Vercel into /app render requests
+  // and kill the nonce (proven 2026-09-22, runbook §6quater). Single source:
+  // src/lib/csp-static.ts. Identical directives to the previous next.config
+  // entry; Turnstile trio included (JUNO-07).
+  const intlResponse = await intlMiddleware(request);
+  intlResponse.headers.set("Content-Security-Policy", ENFORCEMENT_CSP);
+  return intlResponse;
 }
 
 export const config = {
