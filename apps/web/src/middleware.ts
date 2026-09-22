@@ -51,19 +51,20 @@ function handleAppRequest(request: NextRequest): NextResponse {
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
 
-  // JUNO-13 (2026-09-22, measured): on Vercel the render reads a MERGED view
-  // of request + response headers, and a response Content-Security-Policy —
-  // from next.config headers() OR set here — OVERWRITES the nonce'd request
-  // CSP above (Next extracts the nonce from the request's
-  // `content-security-policy`, preferring it over the Report-Only one).
-  // Therefore this response must NOT carry an enforcement CSP: it lives in
-  // vercel.json (platform routing headers, applied after the render, never
-  // folded into the request) for the /app subtree, and on the intl branch
-  // below for everything else. /en/app/csp-diag proved both halves of this.
-  //
-  // Report-Only: the nonce'd policy, observed without blocking anything —
-  // phase 1 of the documented plan (observe, then switch enforcement, phase 2
-  // — which will fold these two back into one response header).
+  // JUNO-13 (2026-09-22, measured end-to-end on diag/nonce-perpage): on
+  // Vercel the render reads a MERGED view of request + response headers, and
+  // a response Content-Security-Policy — from next.config headers(), set
+  // here, or even vercel.json platform headers — OVERWRITES the nonce'd
+  // request CSP above. Next 15.5.25 extracts the nonce from
+  // `content-security-policy || content-security-policy-report-only`
+  // (app-render.js:108, no fall-through when the first exists), so ANY
+  // response CSP without a nonce on /app silently disables noncing; and a
+  // response CSP WITH a nonce would enforce it on modern browsers
+  // ('unsafe-inline' is ignored besides a nonce) — a disguised phase 2.
+  // Structural collision: phase 1 therefore ships /app with the nonce'd
+  // policy in Report-Only ONLY (full directive set below), while
+  // X-Frame-Options DENY / COOP / CORP / nosniff stay enforced via
+  // next.config. Phase 2 folds both back into one enforced nonce header.
   response.headers.set("Content-Security-Policy-Report-Only", nonceCsp);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
