@@ -60,7 +60,14 @@ function handleAppRequest(request: NextRequest): NextResponse {
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
 
-  response.headers.set("Content-Security-Policy-Report-Only", nonceCsp);
+  // DIAGNOSTIC VARIANT (diag/shell-500 branch — NEVER merge as-is): the
+  // nonce'd policy as an ENFORCED response header (phase-2 shape). Why this
+  // is the only architecture that covers the pre-hydration __next_error__
+  // shell: a response header applies from the first byte, before any script;
+  // the Vercel fold becomes harmless because the folded policy carries the
+  // SAME nonce the render extracted. Proven on this branch's Preview before
+  // any recommendation is made.
+  response.headers.set("Content-Security-Policy", nonceCsp);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
