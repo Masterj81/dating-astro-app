@@ -1,5 +1,7 @@
 import { headers } from "next/headers";
 
+import { CspEnforcementMeta } from "@/components/CspEnforcementMeta";
+
 // JUNO-13 — the /app subtree renders per request (nonce CSP gate outcome).
 //
 // WHY here and nowhere else: a nonce must be fresh per request, so every
@@ -29,5 +31,14 @@ export default async function AppLayout({
   // rendering; the nonce itself is applied by Next to its scripts from the
   // request CSP header (see src/lib/csp-app.ts).
   await headers();
-  return children;
+  return (
+    <>
+      {/* Browser-enforced CSP for this subtree, delivered in the document —
+          a response CSP header would be folded into the render's request on
+          Vercel and kill the nonce (see CspEnforcementMeta for the full
+          chain). */}
+      <CspEnforcementMeta />
+      {children}
+    </>
+  );
 }
