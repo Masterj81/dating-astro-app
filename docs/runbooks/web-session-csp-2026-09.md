@@ -139,6 +139,44 @@ Aujourd'hui : **zéro surface cookie-auth** (les 4 routes API = Bearer ; webhook
 - **Critère de passage** : zéro violation sur les parcours ci-dessus, Turnstile `/contact` toujours fonctionnel, PWA installable.
 - **Phase 2 (un changement d'une ligne, documenté ici)** : remplacer l'enforcement du sous-arbre `/app` par la politique à nonce (le middleware devient la source d'enforcement pour `/app`, `next.config` reste la source pour le marketing) — sous nouvelle autorisation, après re-vérification.
 
+## 6quinquies. Revue de sécurité avant fusion — PR #65, SHA `a06045a` (22 sept, Preview `dating-astro-ab9vh1zyi`)
+
+**Checks** : Quality Gates (validateur 13 familles) ✓ · CodeQL ✓ · Gitleaks ✓ · 2× Vercel Deployment completed ✓. Aucune fusion à ce stade.
+
+### Découverte préalable de la revue — les surfaces d'erreur étaient nues (réparées dans `a06045a`)
+Mesure locale sur `359e9d9` : le 404 sous `/app/*` rend le layout RACINE seulement → **7 scripts inline + 6 externes sans aucune politique** dès que le header CSP a quitté next.config ; un 5xx non attrapé rend le shell interne `__next_error__` de Next, lui aussi hors layout. **Réparation** : la méta monte dans le **layout racine** (unique boundary que tout document rendu traverse, 404 inclus) ; `global-error.tsx` créé et `error.tsx` racine porte la méta (ils remplacent le document) ; le layout `/app` ne la rend plus (une occurrence par document). Validateurs R10c/R10d/R10e + 3 canaris (retrait racine / retrait error.tsx / doublon /app), tous exit ≠ 0 avec restauration. Simulation 5xx locale : page jetable qui lève (jamais commitée ; piège : un dossier `_*` est privé en App Router et **silencieusement exclu du build** — la première tentative mesurait un 404).
+
+### Matrice mesurée sur la Preview du SHA exact (`a06045a`)
+
+| surface | statut | enforcement | ordre avant 1er script | XFO | RO nonce | cache |
+|---|---|---|---|---|---|---|
+| 26 pages directes `/app/**` (EN/FR/ES + 2 routes dynamiques) | 200 | **méta** (unique) | ✓ (offsets 3406-4278 < 5064-5936) | DENY | ✓ nonce distinct/requête, tous inline noncés (36-44) | private, no-cache, no-store |
+| 6 redirections métier (307, mesurées localement — opaque côté navigateur) | 307 | corps : aucune (voir limites) — **jamais exécuté** (le navigateur suit le Location) | n/a | DENY | ✓ (scripts du corps noncés sous RO) | private |
+| → destinations des redirections | 200 | méta | ✓ | DENY | ✓ | private, no-store |
+| 404 `/app/*` (3 testés) | 404 | **méta** (1134 < 2627) | ✓ | DENY/COOP/CORP/nosniff | ✓ (scripts du 404 non noncés → bruit RO, voir limites) | public, must-revalidate (aucune donnée) |
+| 404 marketing | 404 | **header + méta** | ✓ | DENY | — | public, must-revalidate |
+| callback auth (`?code=garbage`) | 200 | header + méta | ✓ | DENY | — | public |
+| 5xx simulé (local, page jetable) | 500 | shell `__next_error__` pré-hydratation : **aucune possible** (voir limites) ; post-hydratation : méta (global-error) | shell : scripts bootstrap Next | DENY/COOP/CORP/nosniff | ✓ (bootstrap noncé) | private, no-store |
+| marketing `/`, `/fr/contact`, `/en/auth/login`, `/en/auth/callback` | 200 | **header** (Turnstile inclus) | n/a (header) | DENY | — | private/public selon route |
+| API `/api/*` (405 GET) / SW / manifeste | 405/200 | aucun header (non-documents : JSON/JS — voir limites) | n/a | DENY | — | public, must-revalidate (SW piné par vercel.json) |
+
+**Streaming (critère 5, mesuré sur le flux brut via getReader, pas le DOM)** : méta dans le **chunk 0** sur les 4 routes testées, avant le premier script inline (même chunk, offset ultérieur). Les ressources précédant la méta (18-23 par page : charset, viewport, stylesheet, preload, chunks externes) sont toutes `/_next/*` ou assets racine — autorisées par la politique elle-même.
+
+**Console** : aucune violation bloquante ni RO inexpliquée ; seule `vercel.live/_next-live/feedback/feedback.js` est bloquée (par la **méta** — preuve qu'elle enforce) : outil interne de Preview, absent en production.
+
+**Turnstile** : header enforcement intact sur `/fr/contact` (trio script-src/script-src-elem/frame-src) ; le widget lui-même ne peut pas s'exécuter en Preview sans clé publique — inchangé par cette PR (déjà prouvé en production sur `bd61436`).
+
+### Limites propres à la méta CSP (assumées, à lire avant fusion)
+1. **`frame-ancestors` est inopérant en méta** (spec) : la protection anti-framing de `/app` repose sur `X-Frame-Options: DENY` (header, toutes routes, mesuré partout y compris 404/307/500). Navs modernes + legacy couverts par le duo header+ méta ; la phase 2 refera un header complet.
+2. **Le shell `__next_error__` pré-hydratation (500 non attrapé) ne peut pas porter de méta** (généré hors layout par Next) ni de header CSP (tout header CSP de réponse se plie dans la requête du rendu et tue le nonce partout — preuves B1/B2). Mitigations mesurées : XFO/COOP/CORP/nosniff présents, bootstrap noncé sous observation RO, contenu digest-only en production, `global-error` rend la méta dès l'hydratation. Surface : uniquement pendant un crash serveur non attrapé.
+3. **Corps des 307** : document de redirection streamé par Next (méta absente, scripts noncés sous RO). Un navigateur n'exécute jamais ce corps (il suit le Location, même origine vérifié) ; un client non-navigateur qui ignorerait le Location s'exécuterait sans CSP appliquée — théorique, documenté.
+4. **404 sous `/app`** : les scripts du not-found ne portent pas le nonce (pipeline de rendu distinct) → violations RO en console sur les 404 pendant la fenêtre d'observation — bruit d'observation, pas un trou (l'enforcement est la méta, qui autorise ces scripts).
+5. **API/SW/manifeste n'ont plus de header CSP** (le matcher middleware exclut `api` et fichiers ; avant, `next.config '/:path*'` en posait un). Non-documents : aucun effet d'exécution ; toutes les routes API renvoient du JSON. Différence mesurée et acceptée.
+6. **`unsafe-inline` reste dans script-src de la méta** (phase 1) : la méta protège des chargements externes et prépare la phase 2, elle ne bloque pas l'inline XSS — c'est précisément ce que le nonce RO observe en vue de la phase 2. JUNO-05 reste « partiellement corrigé » tant que la phase 2 n'est pas déployée.
+
+### Rollback
+`git revert` des commits de la PR : la méta disparaît des layouts/boundaries, le middleware intl repose le header partout via… attention : le revert remet next.config headers() CSP + le layout /app sans per-page dynamic — l'état `bd61436` exact. Les sessions cookies restent (PR #63, déjà en production). Ne jamais « dépanner » en retirant la méta sans remettre un header CSP sur `/app`.
+
 ## 7. Compatibilité
 
 - **Turnstile** : inchangé sur `/contact` (marketing statique, enforcement actuel) ; dans la RO `/app`, Turnstile figure dans script-src/script-src-elem/frame-src — et si le widget n'apparaît que sur `/contact`, il n'est pas concerné par la RO.
