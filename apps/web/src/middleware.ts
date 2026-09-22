@@ -47,7 +47,11 @@ function handleAppRequest(request: NextRequest): NextResponse {
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
-  requestHeaders.set("Content-Security-Policy", nonceCsp);
+  // B1 (operator-specified separation): NO enforced CSP in the internal
+  // request — only the nonce'd Report-Only, so Next's fallback
+  // (`csp || csp-ro`, app-render.js:108) can extract the nonce.
+  requestHeaders.delete("Content-Security-Policy");
+  requestHeaders.set("Content-Security-Policy-Report-Only", nonceCsp);
   // Diagnostics (diag branch only): what the middleware SAW on entry (route
   // headers applied before middleware?) — copied, never printed raw.
   const sawCsp = request.headers.get("content-security-policy");
@@ -56,24 +60,12 @@ function handleAppRequest(request: NextRequest): NextResponse {
   }
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
-  // Response-only marker: if the render's view shows it, response headers
-  // ARE folded into the request on this platform.
-  response.headers.set("x-mw-res-probe", "1");
 
-  // JUNO-13 (2026-09-22, measured end-to-end on diag/nonce-perpage): on
-  // Vercel the render reads a MERGED view of request + response headers, and
-  // a response Content-Security-Policy — from next.config headers(), set
-  // here, or even vercel.json platform headers — OVERWRITES the nonce'd
-  // request CSP above. Next 15.5.25 extracts the nonce from
-  // `content-security-policy || content-security-policy-report-only`
-  // (app-render.js:108, no fall-through when the first exists), so ANY
-  // response CSP without a nonce on /app silently disables noncing; and a
-  // response CSP WITH a nonce would enforce it on modern browsers
-  // ('unsafe-inline' is ignored besides a nonce) — a disguised phase 2.
-  // Structural collision: phase 1 therefore ships /app with the nonce'd
-  // policy in Report-Only ONLY (full directive set below), while
-  // X-Frame-Options DENY / COOP / CORP / nosniff stay enforced via
-  // next.config. Phase 2 folds both back into one enforced nonce header.
+  // B1: public response carries BOTH policies — enforced CSP (browser) and
+  // the nonce'd Report-Only. The question under test: does the fold re-inject
+  // the enforced CSP into the render's request, killing the RO fallback?
+  response.headers.set("x-mw-res-probe", "1");
+  response.headers.set("Content-Security-Policy", ENFORCEMENT_CSP);
   response.headers.set("Content-Security-Policy-Report-Only", nonceCsp);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
