@@ -48,8 +48,17 @@ function handleAppRequest(request: NextRequest): NextResponse {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("Content-Security-Policy", nonceCsp);
+  // Diagnostics (diag branch only): what the middleware SAW on entry (route
+  // headers applied before middleware?) — copied, never printed raw.
+  const sawCsp = request.headers.get("content-security-policy");
+  if (sawCsp) {
+    requestHeaders.set("x-mw-saw-csp", sawCsp.slice(0, 120));
+  }
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
+  // Response-only marker: if the render's view shows it, response headers
+  // ARE folded into the request on this platform.
+  response.headers.set("x-mw-res-probe", "1");
 
   // JUNO-13 (2026-09-22, measured end-to-end on diag/nonce-perpage): on
   // Vercel the render reads a MERGED view of request + response headers, and
