@@ -3,6 +3,11 @@ import { PremiumGlyph, type PremiumGlyphName } from "@/components/PremiumGlyph";
 import { Link } from "@/i18n/navigation";
 import { getTranslations } from "next-intl/server";
 
+// JUNO-13 (diag) : le layout force-dynamic ne se propage pas sur le runtime Vercel ;
+// chaque page porte son propre segment config.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function CosmicHubPage() {
   const t = await getTranslations("webApp");
 
@@ -113,3 +118,4 @@ export default async function CosmicHubPage() {
     </AppShell>
   );
 }
+
