@@ -21,8 +21,12 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+// 2026-09-22 (JUNO-13 phase 2): the enforced CSP moved from next.config.ts
+// headers() to src/lib/csp-static.ts, applied by the middleware — a config
+// CSP gets folded by Vercel into /app render requests and kills the nonce
+// (runbook §6quater). Same contract, new home.
 const CONFIG = readFileSync(
-  path.resolve(process.cwd(), "next.config.ts"),
+  path.resolve(process.cwd(), "src/lib/csp-static.ts"),
   "utf8",
 );
 const ORIGIN = "https://challenges.cloudflare.com";
@@ -75,8 +79,14 @@ describe("JUNO-07 · CSP Turnstile — les trois autorisations exactes", () => {
   it("la CSP reste présente et X-Frame-Options reste DENY", () => {
     expect(directivesAt).toBeGreaterThan(0);
     expect(directivesLines.length).toBeGreaterThanOrEqual(10);
-    expect(CONFIG).toContain("{ key: 'X-Frame-Options', value: 'DENY' }");
-    expect(CONFIG).toContain("'Content-Security-Policy'");
+    // La CSP vit ici (csp-static.ts) ; X-Frame-Options reste un header de
+    // réponse dans next.config.ts (toutes routes).
+    const nextConfig = readFileSync(
+      path.resolve(process.cwd(), "next.config.ts"),
+      "utf8",
+    );
+    expect(nextConfig).toContain("{ key: 'X-Frame-Options', value: 'DENY' }");
+    expect(CONFIG).toContain("export const ENFORCEMENT_CSP");
   });
 
   it("exactement TROIS usages de TURNSTILE_ORIGIN dans les directives — pas un de plus", () => {

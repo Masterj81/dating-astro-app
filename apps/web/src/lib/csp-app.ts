@@ -11,13 +11,17 @@
  * SPLIT POLICY — marketing stays static with the current enforcement; the
  * /{locale}/app subtree opts into dynamic rendering + this nonce policy.
  *
- * Deployment shape (phase 1): the nonce policy ships as
- * Content-Security-Policy-Report-Only on app paths, while ENFORCEMENT stays
- * the global static policy (unsafe-inline — nonced scripts pass it too, so
- * the dual header is consistent). The request CSP carries the nonce so Next
- * auto-nonces its inline scripts during the dynamic render, making the
- * Report-Only signal MEANINGFUL (zero console violations = ready to switch
- * enforcement; the switch itself is a documented one-line change, phase 2).
+ * Deployment shape (PHASE 2, operator decision 2026-09-22 option A): the
+ * nonce policy ships as the ENFORCED Content-Security-Policy response header
+ * on app paths — same value in the request CSP (Next auto-nonces its inline
+ * scripts during the dynamic render) and in the response header (browser
+ * enforcement from the first byte, covering the pre-hydration __next_error__
+ * shell of an uncaught 500, which no layout can reach). The Vercel response-
+ * header fold is harmless in this shape: the folded policy carries the SAME
+ * nonce the render extracted (proven on Preview — runbook §6septies).
+ * CSP2 fallback: 'self' + explicit hosts stay beside the nonce so browsers
+ * without 'strict-dynamic' (CSP2) fall back to the host allowlist, while
+ * CSP3 browsers honor nonce + strict-dynamic and ignore the allowlist.
  */
 
 export const TURNSTILE_ORIGIN = "https://challenges.cloudflare.com";
