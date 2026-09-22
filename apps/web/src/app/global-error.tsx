@@ -1,10 +1,17 @@
 "use client";
 
+// JUNO-13 (2026-09-22) — the LAST-RESORT error boundary. Next renders this
+// ONLY for errors not caught by any segment boundary (root layout included),
+// and it replaces the root layout entirely — so the enforced-CSP <meta> that
+// the root layout renders would be LOST exactly here. This boundary renders
+// its own <html>/<head> and re-includes the meta: no executable error
+// document may ship without an enforced policy (review criterion: any
+// unprotected HTML surface blocks the merge).
 import { useEffect } from "react";
 
 import { CspEnforcementMeta } from "@/components/CspEnforcementMeta";
 
-export default function RootError({
+export default function GlobalError({
   error,
   reset,
 }: {
@@ -12,15 +19,11 @@ export default function RootError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Root error boundary caught:", error);
+    console.error("Global error boundary caught:", error);
   }, [error]);
 
   return (
     <html lang="en" className="dark">
-      {/* This boundary renders its OWN document — the root layout's CSP meta
-          does not apply here (measured 2026-09-22: the 500 surface shipped 13
-          inline scripts with no policy). Re-include it: no executable error
-          document without an enforced CSP. */}
       <head>
         <CspEnforcementMeta />
       </head>
@@ -70,14 +73,13 @@ export default function RootError({
           <button
             onClick={reset}
             style={{
-              background: "linear-gradient(135deg, #E85D75 0%, #D93C5A 100%)",
+              background: "#E85D75",
               color: "#fff",
               border: "none",
-              borderRadius: 8,
+              borderRadius: 9999,
               padding: "0.75rem 2rem",
               fontSize: "1rem",
               cursor: "pointer",
-              fontWeight: 600,
             }}
           >
             Try again

@@ -198,12 +198,46 @@ for (const line of scriptLines) {
 if (scriptLines.length >= 2) ok("politique app: script-src et script-src-elem sans 'unsafe-inline'");
 else fail("csp-app: directives script introuvables");
 
-// ── R10 — la CSP appliquée ne disparaît pas de /app (méta document) ─────────
-const appLayoutFull = read("apps/web/src/app/[locale]/app/layout.tsx");
-if (/import \{ CspEnforcementMeta \}/.test(appLayoutFull) && /<CspEnforcementMeta \/>/.test(appLayoutFull)) {
-  ok("R10: layout /app rend CspEnforcementMeta (CSP appliquée présente dans le document)");
+// ── R10 — la CSP appliquée ne disparaît d'AUCUNE surface HTML ──────────────
+// 2026-09-22 (revue sécu) : la méta vit dans le layout RACINE — le seul
+// boundary que tout document rendu traverse, Y COMPRIS le 404 intégré
+// (mesuré : le 404 /app rendait 7 scripts inline sans aucune politique
+// quand la méta vivait dans le layout /app). global-error.tsx la re-rend
+// (il remplace le layout racine). Le layout /app ne la rend PAS : une
+// seule occurrence par document.
+const rootLayoutPath = "apps/web/src/app/layout.tsx";
+const rootDocLayout = read(rootLayoutPath);
+if (/import \{ CspEnforcementMeta \}/.test(rootDocLayout) && /<CspEnforcementMeta \/>/.test(rootDocLayout)) {
+  ok("R10: layout RACINE rend CspEnforcementMeta (couvre 404 et tout HTML)");
 } else {
-  fail("R10: layout /app SANS CspEnforcementMeta — la CSP appliquée disparaît de /app (régression JUNO-13)");
+  fail("R10: layout racine SANS CspEnforcementMeta — le 404 intégré et les erreurs hors boundary perdent toute CSP appliquée");
+}
+const appLayoutFull = read("apps/web/src/app/[locale]/app/layout.tsx");
+if (/<CspEnforcementMeta/.test(appLayoutFull)) {
+  fail("R10c: layout /app rend aussi la méta — doublon (exigence : une seule occurrence par document)");
+} else {
+  ok("R10c: layout /app sans doublon de méta (source unique = layout racine)");
+}
+const globalErrorPath = "apps/web/src/app/global-error.tsx";
+if (existsSync(path.join(ROOT, globalErrorPath))) {
+  const ge = read(globalErrorPath);
+  if (/import \{ CspEnforcementMeta \}/.test(ge) && /<CspEnforcementMeta \/>/.test(ge)) {
+    ok("R10d: global-error.tsx rend la méta (erreurs non attrapées couvertes après hydratation)");
+  } else {
+    fail("R10d: global-error.tsx existe mais sans CspEnforcementMeta");
+  }
+} else {
+  fail("R10d: global-error.tsx ABSENT — les erreurs non attrapées rendent la page interne Next sans CSP");
+}
+const rootErrorPath = "apps/web/src/app/error.tsx";
+const rootError = read(rootErrorPath);
+if (/<html/.test(rootError)) {
+  // Ce boundary remplace le document : la méta du layout racine n'y passe pas.
+  if (/import \{ CspEnforcementMeta \}/.test(rootError) && /<CspEnforcementMeta \/>/.test(rootError)) {
+    ok("R10e: error.tsx racine (rend son propre <html>) porte la méta");
+  } else {
+    fail("R10e: error.tsx racine rend son propre <html> SANS CspEnforcementMeta — sa surface perd toute CSP");
+  }
 }
 const metaComponent = read("apps/web/src/components/CspEnforcementMeta.tsx");
 if (/ENFORCEMENT_CSP_META/.test(metaComponent) && /httpEquiv=/.test(metaComponent)) {
