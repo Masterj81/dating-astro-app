@@ -2,6 +2,11 @@ import { AppShell } from "@/components/AppShell";
 import { AstroPortal } from "@/components/AstroPortal";
 import { getTranslations } from "next-intl/server";
 
+// JUNO-13 (diag) : le layout force-dynamic ne se propage pas sur le runtime Vercel ;
+// chaque page porte son propre segment config.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 /**
  * /app/astro — the portal that reunites both reading tiers.
  *
@@ -23,3 +28,4 @@ export default async function AstroPortalPage() {
     </AppShell>
   );
 }
+
