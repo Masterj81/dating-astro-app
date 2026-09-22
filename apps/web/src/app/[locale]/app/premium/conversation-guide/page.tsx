@@ -3,6 +3,11 @@ import { AppShell } from "@/components/AppShell";
 import { ConversationGuideOverview } from "@/components/ConversationGuideOverview";
 import { getTranslations } from "next-intl/server";
 
+// JUNO-13 (diag) : le layout force-dynamic ne se propage pas sur le runtime Vercel ;
+// chaque page porte son propre segment config.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 // The Conversation Guide lives under /app/premium/ for URL consistency with the
 // other paid surfaces, and NOTHING under that path gates on entry: there is no
 // layout.tsx in the premium tree, and each feature component decides for itself.
@@ -31,3 +36,4 @@ export default async function ConversationGuidePage() {
     </AppShell>
   );
 }
+

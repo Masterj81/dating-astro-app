@@ -2,6 +2,11 @@ import { AppShell } from "@/components/AppShell";
 import { ChatThread } from "@/components/ChatThread";
 import { getTranslations } from "next-intl/server";
 
+// JUNO-13 (diag) : le layout force-dynamic ne se propage pas sur le runtime Vercel ;
+// chaque page porte son propre segment config.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 // NOTE: the URL segment is still called `matchId` for back-compat with
 // any external links / bookmarks; semantically it's now a conversation_id.
 // Renaming the segment would invalidate every existing chat URL the user
@@ -30,3 +35,4 @@ export default async function ChatPage({
     </AppShell>
   );
 }
+
