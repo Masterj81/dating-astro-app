@@ -15,7 +15,18 @@
 //      layouts are NOT;
 //   R7 enforcement CSP keeps the full confinement set (Turnstile trio,
 //      frame-ancestors 'none', worker-src 'self', object-src 'none',
-//      base-uri 'self', form-action 'self') and gains COOP/CORP;
+//      base-uri 'self', form-action 'self') and gains COOP/CORP — source of
+//      truth: src/lib/csp-static.ts (header for marketing via middleware,
+//      document meta for /app);
+//   R10 the /app layout renders CspEnforcementMeta — the enforced policy
+//      never disappears from the subtree;
+//   R11 NO response Content-Security-Policy may exist for /app (middleware
+//      app branch, vercel.json, next.config) — any one folds into the
+//      render's request on Vercel and kills the nonce (proven 2026-09-22);
+//   R12 the meta policy is DERIVED from ENFORCEMENT_CSP minus
+//      frame-ancestors (spec-ignored in meta; X-Frame-Options DENY covers);
+//   R13 X-Frame-Options DENY stays in next.config (frame-ancestors' stand-in
+//      for /app);
 //   R8 the app nonce policy contains NO 'unsafe-inline' in script-src(e);
 //   R9 no API route uses a server Supabase client without the origin guard
 //      (no accidental cookie-auth mutation surface).
@@ -148,8 +159,8 @@ if (/force-dynamic|headers\(\)/.test(rootLayout)) {
   ok("layout racine (marketing) reste statique — pas de bascule globale en SSR");
 }
 
-// ── R7 — enforcement CSP (next.config) ──────────────────────────────────────
-const nextConfig = read("apps/web/next.config.ts");
+// ── R7 — enforcement CSP (source: csp-static.ts) ─────────────────────────
+const cspStatic = read("apps/web/src/lib/csp-static.ts");
 for (const [re, label] of [
   [/frame-ancestors 'none'/, "frame-ancestors 'none'"],
   [/worker-src 'self'/, "worker-src 'self'"],
@@ -158,6 +169,11 @@ for (const [re, label] of [
   [/form-action 'self'/, "form-action 'self'"],
   [/frame-src \$\{TURNSTILE_ORIGIN\}/, "frame-src Turnstile (seule origine)"],
   [/TURNSTILE_ORIGIN = "https:\/\/challenges\.cloudflare\.com"/, "constante Turnstile"],
+]) {
+  re.test(cspStatic) ? ok(`enforcement: ${label}`) : fail(`enforcement SANS ${label}`);
+}
+const nextConfig = read("apps/web/next.config.ts");
+for (const [re, label] of [
   [/Cross-Origin-Opener-Policy', value: 'same-origin'/, "COOP same-origin"],
   [/Cross-Origin-Resource-Policy', value: 'same-origin'/, "CORP same-origin"],
 ]) {
@@ -181,6 +197,63 @@ for (const line of scriptLines) {
 }
 if (scriptLines.length >= 2) ok("politique app: script-src et script-src-elem sans 'unsafe-inline'");
 else fail("csp-app: directives script introuvables");
+
+// ── R10 — la CSP appliquée ne disparaît pas de /app (méta document) ─────────
+const appLayoutFull = read("apps/web/src/app/[locale]/app/layout.tsx");
+if (/import \{ CspEnforcementMeta \}/.test(appLayoutFull) && /<CspEnforcementMeta \/>/.test(appLayoutFull)) {
+  ok("R10: layout /app rend CspEnforcementMeta (CSP appliquée présente dans le document)");
+} else {
+  fail("R10: layout /app SANS CspEnforcementMeta — la CSP appliquée disparaît de /app (régression JUNO-13)");
+}
+const metaComponent = read("apps/web/src/components/CspEnforcementMeta.tsx");
+if (/ENFORCEMENT_CSP_META/.test(metaComponent) && /httpEquiv=/.test(metaComponent)) {
+  ok("R10b: composant méta httpEquiv alimenté par ENFORCEMENT_CSP_META");
+} else {
+  fail("R10b: CspEnforcementMeta n'utilise pas ENFORCEMENT_CSP_META via httpEquiv");
+}
+
+// ── R11 — AUCUNE CSP de réponse pour /app (le pliage Vercel tue le nonce) ──
+const handleAppSlice = (() => {
+  const s = middleware.indexOf("function handleAppRequest");
+  const e = middleware.indexOf("\n}", s);
+  return s >= 0 ? middleware.slice(s, e) : "";
+})();
+if (/headers\.set\(\s*["']Content-Security-Policy["']/.test(handleAppSlice)) {
+  fail("R11: handleAppRequest pose une CSP de RÉPONSE — Vercel la plie dans la requête du rendu et le nonce meurt (preuves 9e66d14/37c9df5)");
+} else {
+  ok("R11: branche /app du middleware sans CSP de réponse (pliage Vercel évité)");
+}
+const vercelJson = read("vercel.json");
+if (/Content-Security-Policy/i.test(vercelJson)) {
+  fail("R11b: vercel.json défininit une CSP — les headers de route se plient aussi dans la requête (preuve 271fa1b)");
+} else {
+  ok("R11b: vercel.json sans CSP");
+}
+if (/['"]Content-Security-Policy['"]/.test(nextConfig) && !/intentionally omitted|ABSENT/.test(nextConfig)) {
+  fail("R11c: next.config référencerait une CSP hors du commentaire d'omission volontaire");
+} else {
+  ok("R11c: next.config sans entrée CSP");
+}
+
+// ── R12 — méta DÉRIVÉE de l'enforcement, sans frame-ancestors ────────────────
+if (/\.filter\(\(d\) => !d\.startsWith\("frame-ancestors"\)\)/.test(cspStatic)) {
+  ok("R12: ENFORCEMENT_CSP_META dérivée par filtre frame-ancestors (pas de copie manuelle qui dérivera)");
+} else {
+  fail("R12: la dérivation frame-ancestors manque dans csp-static.ts");
+}
+const cspStaticNoComments = cspStatic.split(/\r?\n/).filter((l) => !/^\s*\/\//.test(l)).join("\n");
+if (/'nonce-/.test(cspStaticNoComments)) {
+  fail("R12b: un nonce dans les directives appliquées = phase 2 anticipée (interdit)");
+} else {
+  ok("R12b: aucun nonce dans les politiques appliquées (phase 1 respectée)");
+}
+
+// ── R13 — X-Frame-Options DENY couvre frame-ancestors pour /app ────────────
+if (/X-Frame-Options', value: 'DENY'/.test(nextConfig)) {
+  ok("R13: X-Frame-Options DENY conservé ( remplaçant frame-ancestors pour la méta /app)");
+} else {
+  fail("R13: X-Frame-Options DENY absent de next.config — /app perd toute protection au framing");
+}
 
 // ── R9 — API routes vs cookie-auth surface ──────────────────────────────────
 const apiDir = path.join(ROOT, "apps/web/src/app/api");

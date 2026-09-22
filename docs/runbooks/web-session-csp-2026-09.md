@@ -108,9 +108,33 @@ Aujourd'hui : **zéro surface cookie-auth** (les 4 routes API = Bearer ; webhook
 
 **Preuve Preview/Production encore requise** (le défaut était spécifique au rendu Vercel) : PR → déploiement → deux GET sans cache navigateur → nonces différents dans les headers ET portés par chaque script inline → zéro script inline sans nonce → HTML non identique → cache privé → aucune violation RO sur `/en/app` → login/refresh/logout/réouverture → Turnstile `/fr/contact` → EN/FR/ES → callback PKCE/token_hash → SW kill-switch intact.
 
+## 6quater. Campagne du 22 sept — le pliage Vercel, les variantes B1/B2, la solution méta (PREUVE 31/31)
+
+**Historique des essais (branche `diag/nonce-perpage`, jamais fusionnée — les essais ne sont pas une preuve de sécurité ; la preuve finale clôt cette section).**
+
+**Mécanisme, prouvé au niveau header (déploiement `5b4cc65`, page echo `/en/app/csp-diag`)** : sur Vercel, le rendu lit une vue **fusionnée** requête ⊕ headers de réponse, et toute `Content-Security-Policy` de réponse **écrase** la CSP noncée posée en requête par le middleware. Deux sondes l'établissent sans inférence : `x-mw-saw-csp` (copie de la CSP vue à l'ENTRÉE du middleware — absente : les headers de route arrivent après) et `x-mw-res-probe` (marqueur posé en réponse SEULE — **visible du rendu** : pliage réel). Next 15.5.25 (`app-render.js:108`) lit `content-security-policy || content-security-policy-report-only` **sans repli** quand la première existe ; `getScriptNonceFromHeader` scanne la première directive `script-src*`.
+
+**Variantes testées (Preview Vercel, SSO équipe)** :
+
+| variante | déploiement | CSP de réponse `/app` | nonces scripts | verdict |
+|---|---|---|---|---|
+| f19cb35 (PR #64) | `5mzhytRNH` | header (next.config) | 0/16 | défaut reproduit |
+| CSP→middleware | `8gsj828b1` (9e66d14) | header (middleware) | 0 | pliage depuis le middleware |
+| CSP→vercel.json | `p8n208m2a` (079a480) | header (route plateforme) | 0 | pliage depuis la route |
+| sans CSP réponse | `lo57o2twe` (e3c760a) | aucune | 31/31 ✓ | mais enforcement perdue |
+| **B1 séparation** | `jgr6gcv1i` (37c9df5) | header (middleware) ; requête interne RO-seule | 0/16 | le pliage réinjecte même sans CSP interne — le repli RO ne sauve rien |
+| **B2 séparation** | `p8x57m7ap` (271fa1b) | header (vercel.json) | 0 | idem ; `x-mw-saw-csp` absent ⇒ pliage APRÈS middleware |
+| **B3 méta** | `27x28nnvs` (c4d052d) | **aucune — méta dans le document** | **26/26 directes + 5 redirects métier → destinations OK** | **COEXISTANCE PROUVÉE** |
+
+**B3 — forme finale** : l'enforcement n'est plus un header sur `/app`. Le layout rend `<CspEnforcementMeta />` (React hoisté dans `<head>`, avant le premier script inline — offsets mesurés) : le navigateur applique la CSP (les politiques méta s'intersectent : une méta injectée ne peut que resserrer). Le middleware garde la CSP noncée en requête interne (extraction vivante) et la RO noncée en réponse. `frame-ancestors` est omis de la méta (ignoré par la spec) — **X-Frame-Options: DENY** (next.config, toutes routes) couvre. Marketing : header enforcement via middleware (branche intl), inchangé.
+
+**Preuve Vercel finale (Preview `c4d052d`, 22 sept)** — les 5 objectifs mesurés : (1) CSP appliquée dans la réponse navigateur ✓ (méta, 7/7 directives directrices vérifiées par route ; la console BLOQUE réellement — `vercel.live` refusé par `script-src-elem` sans mention report-only) ; (2) RO noncée dans la réponse ✓ ; (3) nonce au rendu via headers internes sans CSP appliquée concurrente ✓ (`cspHdr` absent des 31 réponses) ; (4) tous les scripts inline noncés, nonce header = nonce scripts ✓ (36/36, 43/43…) ; (5) `Cache-Control: private, no-cache, no-store` ✓. Plus : HTML ≠ par requête ; méta avant premier inline ; marketing `/en` + `/fr/contact` + `/en/auth/login` header enforcement + XFO/COOP/CORP intacts ; **login → refresh → navigation interne → logout prouvés avec un compte E2E** (cookies `__Host-juno.sb`, localStorage legacy vide, cookie supprimé au logout) ; Turnstile sans violation (formulaire désactivé en Preview faute de clé publique — inchangé par B3) ; SW/manifest headers inchangés. Seule violation observée : `vercel.live` (outil interne de Preview, absent en production) — expliquée.
+
+**Limite assumée** : l'encadrement `/app` vit dans le document, pas dans un header — un intermédiaire qui stripperait le `<head>` échapperait à la méta mais aussi à XFO/COOP/CORP (headers, eux, restent). La phase 2 refera les deux en un header enforcement à nonce.
+
 ## 6. Plan Report-Only → enforcement
 
-- **Phase 1 (ce commit)**ment global + Report-Only nonce). Aucun blocage nouveau possible.
+- **Phase 1 (cette forme)** : sessions cookies + Report-Only nonce sur `/app` + **encadrement via méta document** (header CSP interdit sur `/app` — pliage Vercel, §6quater). Aucun blocage nouveau possible.
 - **Fenêtre d'observation** : navigations réelles EN/FR/ES sur `/app` (login, discover, chat, premium, settings, logout) — **console ouverte, zéro violation Report-Only attendue**. Pas de collecteur de rapports (aucun endpoint configuré — personne ne prétend le contraire) : l'observation est navigateur + inspection manuelle, selon la mission.
 - **Critère de passage** : zéro violation sur les parcours ci-dessus, Turnstile `/contact` toujours fonctionnel, PWA installable.
 - **Phase 2 (un changement d'une ligne, documenté ici)** : remplacer l'enforcement du sous-arbre `/app` par la politique à nonce (le middleware devient la source d'enforcement pour `/app`, `next.config` reste la source pour le marketing) — sous nouvelle autorisation, après re-vérification.
@@ -125,7 +149,7 @@ Aujourd'hui : **zéro surface cookie-auth** (les 4 routes API = Bearer ; webhook
 ## 8. Tests et canaris
 
 - **Suites (vitest)** : `session-storage.test.ts` (4) — TRANCHANT : `setSession` → chunks `juno.sb` dans le cookie jar, **localStorage ET sessionStorage vides** (échouerait contre l'ancien client) ; contrat d'options (Lax, Path=/, Secure prod, `__Host-` prod / pas en dev) ; purge legacy (exactly les clés Supabase, conserve le reste, idempotente) ; aucune clé `sb-*-auth-token` ne réapparaît après login (resetModules = page fraîche). `csp-app.test.ts` (9) : nonces distincts, portés par script-src ET script-src-elem, **aucun `unsafe-inline` dans les directives script**, `unsafe-inline` uniquement dans style-src, trio Turnstile, frame-ancestors/worker-src/object-src/base-uri/form-action stricts, strict-dynamic, périmètre `isAppPath` (accepte `/en/app…`, refuse marketing/auth/contact/SW/manifest), nonce malformé refusé.
-- **Validateur structurel** `scripts/validate-web-session-csp.mjs` (câblé `package.json` + CI) — 9 familles de règles ; **canaris par injection (5, tous exit 1, restauration vérifiée)** : retour à `createClient` nu, retrait du Report-Only, retrait de `frame-ancestors`, retrait du `force-dynamic`, `unsafe-inline` dans script-src de la politique app.
+- **Validateur structurel** `scripts/validate-web-session-csp.mjs` (câblé `package.json` + CI) — 13 familles de règles (R1-R9 + R10-R13 : méta rendue, AUCUNE CSP de réponse `/app` — middleware/vercel.json/next.config —, dérivation frame-ancestors, XFO DENY conservé) ; **canaris par injection (9 au total, tous exit ≠ 0, restauration vérifiée)** : retour à `createClient` nu, retrait du Report-Only, retrait du `frame-ancestors`, retrait du `force-dynamic`, `unsafe-inline` dans script-src de la politique app, **méta retirée du layout (R10), CSP de réponse réintroduite dans handleAppRequest (R11), CSP dans vercel.json (R11b), dérivation frame-ancestors cassée (R12)**. Suite vitest `csp-static.test.ts` (5) : encadrement = méta EXACTEMENT l'header moins frame-ancestors, aucun nonce (phase 2 interdite), trio Turnstile, origines Supabase REST+wss.
 - **Preuves runtime** : §5 (nonces par réponse, scripts noncés, no-store, marketing intact).
 
 ## 9. Rollback
