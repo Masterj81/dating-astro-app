@@ -47,11 +47,12 @@ function handleAppRequest(request: NextRequest): NextResponse {
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
-  // B1 (operator-specified separation): NO enforced CSP in the internal
-  // request — only the nonce'd Report-Only, so Next's fallback
-  // (`csp || csp-ro`, app-render.js:108) can extract the nonce.
-  requestHeaders.delete("Content-Security-Policy");
-  requestHeaders.set("Content-Security-Policy-Report-Only", nonceCsp);
+  // B3 (meta enforcement): the internal request carries the nonce'd CSP Next
+  // extracts (app-render.js:108). The PUBLIC response must carry NO enforced
+  // CSP for /app — any response CSP header folds into this request on Vercel
+  // (proven B1/B2) — enforcement lives in the document via <meta>
+  // (CspEnforcementMeta), the Report-Only header carries the nonce'd policy.
+  requestHeaders.set("Content-Security-Policy", nonceCsp);
   // Diagnostics (diag branch only): what the middleware SAW on entry (route
   // headers applied before middleware?) — copied, never printed raw.
   const sawCsp = request.headers.get("content-security-policy");
@@ -61,10 +62,9 @@ function handleAppRequest(request: NextRequest): NextResponse {
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
 
-  // B2: enforcement moved to vercel.json route headers for /app — this
-  // response carries NO enforced CSP. Does a platform-level route header
-  // still fold into the render's request? (x-mw-saw-csp will tell whether
-  // it was even present at middleware ENTRY.)
+  // B3: /app public response = Report-Only (nonce'd) ONLY. The enforced
+  // policy for this subtree is the <meta> in the document; X-Frame-Options
+  // DENY / COOP / CORP / nosniff stay as response headers via next.config.
   response.headers.set("x-mw-res-probe", "1");
   response.headers.set("Content-Security-Policy-Report-Only", nonceCsp);
 

@@ -54,3 +54,14 @@ const cspDirectives = [
 ];
 
 export const ENFORCEMENT_CSP = cspDirectives.join("; ");
+
+// Browser-enforced CSP for the /app subtree delivered as a <meta> element
+// (see src/components/CspEnforcementMeta.tsx). Identical to ENFORCEMENT_CSP
+// except frame-ancestors, which the CSP spec ignores in meta policies (and
+// which stays covered by the X-Frame-Options: DENY response header set in
+// next.config.ts — enforced on every path, /app included). Meta policies are
+// intersected with header policies by browsers: an injected extra meta can
+// only tighten, never relax, so this is not a weakening surface.
+export const ENFORCEMENT_CSP_META = cspDirectives
+  .filter((d) => !d.startsWith("frame-ancestors"))
+  .join("; ");
