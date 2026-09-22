@@ -41,6 +41,17 @@ describe("buildAppNonceCsp · politique nonce du sous-arbre app", () => {
     expect(n1).not.toBe(n2);
   });
 
+  it("PHASE 2 : strict-dynamic ET repli CSP2 (hôtes conservés à côté du nonce)", () => {
+    // CSP3 : nonce + strict-dynamic (le allowlist est ignoré).
+    // CSP2 (navigateurs sans strict-dynamic) : repli sur 'self' + les hôts
+    // explicites — ils doivent rester dans la directive pour ces navigateurs.
+    const scriptSrc = n1.split(";").find((d) => d.includes("script-src "))!;
+    expect(scriptSrc).toContain("'strict-dynamic'");
+    expect(scriptSrc).toContain("'self'");
+    expect(scriptSrc).toContain("https://va.vercel-scripts.com");
+    expect(scriptSrc).toContain("https://challenges.cloudflare.com");
+  });
+
   it("le nonce est porté par script-src ET script-src-elem", () => {
     expect(n1).toContain(`script-src 'self' 'nonce-AAAAAAAA`);
     expect(n1).toContain(`script-src-elem 'self' 'nonce-AAAAAAAA`);

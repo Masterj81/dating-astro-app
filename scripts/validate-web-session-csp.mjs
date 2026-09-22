@@ -10,15 +10,25 @@
 //   R4 legacy cleanup exists, is called at client construction, and only
 //      ever REMOVES keys (no read/copy of token values);
 //   R5 middleware: server client + getUser (refresh) + per-request nonce
-//      (crypto.randomUUID) + Report-Only on app paths, request CSP carried;
-//   R6 app subtree is force-dynamic (the nonce gate decision), marketing
-//      layouts are NOT;
-//   R7 enforcement CSP keeps the full confinement set (Turnstile trio,
-//      frame-ancestors 'none', worker-src 'self', object-src 'none',
-//      base-uri 'self', form-action 'self') and gains COOP/CORP;
+//      (crypto.randomUUID) + ENFORCED nonce'd Content-Security-Policy on
+//      app responses (phase 2) + request CSP carried;
+//   R6 app subtree is force-dynamic — EVERY /app page (the nonce gate
+//      decision; per-page config required on the deployed runtime),
+//      marketing layouts are NOT;
+//   R7 static enforcement CSP (marketing/auth/callback) keeps the full
+//      confinement set (Turnstile trio, frame-ancestors 'none', worker-src
+//      'self', object-src 'none', base-uri 'self', form-action 'self') and
+//      gains COOP/CORP — source of truth: src/lib/csp-static.ts;
 //   R8 the app nonce policy contains NO 'unsafe-inline' in script-src(e);
 //   R9 no API route uses a server Supabase client without the origin guard
-//      (no accidental cookie-auth mutation surface).
+//      (no accidental cookie-auth mutation surface);
+//   R11 phase-2 shape: NO static CSP in next.config headers() or vercel.json
+//      (either would fold into /app render requests on Vercel and kill the
+//      nonce — proven 2026-09-22); the app branch MUST set the enforced
+//      nonce'd response CSP;
+//   R14 strict-dynamic WITH CSP2 host fallback in the app policy;
+//   R15 no <meta http-equiv CSP> anywhere in app code (the header owns
+//      enforcement from the first byte — a meta could only add confusion).
 //
 // Discriminant by construction — canaries run during development (see
 // runbook): removing any guarded element fails this script.
@@ -87,9 +97,10 @@ for (const [needle, label] of [
   [/createServerClient/, "client serveur @supabase/ssr (rafraîchissement)"],
   [/supabase\.auth\.getUser\(\)/, "getUser() (déclenche le refresh)"],
   [/crypto\.randomUUID\(\)/, "nonce crypto par requête"],
-  [/Content-Security-Policy-Report-Only/, "header Report-Only (phase observation)"],
-  [/requestHeaders\.set\("Content-Security-Policy"/, "CSP de requête porteuse du nonce"],
+  [/response\.headers\.set\("Content-Security-Policy", nonceCsp\)/, "CSP noncée ENFORCÉE en réponse (phase 2)"],
+  [/requestHeaders\.set\("Content-Security-Policy", nonceCsp\)/, "CSP de requête porteuse du nonce (extraction Next)"],
   [/isAppPath\(pathname\)/, "périmètre app via isAppPath"],
+  [/intlResponse\.headers\.set\("Content-Security-Policy", ENFORCEMENT_CSP\)/, "CSP statique sur la branche intl (marketing)"],
 ]) {
   needle.test(middleware) ? ok(`middleware: ${label}`) : fail(`middleware SANS ${label}`);
 }
@@ -141,6 +152,27 @@ if (existsSync(path.join(ROOT, appPage))) {
 } else {
   fail("[locale]/app/page.tsx introuvable");
 }
+// R6c — phase 2 : la propagation du layout ne suffit pas sur le runtime
+// déployé (mesuré 2026-09-22). CHAQUE page du sous-arbre porte ses exports.
+const appPagesDir = path.join(ROOT, "apps/web/src/app/[locale]/app");
+const appPages = [];
+(function walkPages(dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) walkPages(path.join(dir, entry.name));
+    else if (entry.name === "page.tsx") appPages.push(path.join(dir, entry.name));
+  }
+})(appPagesDir);
+const pagesWithoutDynamic = appPages.filter((p) => {
+  const src = readFileSync(p, "utf8");
+  return !/export const dynamic\s*=\s*"force-dynamic"/.test(src);
+});
+if (pagesWithoutDynamic.length === 0) {
+  ok(`R6c: ${appPages.length}/${appPages.length} pages /app portent force-dynamic (rendu par requête garanti)`);
+} else {
+  fail(
+    `R6c: ${pagesWithoutDynamic.length} page(s) /app SANS force-dynamic par page (ex: ${pagesWithoutDynamic[0].replace(ROOT + path.sep, "")}) — la propagation du layout ne suffit pas sur Vercel`,
+  );
+}
 const rootLayout = read("apps/web/src/app/[locale]/layout.tsx");
 if (/force-dynamic|headers\(\)/.test(rootLayout)) {
   fail("[locale]/layout.tsx (racine, marketing inclus) est dynamique — régression du rendu statique globale");
@@ -148,8 +180,8 @@ if (/force-dynamic|headers\(\)/.test(rootLayout)) {
   ok("layout racine (marketing) reste statique — pas de bascule globale en SSR");
 }
 
-// ── R7 — enforcement CSP (next.config) ──────────────────────────────────────
-const nextConfig = read("apps/web/next.config.ts");
+// ── R7 — enforcement statique (source : csp-static.ts) ─────────────────
+const cspStatic = read("apps/web/src/lib/csp-static.ts");
 for (const [re, label] of [
   [/frame-ancestors 'none'/, "frame-ancestors 'none'"],
   [/worker-src 'self'/, "worker-src 'self'"],
@@ -158,6 +190,11 @@ for (const [re, label] of [
   [/form-action 'self'/, "form-action 'self'"],
   [/frame-src \$\{TURNSTILE_ORIGIN\}/, "frame-src Turnstile (seule origine)"],
   [/TURNSTILE_ORIGIN = "https:\/\/challenges\.cloudflare\.com"/, "constante Turnstile"],
+]) {
+  re.test(cspStatic) ? ok(`enforcement: ${label}`) : fail(`enforcement SANS ${label}`);
+}
+const nextConfig = read("apps/web/next.config.ts");
+for (const [re, label] of [
   [/Cross-Origin-Opener-Policy', value: 'same-origin'/, "COOP same-origin"],
   [/Cross-Origin-Resource-Policy', value: 'same-origin'/, "CORP same-origin"],
 ]) {
@@ -181,6 +218,51 @@ for (const line of scriptLines) {
 }
 if (scriptLines.length >= 2) ok("politique app: script-src et script-src-elem sans 'unsafe-inline'");
 else fail("csp-app: directives script introuvables");
+
+// ── R11 — forme phase 2 : AUCUNE CSP statique pliable ; enforcement noncé requis ──
+if (/\{ key: 'Content-Security-Policy'/.test(nextConfig)) {
+  fail("R11: next.config définirait une CSP headers() — le pliage Vercel écraserait le nonce sur /app (preuves 2026-09-22)");
+} else {
+  ok("R11: next.config sans entrée CSP (middleware = seule source)");
+}
+const vercelJson = read("vercel.json");
+if (/Content-Security-Policy/i.test(vercelJson)) {
+  fail("R11b: vercel.json définirait une CSP — les headers de route se plient aussi dans la requête du rendu (preuve 271fa1b)");
+} else {
+  ok("R11b: vercel.json sans CSP");
+}
+if (/Content-Security-Policy-Report-Only/.test(middleware)) {
+  fail("R11c: le middleware poserait encore une Report-Only — phase 2 = enforcement noncé (un RO résiduel crée une seconde politique à maintenir)");
+} else {
+  ok("R11c: plus de Report-Only résiduel dans le middleware (phase 2)");
+}
+
+// ── R14 — strict-dynamic AVEC repli CSP2 (hôtes conservés à côté du nonce) ──
+const scriptSrcLine = cspApp.split(/\r?\n/).find((l) => /`script-src /.test(l)) || "";
+if (/strict-dynamic/.test(scriptSrcLine) && /'self'/.test(scriptSrcLine) && /VERCEL_INSIGHTS|TURNSTILE_ORIGIN/.test(scriptSrcLine)) {
+  ok("R14: strict-dynamic + repli CSP2 ('self' + hôtes explicites à côté du nonce)");
+} else {
+  fail("R14: script-src doit porter strict-dynamic ET les hôtes CSP2 en repli");
+}
+
+// ── R15 — aucune méta CSP dans le code applicatif ─────────────────────────
+const srcDir = path.join(ROOT, "apps/web/src");
+const metaHits = [];
+(function walkSrc(dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) walkSrc(full);
+    else if (/\.tsx?$/.test(entry.name)) {
+      const src = readFileSync(full, "utf8");
+      if (/http-equiv=\{?["']Content-Security-Policy/.test(src)) metaHits.push(full.replace(ROOT + path.sep, ""));
+    }
+  }
+})(srcDir);
+if (metaHits.length === 0) {
+  ok("R15: aucune méta CSP dans le code (l'header enforcement noncé couvre tout document, shell 500 inclus)");
+} else {
+  fail(`R15: méta(s) CSP présentes (${metaHits.join(', ')}) — l'header phase 2 suffit ; une méta intersecterait inutilement`);
+}
 
 // ── R9 — API routes vs cookie-auth surface ──────────────────────────────────
 const apiDir = path.join(ROOT, "apps/web/src/app/api");
