@@ -3,6 +3,7 @@ import createMiddleware from "next-intl/middleware";
 import { NextRequest, NextResponse } from "next/server";
 import { routing } from "./i18n/routing";
 import { buildAppNonceCsp, isAppPath } from "./lib/csp-app";
+import { ENFORCEMENT_CSP } from "./lib/csp-static";
 
 const intlMiddleware = createMiddleware(routing);
 
@@ -50,9 +51,14 @@ function handleAppRequest(request: NextRequest): NextResponse {
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
 
-  // Report-Only: the new policy, observed without blocking anything. The
-  // ENFORCEMENT header comes from next.config.ts (global) — one source of
-  // truth, no duplicate CSP headers.
+  // JUNO-13 (2026-09-22): the middleware owns the enforcement CSP because a
+  // headers() entry in next.config gets injected by Vercel into the REQUEST
+  // the render reads, clobbering the nonce'd request CSP above (see
+  // src/lib/csp-static.ts). App responses therefore carry BOTH policies:
+  // enforcement (static, unsafe-inline — unchanged behaviour) and the
+  // nonce'd policy in Report-Only — phase 1 of the documented plan (observe,
+  // then switch enforcement, phase 2).
+  response.headers.set("Content-Security-Policy", ENFORCEMENT_CSP);
   response.headers.set("Content-Security-Policy-Report-Only", nonceCsp);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -81,7 +87,7 @@ function handleAppRequest(request: NextRequest): NextResponse {
   return response;
 }
 
-export default function middleware(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
   const host = request.headers.get("host")?.toLowerCase() ?? "";
   const pathname = request.nextUrl.pathname;
 
@@ -121,7 +127,13 @@ export default function middleware(request: NextRequest) {
     return handleAppRequest(request);
   }
 
-  return intlMiddleware(request);
+  // Marketing/intl paths: same enforcement CSP as before (it used to come
+  // from next.config headers(), which Vercel injects into the render's
+  // request — see src/lib/csp-static.ts). Applied here so nothing changes
+  // for the visitor while the /app subtree regains its nonce.
+  const intlResponse = await intlMiddleware(request);
+  intlResponse.headers.set("Content-Security-Policy", ENFORCEMENT_CSP);
+  return intlResponse;
 }
 
 export const config = {
