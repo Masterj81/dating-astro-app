@@ -1,0 +1,106 @@
+-- =============================================================================
+-- JUNO-06 — M1c : mutations PRODUIT des politiques premium.
+-- =============================================================================
+-- BROUILLON — NE PAS EXÉCUTER
+-- CONDITION : VERSION ANDROID 131 + AUTORISATION PRODUIT
+-- =============================================================================
+--
+-- Ce fichier N'EST PAS une migration. Il vit sous docs/runbooks/sql/ parce
+-- que scripts/validate-premium-gating.mjs interdit toute mutation produit
+-- des politiques dans supabase/migrations tant que M1c n'est pas autorisée
+-- (décision opérateur 2026-09-23 : M1c interdite jusqu'au cycle 131 et une
+-- autorisation produit dédiée). Le jour venu, il devient une migration
+-- NOUVELLE datée du jour (jamais 20260922000001, déjà classifiée M1a et
+-- réservée à la classification), après relecture produit.
+--
+-- PRÉREQUIS : M1a appliquée (la colonne enforcement_class existe, les
+-- compteurs audités font 2/7/2, les 4 lignes historiques portent leurs
+-- marqueurs legacy).
+--
+-- CONTENU (chaque ligne est classée dans la matrice du runbook
+-- docs/runbooks/juno-06-backend-activation-2026-09.md §1bis) :
+--   1. NORMALISATION (assouplissement, aucun retrait) : les quotas legacy
+--      de l'ère increment_feature_usage passent à NULL (= illimité pour le
+--      tier requis — ce que le gate serveur attend). Rien n'est réduit.
+--   2. AJOUTS D'APERÇUS : free_preview_quota = 1/jour sur 8 clés — dont 5
+--      visibles immédiatement sur le web livré (planetary_transits,
+--      retrograde_alerts, date_planner, tarot_monthly, tarot_cosmic) et 3
+--      qui ne servent qu'au build 131 (daily/monthly_horoscope, lucky_days).
+--      C'est un changement produit : les comptes free y gagnent un aperçu
+--      gratuit par jour.
+--   3. synastry.free_preview_quota RESTE 1 (décision produit 2026-09-23 :
+--      conserver l'existant ; le passage à NULL serait un retrait d'aperçu
+--      et exigerait une décision distincte). L'upsert ci-dessous ne pose
+--      PAS la colonne pour synastry — le self-check le vérifie.
+--   4. SUPPRESSION des 3 graines mortes (compatibility_details,
+--      priority_messages, likes_you_see_who) : nettoyage de catalogue, sans
+--      effet utilisateur (aucun chemin client ne les référence).
+--
+-- POURQUOI CE FICHIER EXISTE DÉJÀ : validate-premium-gating exige que la
+-- promesse produit (« 1 aperçu gratuit/jour par fonctionnalité serveur »)
+-- reste TRAÇABLE pendant la période de déferral — chaque aperçu différé doit
+-- exister littéralement ici, sinon le validateur échoue (canari prouvé).
+-- =============================================================================
+
+-- BROUILLON — NE PAS EXÉCUTER (voir en-tête)
+-- begin;
+
+-- 1) Normalisation des quotas legacy (assouplissement) ----------------------
+-- BROUILLON — NE PAS EXÉCUTER
+-- UPDATE public.premium_feature_policy
+--    SET daily_quota = NULL, updated_at = NOW()
+--  WHERE feature_key = 'daily_horoscope';
+-- BROUILLON — NE PAS EXÉCUTER
+-- UPDATE public.premium_feature_policy
+--    SET daily_quota = NULL, updated_at = NOW()
+--  WHERE feature_key = 'synastry';
+
+-- 2) Aperçus 1/jour (ajout produit — 5 visibles web, 3 pour le 131) ---------
+-- BROUILLON — NE PAS EXÉCUTER
+-- UPDATE public.premium_feature_policy
+--    SET free_preview_quota = 1, updated_at = NOW()
+--  WHERE feature_key = 'daily_horoscope';
+-- BROUILLON — NE PAS EXÉCUTER
+-- UPDATE public.premium_feature_policy
+--    SET free_preview_quota = 1, updated_at = NOW()
+--  WHERE feature_key = 'monthly_horoscope';
+-- BROUILLON — NE PAS EXÉCUTER
+-- UPDATE public.premium_feature_policy
+--    SET free_preview_quota = 1, updated_at = NOW()
+--  WHERE feature_key = 'lucky_days';
+-- BROUILLON — NE PAS EXÉCUTER
+-- UPDATE public.premium_feature_policy
+--    SET free_preview_quota = 1, updated_at = NOW()
+--  WHERE feature_key = 'planetary_transits';
+-- BROUILLON — NE PAS EXÉCUTER
+-- UPDATE public.premium_feature_policy
+--    SET free_preview_quota = 1, updated_at = NOW()
+--  WHERE feature_key = 'retrograde_alerts';
+-- BROUILLON — NE PAS EXÉCUTER
+-- UPDATE public.premium_feature_policy
+--    SET free_preview_quota = 1, updated_at = NOW()
+--  WHERE feature_key = 'date_planner';
+-- BROUILLON — NE PAS EXÉCUTER
+-- UPDATE public.premium_feature_policy
+--    SET free_preview_quota = 1, updated_at = NOW()
+--  WHERE feature_key = 'tarot_monthly';
+-- BROUILLON — NE PAS EXÉCUTER
+-- UPDATE public.premium_feature_policy
+--    SET free_preview_quota = 1, updated_at = NOW()
+--  WHERE feature_key = 'tarot_cosmic';
+
+-- 4) Suppression des graines mortes (nettoyage) ------------------------------
+-- BROUILLON — NE PAS EXÉCUTER
+-- DELETE FROM public.premium_feature_policy
+--  WHERE feature_key IN ('compatibility_details', 'priority_messages', 'likes_you_see_who');
+
+-- Self-check (le jour où ce brouillon devient migration) ---------------------
+-- * catalogue produit : seuls daily_horoscope/synastry q→NULL, les 8 previews
+--   →1, 3 graines absentes ; TOUT LE RESTE inchangé (dont synastry p=1,
+--   natal_chart p=1, conversation_guide q100/p1) ;
+-- * classes préservées : compteurs audités toujours 2/7/2, tarot toujours
+--   legacy_alias, aucune des 11 reclassée ;
+-- * updated_at est la seule métadonnée touchée.
+
+-- BROUILLON — NE PAS EXÉCUTER
+-- commit;
