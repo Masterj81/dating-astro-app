@@ -5,9 +5,7 @@ import { debugLog } from '../utils/debug';
 import {
   FeatureKey,
   FEATURE_TIERS,
-  hasTrialRemaining,
-  incrementFeatureUsage,
-  getFeatureUsageToday,
+  syncEntitlement,
 } from '../services/premiumUsage';
 import { getUserTier, SubscriptionTier } from '../services/subscriptionService';
 
@@ -34,8 +32,6 @@ type PremiumContextType = {
   tier: SubscriptionTier;
   loading: boolean;
   canAccessFeature: (feature: FeatureKey) => boolean;
-  hasTrialRemaining: (feature: FeatureKey) => Promise<boolean>;
-  consumeTrial: (feature: FeatureKey) => Promise<{ success: boolean; showPaywall: boolean }>;
   triggerPaywall: (feature: FeatureKey) => void;
   dismissPaywall: () => void;
   refreshSubscription: () => Promise<void>;
@@ -171,18 +167,29 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
       const initialTier = await checkSubscriptionTier(userId);
       if (cancelled) return;
 
-      // If the server says `free` but RevenueCat has an active entitlement
-      // locally, trust the device — the webhook may simply be lagging.
-      // Server reconciliation runs in background via the listener below.
+      // JUNO-06 ruling (2026-09-23): a local RevenueCat entitlement can no
+      // longer outrank the server's answer — not even for the display tier.
+      // When they disagree, the device ASKS the server to verify with its
+      // own credentials (sync-entitlement edge: server-side RC lookup,
+      // verified write into `subscriptions`) and adopts the tier the server
+      // has then written. If that call cannot complete, the server's last
+      // word stands; PremiumGate's "check my subscription" state offers the
+      // same verification to the reader. The old branch set the tier from
+      // `checkLocalEntitlement()` directly — the phone deciding — and it is
+      // deliberately gone.
       let effectiveTier = initialTier;
       if (effectiveTier === 'free' && Platform.OS !== 'web' && checkLocalEntitlement) {
         try {
           const localTier = await checkLocalEntitlement();
           if (!cancelled && localTier !== 'free') {
             debugLog(
-              `[Premium] Server returned free, RevenueCat says ${localTier}; trusting local entitlement.`
+              `[Premium] Server says free, RevenueCat local says ${localTier}; asking the server to verify (sync-entitlement).`
             );
-            effectiveTier = localTier;
+            const sync = await syncEntitlement();
+            if (!cancelled && sync.ok) {
+              effectiveTier = sync.tier; // the tier the SERVER verified and wrote
+            }
+            // Sync failed: keep the server's value. Never the local one.
           }
         } catch {
           // Local lookup failed; keep the server value.
@@ -220,11 +227,29 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
 
               debugLog(`[Premium] RevenueCat signal: expectedTier=${expectedTier}`);
 
-              // Optimistic: trust the local entitlement immediately so the
-              // user never sees `free` after a confirmed purchase while the
-              // server-side webhook propagates.
+              // JUNO-06 ruling: a RevenueCat signal is a REQUEST to
+              // synchronize, not an authority. The previous code set the
+              // tier optimistically from the signal ("never see free after
+              // a confirmed purchase"); that optimism was the phone
+              // outranking the server, and a subscriber is still never
+              // stranded — the sync below asks the server to verify with
+              // its OWN credentials, which is both fast (it does not wait
+              // for the webhook) and authoritative.
               if (expectedTier !== 'free') {
-                setTier(expectedTier);
+                try {
+                  const sync = await syncEntitlement();
+                  if (cancelled) return;
+                  if (sync.ok) {
+                    setTier(sync.tier); // verified by the server, just now
+                    return;
+                  }
+                  // Sync unreachable (offline / RevenueCat error): the
+                  // server's last word stands. Fall through to the retry
+                  // read below, which waits for the webhook to land —
+                  // the honest reconciliation path.
+                } catch {
+                  // Same: fall through to the server read.
+                }
               }
 
               const confirmedTier = await checkSubscriptionTierWithRetry(userId, expectedTier);
@@ -255,6 +280,14 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
 
   const canAccessFeature = useCallback(
     (feature: FeatureKey): boolean => {
+      // JUNO-06 BOUNDARY (revised 2026-09-23): a UX helper, never a gate and
+      // never a smoothing authority. After the purge it is not consulted
+      // after server refusals at all — the gate renders the
+      // "check my subscription" sync action instead of granting. What
+      // remains here is display logic only: which tier badge a paywall
+      // should recommend, hub ordering, cosmetic highlights. No screen may
+      // treat this as an authorization; enforce_premium_feature (and, for
+      // tarot, the premium-tarot-reading edge) are the only decisions.
       const requiredTier = FEATURE_TIERS[feature];
 
       if (tier === 'premium_plus') {
@@ -268,46 +301,6 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
       return false;
     },
     [tier]
-  );
-
-  const checkTrialRemaining = useCallback(
-    async (feature: FeatureKey): Promise<boolean> => {
-      if (!user) return false;
-
-      if (canAccessFeature(feature)) {
-        return true;
-      }
-
-      return hasTrialRemaining(user.id, feature);
-    },
-    [user, canAccessFeature]
-  );
-
-  const consumeTrial = useCallback(
-    async (feature: FeatureKey): Promise<{ success: boolean; showPaywall: boolean }> => {
-      if (!user) {
-        return { success: false, showPaywall: true };
-      }
-
-      if (canAccessFeature(feature)) {
-        return { success: true, showPaywall: false };
-      }
-
-      const currentUsage = await getFeatureUsageToday(user.id, feature);
-
-      if (currentUsage >= 1) {
-        return { success: false, showPaywall: true };
-      }
-
-      const result = await incrementFeatureUsage(user.id, feature);
-
-      if (result.success) {
-        return { success: true, showPaywall: false };
-      }
-
-      return { success: false, showPaywall: true };
-    },
-    [user, canAccessFeature]
   );
 
   const triggerPaywall = useCallback((feature: FeatureKey) => {
@@ -332,14 +325,12 @@ export function PremiumProvider({ children }: PremiumProviderProps) {
       tier,
       loading,
       canAccessFeature,
-      hasTrialRemaining: checkTrialRemaining,
-      consumeTrial,
       triggerPaywall,
       dismissPaywall,
       refreshSubscription,
       paywallState,
     }),
-    [tier, loading, canAccessFeature, checkTrialRemaining, consumeTrial, triggerPaywall, dismissPaywall, refreshSubscription, paywallState]
+    [tier, loading, canAccessFeature, triggerPaywall, dismissPaywall, refreshSubscription, paywallState]
   );
 
   return <PremiumContext.Provider value={value}>{children}</PremiumContext.Provider>;

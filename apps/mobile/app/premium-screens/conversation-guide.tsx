@@ -70,6 +70,7 @@ import { buttonPress, premiumLocked, successNotification } from '../../services/
 import {
   enforcePremiumFeature,
   SERVER_ENFORCED_FEATURES,
+  syncEntitlement,
   type PremiumGateReason,
 } from '../../services/premiumUsage';
 
@@ -106,7 +107,7 @@ export default function ConversationGuideScreen() {
   const params = useLocalSearchParams<{ sign?: string; situation?: string }>();
   const { t } = useLanguage();
   const { user } = useAuth();
-  const { tier, canAccessFeature } = usePremium();
+  const { tier } = usePremium();
   const insets = useSafeAreaInsets();
 
   const first = (value: string | string[] | undefined): string | undefined =>
@@ -124,13 +125,23 @@ export default function ConversationGuideScreen() {
   );
   const [unlock, setUnlock] = useState<UnlockState>({ status: 'locked' });
   const [copied, setCopied] = useState(false);
+  // True while the "check my subscription" action asks the server to verify
+  // the entitlement (JUNO-06 sync flow).
+  const [syncing, setSyncing] = useState(false);
 
   // One server call per mount. The ref — not state — is what makes that true
   // even if two taps land in the same render pass.
   const gateRequested = useRef(false);
 
-  // Entitled accounts never need the preview machinery at all.
-  const entitled = canAccessFeature(FEATURE_KEY);
+  // JUNO-06 ruling (2026-09-23): there is no `entitled` shortcut anymore.
+  // The screen used to treat a locally-claimed paid tier as readable without
+  // asking the server (`canAccessFeature` in `canRead` and
+  // `openToReader`), and to grant after a server refusal when the device
+  // claimed an entitlement — the phone outranking the server. Now the only
+  // paths to a locked situation are: the server allows (enforce, on the
+  // first tap), or a local marker replaying a grant the server already
+  // recorded today. A device that claims a paid tier the server has not
+  // confirmed gets the "check my subscription" sync action below.
 
   // Replay a grant the server already recorded today for THIS account.
   //
@@ -191,7 +202,7 @@ export default function ConversationGuideScreen() {
   );
 
   const canRead =
-    situationMeta.access === 'free' || entitled || unlock.status === 'unlocked';
+    situationMeta.access === 'free' || unlock.status === 'unlocked';
 
   // GATE: fires on the first tap of a locked situation, and only then.
   //
@@ -215,14 +226,19 @@ export default function ConversationGuideScreen() {
       return;
     }
 
-    // Never paywall someone who is actually paying. A network failure, or a
-    // subscription the store confirmed before the billing webhook landed, both
-    // surface here — the same optimistic policy PremiumGate applies.
+    // JUNO-06 ruling: after a server refusal, a device-claimed entitlement
+    // is a REQUEST to synchronize — never a grant. The reader gets the
+    // "check my subscription" action, which asks the server to verify with
+    // its own RevenueCat credentials; only the enforce call that follows a
+    // successful sync can unlock. The old branch unlocked here when the
+    // local tier claimed paid; it is gone.
     if (
       (decision.reason === 'error' || decision.reason === 'insufficient_tier') &&
-      entitled
+      tier !== 'free'
     ) {
-      setUnlock({ status: 'unlocked', viaPreview: false });
+      gateRequested.current = false; // the sync action may re-ask
+      setUnlock({ status: 'refused', reason: 'sync_available' });
+      void premiumLocked();
       return;
     }
 
@@ -232,7 +248,23 @@ export default function ConversationGuideScreen() {
     gateRequested.current = decision.reason !== 'error';
     setUnlock({ status: 'refused', reason: decision.reason });
     void premiumLocked();
-  }, [entitled, userId]);
+  }, [tier, userId]);
+
+  // JUNO-06 sync flow for this screen: ask the server to verify with its own
+  // RevenueCat credentials, then re-ask enforce. Contains no code path that
+  // unlocks — only the new server verdict (requestUnlock's enforce call) can.
+  const handleSyncAndRecheck = useCallback(async () => {
+    setSyncing(true);
+    const result = await syncEntitlement();
+    setSyncing(false);
+    if (!result.ok) {
+      // Offline / RevenueCat unreachable / throttled: the refusal stands.
+      return;
+    }
+    gateRequested.current = false;
+    setUnlock({ status: 'checking' });
+    void requestUnlock();
+  }, [requestUnlock]);
 
   const handleSituationPress = useCallback(
     (key: CoachSituationKey) => {
@@ -242,14 +274,12 @@ export default function ConversationGuideScreen() {
 
       const meta = COACH_SITUATIONS.find((s) => s.key === key);
       const isLocked = meta?.access === 'locked';
-      // Entitled accounts are NOT skipped here, deliberately. `premium_usage`
-      // is this feature's only telemetry, and PremiumGate records for
-      // subscribers on every other server-gated screen — skipping them would
-      // undercount the Guide against natal_chart and make the one comparison
-      // that decides P1 (docs/conversation-guide-telemetry.md §3.4) dishonest.
-      // They never wait for it: `canRead` already includes `entitled`, so the
-      // card is on screen while the call records in the background, and their
-      // daily_quota is 100.
+      // JUNO-06: telemetry still fires for subscribers — on the first tap of
+      // a locked situation, like everyone else, because that enforce call is
+      // now the ONLY unlock path. `premium_usage` is this feature's only
+      // telemetry and skipping entitled taps would undercount the Guide
+      // against natal_chart (docs/conversation-guide-telemetry.md §3.4).
+      // Their daily_quota is 100, so the call never throttles a subscriber.
       if (!isLocked || unlock.status === 'unlocked') return;
       void requestUnlock();
     },
@@ -321,7 +351,7 @@ export default function ConversationGuideScreen() {
       {COACH_SITUATIONS.map((option) => {
         const selected = option.key === situation;
         const isFree = option.access === 'free';
-        const openToReader = isFree || entitled || unlock.status === 'unlocked';
+        const openToReader = isFree || unlock.status === 'unlocked';
         return (
           <TouchableOpacity
             key={option.key}
@@ -365,21 +395,27 @@ export default function ConversationGuideScreen() {
       const exhausted =
         unlock.reason === 'free_preview_exhausted' || unlock.reason === 'quota_exceeded';
       const errored = unlock.reason === 'error';
+      const needsSync = unlock.reason === 'sync_available';
 
       // Say what actually happened. Telling someone they used a preview they
       // were never offered is how a paywall loses trust.
       const title = errored
         ? t('conversationGuideErrorTitle') || "Couldn't check access"
-        : exhausted
-          ? t('conversationGuideExhaustedTitle') || 'Free preview used'
-          : t('conversationGuideLockedTitle') || 'Unlock this situation';
+        : needsSync
+          ? t('subscriptionConfirmTitle') || 'Confirming your subscription'
+          : exhausted
+            ? t('conversationGuideExhaustedTitle') || 'Free preview used'
+            : t('conversationGuideLockedTitle') || 'Unlock this situation';
       const body = errored
         ? t('conversationGuideErrorBody') || 'Something went wrong. Try again in a moment.'
-        : exhausted
-          ? t('conversationGuideExhaustedBody') ||
-            'Come back tomorrow for another one, or unlock every situation with Celestial.'
-          : t('conversationGuideLockedBody') ||
-            'Celestial members get every situation. Free accounts get a daily free preview.';
+        : needsSync
+          ? t('subscriptionConfirmBody') ||
+            'Your purchase is being verified with the billing server. This unlocks only when the server confirms it.'
+          : exhausted
+            ? t('conversationGuideExhaustedBody') ||
+              'Come back tomorrow for another one, or unlock every situation with Celestial.'
+            : t('conversationGuideLockedBody') ||
+              'Celestial members get every situation. Free accounts get a daily free preview.';
 
       return (
         <View style={styles.stateCard} testID="coach-locked-card">
@@ -397,6 +433,20 @@ export default function ConversationGuideScreen() {
             >
               <Text style={[styles.primaryButtonText, styles.primaryButtonTextPlain]}>
                 {t('conversationGuideRetry') || 'Try again'}
+              </Text>
+            </TouchableOpacity>
+          ) : needsSync ? (
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => void handleSyncAndRecheck()}
+              disabled={syncing}
+              accessibilityRole="button"
+              testID="coach-sync-entitlement"
+            >
+              <Text style={[styles.primaryButtonText, styles.primaryButtonTextPlain]}>
+                {syncing
+                  ? t('verifyingAccess') || 'Verifying access...'
+                  : t('subscriptionConfirmRetry') || 'Check my subscription'}
               </Text>
             </TouchableOpacity>
           ) : (

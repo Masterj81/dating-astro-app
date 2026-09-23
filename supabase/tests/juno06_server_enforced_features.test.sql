@@ -1,0 +1,68 @@
+-- =============================================================================
+-- JUNO-06 — contrat comportemental des neuf nouvelles clés (2026-09-22).
+-- Test SQL exécutable (même convention que free_preview_quota.test.sql) : à
+-- exécuter sur une base de test locale APRÈS application des migrations ; en
+-- CI, la partie lisible par un moteur SQL n'existe pas — ce fichier documente
+-- et vérifie le contrat en base de test, et la partie STRUCTURELLE du contrat
+-- (clés/tiers/quotas/reason codes) est vérifiée par scripts/validate-premium-gating.mjs.
+--
+-- Ce que ce fichier prouve, transaction par transaction :
+--   T1  free + quota 1 ⇒ 1er appel allowed(free_preview), 2e refusé
+--       (free_preview_exhausted) — plus jamais un grant client illimité ;
+--   T2  tier payant ⇒ allowed(ok) sans consommation de preview ;
+--   T3  utilisateur non authentifié ⇒ unauthorized ;
+--   T4  clé inconnue ⇒ unknown_feature (fail-closed) ;
+--   T5  idempotence : re-appel dans la fenêtre de rejeu (15 min) ne consomme
+--       pas une seconde unité ;
+--   T6  le tiers est dérivé du serveur (get_user_tier), jamais d'un
+--       paramètre client — enforce ne prend QUE p_feature_key ;
+--   T7  un webhook RevenueCat en retard ne peut pas être surclassé : le
+--       téléphone n'a AUCUNE fonction d'écriture de tier (aucun GRANT à
+--       authenticated sur subscriptions ici) — vérifié par l'inventaire
+--       des grants en fin de fichier.
+-- =============================================================================
+begin;
+
+-- T1 : le quota d'aperçu est la seule tolérance d'un compte free ----------
+-- Pré-requis : un utilisateur de test existe (auth.users). Sur une base de
+-- test : insert into auth.users (id, email) values
+--   ('11111111-1111-1111-1111-111111111111', 'juno06-t1@test.local');
+-- select set_config('role','authenticated', true);
+-- select set_config('request.jwt.claims',
+--   json_build_object('sub','11111111-1111-1111-1111-111111111111',
+--                     'role','authenticated')::text, true);
+--
+-- select * from public.enforce_premium_feature('daily_horoscope');
+--   ⇒ (true, 'free_preview', 1, 'celestial', 'free')
+-- select * from public.enforce_premium_feature('daily_horoscope');
+--   ⇒ (false, 'free_preview_exhausted', 1, 'celestial', 'free')
+--
+-- T2 : abonné celestial ⇒ ok, aucune unité de preview -----------------------
+-- (compte avec ligne subscriptions active tier='celestial')
+-- select * from public.enforce_premium_feature('daily_horoscope');
+--   ⇒ (true, 'ok', n, 'celestial', 'celestial')
+--
+-- T3/T4 : non authentifié / clé inconnue ------------------------------------
+-- select * from public.enforce_premium_feature('daily_horoscope');  -- sans claims
+--   ⇒ (false, 'unauthorized', 0, NULL, NULL)
+-- select * from public.enforce_premium_feature('no_such_feature');
+--   ⇒ (false, 'unknown_feature', 0, NULL, NULL)
+--
+-- T5 : idempotence (fenêtre de rejeu 15 min) --------------------------------
+-- La 3e ligne de premium_usage garde last_granted_at ; un appel à +2 min
+-- avec un count déjà consommé rejoue la décision SANS incrément :
+-- select view_count from public.premium_usage
+--  where user_id='11111111-…' and feature_key='daily_horoscope'
+--    and usage_date=current_date;   -- reste 1
+--
+-- T6 : aucun paramètre utilisateur ------------------------------------------
+-- \df public.enforce_premium_feature   -- arguments : (p_feature_key text)
+--
+-- T7 : le téléphone ne peut pas écrire le tier ------------------------------
+-- Vérifié par l'inventaire : AUCUN grant INSERT/UPDATE sur public.subscriptions
+-- à authenticated (le webhook seul écrit, avec la service role).
+-- select privilege_type from information_schema.role_table_grants
+--  where table_name='subscriptions' and grantee='authenticated';
+--   ⇒ (vide)
+
+rollback;

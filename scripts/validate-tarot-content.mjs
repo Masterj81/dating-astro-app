@@ -221,20 +221,39 @@ for (const [locale, corpus] of Object.entries(CORPORA)) {
 // ---------------------------------------------------------------------------
 // 4. One deck, and no second copy growing back
 // ---------------------------------------------------------------------------
-console.log('exactly one deck, imported by both apps');
+// JUNO-06 reprise (2026-09-23): the deck is still ONE, but the two apps reach
+// it differently and both ways are asserted. Web imports the shared package;
+// mobile consumes the SERVER artifact (edge premium-tarot-reading, generated
+// from the same source) and imports NOTHING — that absence is the fix for
+// the APK-patchable reading, and premium-data-sources D7 enforces it too.
+console.log('exactly one deck — web imports it, mobile receives it from the server');
 
 const WEB_SCREEN = 'apps/web/src/components/TarotReadingOverview.tsx';
 const MOBILE_SCREEN = 'apps/mobile/app/premium-screens/tarot.tsx';
+const MOBILE_SERVICE = 'apps/mobile/services/serverTarot.ts';
+const EDGE = 'supabase/functions/premium-tarot-reading/index.ts';
 const webScreen = read(WEB_SCREEN);
 const mobileScreen = read(MOBILE_SCREEN);
+const mobileService = read(MOBILE_SERVICE);
+const edge = read(EDGE);
 
 check(
   'the web screen imports the shared tarot package',
   /from ["']@astro\/shared\/tarot["']/.test(webScreen),
 );
 check(
-  'the mobile screen imports the shared tarot package',
-  /from ["']@astro\/shared\/tarot["']/.test(mobileScreen),
+  'the mobile screen imports NO tarot package — the reading is a server artifact (JUNO-06)',
+  !/from ["']@astro\/shared\/tarot["']/.test(mobileScreen) &&
+    !/from ["']@astro\/shared\/tarot["']/.test(mobileService),
+  'a producer import in the mobile bundle resurrects the patched-APK reading',
+);
+check(
+  'the mobile service calls the premium-tarot-reading edge',
+  /functions\.invoke\(\s*['"]premium-tarot-reading['"]/.test(mobileService),
+);
+check(
+  'the edge draws with the committed artifact generated from the shared source',
+  /from ["']\.\/tarot\.generated\.ts["']/.test(edge) && /generateReading/.test(edge),
 );
 check(
   'the legacy engines are gone',
@@ -339,11 +358,19 @@ for (const [label, dir, nested] of [
 }
 
 // ---------------------------------------------------------------------------
-// 6. Gating, untouched
+// 6. Gating — where the 2 Sep corpus work left it, then where the 23 Sep
+//    JUNO-06 reprise moved the mobile half
 // ---------------------------------------------------------------------------
-// This refactor was forbidden to change how tarot is gated. These checks are
-// how that promise stays kept when someone later "tidies up" the feature keys.
-console.log('premium gating is exactly where it was');
+// 2 Sep 2026: this refactor was forbidden to change how tarot is gated.
+// 23 Sep 2026 (JUNO-06 reprise, operator ruling): the mobile half MOVED —
+// "un appel serveur préalable n'est pas une autorisation de sécurité lorsque
+// le résultat premium peut encore être produit intégralement hors ligne."
+// Mobile tarot is no longer client-gated: the ENFORCE lives inside the
+// premium-tarot-reading edge (single decision, no double spend), the screen
+// is unwrapped from PremiumGate on purpose, and the client cannot produce
+// the reading at all. The keys, tiers and quotas are unchanged — only WHO
+// asks.
+console.log('premium gating: web enforces in the component, mobile enforces in the edge');
 
 check(
   'web still enforces the split policy keys',
@@ -351,15 +378,22 @@ check(
     /enforce_premium_feature/.test(webScreen),
 );
 check(
-  'mobile still gates through PremiumGate with its own feature names',
-  /PremiumGate/.test(mobileScreen) &&
-    /weekly-tarot/.test(mobileScreen) &&
-    /monthly-tarot/.test(mobileScreen),
+  'the EDGE owns the mobile decision: enforce_premium_feature, before the draw',
+  /enforce_premium_feature/.test(edge) &&
+    edge.indexOf('enforce_premium_feature') < edge.indexOf('generateReading('),
 );
 check(
-  'mobile still does NOT call enforce_premium_feature for tarot',
-  !/enforce_premium_feature/.test(mobileScreen),
-  'mobile tarot is client-gated; migration 20260511000002 says so explicitly',
+  'the mobile screen is NOT wrapped in PremiumGate (the edge is the single decision)',
+  !/import PremiumGate|<PremiumGate/.test(mobileScreen),
+  'a wrapper would spend a second preview for the same open',
+);
+check(
+  'the mobile screen keeps the split feature names for the paywall it renders',
+  /weekly-tarot/.test(mobileScreen) && /monthly-tarot/.test(mobileScreen),
+);
+check(
+  'a refusal from the edge is premium_required with no reading bytes',
+  /premium_required/.test(edge) && !/cards/.test(edge.slice(edge.indexOf("error: 'premium_required'"), edge.indexOf("error: 'premium_required'") + 260)),
 );
 
 const MIGRATION = 'supabase/migrations/20260511000002_split_tarot_feature_keys.sql';

@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useEffect, useState, ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, ReactNode } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -18,6 +18,7 @@ import {
   FEATURE_TIERS,
   SERVER_ENFORCED_FEATURES,
   enforcePremiumFeature,
+  syncEntitlement,
   type PremiumGateReason,
 } from '../services/premiumUsage';
 
@@ -28,103 +29,132 @@ type PremiumGateProps = {
 };
 
 export default function PremiumGate({ feature, children, isDataLoading }: PremiumGateProps) {
-  const { tier, loading, canAccessFeature, consumeTrial, triggerPaywall } = usePremium();
+  const { tier, loading, canAccessFeature, triggerPaywall, refreshSubscription } = usePremium();
   const { t } = useLanguage();
   const [accessState, setAccessState] = useState<'checking' | 'granted' | 'denied'>('checking');
   const [trialConsumed, setTrialConsumed] = useState(false);
+  // True while the "confirm my subscription" action is asking the server to
+  // verify the entitlement (JUNO-06 sync flow).
+  const [syncing, setSyncing] = useState(false);
   // Why access was refused, so the paywall can say something true instead of
   // always claiming the free preview was used.
   const [denialReason, setDenialReason] = useState<PremiumGateReason>('free_preview_exhausted');
+  // Shared alive-flag: rechecks launched outside the mount effect (the sync
+  // button) must not set state after unmount either.
+  const aliveRef = useRef(true);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
+
+  const runServerCheck = useCallback(async (isMounted: () => boolean) => {
+    // 1. If context is still loading, stay in 'checking'
+    if (loading) {
+      if (isMounted()) setAccessState('checking');
+      return;
+    }
+
+    // 2. SERVER DECISION — every feature maps to a canonical policy key
+    //    (JUNO-06: the map is exhaustive). One atomic call resolves
+    //    entitlement, free daily preview and quota. There is NO legacy
+    //    client-side branch anymore.
+    const serverFeatureKey = SERVER_ENFORCED_FEATURES[feature];
+    if (!serverFeatureKey) {
+      // Defensive: a new FeatureKey added without a policy mapping must
+      // fail CLOSED, not silently fall back to a client guess.
+      if (isMounted()) {
+        setDenialReason('unknown_feature');
+        setAccessState('denied');
+      }
+      return;
+    }
+    try {
+      const decision = await enforcePremiumFeature(serverFeatureKey);
+      if (!isMounted()) return;
+
+      if (decision.allowed) {
+        setAccessState('granted');
+        setTrialConsumed(decision.isFreePreview);
+        return;
+      }
+
+      // SYNASTRY EXCEPTION (documented in SERVER_ENFORCED_FEATURES): its
+      // policy row deliberately has NO premium_usage preview — the free
+      // synastry comparison is a per-TARGET contract that only the
+      // synastry flow (synastry_preview_gate + claim_synastry_free_grant)
+      // can judge. A server 'insufficient_tier' here does not mean the
+      // reader has no free comparison left; the screen continues into its
+      // own server-gated flow, which makes the final call.
+      if (feature === 'synastry' && decision.reason === 'insufficient_tier') {
+        if (isMounted()) setAccessState('granted');
+        return;
+      }
+
+      // JUNO-06 RULING (2026-09-23): after a server refusal, a local
+      // RevenueCat entitlement is a REQUEST to synchronize — never an
+      // authorization. The phone that claims a paid tier while the server
+      // refuses gets the "confirm my subscription" state, which asks the
+      // server to verify with its own credentials; only the enforce call
+      // that follows a successful sync can grant. The previous code
+      // granted here (webhook-lag smoothing); that was the phone
+      // outranking the server, and it is gone.
+      if (
+        (decision.reason === 'error' || decision.reason === 'insufficient_tier') &&
+        canAccessFeature(feature)
+      ) {
+        setDenialReason('sync_available');
+        setAccessState('denied');
+        return;
+      }
+
+      setDenialReason(decision.reason);
+      setAccessState('denied');
+    } catch (error) {
+      console.error('PremiumGate server check failed:', error);
+      if (!isMounted()) return;
+      // Fail-closed on exceptions. A device-held entitlement still earns
+      // the SYNC state (verify then re-ask), never a grant.
+      if (canAccessFeature(feature)) {
+        setDenialReason('sync_available');
+      } else {
+        setDenialReason('error');
+      }
+      setAccessState('denied');
+    }
+    return;
+  }, [loading, feature, canAccessFeature]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    const performCheck = async () => {
-      // 1. If context is still loading, stay in 'checking'
-      if (loading) {
-        if (isMounted) setAccessState('checking');
-        return;
-      }
-
-      // 2. Server-enforced features: the server decides everything in one
-      //    atomic call — entitlement, free daily preview and quota. We do NOT
-      //    short-circuit on the local entitlement here, because that is what
-      //    used to let the client spend a preview the server then refused.
-      const serverFeatureKey = SERVER_ENFORCED_FEATURES[feature];
-      if (serverFeatureKey) {
-        try {
-          const decision = await enforcePremiumFeature(serverFeatureKey);
-          if (!isMounted) return;
-
-          if (decision.allowed) {
-            setAccessState('granted');
-            setTrialConsumed(decision.isFreePreview);
-            return;
-          }
-
-          // Never paywall someone who is actually paying. A network failure,
-          // or a subscription the store has confirmed but the billing webhook
-          // has not yet written, both surface here — fall back to the
-          // entitlement the device already verified, which is the same
-          // optimistic policy PremiumContext applies to the tier itself.
-          if (
-            (decision.reason === 'error' || decision.reason === 'insufficient_tier') &&
-            canAccessFeature(feature)
-          ) {
-            setAccessState('granted');
-            setTrialConsumed(false);
-            return;
-          }
-
-          setDenialReason(decision.reason);
-          setAccessState('denied');
-        } catch (error) {
-          console.error('PremiumGate server check failed:', error);
-          if (!isMounted) return;
-          if (canAccessFeature(feature)) {
-            setAccessState('granted');
-          } else {
-            setDenialReason('error');
-            setAccessState('denied');
-          }
-        }
-        return;
-      }
-
-      // 3. Legacy client-side path for features that have not been migrated
-      //    to server enforcement yet.
-      const hasAccess = canAccessFeature(feature);
-      if (hasAccess) {
-        if (isMounted) setAccessState('granted');
-        return;
-      }
-
-      // 4. Attempt trial consumption
-      try {
-        const result = await consumeTrial(feature);
-        if (!isMounted) return;
-
-        if (result.success) {
-          setAccessState('granted');
-          setTrialConsumed(true);
-        } else {
-          setDenialReason('free_preview_exhausted');
-          setAccessState('denied');
-        }
-      } catch (error) {
-        console.error('PremiumGate check failed:', error);
-        if (isMounted) {
-          setDenialReason('free_preview_exhausted');
-          setAccessState('denied');
-        }
-      }
+    let mounted = true;
+    const isMounted = () => mounted;
+    runServerCheck(isMounted);
+    return () => {
+      mounted = false;
     };
+  }, [runServerCheck]);
 
-    performCheck();
+  // The JUNO-06 sync flow, steps 1→5: ask the server to verify with its own
+  // RevenueCat credentials, then RE-ASK enforce. Only the new server verdict
+  // can grant — this function contains no code path that sets 'granted'.
+  const handleSyncAndRecheck = async () => {
+    setSyncing(true);
+    const result = await syncEntitlement();
+    setSyncing(false);
 
-    return () => { isMounted = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
-  }, [tier, loading, feature]); // Re-run when these change
+    if (result.ok) {
+      // The server has now written the tier it verified. Refresh the
+      // context's display tier from the server, then re-run the decision.
+      await refreshSubscription();
+      setAccessState('checking');
+      runServerCheck(() => aliveRef.current);
+      return;
+    }
+    // Sync failed (offline, RevenueCat unreachable, throttled): stay in the
+    // sync_available state. The server's refusal stands until it changes
+    // its own mind.
+  };
 
   const handleUnlock = () => {
     const requiredTier = FEATURE_TIERS[feature];
@@ -195,8 +225,17 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
 
     // Say what actually happened. Claiming "you used your free preview" to
     // someone who was never offered one is how a paywall loses trust.
+    // unknown_feature: a key with no policy mapping is a build defect
+    // (JUNO-06 defensive branch) — the copy says so instead of inventing a
+    // tier story, and the console carries the key for the fix.
     const deniedCopy = (() => {
       switch (denialReason) {
+        case 'unknown_feature':
+          console.warn('[PremiumGate] feature key with no policy mapping:', feature);
+          return {
+            title: t('premiumFeature') || 'Premium Feature',
+            body: t('premiumRequired') || 'Access natal charts, synastry, horoscopes and more',
+          };
         case 'quota_exceeded':
           return {
             title: t('dailyLimitReached') || 'Daily limit reached',
@@ -208,6 +247,17 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
             body:
               t('trialExhaustedDesc') ||
               "You've used your free daily preview. Subscribe for unlimited access.",
+          };
+        case 'sync_available':
+          // JUNO-06: the device claims a paid tier the server has not
+          // confirmed. Honest copy: nothing on the device can unlock this —
+          // the button asks the SERVER to verify with its own credentials.
+          return {
+            title:
+              t('subscriptionConfirmTitle') || 'Confirming your subscription',
+            body:
+              t('subscriptionConfirmBody') ||
+              'Your purchase is being verified with the billing server. This unlocks only when the server confirms it.',
           };
         default:
           return {
@@ -249,6 +299,26 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
               </Text>
             </View>
           </View>
+
+          {/* JUNO-06 sync action: replaces the old local-entitlement grant.
+              Asking the server to verify is the ONLY thing the device can do
+              when it disagrees with a server refusal. */}
+          {denialReason === 'sync_available' && (
+            <TouchableOpacity
+              style={styles.syncButton}
+              onPress={handleSyncAndRecheck}
+              disabled={syncing}
+              testID="premium-sync-entitlement"
+            >
+              {syncing ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.syncButtonText}>
+                  {t('subscriptionConfirmRetry') || 'Check my subscription'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
 
           {/* CTA Button */}
           <TouchableOpacity
@@ -460,6 +530,21 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 16,
+  },
+  syncButton: {
+    width: '100%',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: AppTheme.colors.gold,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  syncButtonText: {
+    color: AppTheme.colors.gold,
+    fontSize: 16,
+    fontWeight: '600',
   },
   ctaGradient: {
     paddingVertical: 18,

@@ -13,7 +13,7 @@ concurrency:
 # JUNO-18 of docs/security-audit-2026-09-07.md.
 #
 # Without this block GITHUB_TOKEN inherits the repository default, which for a
-# repository created before Feb 2023 — this one — is read/write on contents,
+# repository created before Feb 2023 â€” this one â€” is read/write on contents,
 # packages, issues, pull requests and more. Every step, including anything a
 # third-party action decides to run, gets that token in its environment. This
 # pipeline pushes nothing, comments nothing and publishes nothing: it installs
@@ -22,7 +22,7 @@ concurrency:
 # Workflow level rather than job level so a job added later inherits the
 # restriction instead of silently starting from the repository default. A job
 # that genuinely needs more must declare its own `permissions:` block AND say
-# why — scripts/validate-repo-hygiene.mjs fails the build on an escalation with
+# why â€” scripts/validate-repo-hygiene.mjs fails the build on an escalation with
 # no justification comment.
 #
 # `pull_request` (not `pull_request_target`) is what makes fork PRs safe here:
@@ -39,9 +39,9 @@ jobs:
 
     steps:
       - name: Checkout
-        # JUNO-18: SHA immuable (tag v4.4.0) — un tag est réassignable, un commit
+        # JUNO-18: SHA immuable (tag v4.4.0) â€” un tag est rÃ©assignable, un commit
         # ne l'est pas. persist-credentials: false retire le token GitHub de la
-        # config git locale dès la fin de l'étape : aucune étape suivante (ni
+        # config git locale dÃ¨s la fin de l'Ã©tape : aucune Ã©tape suivante (ni
         # action tierce) ne peut pousser avec.
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -57,7 +57,7 @@ jobs:
           # entirely on 20, where the run dies with "Unknown file extension".
           #
           # 24 also matches the machine this is developed on. CI was pinned to
-          # 20 — past end-of-life — so it had been validating under a runtime
+          # 20 â€” past end-of-life â€” so it had been validating under a runtime
           # nobody actually runs.
           node-version: '24'
           cache: 'npm'
@@ -65,12 +65,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # JUNO-18: la surface publiée (web) reste sans vulnérabilité runtime
-      # high/critical. Baseline bornée à l'unique postcss épinglé par next
-      # (scripts/audit-web-runtime-baseline.json) — la chaîne Expo SDK 54 est
-      # une dette MOBILE documentée (runbook dependency-security §6.2), hors
-      # de cette porte volontairement : la racine entière resterait rouge sans
-      # information nouvelle à chaque run.
+      # JUNO-18: la surface publiÃ©e (web) reste sans vulnÃ©rabilitÃ© runtime
+      # high/critical. Baseline bornÃ©e Ã  l'unique postcss Ã©pinglÃ© par next
+      # (scripts/audit-web-runtime-baseline.json) â€” la chaÃ®ne Expo SDK 54 est
+      # une dette MOBILE documentÃ©e (runbook dependency-security Â§6.2), hors
+      # de cette porte volontairement : la racine entiÃ¨re resterait rouge sans
+      # information nouvelle Ã  chaque run.
       - name: Audit web runtime dependencies
         run: node scripts/audit-web-runtime.mjs
 
@@ -80,12 +80,17 @@ jobs:
       - name: Validate premium gating contract
         run: npm run validate:premium-gating
 
-      # ── First remediation wave, 7 Sep 2026 ────────────────────────────────
+      # JUNO-06 (2026-09-22): every premium feature's data source is
+      # classified (A/B/C) and no client path can authorize anymore.
+      - name: Validate premium data sources (JUNO-06)
+        run: npm run validate:premium-data-sources
+
+      # â”€â”€ First remediation wave, 7 Sep 2026 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       # docs/security-audit-2026-09-07.md. Each of these guards a finding whose
       # fix is one line to undo and silent when broken.
 
       # The synastry engine the server runs is GENERATED from the shared one.
-      # This regenerates it and fails if the committed artefact is stale — so
+      # This regenerates it and fails if the committed artefact is stale â€” so
       # the server and the clients cannot score the same two charts differently,
       # and nobody has to remember to rebuild it.
       - name: Validate edge astrology bundle is current
@@ -94,7 +99,7 @@ jobs:
       # JUNO-01/02/03/11, and JUNO-21 since 8 Sep. Executes the REAL
       # edge-function source: the payload allowlist, the authorization decision
       # and its fail-closed branches, the origin allowlist, the server-derived
-      # Stripe discount, and both generations of unsubscribe token — including a
+      # Stripe discount, and both generations of unsubscribe token â€” including a
       # verbatim copy of the pre-fix signer, so "links already in an inbox still
       # work" is a test rather than a hope.
       # `packages/shared` is the only workspace with a test runner, which is why
@@ -109,20 +114,20 @@ jobs:
         run: npm run validate:chart-privacy
 
       # JUNO-08 and the read-only surfaces. Reads the repository, so it cannot
-      # see a privilege changed by hand in the SQL editor — it prints the query
+      # see a privilege changed by hand in the SQL editor â€” it prints the query
       # that settles that, which is the honest scope for a code-side guard.
       - name: Validate RLS contract
         run: npm run validate:rls-contract
 
       # JUNO-15: local migration-history invariants (canonical names, no dupes,
       # privilege migrations self-verify, cron migrations fail closed). CI
-      # cannot reach the production history — that comparison is the operator
+      # cannot reach the production history â€” that comparison is the operator
       # tool scripts/compare-migration-history.mjs, documented in
       # docs/runbooks/migration-reconciliation-2026-09.md.
       - name: Validate migration history invariants
         run: npm run validate:migration-history
 
-      # JUNO-17: executes the REAL Expo config plugin module — manifest
+      # JUNO-17: executes the REAL Expo config plugin module â€” manifest
       # attributes, backup/data-extraction rules, network security config,
       # fail-fast surface, app.json registration. The AAB-level proof is the
       # operator procedure in docs/runbooks/android-security-config-2026-09.md
@@ -140,12 +145,12 @@ jobs:
       - name: Validate web session and CSP contract
         run: node scripts/validate-web-session-csp.mjs
 
-      # ── Second remediation wave, 8 Sep 2026 ───────────────────────────────
+      # â”€â”€ Second remediation wave, 8 Sep 2026 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       # JUNO-18, JUNO-20 and the JUNO-21 decoupling. Structural, not
       # behavioural: it guards this workflow's own `permissions:` block, keeps
       # archives out of the route folders, and fails if an unsubscribe signing
       # key is ever derived from SUPABASE_SERVICE_ROLE_KEY again. That last one
-      # is silent when broken — lifecycle mail keeps sending, and the damage
+      # is silent when broken â€” lifecycle mail keeps sending, and the damage
       # only appears months later when the key is rotated and every link in
       # every inbox dies at once.
       #
@@ -154,12 +159,12 @@ jobs:
       - name: Validate repository hygiene
         run: npm run validate:repo-hygiene
 
-      # JUNO-18: garde auto-protectrice de CE pipeline — actions épinglées par
+      # JUNO-18: garde auto-protectrice de CE pipeline â€” actions Ã©pinglÃ©es par
       # SHA + version en commentaire, permissions minimales (write seulement
       # au job qui le justifie), jamais pull_request_target, checkout sans
       # credentials persistants, aucune interpolation non fiable dans run:,
-      # et PRÉSENCE des gardes elles-mêmes (audit web, gitleaks, dependabot,
-      # codeql). Testée par injection : chaque retrait fait échouer ce step.
+      # et PRÃ‰SENCE des gardes elles-mÃªmes (audit web, gitleaks, dependabot,
+      # codeql). TestÃ©e par injection : chaque retrait fait Ã©chouer ce step.
       - name: Validate CI security invariants
         run: node scripts/validate-ci-security.mjs
 
@@ -169,7 +174,7 @@ jobs:
       # Its own step, not folded into validate:locales: this guard covers the
       # Conversation Guide corpus (the app's largest block of user-facing
       # English, which check-store-metadata deliberately does not scan) AND the
-      # two structural promises of its screen — no PremiumGate wrapper, and no
+      # two structural promises of its screen â€” no PremiumGate wrapper, and no
       # preview spent at mount. A failure here should name itself in the UI.
       - name: Validate Conversation Guide content and gating
         run: npm run validate:coach-content
