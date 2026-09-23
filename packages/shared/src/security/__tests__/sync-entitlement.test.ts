@@ -323,6 +323,28 @@ describe('sync-entitlement · structural invariants (the push checklist, on real
     expect(downgrade).not.toBeNull();
   });
 
+  it('the 30 s window is IDENTICAL in the Edge, the SQL proof and this suite (no drift across layers)', async () => {
+    // Layer 1 — the Edge constant (executed above as a real declaration).
+    const h = await loadHelpers();
+    expect(h.SYNC_MIN_INTERVAL_MS).toBe(30_000);
+    // Layer 2 — the SQL behavioural proof uses the same window in BOTH arms.
+    const claimSql = readRepoFile('supabase/tests/juno06_sync_entitlement_claim.test.sql');
+    const intervals = claimSql.match(/INTERVAL '30 seconds'/g) ?? [];
+    expect(intervals.length).toBeGreaterThanOrEqual(2);
+    // And every WINDOW PREDICATE in that file says 30 s — a different number
+    // is tolerated only in the deliberate time-travel backdate (CASE 4 sets
+    // the row 31 s in the past to prove the retry; the predicate still says 30).
+    const predicates = claimSql.split('\n').filter((l) => /last_sync_at\s*<|last_sync_at\.lt\./.test(l));
+    expect(predicates.length).toBeGreaterThanOrEqual(2);
+    for (const line of predicates) {
+      expect(line).toMatch(/30 seconds/);
+    }
+    // Layer 3 — the migration comment states the same contract (the table
+    // carries no window column; the contract lives in the edge, documented).
+    const migration = readRepoFile('supabase/migrations/20260922000002_sync_entitlement_throttle.sql');
+    expect(migration).toMatch(/30 s|30 second/i);
+  });
+
   it('no CORS header (RN transport; nothing browser-readable)', () => {
     expect(src).not.toMatch(/Access-Control-Allow-Origin/);
   });

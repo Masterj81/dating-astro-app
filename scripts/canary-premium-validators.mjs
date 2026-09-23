@@ -23,6 +23,8 @@ const TARGETS = {
   gate: "apps/mobile/components/PremiumGate.tsx",
   ctx: "apps/mobile/contexts/PremiumContext.tsx",
   tarot: "apps/mobile/app/premium-screens/tarot.tsx",
+  m1a: "supabase/migrations/20260922000001_juno06_server_enforced_features.sql",
+  draft: "docs/runbooks/sql/2026-09-juno-06-m1c-product-policies-DRAFT.sql",
 };
 
 // ── restore-on-start: an interrupted run must never leave a mutation ────────
@@ -209,6 +211,98 @@ canary(
   },
   "validate-premium-gating.mjs",
   "ENFORCEMENT_CLASSES",
+);
+
+// ---------------------------------------------------------------------------
+// JUNO-06 M1a/M1c split canaries (operator decision 2026-09-23): each new
+// migration-side rule must FAIL on its defect.
+// ---------------------------------------------------------------------------
+canary(
+  "a dead seed classified as protected in M1a (never presentable as server-enforced)",
+  {
+    m1a: {
+      find: "SET enforcement_class = 'legacy_unused', updated_at = NOW()\n WHERE feature_key = 'compatibility_details';",
+      replace:
+        "SET enforcement_class = 'server_enforced_data', updated_at = NOW()\n WHERE feature_key = 'compatibility_details'; -- CANARY: the lie",
+    },
+  },
+  "validate-premium-gating.mjs",
+  "legacy",
+);
+
+canary(
+  "the tarot alias classified as a security level (would enter the counts or lie about 130)",
+  {
+    m1a: {
+      find: "SET enforcement_class = 'legacy_alias', updated_at = NOW()",
+      replace: "SET enforcement_class = 'server_enforced_data', updated_at = NOW() -- CANARY",
+    },
+  },
+  "validate-premium-gating.mjs",
+  "legacy_alias",
+);
+
+canary(
+  "an audited feature shadowed by a legacy marker",
+  {
+    m1a: {
+      find: "SET enforcement_class = 'server_metered_ui', updated_at = NOW()\n WHERE feature_key = 'lucky_days';",
+      replace:
+        "SET enforcement_class = 'legacy_unused', updated_at = NOW()\n WHERE feature_key = 'lucky_days'; -- CANARY",
+    },
+  },
+  "validate-premium-gating.mjs",
+  "never shadow",
+);
+
+canary(
+  "a product mutation smuggled into M1a (preview quota inside the migration)",
+  {
+    m1a: {
+      find: "ALTER TABLE public.premium_feature_policy\n  ADD COLUMN IF NOT EXISTS enforcement_class TEXT;",
+      replace:
+        "ALTER TABLE public.premium_feature_policy\n  ADD COLUMN IF NOT EXISTS enforcement_class TEXT;\n\nUPDATE public.premium_feature_policy SET free_preview_quota = 1, updated_at = NOW() WHERE feature_key = 'tarot_cosmic'; -- CANARY: M1c content",
+    },
+  },
+  "validate-premium-gating.mjs",
+  "M1c content",
+);
+
+canary(
+  "the deferred preview promise silently removed from the M1c draft",
+  {
+    draft: {
+      find: "-- UPDATE public.premium_feature_policy\n--    SET free_preview_quota = 1, updated_at = NOW()\n--  WHERE feature_key = 'tarot_cosmic';",
+      replace: "-- (CANARY: promise withdrawn)",
+    },
+  },
+  "validate-premium-gating.mjs",
+  "deferred preview promise",
+);
+
+canary(
+  "the CHECK validation is dropped (constraint lingers NOT VALID in the catalog)",
+  {
+    m1a: {
+      find: "  EXECUTE 'ALTER TABLE public.premium_feature_policy\n             VALIDATE CONSTRAINT premium_feature_policy_enforcement_class_check';",
+      replace: "  -- CANARY: VALIDATE withdrawn, constraint stays NOT VALID",
+    },
+  },
+  "validate-premium-gating.mjs",
+  "VALIDATE",
+);
+
+canary(
+  "a DEFAULT reappears on enforcement_class (implicit classification bypasses the explicit-class rule)",
+  {
+    m1a: {
+      find: "ALTER TABLE public.premium_feature_policy\n  DROP CONSTRAINT IF EXISTS premium_feature_policy_enforcement_class_check;",
+      replace:
+        "ALTER TABLE public.premium_feature_policy\n  ALTER COLUMN enforcement_class SET DEFAULT 'legacy_unused'; -- CANARY: implicit classification\nALTER TABLE public.premium_feature_policy\n  DROP CONSTRAINT IF EXISTS premium_feature_policy_enforcement_class_check;",
+    },
+  },
+  "validate-premium-gating.mjs",
+  "DEFAULT",
 );
 
 console.log(

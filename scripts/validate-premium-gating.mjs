@@ -279,19 +279,67 @@ for (const [serverKey, serverClass] of migrationClasses) {
 }
 
 // ---------------------------------------------------------------------------
+// JUNO-06 M1a/M1c split (operator decision 2026-09-23): product mutations
+// (preview quotas, quota normalization, dead-seed deletion) are FORBIDDEN in
+// supabase/migrations until build 131 + a dedicated product authorization.
+// They live as a commented BROUILLON under docs/runbooks/sql/ which this
+// validator reads, so the product promise stays traceable during the deferral.
+// ---------------------------------------------------------------------------
+const M1A_MIGRATION = path.join(
+  MIGRATIONS_DIR,
+  "20260922000001_juno06_server_enforced_features.sql"
+);
+const M1C_DRAFT = path.join(
+  ROOT,
+  "docs/runbooks/sql/2026-09-juno-06-m1c-product-policies-DRAFT.sql"
+);
+const M1C_PREVIEW_KEYS = [
+  "daily_horoscope",
+  "monthly_horoscope",
+  "lucky_days",
+  "planetary_transits",
+  "retrograde_alerts",
+  "date_planner",
+  "tarot_monthly",
+  "tarot_cosmic",
+];
+const M1C_DEAD_SEEDS = [
+  "compatibility_details",
+  "priority_messages",
+  "likes_you_see_who",
+];
+
+if (!fs.existsSync(M1C_DRAFT)) {
+  console.error(`M1c draft missing: ${path.relative(ROOT, M1C_DRAFT)} — the deferred preview promises must stay traceable there.`);
+  process.exit(2);
+}
+const m1cDraft = fs.readFileSync(M1C_DRAFT, "utf8");
+const draftPreviews = new Set();
+for (const m of m1cDraft.matchAll(
+  /SET free_preview_quota = 1,[^\n]*\n[^\n]*WHERE feature_key = '([a-z_]+)'/g
+)) {
+  draftPreviews.add(m[1]);
+}
+
+// ---------------------------------------------------------------------------
 // Assertions
 // ---------------------------------------------------------------------------
 for (const { clientKey, serverKey } of serverEnforced) {
   if (!policyKeys.has(serverKey)) {
     issues.push(
       `SERVER_ENFORCED_FEATURES maps '${clientKey}' to '${serverKey}', which has no row in premium_feature_policy. ` +
-        `enforce_premium_feature would answer 'unknown_feature' and the screen would be dead.`
+      `enforce_premium_feature would answer 'unknown_feature' and the screen would be dead.`
     );
   }
-  if (!freePreviewFeatures.has(serverKey)) {
+  // Preview promise: a migration may set it (historical keys), OR the M1c
+  // draft carries it (deferred to 131 by explicit operator decision). A key
+  // covered by NEITHER is a silently deleted free trial — the exact
+  // regression class this validator was written to refuse.
+  if (!freePreviewFeatures.has(serverKey) && !draftPreviews.has(serverKey)) {
     issues.push(
-      `'${serverKey}' is server-enforced but never gets a free_preview_quota in any migration. ` +
-        `Routing '${clientKey}' through the server gate therefore removes the free daily preview it used to grant.`
+      `'${serverKey}' is server-enforced but gets a free_preview_quota NOWHERE — ` +
+      `neither in any migration nor in the M1c draft (docs/runbooks/sql). Routing '${clientKey}' ` +
+      `through the server gate without that promise deletes the free trial silently.`
     );
   }
 }
@@ -315,6 +363,136 @@ for (const reason of serverReasons) {
       `enforce_premium_feature can return reason '${reason}' but PremiumGateReason does not include it — ` +
         `the paywall would fall back to generic copy for a state the server distinguishes.`
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// JUNO-06 M1a structural rules (operator decision 2026-09-23): the migration
+// path is CLASSIFICATION-ONLY. Product mutations are forbidden in
+// supabase/migrations until 131; the honest classes cover all 15 catalog
+// rows, with legacy markers that are INVENTORY (never security levels) and
+// never counted in 2/7/2.
+// ---------------------------------------------------------------------------
+const m1aSrc = fs.readFileSync(M1A_MIGRATION, "utf8");
+const AUDITED_KEYS = [...new Set(serverEnforced.map((e) => e.serverKey))];
+
+// (a) M1a mutates NOTHING but enforcement_class + updated_at.
+for (const verb of [
+  /INSERT INTO public\.premium_feature_policy/,
+  /DELETE FROM public\.premium_feature_policy/,
+  /SET (required_tier|daily_quota|free_preview_quota)\s*=/,
+]) {
+  if (verb.test(m1aSrc)) {
+    issues.push(
+      `M1a (20260922000001) must be classification-only — found a product mutation (${verb}). ` +
+      `Product changes belong to the deferred M1c draft, never to this migration.`
+    );
+  }
+}
+
+// (b) No migration ANYWHERE in the tree applies M1c content.
+for (const file of migrations) {
+  const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), "utf8");
+  const code = sql
+    .split("\n")
+    .filter((l) => !/^\s*--/.test(l))
+    .join("\n");
+  for (const key of M1C_PREVIEW_KEYS) {
+    if (new RegExp(`SET free_preview_quota = 1[^;]*WHERE feature_key = '${key}'`, "s").test(code)) {
+      issues.push(`${file}: sets free_preview_quota=1 on '${key}' — that is M1c content, forbidden in migrations until build 131.`);
+    }
+  }
+  if (/DELETE FROM public\.premium_feature_policy[\s\S]{0,200}?'(compatibility_details|priority_messages|likes_you_see_who)'/.test(code)) {
+    issues.push(`${file}: deletes a dead seed — that is M1c content (deferred), forbidden in migrations.`);
+  }
+  if (/feature_key = '(daily_horoscope|synastry)'[\s\S]{0,80}?SET daily_quota = NULL|SET daily_quota = NULL[^;]*WHERE feature_key = '(daily_horoscope|synastry)'/s.test(code)) {
+    issues.push(`${file}: normalizes a legacy quota to NULL — that is M1c content (deferred).`);
+  }
+  if (/WHERE feature_key = 'synastry'[\s\S]{0,120}?free_preview_quota = NULL|free_preview_quota = NULL[^;]*WHERE feature_key = 'synastry'/s.test(code)) {
+    issues.push(`${file}: would null synastry's preview — the ratified decision (2026-09-23) KEEPS it at 1.`);
+  }
+}
+
+// (c) The M1a classification covers all 15 rows honestly.
+const m1aClasses = new Map();
+for (const m of m1aSrc.matchAll(
+  /SET enforcement_class = '([a-z_]+)',[\s\S]{0,60}?WHERE feature_key = '([a-z_]+)'/g
+)) {
+  m1aClasses.set(m[2], m[1]);
+}
+const M1A_EXPECTED_LEGACY = new Map([
+  ["tarot", "legacy_alias"],
+  ["compatibility_details", "legacy_unused"],
+  ["priority_messages", "legacy_unused"],
+  ["likes_you_see_who", "legacy_unused"],
+]);
+if (m1aClasses.size !== 15) {
+  issues.push(`M1a classifies ${m1aClasses.size} rows — the Production catalog has exactly 15 (Phase 0).`);
+}
+for (const [key, cls] of M1A_EXPECTED_LEGACY) {
+  if (m1aClasses.get(key) !== cls) {
+    issues.push(`M1a: '${key}' must be '${cls}' (inventory marker, not a security level), got '${m1aClasses.get(key) ?? "unclassified"}'.`);
+  }
+}
+const auditedClassCount = { server_enforced_data: 0, server_metered_ui: 0, public_content: 0 };
+for (const key of AUDITED_KEYS) {
+  const cls = m1aClasses.get(key);
+  if (!cls) {
+    issues.push(`M1a: audited feature '${key}' carries no class.`);
+  } else if (cls === "legacy_alias" || cls === "legacy_unused") {
+    issues.push(`M1a: audited feature '${key}' is classified '${cls}' — a legacy marker may never shadow an audited feature.`);
+  } else {
+    auditedClassCount[cls] += 1;
+  }
+}
+if (
+  auditedClassCount.server_enforced_data !== 2 ||
+  auditedClassCount.server_metered_ui !== 7 ||
+  auditedClassCount.public_content !== 2
+) {
+  issues.push(
+    `M1a audited counts must be exactly 2/7/2, got ` +
+    `${auditedClassCount.server_enforced_data}/${auditedClassCount.server_metered_ui}/${auditedClassCount.public_content} ` +
+    `(legacy rows must never enter these counts).`
+  );
+}
+
+// (c-bis) NO DEFAULT on enforcement_class, ever: "toute nouvelle clé exige
+// une classification explicite" — a DEFAULT would let an insert omit the
+// class and silently pass (review 2026-09-23). The NOT NULL without
+// DEFAULT is what makes the omission FAIL (23502).
+if (/ALTER COLUMN enforcement_class SET DEFAULT/i.test(m1aSrc)) {
+  issues.push(
+    "M1a must NOT set a DEFAULT on enforcement_class — an insert omitting the class must FAIL, " +
+    "never receive an implicit (even honest) classification."
+  );
+}
+// And the hardening order is proven: the NOT NULL is set INSIDE the final
+// self-check, after the no-NULL proof (see section 3.7 of the migration).
+if (!/SET NOT NULL/.test(m1aSrc) || !/enforcement_class IS NULL/.test(m1aSrc)) {
+  issues.push(
+    "M1a lost its proof chain: the NOT NULL must follow the explicit 'no NULL remains' assertion."
+  );
+}
+
+// (c-bis-2) The CHECK must not survive as NOT VALID: the migration
+// VALIDATEs it before commit AND asserts convalidated=true from
+// pg_constraint (review 2026-09-23 — a NOT VALID constraint on 15 proven
+// rows would stay flagged in the catalog).
+if (!/VALIDATE CONSTRAINT premium_feature_policy_enforcement_class_check/.test(m1aSrc)) {
+  issues.push("M1a must VALIDATE the enforcement_class CHECK before commit (NOT VALID on 15 proven rows is a lingering catalog flag).");
+}
+if (!/convalidated/.test(m1aSrc)) {
+  issues.push("M1a must assert convalidated=true on the CHECK from pg_constraint (post-VALIDATE proof).");
+}
+
+// (d) The M1c draft stays a draft: every header must carry the do-not-run banner.
+if (!/BROUILLON — NE PAS EXÉCUTER/.test(m1cDraft) || !/VERSION ANDROID 131 \+ AUTORISATION PRODUIT/.test(m1cDraft)) {
+  issues.push("M1c draft lost its BROUILLON/NE PAS EXÉCUTER banner or its 131+authorization condition.");
+}
+for (const key of M1C_PREVIEW_KEYS) {
+  if (!draftPreviews.has(key)) {
+    issues.push(`M1c draft is missing the deferred preview promise for '${key}' — the deferral must stay traceable.`);
   }
 }
 
