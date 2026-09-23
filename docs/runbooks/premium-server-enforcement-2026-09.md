@@ -60,17 +60,20 @@ Sites purgés (chacun pouvait inverser un refus serveur) :
 
 **Personne n'est coincé** : un abonné dont le webhook tarde obtient l'accès en un appel edge (~1 s) — plus vite qu'en attendant le webhook — et le bouton de vérification est là à chaque refus. `sync-entitlement` n'accorde JAMAIIS rien (aucun RPC de décision, aucun champ `allowed` — testé structurellement) ; il ne fait pas de CORS (transport RN) ; throttled pour qu'un APK patché ne martèle pas RevenueCat à travers nous.
 
-## 4. Migration révisée (NON appliquée)
+## 4. Migrations (NON appliquées — découpage M1a/M2/M1c, décisions 2026-09-23)
 
-`supabase/migrations/20260922000001_juno06_server_enforced_features.sql` :
+`supabase/migrations/20260922000001_juno06_server_enforced_features.sql` — **M1a : classification honnête, strictement additive** :
 
-- **section 0** : colonne `enforcement_class` (TEXT NOT NULL + CHECK sur les trois classes, VALIDATE à la fin) + 12 UPDATE littéraux — un par ligne de politique ;
-- sections 1–3 : INSERT 6 lignes (classes explicites), **8 UPDATE littéraux par clé** pour les quotas (convention d'attribution textuelle de `validate-premium-gating`), DELETE des graines mortes, alias `'tarot'` conservé (contrat 130) ;
-- **auto-vérification étendue** : clés présentes, classe exacte par clé (un drift = théâtre de sécurité en base), **comptes 3/7/2** (l'alias tarot compte dans les 3 `server_enforced_data`), previews = 1, tiers cosmic, synastry NULL (contrat par-cible dans `synastry_free_grant`).
+- snapshot Phase 0 pré-encodé (15 lignes tier/quota/preview, sans `updated_at`) vérifié AVANT toute mutation — la migration refuse de courir sur un état divergent ;
+- colonne `enforcement_class` (NOT NULL + CHECK sur **cinq** valeurs) + **15 UPDATE littéraux de classification** — les 11 fonctionnalités auditées (2/7/2) PLUS les marqueurs d'inventaire : `tarot` = `legacy_alias` (contrat build 130, jamais compté), 3 graines mortes = `legacy_unused` (jamais présentables comme protégées). **`legacy_alias`/`legacy_unused` ne sont pas des niveaux de sécurité** ;
+- **aucun INSERT, aucun DELETE, aucun tier/quota/preview modifié, aucune ligne utilisateur touchée** (comptages premium_usage/subscriptions vérifiés avant/après) ; `synastry.free_preview_quota = 1` conservé (décision produit) ;
+- auto-vérification : classes exactes des 15, compteurs audités 2/7/2 (legacy exclus par construction), CHECK validé, snapshot produit identique.
 
-Le contrat client-130 est explicite : mêmes clés, mêmes tiers, mêmes quotas ; la colonne ajoutée est invisible pour 130 (aucun de ses chemins ne la lit ni ne l'écrit).
+Les mutations produit (6 upserts, 8 previews 1/jour, suppression des graines mortes) sont **M1c : BROUILLON** sous `docs/runbooks/sql/2026-09-juno-06-m1c-product-policies-DRAFT.sql` — interdit jusqu'au build 131 + autorisation produit dédiée ; `validate:premium-gating` refuse tout contenu M1c dans `supabase/migrations` et exige chaque promesse d'aperçu différé dans le brouillon (canaris).
 
-`supabase/migrations/20260922000002_sync_entitlement_throttle.sql` (NON appliquée) : table `entitlement_sync_claims` (`user_id` PK → `auth.users`, `last_sync_at`, `created_at`) — l'état du claim du throttle, possédée par `sync-entitlement` seule, sans aucune sémantique produit. RLS activée sans policy (service role seul, il bypass) ; `REVOKE ALL` de `anon`/`authenticated` avec auto-vérification des grants refusés (règle maison 20260903000003 + leçon 20260911000001) et vérification que la PK est bien `user_id` — l'atomicité des deux bras est verrouillée dessus. Contrat comportemental : `supabase/tests/juno06_sync_entitlement_claim.test.sql`.
+Le contrat client-130 est explicite : mêmes clés, mêmes tiers, mêmes quotas, mêmes previews ; la colonne ajoutée est invisible pour 130 (aucun de ses chemins ne la lit ni ne l'écrit).
+
+`supabase/migrations/20260922000002_sync_entitlement_throttle.sql` (NON appliquée) : table `entitlement_sync_claims` (`user_id` PK → `auth.users`, `last_sync_at`, `created_at`) — l'état du claim du throttle, possédée par `sync-entitlement` seule, sans aucune sémantique produit. RLS activée sans policy (service role seul, il bypass) ; `REVOKE ALL` de `anon`/`authenticated` avec auto-vérification des grants refusés (règle maison 20260903000003 + leçon 20260911000001) et vérification que la PK est bien `user_id` — l'atomicité des deux bras est verrouillée dessus. Contrat comportemental : `supabase/tests/juno06_sync_entitlement_claim.test.sql` (les 4 cas opérateur) et `supabase/tests/juno06_server_enforced_features.test.sql` (C1..C11 : classification, additivité, M2 verrouillée, M1c absente).
 
 ## 5. Validateurs et canaris
 
