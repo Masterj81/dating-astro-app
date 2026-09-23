@@ -446,6 +446,15 @@ backend = "postgres"
 # exists — see supabase/functions/suggest-birth-cities/index.ts.
 [functions.suggest-birth-cities]
 verify_jwt = true
+# JUNO-06 (2026-09-23): two user-facing premium edges. Both parse the
+# Authorization JWT themselves and derive the acting user from auth.uid()
+# ONLY — the platform check is defense in depth (a request without a valid
+# JWT is rejected before the function runs; the in-function check keeps
+# working even if a deploy ever flips the flag).
+[functions.premium-tarot-reading]
+verify_jwt = true
+[functions.sync-entitlement]
+verify_jwt = true
 
 # Experimental features may be deprecated any time
 [experimental]

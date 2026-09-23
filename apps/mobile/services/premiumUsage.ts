@@ -300,6 +300,10 @@ export async function syncEntitlement(): Promise<EntitlementSync> {
         return { ok: false, code: 'revenuecat_unavailable' };
       case 'config_error':
         return { ok: false, code: 'config_error' };
+      case 'state_unavailable':
+        // The server could not claim/write the sync slot: fail-closed there,
+        // fail-closed here. The server's last word stands.
+        return { ok: false, code: 'server' };
       default:
         return { ok: false, code: 'server' };
     }

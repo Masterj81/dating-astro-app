@@ -73,7 +73,12 @@ if (process.argv.includes('--check')) {
     console.error(`✗ ${path.relative(ROOT, OUT)} does not exist. Run: npm run build:edge-tarot`);
     process.exit(1);
   }
-  const current = readFileSync(OUT, 'utf8');
+  // Normalize CRLF before comparing: .gitattributes pins this file to LF,
+  // but a worktree materialized before that attribute landed (Windows
+  // autocrlf) holds CRLF bytes for an otherwise-clean checkout, and a
+  // byte-strict compare would demand a rebuild that changes nothing. The
+  // WRITTEN artifact stays LF — only the comparison tolerates the platform.
+  const current = readFileSync(OUT, 'utf8').replace(/\r\n/g, '\n');
   if (current !== generated) {
     console.error(
       `✗ ${path.relative(ROOT, OUT)} is stale.\n` +

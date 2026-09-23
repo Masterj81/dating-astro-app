@@ -1,0 +1,10 @@
+# Generated edge artifacts must check out with LF on EVERY platform.
+#
+# scripts/build-edge-astrology.mjs and scripts/build-edge-tarot.mjs compare
+# the committed artifact byte-for-byte (sha) against a fresh in-memory build,
+# which is always LF. On Windows with core.autocrlf=true a text file is
+# materialized CRLF and the strict compare fails on a perfectly clean
+# checkout — the validator would demand a rebuild that changes nothing.
+# Pinning eol=lf makes the checkout deterministic: the artifact that ships
+# is the artifact that was generated.
+*.generated.ts text eol=lf

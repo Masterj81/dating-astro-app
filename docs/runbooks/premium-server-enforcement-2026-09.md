@@ -42,9 +42,11 @@ Flux implémenté exactement tel que exigé :
 
 1. le client **demande** une synchronisation (`syncEntitlement()` → edge `sync-entitlement`, JWT, sans paramètre) ;
 2. le serveur vérifie auprès de RevenueCat **avec ses propres credentials** (`REVENUECAT_API_KEY`, le même secret que `backfill-revenuecat` ; la clé SDK du téléphone ne prouve rien et ne sort jamais de l'appareil) — le subscriber vérifié est TOUJOURS `auth.uid()` ;
-3. le serveur écrit l'état vérifié dans `subscriptions` (upsert borné, throttled 30 s par compte, fail-closed sur toute erreur RC — **aucune écriture** quand la vérification échoue ; RC 404 = `synced, tier free`, honnête, pas une erreur) ;
+3. le serveur écrit l'état vérifié dans `subscriptions` (upsert borné au jeu de colonnes de `backfill-revenuecat` + `last_sync_at`, même `ON CONFLICT (user_id, source)` ; **throttle 30 s atomique et persistant** : le slot est réclamé par un UPDATE conditionnel sur `subscriptions.last_sync_at` (colonne `20260922000002`, possédée par cette fonction seule) — le prédicat est évalué DANS l'instruction, deux appels concurrents ne peuvent pas tous deux gagner, et un edge froid démarre throttle pour les syncs récents ; délai RC de 8 s (`AbortSignal.timeout`) ; **fail-closed sur toute erreur RC** — injoignable, non-2xx, corps illisible ou **ambigu** (un 200 sans `subscriber`, une `expires_date` inanalysable) ⇒ **aucune écriture** : une réponse ambiguë ne rétrograde ni ne promeut personne ; RC 404 = `synced, tier free`, honnête, pas une erreur ; logs = issues seulement (`user/outcome/tier`), jamais de corps RC ni de credential) ;
 4. le client **redemande** la décision (`enforce_premium_feature`) ;
 5. **seul le nouveau verdict serveur accorde.**
+
+Les deux edges sont déclarés `verify_jwt = true` dans `supabase/config.toml` (contrôle plateforme en plus du contrôle interne sur l'en-tête Authorization — défense en profondeur).
 
 Sites purgés (chacun pouvait inverser un refus serveur) :
 
@@ -65,6 +67,8 @@ Sites purgés (chacun pouvait inverser un refus serveur) :
 
 Le contrat client-130 est explicite : mêmes clés, mêmes tiers, mêmes quotas ; la colonne ajoutée est invisible pour 130 (aucun de ses chemins ne la lit ni ne l'écrit).
 
+`supabase/migrations/20260922000002_sync_entitlement_throttle.sql` (NON appliquée) : `subscriptions.last_sync_at TIMESTAMPTZ` nullable, additive et sans changement de privilège — l'état du claim atomique du throttle de `sync-entitlement`, possédée par cette fonction seule (le webhook ne l'écrit pas), avec auto-vérification de présence.
+
 ## 5. Validateurs et canaris
 
 - `validate:premium-gating` — couverture 11/11, codes de raison alignés (`sync_available` déclaré client-only), **classes exhaustives, compteurs publiés = réalité, accord client↔migration sur la classe la plus forte** ; titre à compteurs séparés.
@@ -73,7 +77,7 @@ Le contrat client-130 est explicite : mêmes clés, mêmes tiers, mêmes quotas 
 
 ## 6. Tests
 
-- `packages/shared/src/security/__tests__/sync-entitlement.test.ts` (15) — les vrais octets de l'edge via `loadEdgeModule` : `tierFromSubscriber` (expiration → free = downgrade, lifetime, premium_plus gagne, date malformée → fail-closed), `isThrottled` (fenêtre 30 s), invariants structurels (aucun RPC, identité = JWT, fail-closed RC, 404 honnête, pas de CORS).
+- `packages/shared/src/security/__tests__/sync-entitlement.test.ts` (21) — les vrais octets de l'edge via `loadEdgeModule` : `readSubscriberVerdict` (absence de `subscriber` = ambigu ; expiration passée = downgrade vérifié ; lifetime ; premium_plus gagne ; date malformée = ambigu ; ambiguïté sur le palier haut = ambigu pour tout le verdict), `syncCutoff` + budget timeout, invariants structurels (aucun RPC, identité = JWT, claim atomique sans TOCTOU, état persistant, fail-closed sur timeout/non-2xx/ambigu, 404 honnête, écritures bornées au jeu de colonnes exact, pas de CORS, logs sans objet erreur brut ni corps RC).
 - `packages/shared/src/security/__tests__/premium-tarot-reading.test.ts` (10) — **l'artefact EST le moteur partagé** (lecture identique carte à carte, la locale traduit sans redistribuer, fallback EN flaggé pour les 6 non écrites, 78 cartes et les deux corpus intacts, zéro dépendance) ; contrat structurel de l'edge (décision avant production, 402 sans octets, 503 fail-closed, seed = auth.uid, `viaFreePreview`, pas de CORS, import de l'artefact committé).
 - `apps/mobile/src/__tests__/premium-reprise-discriminants.test.ts` (16) — le discriminant nommé par l'opérateur : **un faux entitlement après refus reste inaccessible** ; sync échouée ne change rien ; sync réussie n'est pas un grant — seul le nouveau verdict enforce accorde ; patch simulé sur tarot ⇒ aucune lecture (402/réseau/payload malformé) ; aucun import producteur dans le mobile ; le gate ne peut pas accorder après refus ; compteurs 2/7/2 ; contrat 130 (clés, alias `'tarot'`, quotas 1/jour, mapping split).
 - `apps/mobile/src/__tests__/premium-server-gate.test.ts` (v1, 10) — les after-proofs structurels de la première passe, toujours verts.
@@ -81,7 +85,7 @@ Le contrat client-130 est explicite : mêmes clés, mêmes tiers, mêmes quotas 
 
 ## 7. Séquence de déploiement (quand l'opérateur décide)
 
-1. `supabase db push` **interdit** (JUNO-15) — appliquer `20260922000001` par le processus revu ; son auto-vérification refuse de committer quoi que ce soit d'autre que le catalogue 3/7/2.
+1. `supabase db push` **interdit** (JUNO-15) — appliquer `20260922000001` PUIS `20260922000002` par le processus revu ; la première refuse de committer quoi que ce soit d'autre que le catalogue 3/7/2, la seconde ajoute la colonne de throttle sans toucher aux privilèges. **Ordre obligatoire** : sans `002`, `sync-entitlement` ne peut pas réclamer son slot et répond `state_unavailable` 503 fail-closed (sûr mais inutile).
 2. Déployer `premium-tarot-reading` **après** la migration (avant elle, l'edge répond `unknown_feature`… non : les clés existent depuis 20260511000002 pour tarot_cosmic/monthly ; la colonne classe n'affecte pas enforce — l'edge est déployable dès que la migration est appliquée, et pas avant pour que le catalogue honnête existe en base).
 3. Secrets à vérifier avant deploy : `REVENUECAT_API_KEY` (déjà requis par `backfill-revenuecat` — même secret, aucune rotation), rien de nouveau côté Stripe.
 4. Déployer `sync-entitlement` ; `REVENUECAT_API_KEY` absent ⇒ 500 `config_error` fail-closed (aucun état corrompu).

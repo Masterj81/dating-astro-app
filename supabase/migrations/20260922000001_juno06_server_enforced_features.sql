@@ -142,6 +142,23 @@ UPDATE public.premium_feature_policy
    SET enforcement_class = 'public_content', updated_at = NOW()
  WHERE feature_key = 'retrograde_alerts';
 
+-- Rows that must NOT survive to the NOT NULL below:
+--   1. the dead seeds of 20260419000006 (deleted here — BEFORE the column
+--      becomes NOT NULL, or the ALTER fails on their NULL class; the delete
+--      list moved up from its old section 3 for exactly that reason);
+--   2. belt-and-braces: any OTHER historical row this file does not know
+--      about (20260907's lesson: the repository is not always where the
+--      change happened) is classified conservatively rather than breaking
+--      the migration — unknown rows are not client features; the class
+--      column is informational for them and the count assertions below are
+--      scoped to the known catalog so they cannot lie about the 11.
+DELETE FROM public.premium_feature_policy
+ WHERE feature_key IN ('compatibility_details', 'priority_messages', 'likes_you_see_who');
+
+UPDATE public.premium_feature_policy
+   SET enforcement_class = 'server_metered_ui', updated_at = NOW()
+ WHERE enforcement_class IS NULL;
+
 -- Belt-and-braces: any row that slipped past the statements above (a future
 -- seed, a manual insert) still cannot stay classless, and the value must be
 -- one of the three documented classes.
@@ -217,13 +234,7 @@ UPDATE public.premium_feature_policy
  WHERE feature_key = 'tarot_cosmic';
 
 -- -----------------------------------------------------------------------------
--- 3) Dead seeds from 20260419000006 that no client path references
--- -----------------------------------------------------------------------------
-DELETE FROM public.premium_feature_policy
- WHERE feature_key IN ('compatibility_details', 'priority_messages', 'likes_you_see_who');
-
--- -----------------------------------------------------------------------------
--- 4) Self-verification (a migration that changes privileges must prove itself
+-- 3) Self-verification (a migration that changes privileges must prove itself
 --    — same house rule as 20260903000003). Asserts the CATALOG this change
 --    claims to produce — rows, quotas, classes, counts — refusing to commit
 --    anything else.
@@ -288,22 +299,28 @@ BEGIN
 
   -- The published counts, so a future row added without a class decision
   -- cannot land silently (the verdict "X/11 server-enforced" lives or dies
-  -- here). 12 rows = 11 client features + the 'tarot' alias.
+  -- here). SCOPED to the known catalog: a historical row this file does not
+  -- know about was conservatively classed above and must not make the
+  -- published counts lie about the 11 client features. 12 rows = 11 client
+  -- features + the 'tarot' alias.
   SELECT COUNT(*) INTO v_count
     FROM public.premium_feature_policy
-   WHERE enforcement_class = 'server_enforced_data';
+   WHERE feature_key = ANY (v_expected)
+     AND enforcement_class = 'server_enforced_data';
   IF v_count <> 3 THEN
     RAISE EXCEPTION 'JUNO-06 self-check: expected 3 server_enforced_data rows (tarot_cosmic, tarot_monthly, alias), got %', v_count;
   END IF;
   SELECT COUNT(*) INTO v_count
     FROM public.premium_feature_policy
-   WHERE enforcement_class = 'server_metered_ui';
+   WHERE feature_key = ANY (v_expected)
+     AND enforcement_class = 'server_metered_ui';
   IF v_count <> 7 THEN
     RAISE EXCEPTION 'JUNO-06 self-check: expected 7 server_metered_ui rows, got %', v_count;
   END IF;
   SELECT COUNT(*) INTO v_count
     FROM public.premium_feature_policy
-   WHERE enforcement_class = 'public_content';
+   WHERE feature_key = ANY (v_expected)
+     AND enforcement_class = 'public_content';
   IF v_count <> 2 THEN
     RAISE EXCEPTION 'JUNO-06 self-check: expected 2 public_content rows, got %', v_count;
   END IF;
