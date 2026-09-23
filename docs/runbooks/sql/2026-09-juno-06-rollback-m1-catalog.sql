@@ -11,12 +11,12 @@
 -- AVANT M1 : toute divergence = ARRÊT (JUNO-15 : le dépôt n'est pas
 -- forcément l'état).
 --
--- ⚠ UNE DÉCISION EXPLICITE REQUISE — `synastry.free_preview_quota` :
---   20260915000001 l'a posée à 1 (le rollback vers NULL y est documenté
---   comme OPÉRATIONNEL, exécuté à la main, jamais par une migration).
---   Ce script restaure la valeur HISTORIQUE = 1 ci-dessous. Si votre
---   capture P0-1 montre NULL, changez CETTE ligne avant d'exécuter —
---   c'est le seul point de décision du script, il est volontaire unique.
+-- SYNASTRY — DÉCISION RATIFIÉE (opérateur, 2026-09-23) : free_preview_quota
+--   reste 1. C'est l'état posé par 20260915000001 et le choix le moins
+--   régressif ; le passage à NULL supprimerait un aperçu existant et
+--   exigerait une décision produit distincte. Ce script restaure donc 1,
+--   sans point de décision restant : P0-1d de la capture VÉRIFIE que le
+--   live est bien 1 (divergence = arrêt, voir le script de capture).
 --
 -- PÉRIMÈTRE : M1 uniquement. Le rollback de M2 est un one-liner documenté
 -- en tête (DROP TABLE entitlement_sync_claims) ; les edges se retirent par
@@ -48,7 +48,7 @@ UPDATE public.premium_feature_policy SET required_tier='celestial', daily_quota=
 UPDATE public.premium_feature_policy SET required_tier='cosmic',    daily_quota=NULL,free_preview_quota=NULL, updated_at=NOW() WHERE feature_key='planetary_transits';
 UPDATE public.premium_feature_policy SET required_tier='celestial', daily_quota=100, free_preview_quota=NULL, updated_at=NOW() WHERE feature_key='priority_messages';
 UPDATE public.premium_feature_policy SET required_tier='cosmic',    daily_quota=NULL,free_preview_quota=NULL, updated_at=NOW() WHERE feature_key='retrograde_alerts';
-UPDATE public.premium_feature_policy SET required_tier='celestial', daily_quota=20,  free_preview_quota=1,    updated_at=NOW() WHERE feature_key='synastry';  -- ⚠ DÉCISION : 1 (historique) ou NULL (votre P0-1)
+UPDATE public.premium_feature_policy SET required_tier='celestial', daily_quota=20,  free_preview_quota=1,    updated_at=NOW() WHERE feature_key='synastry';  -- décision ratifiée : 1 (2026-09-23)
 UPDATE public.premium_feature_policy SET required_tier='cosmic',    daily_quota=10,  free_preview_quota=NULL, updated_at=NOW() WHERE feature_key='tarot';
 UPDATE public.premium_feature_policy SET required_tier='cosmic',    daily_quota=10,  free_preview_quota=NULL, updated_at=NOW() WHERE feature_key='tarot_cosmic';
 UPDATE public.premium_feature_policy SET required_tier='celestial', daily_quota=NULL,free_preview_quota=NULL, updated_at=NOW() WHERE feature_key='tarot_monthly';
@@ -78,7 +78,7 @@ DECLARE
     'planetary_transits|cosmic||',
     'priority_messages|celestial|100|',
     'retrograde_alerts|cosmic||',
-    'synastry|celestial|20|1',           -- ⚠ suivre la décision du point 2
+    'synastry|celestial|20|1',           -- décision ratifiée 2026-09-23 (conserver 1)
     'tarot|cosmic|10|',
     'tarot_cosmic|cosmic|10|',
     'tarot_monthly|celestial||'

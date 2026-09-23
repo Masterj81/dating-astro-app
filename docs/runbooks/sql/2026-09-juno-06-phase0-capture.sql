@@ -14,21 +14,44 @@
 --     -f docs/runbooks/sql/2026-09-juno-06-phase0-capture.sql \
 --     | Tee-Object phase0-capture-2026-09-23.txt     # archiver la sortie
 --
--- LA SORTIE EST LA SOURCE DE VÉRITÉ DE LA MATRICE
--- (docs/runbooks/juno-06-backend-activation-2026-09.md §2) :
---   - toute divergence avec la colonne « attendu » = ARRÊT avant M1
---     (leçon JUNO-15 : le dépôt n'est pas forcément l'état) ;
---   - la divergence CONNUE à surveiller en premier : `synastry`.
---     free_preview_quota — 20260915000001 l'a posée à 1 (rollback
---     opérationnel documenté vers NULL, aucune migration ne l'exécute) ;
---     20260922000001 asserte NULL. Si la capture montre 1, M1 s'auto-refuse
---     et le choix NULL-ou-1 doit être pris explicitement (voir §2).
+-- LA SORTIE EST LA SOURCE DE VÉRIFICATION DE LA MATRICE
+-- (docs/runbooks/juno-06-backend-activation-2026-09.md §1bis) et des SIX
+-- contrôles de concordance post-capture (§1quater) :
+--   1. historique distant : 20260922000001/0002 ABSENTES (P0-0) ;
+--   2. catalogue réel vs reconstruction historique (P0-1b) ;
+--   3. synastry.free_preview_quota = 1 (P0-1d — décision opérateur
+--      2026-09-23 : CONSERVER 1, état posé par 20260915000001) ;
+--   4. objets M1a/M2 absents (P0-2, P0-3) ;
+--   5. agrégats premium_usage (P0-4) ;
+--   6. nom REVENUECAT_API_KEY présent, valeur jamais affichée (commandes
+--      accompagnatrices en pied de script).
+--
+-- PURETÉ (vérifiée mécaniquement avant publication — autorisation
+-- opérateur 2026-09-23) : ce fichier ne contient QUE des SELECT, les
+-- métadonnées transactionnelles BEGIN/ROLLBACK et des directives psql
+-- (\set, \echo). Aucun DO, DML, DDL, GRANT/REVOKE, COPY, appel réseau
+-- (dblink/net.*), fonction mutante (set_config, pg_sleep) ni cron. Les
+-- fonctions utilisées (string_agg, coalesce, COUNT FILTER, CURRENT_DATE,
+-- pg_get_constraintdef, ::regclass) sont pures et en lecture catalogue.
+--
+-- ⚠ RÈGLE ABSOLUE (autorisation 2026-09-23) : si P0-0 montre que
+-- 20260922000001 ou 20260922000002 ont été appliquées dans un environnement
+-- quelconque — ARRÊT IMMÉDIAT. Modifier une migration fusionnée n'est
+-- acceptable QUE parce que la Phase 0 doit prouver qu'elle n'a jamais tourné
+-- ; sinon il faudra une MIGRATION CORRECTIVE NOUVELLE, jamais réécrire
+-- l'ancienne.
 -- =============================================================================
 
 \set ON_ERROR_STOP on
 BEGIN;
 
-\echo '===== P0-1a : catalogue complet (trié) — source de vérité du rollback ====='
+\echo '===== P0-0 : historique des migrations — les deux JUNO-06 doivent être ABSENTES ====='
+SELECT version FROM supabase_migrations.schema_migrations
+ WHERE version LIKE '20260922%' ORDER BY version;      -- attendu : 0 ligne
+SELECT version FROM supabase_migrations.schema_migrations
+ ORDER BY version DESC LIMIT 5;                          -- contexte : 5 dernières appliquées
+
+\echo '===== P0-1a : catalogue complet (trié) — source de la comparaison avec la reconstruction ====='
 SELECT feature_key, required_tier, daily_quota, free_preview_quota, updated_at
   FROM public.premium_feature_policy
  ORDER BY feature_key;
@@ -64,11 +87,19 @@ SELECT source, tier, status, COUNT(*) AS rows
  GROUP BY source, tier, status
  ORDER BY source, tier, status;
 
-\echo '===== P0-1c : contraintes existantes sur la table (CHECK/UNIQUE à connaître avant M1) ====='
+\echo '===== P0-1c : contraintes existantes sur la table (CHECK/UNIQUE à connaître avant M1a) ====='
 SELECT conname, pg_get_constraintdef(oid) AS definition
   FROM pg_constraint
  WHERE conrelid = 'public.premium_feature_policy'::regclass
  ORDER BY conname;
+
+\echo '===== P0-1d : synastry — LA décision ratifiée : free_preview_quota = 1 ====='
+SELECT feature_key, free_preview_quota,
+       CASE WHEN feature_key = 'synastry' AND free_preview_quota = 1
+            THEN 'OK — conforme à la décision (conserver 1)'
+            ELSE 'DIVERGENCE — arrêt avant toute migration' END AS verdict
+  FROM public.premium_feature_policy
+ WHERE feature_key = 'synastry';                -- attendu : 1 / OK
 
 ROLLBACK;
 \echo '===== PHASE 0 TERMINÉE (ROLLBACK — rien écrit). Archiver la sortie. ====='

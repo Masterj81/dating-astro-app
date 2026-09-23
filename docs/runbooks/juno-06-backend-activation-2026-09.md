@@ -2,8 +2,12 @@
 
 ```
 FUSION 491e861 RATIFIÉE
-PHASE 0 LECTURE SEULE AUTORISÉE
-ACTIVATION BACKEND BLOQUÉE SUR LA REVUE DES MUTATIONS DE POLITIQUE
+PR #70 (documentaire) : FUSION AUTORISÉE — documentation + SQL opérateur hors chemin automatique uniquement
+PHASE 0 LECTURE SEULE : AUTORISÉE (script vérifié : SELECT/BEGIN/ROLLBACK uniquement)
+DÉCOUPAGE M1a / M2 / M1c : APPROUVÉ EN PRINCIPE
+M1c : INTERDITE jusqu'au cycle 131 + autorisation produit dédiée
+SYNASTRY free_preview_quota : CONSERVER 1 (décision produit 2026-09-23)
+ACTIVATION BACKEND : NON AUTORISÉE — conditionnelle aux six gates §1quater
 ```
 
 **Statut : PRÉPARÉ — activation bloquée sur la revue des mutations de politique (§1bis). Rien n'est appliqué, rien n'est déployé.** La Phase 0 est un script unique en lecture seule (`docs/runbooks/sql/2026-09-juno-06-phase0-capture.sql`) : ce poste de préparation n'a AUCUN accès base (vérifié : pas de CLI supabase, pas de psql, `.env.local` = clés publiques client uniquement) — la colonne « constaté » de la matrice se remplit depuis sa sortie, qui est la source de vérité du rollback.
@@ -24,7 +28,20 @@ Sur `master` depuis `491e861` : le code client (gate purgé du lissage RC, écra
 
 Valeurs « attendues » ci-dessous **reconstruites depuis l'historique versionné** (20260419000006 → 20260915000001). Toute divergence capture/attendu = **ARRÊT avant M1** (JUNO-15).
 
-**⚠ Divergence CONNUE à arbitrer en premier — `synastry.free_preview_quota`** : `20260915000001` l'a posée à `1` (son rollback vers NULL y est documenté comme *opérationnel*, exécuté à la main — aucune migration ne l'a fait). `20260922000001` asserte `NULL` et son `ON CONFLICT DO UPDATE` l'**écraserait activement** à `NULL` si le live est `1`. Si P0-1 montre `1` : M1 s'auto-refuse à son self-check, et le choix NULL-ou-1 doit être pris **explicitement** (conception : l'aperçu synastrie est un contrat par-cible dans `synastry_free_grant`, pas dans `premium_usage` — mais écraser une valeur live est une décision, jamais un effet de bord).
+**Synastry — divergence réglée par décision produit (2026-09-23)** : `20260915000001` a posé `free_preview_quota = 1` (son rollback vers NULL est documenté comme une opération manuelle, jamais exécutée par une migration). **Décision : CONSERVER 1** — l'état existant, le choix le moins régressif ; le passage à NULL supprimerait un aperçu existant et exigerait une décision produit distincte. Conséquences : M1a n'y touche pas (classification seule) ; **M1c, quand elle sera autorisée, doit préserver p=1** (l'upsert synastry y perd son `free_preview_quota = NULL`) ; le self-check de M1a/M1c s'attend à 1 ; le rollback restaure 1. La capture (P0-1d) VÉRIFIE live=1 — toute autre valeur = arrêt.
+
+### 1quater. Contrôles de concordance post-capture (obligatoires avant TOUTE migration)
+
+| # | Contrôle | Source | Attendu | Si divergent |
+|---|---|---|---|---|
+| 1 | Historique distant : `20260922000001`/`0002` **jamais appliquées** | P0-0 | 0 ligne | **ARRÊT IMMÉDIAT** — l'amendement de la migration fusionnée n'est acceptable QUE si elle n'a tourné nulle part ; sinon migration corrective NOUVELLE, jamais réécrire l'ancienne |
+| 2 | Catalogue réel vs reconstruction historique | P0-1b vs matrice §1bis colonne « Prod » | égalité exacte | Arrêt — JUNO-15 (le dépôt n'est pas l'état) ; documenter l'écart, re-décider |
+| 3 | `synastry.free_preview_quota = 1` | P0-1d | `1 / OK` | Arrêt — divergence à arbitrer avant tout |
+| 4 | Objets M1a/M2 absents (colonne `enforcement_class`, table `entitlement_sync_claims`) | P0-2, P0-3 | 0 / 0 | Arrêt — quelqu'un a muté sans trace ; auditer |
+| 5 | Agrégats `premium_usage` par clé | P0-4 | archivé (baseline télémétrie) | — (valeur de référence, pas un gate binaire) |
+| 6 | Nom `REVENUECAT_API_KEY` présent, valeur jamais affichée | commandes en pied du script | présent | Arrêt si absent (E1 le requerra ; à provisionner avant activation) |
+
+**Gates verts 1→6 ⇒ la PR code suivante peut être ouverte** (voir §1ter, mise en œuvre) — pas avant.
 
 ### 1bis. Matrice des mutations, clé par clé (la revue demandée)
 
@@ -34,7 +51,7 @@ Colonnes : Prod = état attendu avant M1 (**à confirmer par P0-1** ; `q`=daily_
 |---|---|---|---|---|---|---|
 | natal_chart | celestial q-NULL p1 | idem + classe | **enforce** | **enforce** | aucun (rien ne change hors classe) | sécurité/doc |
 | conversation_guide | celestial q100 p1 | idem + classe | **enforce** | **enforce** | aucun | sécurité/doc |
-| synastry | celestial q20 **p1-ou-NULL ⚠** | q→NULL, p→**NULL** ⚠ | client-gated | non (flux dédié `synastry_preview_gate`) | aucun sur clients livrés ; ⚠ écrasement possible | normalisation (assouplit) + **⚠ décision produit** |
+| synastry | celestial q20 **p=1 (ratifié — conservé)** | M1a : idem (ne touche pas les politiques) ; M1c : q→NULL, **p reste 1** | client-gated | non (flux dédié `synastry_preview_gate`) | aucun sur clients livrés | normalisation (assouplit) ; **preview 1 conservé, décision produit 2026-09-23** |
 | daily_horoscope | celestial q50 p-NULL | q→NULL, p→1 | client-gated | non | aucun sur livrés (inerte jusqu'à 131) | normalisation (assouplit) ; aperçu = produit différé |
 | monthly_horoscope | cosmic q-NULL p-NULL | p→1 | client-gated | non | aucun sur livrés | produit différé (131) |
 | lucky_days | cosmic q-NULL p-NULL | p→1 | client-gated | non | aucun sur livrés | produit différé (131) |
@@ -49,21 +66,21 @@ Colonnes : Prod = état attendu avant M1 (**à confirmer par P0-1** ; `q`=daily_
 | likes_you_see_who | celestial q50 | **DELETE** | non | non | aucun | normalisation sans effet |
 | *(colonne enforcement_class)* | absente | 3/7/2 + CHECK | aucun client ne la lit | aucun | aucun | sécurité/doc |
 
-Lignes `premium_usage` existantes par clé : **à consigner depuis P0-4** (agégat par clé) — elles orientent la décision « garder/archiver+purger » du rollback. **Aucun quota produit n'est réduit nulle part** : les deux mutations de quota (50→NULL, 20→NULL) *assouplissent* ; toutes les mutations de preview *ajoutent* un aperçu — sauf le cas ⚠ synastry, seul retrait potentiel, à décider explicitement.
+Lignes `premium_usage` existantes par clé : **à consigner depuis P0-4** (agrégat par clé) — elles orientent la décision « garder/archiver+purger » du rollback. **Aucun quota produit n'est réduit nulle part** : les deux mutations de quota (50→NULL, 20→NULL) *assouplissent* ; toutes les mutations de preview *ajoutent* un aperçu ; l'unique retrait potentiel (synastry →NULL) est **écarté par la décision produit 2026-09-23 : conserver 1**.
 
-### 1ter. Découpage proposé de M1 (l'application du principe « pas de quota produit implicite sous couvert de sécurité »)
+### 1ter. Découpage de M1 — APPROUVÉ EN PRINCIPE (2026-09-23)
 
 `20260922000001` est fusionnée mais **jamais appliquée nulle part** — elle peut donc être amendée sur master sans historically break (PR code séparée, hors #70 documentaire) :
 
 1. **M1a — classification (sécurité, inerte)** : colonne `enforcement_class` + classes sur les lignes EXISTANTES + filet (lignes inconnues → `server_metered_ui`) + NOT NULL/CHECK + self-check. Aucun client livré ne lit cette colonne ; zéro effet utilisateur ; c'est la partie strictement sécurité/documentation.
 2. **M1b — prérequis edges : ∅ côté politiques.** `E1 sync-entitlement` ne nécessite que `M2` (table de claim). `E2 premium-tarot-reading` fonctionne sur le catalogue **actuel** (clés tarot existantes depuis 20260511000002 ; compte free → 402 sans aperçu dépensé = comportement web d'aujourd'hui). Aucune mutation de politique n'est un prérequis au déploiement des deux edges.
-3. **M1c — produit (différé, autorisation séparée, calé sur 131)** : les 6 upserts (dont synastry q20→NULL et ⚠ preview), les 8 previews=1 (dont les 5 visibles web : +aperçu gratuit/jour), le DELETE des 3 graines mortes. Chaque ligne est classée dans la matrice ci-dessus ; rien n'y réduit un quota.
+3. **M1c — produit : INTERDITE jusqu'au cycle 131 et une autorisation produit dédiée** (décision 2026-09-23). Contenu lorsqu'elle sera autorisé : les 6 upserts (**synastry : q20→NULL, p RESTE 1** — son upsert perd le `free_preview_quota = NULL` de l'ancien draft), les 8 previews=1 (dont les 5 visibles web : +aperçu gratuit/jour), le DELETE des 3 graines mortes. Chaque ligne est classée dans la matrice ci-dessus ; rien n'y réduit un quota ni un aperçu.
 
-Mise en œuvre proposée (sur approbation) : amender `20260922000001` → M1a seule ; créer `20260924000003_juno06c_product_policies.sql` portant M1c, en-tête « NE PAS APPLIQUER sans autorisation produit explicite ».
+Mise en œuvre (PR code, à ouvrir UNIQUEMENT après les six gates verts de §1quater) : amender `20260922000001` → **M1a classification uniquement** (self-checks adaptés : synastry attendu p=1 ; plus de comptes sur des quotas) ; **conserver `20260922000002`** telle quelle (table de claims) ; créer **`20260924000003_juno06c_product_policies.sql`** explicitement différée, en-tête « NE PAS APPLIQUER sans autorisation produit explicite (cycle 131) », auto-vérifiée avec synastry p=1 ; **adapter le rollback** (§4 : déjà à jour — restaure p=1). Condition d'arrêt rappelée en §1quater gate 1 : si l'historique distant contient 20260922000001/0002, l'amendement est INTERDIT — migration corrective nouvelle.
 
-**Exécution** : tout le contenu P0-1 → P0-6 (catalogue, absences des objets nouveaux, volumes `premium_usage`, baseline `subscriptions`, contraintes existantes, fonctions déployées, noms de secrets) vit dans **un seul script** : `docs/runbooks/sql/2026-09-juno-06-phase0-capture.sql` — lecture seule, transaction + ROLLBACK, aucune PII, aucune valeur secrète. Sa sortie archivée : (a) remplit la colonne « constaté » de la matrice §1bis, (b) vérifie la reconstruction du script de rollback §4, (c) arbitre le cas synastry.
+**Exécution** : tout le contenu (P0-0 historique des migrations, catalogue, absences des objets nouveaux, volumes `premium_usage`, baseline `subscriptions`, contraintes existantes, fonctions déployées, noms de secrets) vit dans **un seul script** : `docs/runbooks/sql/2026-09-juno-06-phase0-capture.sql` — lecture seule VÉRIFIÉE MÉCANIQUEMENT (SELECT + BEGIN/ROLLBACK + métadonnées psql uniquement ; aucun DO/DML/DDL/réseau/fonction mutante/cron), aucune PII, aucune valeur secrète. Sa sortie archivée alimente les **six contrôles de concordance §1quater** — gates obligatoires avant TOUTE migration.
 
-**Constat structurel** (confirmé par relecture de l'historique) : `20260922000001` n'est pas purement additive — les mutations de lignes existantes sont exactement : quotas `daily_horoscope` 50→NULL et `synastry` 20→NULL (assouplissements), previews NULL→1 sur 8 clés (dont 5 visibles immédiatement sur le web livré : transits, rétrogrades, date-planner, tarot×2 — des AJOUTS d'aperçus gratuits), ⚠ synastry preview →NULL (seul retrait potentiel), et le DELETE de 3 graines mortes. D'où le découpage §1ter.
+**Constat structurel** (confirmé par relecture de l'historique) : `20260922000001` n'est pas purement additive — les mutations de lignes existantes sont exactement : quotas `daily_horoscope` 50→NULL et `synastry` 20→NULL (assouplissements), previews NULL→1 sur 8 clés (dont 5 visibles immédiatement sur le web livré : transits, rétrogrades, date-planner, tarot×2 — des AJOUTS d'aperçus gratuits), synastry preview →NULL dans l'ancien draft (retrait **écarté** par la décision p=1 conservé), et le DELETE de 3 graines mortes. D'où le découpage §1ter.
 
 ## 2. Commandes unitaires prévues (ordre strict ; un gate après chacune)
 
