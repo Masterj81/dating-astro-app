@@ -302,23 +302,33 @@ describe('discriminant · build 130 sees its world unchanged', () => {
     }
   });
 
-  it("the legacy 'tarot' alias row survives (old installed clients still call it)", () => {
+  it("the legacy 'tarot' alias row survives and is marked legacy_alias (build 130 contract)", () => {
     const juno06 = fs.readFileSync(
       path.join(migrationsDir, '20260922000001_juno06_server_enforced_features.sql'),
       'utf8',
     );
-    // Kept as a row...
-    expect(juno06).toMatch(/feature_key = 'tarot'/);
-    // ...and absent from the delete list (which names exactly the three
-    // dead seeds — scoping to THIS migration avoids matching unrelated
-    // DELETEs elsewhere in the history).
-    const del = juno06.match(/DELETE FROM public\.premium_feature_policy[\s\S]{0,400}?;/);
-    expect(del).not.toBeNull();
-    expect(del![0]).not.toMatch(/'tarot'/);
-    expect(del![0]).toMatch(/'compatibility_details', 'priority_messages', 'likes_you_see_who'/);
+    // Classified as an inventory marker — present for pre-split clients,
+    // never counted in the audited 2/7/2...
+    expect(juno06).toMatch(
+      /SET enforcement_class = 'legacy_alias',[\s\S]{0,60}?WHERE feature_key = 'tarot'/,
+    );
+    // ...and NO migration ever deletes it.
+    expect(allSql).not.toMatch(
+      /DELETE FROM public\.premium_feature_policy[^;]*'tarot'[^;]*;/s,
+    );
   });
 
-  it('the 8 preview quotas build 130 spends stay 1/day', () => {
+  it('the 8 deferred preview promises exist ONLY in the M1c draft, never in migrations', () => {
+    const draft = fs.readFileSync(
+      path.join(
+        REPO_ROOT,
+        'docs/runbooks/sql/2026-09-juno-06-m1c-product-policies-DRAFT.sql',
+      ),
+      'utf8',
+    );
+    // The draft must carry its do-not-run banner and its 131 condition.
+    expect(draft).toMatch(/BROUILLON — NE PAS EXÉCUTER/);
+    expect(draft).toMatch(/VERSION ANDROID 131 \+ AUTORISATION PRODUIT/);
     for (const key of [
       'daily_horoscope',
       'monthly_horoscope',
@@ -329,12 +339,46 @@ describe('discriminant · build 130 sees its world unchanged', () => {
       'tarot_monthly',
       'tarot_cosmic',
     ]) {
-      // The literal per-key statement convention validate-premium-gating
-      // reads: `SET free_preview_quota = 1, updated_at = NOW()\n WHERE
-      // feature_key = '<key>'` — [^;]* spans the same statement only.
-      const re = new RegExp(`SET free_preview_quota = 1[^;]*WHERE feature_key = '${key}'`, 's');
-      expect(allSql, key).toMatch(re);
+      // Traceable in the draft (deferred promise)...
+      const inDraft = new RegExp(
+        `SET free_preview_quota = 1,[^\\n]*\\n[^\\n]*WHERE feature_key = '${key}'`,
+      );
+      expect(draft, key).toMatch(inDraft);
+      // ...and strictly absent from every applied migration (M1c forbidden
+      // until build 131 + product authorization — operator 2026-09-23).
+      const inMigrations = new RegExp(
+        `SET free_preview_quota = 1[^;]*WHERE feature_key = '${key}'`,
+        's',
+      );
+      expect(allSql, key).not.toMatch(inMigrations);
     }
+  });
+
+  it('M1a (20260922000001) is classification-only — zero product mutation', () => {
+    const juno06 = fs.readFileSync(
+      path.join(migrationsDir, '20260922000001_juno06_server_enforced_features.sql'),
+      'utf8',
+    );
+    expect(juno06).not.toMatch(/INSERT INTO public\.premium_feature_policy/);
+    expect(juno06).not.toMatch(/DELETE FROM public\.premium_feature_policy/);
+    expect(juno06).not.toMatch(/SET (required_tier|daily_quota|free_preview_quota)\s*=/);
+    // The Phase 0 snapshot is encoded (pre-check refuses to run on drift).
+    expect(juno06).toMatch(/_juno06_m1a_catalog_pre/);
+    expect(juno06).toMatch(/'synastry\|celestial\|20\|1'/);
+  });
+
+  it('no migration file outside 20260922* carries JUNO-06 product content (M1c absent from migrations)', () => {
+    const files = fs.readdirSync(migrationsDir).filter((f) => f.endsWith('.sql'));
+    const offenders = files.filter((f) => {
+      if (f.startsWith('20260922')) return false;
+      const sql = fs.readFileSync(path.join(migrationsDir, f), 'utf8');
+      // Dead-seed deletion or the 8 deferred previews = M1c content.
+      return (
+        /DELETE FROM public\.premium_feature_policy[^;]*'(compatibility_details|priority_messages|likes_you_see_who)'[^;]*;/s.test(sql) ||
+        /SET free_preview_quota = 1[^;]*WHERE feature_key = '(tarot_monthly|tarot_cosmic|date_planner|planetary_transits|retrograde_alerts|monthly_horoscope|lucky_days)'/s.test(sql)
+      );
+    });
+    expect(offenders).toEqual([]);
   });
 
   it('the tarot split keys map as build 130 already knew them', () => {
