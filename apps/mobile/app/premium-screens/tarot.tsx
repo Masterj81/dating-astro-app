@@ -14,24 +14,27 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import PremiumGate from '../../components/PremiumGate';
 import { AppTheme, SCREEN_GRADIENT } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { usePremium } from '../../contexts/PremiumContext';
 import {
-  generateReading,
-  getCardImageUrl,
-  tarotBucketUrl,
-  type ReadingMode,
-  type SpreadPosition,
-  type TarotReading,
-} from '@astro/shared/tarot';
+  fetchTarotReading,
+  tarotArtBaseUrl,
+  tarotCardImageUrl,
+  type ServerTarotReading,
+  type TarotMode,
+} from '../../services/serverTarot';
 
-// The bucket root, built once. The old engine read EXPO_PUBLIC_SUPABASE_URL
-// itself; the shared package takes it as an argument so it holds no project's
-// URL of its own.
-const ART_BASE = tarotBucketUrl(process.env.EXPO_PUBLIC_SUPABASE_URL || '');
+// JUNO-06: this screen renders a SERVER artifact. It imports no corpus and no
+// engine — the reading is drawn by the premium-tarot-reading edge after
+// enforce_premium_feature says yes, and only the authorized result arrives
+// here. A patched APK that skips the gate gets nothing to render, because
+// nothing local can produce the premium result anymore.
+
+// The bucket root for the PUBLIC card art (the same 78 images for everyone —
+// what the server guards is WHICH cards and their meanings, not the art).
+const ART_BASE = tarotArtBaseUrl(process.env.EXPO_PUBLIC_SUPABASE_URL || '');
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = Math.min((SCREEN_WIDTH - 80) / 3, 120);
@@ -39,25 +42,27 @@ const CARD_HEIGHT = CARD_WIDTH * 1.6;
 
 function TarotScreenContent() {
   const [loading, setLoading] = useState(true);
-  const [reading, setReading] = useState<TarotReading | null>(null);
-  const [mode, setMode] = useState<ReadingMode>('love');
+  const [reading, setReading] = useState<ServerTarotReading | null>(null);
+  const [fetchError, setFetchError] = useState(false);
+  const [viaPreview, setViaPreview] = useState(false);
+  const [mode, setMode] = useState<TarotMode>('love');
   const [revealedCards, setRevealedCards] = useState<Set<number>>(new Set());
   const [allRevealed, setAllRevealed] = useState(false);
   const { user } = useAuth();
-  const { tier } = usePremium();
+  const { tier, triggerPaywall } = usePremium();
   const { t, language } = useLanguage();
 
   // The canonical positions replace past/present/future. Their labels are the
   // same sentences the web has shipped since V2, so both platforms describe
   // the same spread in the same words — and neither claims to show a future.
-  const positionLabel = (position: SpreadPosition): string => {
+  const positionLabel = (position: string): string => {
     const key = {
       present: 'tarotV2PositionPresent',
       attention: 'tarotV2PositionAttention',
       connection: 'tarotV2PositionConnection',
       advice: 'tarotV2PositionAdvice',
-    }[position];
-    return t(key) || key;
+    }[position as 'present' | 'attention' | 'connection' | 'advice'];
+    return (key && t(key)) || position;
   };
   const insets = useSafeAreaInsets();
 
@@ -73,17 +78,41 @@ function TarotScreenContent() {
   ]).current;
 
   useEffect(() => {
+    let cancelled = false;
     if (!user?.id) {
       setLoading(false);
       return;
     }
-    const result = generateReading({ userId: user.id, mode, period, locale: language });
-    setReading(result);
-    setRevealedCards(new Set());
-    setAllRevealed(false);
-    flipAnims.forEach((anim) => anim.setValue(0));
-    setLoading(false);
-  }, [user?.id, mode, period]); // eslint-disable-line react-hooks/exhaustive-deps
+    setLoading(true);
+    setFetchError(false);
+    fetchTarotReading(period, mode, language).then((result) => {
+      if (cancelled) return;
+      if (result.ok) {
+        setReading(result.reading);
+        setViaPreview(result.viaFreePreview);
+        setRevealedCards(new Set());
+        setAllRevealed(false);
+        flipAnims.forEach((anim) => anim.setValue(0));
+      } else if (result.code === 'premium_required') {
+        // The server refused. This screen has NO PremiumGate wrapper on
+        // purpose (it would spend a SECOND enforce on the same open — the
+        // edge already owns the decision, preview included). The paywall is
+        // the modal, and the server's refusal stands: nothing local can
+        // produce a reading anymore.
+        setReading(null);
+        setFetchError(false);
+        triggerPaywall(isCosmic ? 'weekly-tarot' : 'monthly-tarot');
+      } else {
+        // Network/server failure — no local fallback exists, on purpose.
+        setReading(null);
+        setFetchError(true);
+      }
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, mode, period, language]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const revealCard = (index: number) => {
     if (revealedCards.has(index)) return;
@@ -129,6 +158,49 @@ function TarotScreenContent() {
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#C98692" />
         </View>
+      </LinearGradient>
+    );
+  }
+
+  if (fetchError || !reading) {
+    return (
+      <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backText}>←</Text>
+          </TouchableOpacity>
+          <View style={styles.header}>
+            <Text style={styles.title}>{t('tarotReading') || 'Tarot Reading'}</Text>
+            <Text style={styles.errorText}>{t('tarotServerError')}</Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => {
+                setLoading(true);
+                fetchTarotReading(period, mode, language).then((result) => {
+                  if (result.ok) {
+                    setReading(result.reading);
+                    setViaPreview(result.viaFreePreview);
+                    setRevealedCards(new Set());
+                    setAllRevealed(false);
+                    flipAnims.forEach((anim) => anim.setValue(0));
+                    setFetchError(false);
+                  } else if (result.code === 'premium_required') {
+                    triggerPaywall(isCosmic ? 'weekly-tarot' : 'monthly-tarot');
+                  }
+                  setLoading(false);
+                });
+              }}
+            >
+              <Text style={styles.retryText}>{t('tryAgain') || 'Try Again'}</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </LinearGradient>
     );
   }
@@ -236,7 +308,7 @@ function TarotScreenContent() {
                       style={[styles.cardFace, styles.cardFront, { opacity: frontOpacity }]}
                     >
                       <Image
-                        source={{ uri: getCardImageUrl(ART_BASE, entry.card.imageFile) }}
+                        source={{ uri: tarotCardImageUrl(ART_BASE, entry.card.imageFile) }}
                         style={[
                           styles.cardImage,
                           entry.card.reversed && styles.cardReversed,
@@ -289,6 +361,16 @@ function TarotScreenContent() {
           </View>
         )}
 
+        {/* Free-preview banner — the server decided this open spent the
+            account's daily preview (same banner contract as PremiumGate). */}
+        {viaPreview && tier === 'free' && (
+          <View style={styles.previewBanner}>
+            <Text style={styles.previewBannerText}>
+              {t('freePreviewAvailable') || '1 free preview per day'}
+            </Text>
+          </View>
+        )}
+
         {/* Premium badge */}
         <View style={styles.badge}>
           <Text style={styles.badgeText}>
@@ -301,15 +383,15 @@ function TarotScreenContent() {
 }
 
 export default function TarotScreen() {
-  const { tier } = usePremium();
-  const isCosmic = tier === 'premium_plus';
-  const featureKey = isCosmic ? 'weekly-tarot' : 'monthly-tarot';
-
-  return (
-    <PremiumGate feature={featureKey as any}>
-      <TarotScreenContent />
-    </PremiumGate>
-  );
+  // JUNO-06: deliberately NOT wrapped in PremiumGate. The reading is a
+  // server artifact and the EDGE owns the single enforce call — wrapping the
+  // screen would spend a second decision on the same open (the free preview
+  // would be consumed by the wrapper, then the edge would refuse the very
+  // reader who just spent it). The screen renders the paywall modal itself
+  // when the server answers premium_required. Same shape as the Conversation
+  // Guide (the other screen that must not double-gate), but stricter: here
+  // even a patched APK has no local engine to fall back to.
+  return <TarotScreenContent />;
 }
 
 const styles = StyleSheet.create({
@@ -356,6 +438,25 @@ const styles = StyleSheet.create({
   period: {
     fontSize: 13,
     color: AppTheme.colors.textMuted,
+  },
+  errorText: {
+    fontSize: 14,
+    color: AppTheme.colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 12,
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  retryButton: {
+    backgroundColor: '#C98692',
+    borderRadius: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
   },
   modeToggle: {
     flexDirection: 'row',
@@ -525,6 +626,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(147, 51, 234, 0.3)',
     marginBottom: 16,
+  },
+  previewBanner: {
+    alignSelf: 'center',
+    backgroundColor: 'rgba(201, 134, 146, 0.15)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 134, 146, 0.35)',
+    marginBottom: 16,
+  },
+  previewBannerText: {
+    fontSize: 12,
+    color: '#C98692',
+    fontWeight: '600',
   },
   badgeText: {
     fontSize: 12,

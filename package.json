@@ -29,6 +29,8 @@
     "validate:tarot-content": "node scripts/validate-tarot-content.mjs",
     "build:edge-astrology": "node scripts/build-edge-astrology.mjs",
     "validate:edge-astrology": "node scripts/build-edge-astrology.mjs --check",
+    "build:edge-tarot": "node scripts/build-edge-tarot.mjs",
+    "validate:edge-tarot": "node scripts/build-edge-tarot.mjs --check",
     "validate:chart-privacy": "npm run test --workspace=@astro/shared -- src/astrology/__tests__/chart-payload-privacy.test.ts",
     "validate:edge-security": "npm run test --workspace=@astro/shared -- src/security",
     "validate:rls-contract": "node scripts/validate-rls-contract.mjs",
