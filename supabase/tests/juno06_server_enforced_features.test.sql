@@ -165,13 +165,13 @@ BEGIN
   BEGIN
     INSERT INTO public.premium_feature_policy
       (feature_key, required_tier, daily_quota, free_preview_quota)  -- sans classe
-    VALUES ('probe_b', 'celestial', NULL, NULL);
+    VALUES ('c8_probe', 'celestial', NULL, NULL);
     RAISE EXCEPTION 'C8 : l''INSERT sans enforcement_class a RÉUSSI — un DEFAULT ou un manque NOT NULL contourne la classification explicite';
   EXCEPTION WHEN not_null_violation THEN NULL; -- attendu : 23502
   END;
   -- La ligne n'existe pas (l'insert a été annulé par l'échec).
   SELECT COUNT(*) INTO v_count FROM public.premium_feature_policy
-   WHERE feature_key = 'probe_b';
+   WHERE feature_key = 'c8_probe';
   IF v_count <> 0 THEN
     RAISE EXCEPTION 'C8 : la sonde sans classe existe — l''échec attendu n''a pas rollbacké l''insert';
   END IF;
