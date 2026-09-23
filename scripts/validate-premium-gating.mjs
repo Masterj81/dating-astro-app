@@ -475,6 +475,17 @@ if (!/SET NOT NULL/.test(m1aSrc) || !/enforcement_class IS NULL/.test(m1aSrc)) {
   );
 }
 
+// (c-bis-2) The CHECK must not survive as NOT VALID: the migration
+// VALIDATEs it before commit AND asserts convalidated=true from
+// pg_constraint (review 2026-09-23 — a NOT VALID constraint on 15 proven
+// rows would stay flagged in the catalog).
+if (!/VALIDATE CONSTRAINT premium_feature_policy_enforcement_class_check/.test(m1aSrc)) {
+  issues.push("M1a must VALIDATE the enforcement_class CHECK before commit (NOT VALID on 15 proven rows is a lingering catalog flag).");
+}
+if (!/convalidated/.test(m1aSrc)) {
+  issues.push("M1a must assert convalidated=true on the CHECK from pg_constraint (post-VALIDATE proof).");
+}
+
 // (d) The M1c draft stays a draft: every header must carry the do-not-run banner.
 if (!/BROUILLON — NE PAS EXÉCUTER/.test(m1cDraft) || !/VERSION ANDROID 131 \+ AUTORISATION PRODUIT/.test(m1cDraft)) {
   issues.push("M1c draft lost its BROUILLON/NE PAS EXÉCUTER banner or its 131+authorization condition.");

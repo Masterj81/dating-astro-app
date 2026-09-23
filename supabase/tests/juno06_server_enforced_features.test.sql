@@ -143,6 +143,18 @@ BEGIN
     RAISE EXCEPTION 'C7 : le NOT NULL a accepté NULL';
   EXCEPTION WHEN not_null_violation THEN NULL; -- attendu : 23502 (un CHECK seul ne bloque jamais NULL)
   END;
+  -- C7-bis : la contrainte est VALIDÉE AU CATALOGUE (revue 2026-09-23) —
+  --           pas seulement posée : convalidated = true dans pg_constraint.
+  SELECT CASE WHEN EXISTS (
+           SELECT 1 FROM pg_constraint
+            WHERE conrelid = 'public.premium_feature_policy'::regclass
+              AND conname  = 'premium_feature_policy_enforcement_class_check'
+              AND convalidated)
+         THEN 1 ELSE 0 END INTO v_count;
+  IF v_count <> 1 THEN
+    RAISE EXCEPTION 'C7-bis : la CHECK enforcement_class doit être convalidated=true (VALIDATE exécuté par M1a avant commit)';
+  END IF;
+
   -- restaure la valeur de l'alias pour la suite du test
   UPDATE public.premium_feature_policy
      SET enforcement_class = 'legacy_alias' WHERE feature_key = 'tarot';

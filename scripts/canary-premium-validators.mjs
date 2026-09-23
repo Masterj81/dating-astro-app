@@ -281,6 +281,18 @@ canary(
 );
 
 canary(
+  "the CHECK validation is dropped (constraint lingers NOT VALID in the catalog)",
+  {
+    m1a: {
+      find: "  EXECUTE 'ALTER TABLE public.premium_feature_policy\n             VALIDATE CONSTRAINT premium_feature_policy_enforcement_class_check';",
+      replace: "  -- CANARY: VALIDATE withdrawn, constraint stays NOT VALID",
+    },
+  },
+  "validate-premium-gating.mjs",
+  "VALIDATE",
+);
+
+canary(
   "a DEFAULT reappears on enforcement_class (implicit classification bypasses the explicit-class rule)",
   {
     m1a: {

@@ -103,6 +103,18 @@ begin;
 -- propres écritures de cette transaction restent visibles de ses lectures.
 -- Aucune table métier n'est verrouillée pour cette preuve négative (les
 -- COUNT ne prennent que des ACCESS SHARE momentanés).
+--
+-- CONTRAT D'APPLICATION : SET TRANSACTION doit être le PREMIER statement
+-- après le BEGIN ci-dessus (PostgreSQL l'exige avant toute requête de la
+-- transaction). Le mécanisme documenté — psql -v ON_ERROR_STOP=1 -f <ce
+-- fichier> (runbook d'activation §2) — exécute le fichier tel quel : ce
+-- BEGIN ouvre la transaction, le SET TRANSACTION qui suit s'applique. Sous
+-- un wrapper single-transaction (psql -1), le BEGIN interne ne produit
+-- qu'un avertissement et le SET TRANSACTION reste légal (aucune requête
+-- avant lui) : l'isolation s'applique aussi. La preuve RUNTIME est dans le
+-- pré-check ci-dessous : si l'isolation effective n'est pas repeatable
+-- read, la migration refuse de courir — le snapshot des preuves ne peut
+-- pas être silencieusement dégradé.
 SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 
 -- -----------------------------------------------------------------------------
@@ -123,6 +135,10 @@ SELECT (SELECT COUNT(*) FROM public.premium_usage)     AS premium_usage_rows,
 
 DO $$
 DECLARE
+  -- Preuve RUNTIME du contrat d'isolation : sans repeatable read, les
+  -- comptages de la section 3.6 ne prouvent plus rien (faux échec possible
+  -- sous activité concurrente) — la migration refuse de courir.
+  v_iso CONSTANT TEXT := current_setting('transaction_isolation');
   -- Snapshot Phase 0 (2026-09-23, projet qtihezzbuubnyvrjdkjd) :
   -- tier|daily_quota|free_preview_quota pour les 15 lignes, '' = NULL.
   v_expected CONSTANT TEXT[] := ARRAY[
@@ -144,6 +160,12 @@ DECLARE
   ];
   v_actual TEXT[];
 BEGIN
+  IF v_iso <> 'repeatable read' THEN
+    RAISE EXCEPTION
+      'M1a self-check (pre) : isolation attendue repeatable read (snapshot des preuves d''absence-de-mutation), obtenu % — le mécanisme d''application doit exécuter SET TRANSACTION avant toute lecture',
+      v_iso;
+  END IF;
+
   SELECT COALESCE(array_agg(feature_key || '|' || required_tier || '|' ||
          COALESCE(daily_quota::text,'') || '|' ||
          COALESCE(free_preview_quota::text,'') ORDER BY feature_key), '{}')
@@ -259,7 +281,10 @@ ALTER TABLE public.premium_feature_policy
   CHECK (enforcement_class IN (
     'server_enforced_data', 'server_metered_ui', 'public_content',
     'legacy_alias', 'legacy_unused'
-  )) NOT VALID; -- VALIDÉ en section 3.6, après le NOT NULL.
+  )) NOT VALID; -- VALIDÉ en fin de self-check (section 3), puis convalidated
+               -- asserté dans pg_constraint : une contrainte NOT VALID protège
+               -- les nouvelles écritures mais resterait signalée non validée
+               -- au catalogue — pour 15 lignes déjà prouvées, inacceptable.
 
 -- -----------------------------------------------------------------------------
 -- 3) Auto-vérification finale (règle maison 20260903000003 : une migration
@@ -390,6 +415,17 @@ BEGIN
 
   EXECUTE 'ALTER TABLE public.premium_feature_policy
              VALIDATE CONSTRAINT premium_feature_policy_enforcement_class_check';
+
+  -- 3.8 La contrainte est VALIDÉE AU CATALOGUE (revue 2026-09-23) : NOT
+  --     VALID protège les nouvelles écritures mais resterait signalée non
+  --     validée — pour 15 lignes déjà prouvées, elle doit être validée
+  --     avant le commit, et ceci le prouve depuis pg_constraint.
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                  WHERE conrelid = 'public.premium_feature_policy'::regclass
+                    AND conname  = 'premium_feature_policy_enforcement_class_check'
+                    AND convalidated) THEN
+    RAISE EXCEPTION 'M1a self-check : premium_feature_policy_enforcement_class_check doit être convalidated=true (VALIDATE exécuté, 15 lignes prouvées)';
+  END IF;
 END;
 $$;
 

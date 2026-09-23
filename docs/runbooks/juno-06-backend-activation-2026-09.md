@@ -100,6 +100,8 @@ Mise en œuvre (PR code, à ouvrir UNIQUEMENT après les six gates verts de §1q
 
 Jamais `supabase db push` (JUNO-15). Chaque unité s'exécute seule, gate verte, puis la suivante. **M1c n'existe pas dans les migrations** (BROUILLON sous `docs/runbooks/sql/2026-09-juno-06-m1c-product-policies-DRAFT.sql`, condition 131 + autorisation produit) — aucune commande ici ne l'applique.
 
+**Contrat d'application de M1a** (vérifié, revue 2026-09-23) : le mécanisme documenté est `psql -v ON_ERROR_STOP=1 -f <fichier>`, qui exécute le fichier tel quel — le fichier ouvre lui-même sa transaction (`begin;`) et son `SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;` est le PREMIER statement qui suit (exigence PostgreSQL : avant toute requête). Sous un éventuel wrapper single-transaction (`psql -1`), le `begin` interne n'émet qu'un avertissement et le `SET TRANSACTION` reste légal (aucune requête avant lui) : l'isolation s'applique. La migration le PROUVE au runtime : son pré-check refuse de courir si l'isolation effective n'est pas `repeatable read` — le snapshot des preuves ne peut pas être silencieusement dégradé.
+
 | # | Commande | Gate |
 |---|---|---|
 | M1a | `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20260922000001_juno06_server_enforced_features.sql` | G1 (§3) + l'auto-vérification INTERNE de la migration (snapshot Phase 0 pré-encodé ; classification 15 lignes ; compteurs audités 2/7/2 ; catalogue produit intouché ; zéro ligne utilisateur) |
