@@ -96,15 +96,22 @@
 
 begin;
 
+-- Isolation REPEATABLE READ, AVANT toute lecture (décision opérateur
+-- 2026-09-23) : les comptages premium_usage/subscriptions des preuves
+-- d'absence-de-mutation sont pris sur un SNAPSHOT unique — une activité
+-- utilisateur concurrente ne peut plus créer de faux échec, tandis que les
+-- propres écritures de cette transaction restent visibles de ses lectures.
+-- Aucune table métier n'est verrouillée pour cette preuve négative (les
+-- COUNT ne prennent que des ACCESS SHARE momentanés).
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+
 -- -----------------------------------------------------------------------------
 -- 0) Snapshot PRE-M1a encodé depuis la Phase 0 (sans updated_at — la
 --    classification peut légitimement toucher cette métadonnée). Toute
 --    divergence avec la capture = refus de committer AVANT toute mutation.
---    Les compteurs utilisateurs sont pris ici et revérifiés en section 4 :
---    M1a ne touche AUCUNE ligne utilisateur.
---    NOTE d'exploitation : un usage légitime concurrent pendant la fenêtre
---    de la migration peut faire bouger un comptage et l'avorter — échec
---    propre (rollback complet), rejouer la migration.
+--    Les compteurs utilisateurs sont pris ici et revérifiés en section 3.5 :
+--    M1a ne touche AUCUNE ligne utilisateur (stable par construction sous
+--    le snapshot REPEATABLE READ ci-dessus).
 -- -----------------------------------------------------------------------------
 CREATE TEMP TABLE _juno06_m1a_catalog_pre AS
 SELECT feature_key, required_tier, daily_quota, free_preview_quota
@@ -230,16 +237,21 @@ UPDATE public.premium_feature_policy
  WHERE feature_key = 'likes_you_see_who';
 
 -- -----------------------------------------------------------------------------
--- 2) Contrainte : aucune ligne ne peut rester sans classe, et la valeur doit
---    être l'une des cinq documentées. DEFAULT = le marqueur le plus honnête
---    pour une future graine non classée : PAS un niveau de sécurité — un
---    insert qui l'accepte sans réfléchir est visible dans les compteurs
---    d'inventaire et jamais compté comme protégé.
+-- 2) Contrainte, dans l'ordre exigé par la revue (décision opérateur
+--    2026-09-23) : la colonne est ajoutée NULLABLE et SANS DEFAULT en
+--    section 1 ; les 15 clés connues sont classées nommément ci-dessus ;
+--    les clés inconnues sont refusées par le snapshot pré-encodé (section 0)
+--    ET par l'assertion de classes exactes (section 3.2). Ici : le CHECK
+--    d'abord, puis — section 3.4, APRÈS la preuve qu'aucune valeur n'est
+--    restée NULL — le NOT NULL.
+--
+--    AUCUN DEFAULT, définitivement : « toute nouvelle clé exige une
+--    classification explicite ». Un INSERT sans enforcement_class doit
+--    ÉCHOUER (23502), jamais recevoir silencieusement un marqueur
+--    historique — c'est le contrat inversé du test C8
+--    (supabase/tests/juno06_server_enforced_features.test.sql) et une règle
+--    de scripts/validate-premium-gating.mjs.
 -- -----------------------------------------------------------------------------
-ALTER TABLE public.premium_feature_policy
-  ALTER COLUMN enforcement_class SET DEFAULT 'legacy_unused';
-ALTER TABLE public.premium_feature_policy
-  ALTER COLUMN enforcement_class SET NOT NULL;
 ALTER TABLE public.premium_feature_policy
   DROP CONSTRAINT IF EXISTS premium_feature_policy_enforcement_class_check;
 ALTER TABLE public.premium_feature_policy
@@ -247,7 +259,7 @@ ALTER TABLE public.premium_feature_policy
   CHECK (enforcement_class IN (
     'server_enforced_data', 'server_metered_ui', 'public_content',
     'legacy_alias', 'legacy_unused'
-  )) NOT VALID; -- VALIDATE en section 3, après classification complète.
+  )) NOT VALID; -- VALIDÉ en section 3.6, après le NOT NULL.
 
 -- -----------------------------------------------------------------------------
 -- 3) Auto-vérification finale (règle maison 20260903000003 : une migration
@@ -318,7 +330,7 @@ BEGIN
    WHERE feature_key = ANY (v_audited) AND enforcement_class = 'public_content';
   IF v_count <> 2 THEN RAISE EXCEPTION 'M1a self-check : public_content attendu 2/11, obtenu %', v_count; END IF;
 
-  -- 3.4 Les invariants nominatifs de la revue.
+  -- 3.5 Les invariants nominatifs de la revue.
   IF EXISTS (SELECT 1 FROM public.premium_feature_policy
               WHERE feature_key = 'synastry' AND free_preview_quota <> 1) THEN
     RAISE EXCEPTION 'M1a self-check : synastry.free_preview_quota doit rester 1 (décision produit 2026-09-23)';
@@ -335,7 +347,9 @@ BEGIN
     RAISE EXCEPTION 'M1a self-check : la graine morte % doit être legacy_unused — jamais présentée comme protégée', v_bad.feature_key;
   END LOOP;
 
-  -- 3.5 Aucune ligne utilisateur touchée.
+  -- 3.6 Aucune ligne utilisateur touchée (stable sous le snapshot
+  --     REPEATABLE READ posé en tête de migration : l'activité concurrente
+  --     ne peut pas fausser cette preuve).
   IF (SELECT COUNT(*) FROM public.premium_usage) <>
      (SELECT premium_usage_rows FROM _juno06_m1a_userrows_pre) THEN
     RAISE EXCEPTION 'M1a self-check : premium_usage a changé de volume — M1a ne touche aucune ligne utilisateur';
@@ -345,11 +359,33 @@ BEGIN
     RAISE EXCEPTION 'M1a self-check : subscriptions a changé de volume — M1a ne touche aucune ligne utilisateur';
   END IF;
 
-  -- 3.6 Schéma : colonne NOT NULL + CHECK présent et VALIDÉ.
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
-                  WHERE table_schema='public' AND table_name='premium_feature_policy'
-                    AND column_name='enforcement_class' AND is_nullable='NO') THEN
+  -- 3.7 Preuve « aucun NULL restant » PUIS durcissement du schéma : le
+  --     NOT NULL n'est posé qu'une fois prouvé que les 15 classifications
+  --     ont couvert chaque ligne — pas de DEFAULT pour rattraper un oubli
+  --     (l'ordre CHECK → preuve → NOT NULL est celui exigé par la revue).
+  SELECT COUNT(*) INTO v_count FROM public.premium_feature_policy
+   WHERE enforcement_class IS NULL;
+  IF v_count <> 0 THEN
+    RAISE EXCEPTION 'M1a self-check : % ligne(s) sans classe après classification — le NOT NULL ne serait pas prouvé', v_count;
+  END IF;
+  EXECUTE 'ALTER TABLE public.premium_feature_policy
+             ALTER COLUMN enforcement_class SET NOT NULL';
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+              WHERE table_schema='public' AND table_name='premium_feature_policy'
+                AND column_name='enforcement_class' AND is_nullable='YES') THEN
     RAISE EXCEPTION 'M1a self-check : enforcement_class doit être NOT NULL';
+  END IF;
+  -- Et AUCUN DEFAULT n'existe (revue 2026-09-23) : un INSERT sans classe
+  -- doit échouer, pas être rattrapé.
+  IF EXISTS (SELECT 1 FROM pg_attrdef d
+              JOIN pg_class c ON c.oid = d.adrelid
+              JOIN pg_namespace n ON n.oid = c.relnamespace
+             WHERE n.nspname='public' AND c.relname='premium_feature_policy'
+               AND d.adnum = (SELECT attnum FROM information_schema.columns
+                               WHERE table_schema='public'
+                                 AND table_name='premium_feature_policy'
+                                 AND column_name='enforcement_class')) THEN
+    RAISE EXCEPTION 'M1a self-check : enforcement_class ne doit avoir AUCUN DEFAULT (classification explicite obligatoire)';
   END IF;
 
   EXECUTE 'ALTER TABLE public.premium_feature_policy

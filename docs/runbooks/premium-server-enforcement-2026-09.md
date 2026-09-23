@@ -65,7 +65,7 @@ Sites purgés (chacun pouvait inverser un refus serveur) :
 `supabase/migrations/20260922000001_juno06_server_enforced_features.sql` — **M1a : classification honnête, strictement additive** :
 
 - snapshot Phase 0 pré-encodé (15 lignes tier/quota/preview, sans `updated_at`) vérifié AVANT toute mutation — la migration refuse de courir sur un état divergent ;
-- colonne `enforcement_class` (NOT NULL + CHECK sur **cinq** valeurs) + **15 UPDATE littéraux de classification** — les 11 fonctionnalités auditées (2/7/2) PLUS les marqueurs d'inventaire : `tarot` = `legacy_alias` (contrat build 130, jamais compté), 3 graines mortes = `legacy_unused` (jamais présentables comme protégées). **`legacy_alias`/`legacy_unused` ne sont pas des niveaux de sécurité** ;
+- colonne `enforcement_class` (NOT NULL + CHECK sur **cinq** valeurs, **aucun DEFAULT** : un INSERT sans classe ÉCHOUE — toute nouvelle clé déclare sa classe explicitement, le NOT NULL n'est posé qu'après la preuve qu'aucune ligne n'est restée NULL) + **15 UPDATE littéraux de classification** — les 11 fonctionnalités auditées (2/7/2) PLUS les marqueurs d'inventaire : `tarot` = `legacy_alias` (contrat build 130, jamais compté), 3 graines mortes = `legacy_unused` (jamais présentables comme protégées). **`legacy_alias`/`legacy_unused` ne sont pas des niveaux de sécurité** ;
 - **aucun INSERT, aucun DELETE, aucun tier/quota/preview modifié, aucune ligne utilisateur touchée** (comptages premium_usage/subscriptions vérifiés avant/après) ; `synastry.free_preview_quota = 1` conservé (décision produit) ;
 - auto-vérification : classes exactes des 15, compteurs audités 2/7/2 (legacy exclus par construction), CHECK validé, snapshot produit identique.
 

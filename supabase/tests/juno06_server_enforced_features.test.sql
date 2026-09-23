@@ -23,8 +23,9 @@
 --   C6  les graines mortes portent legacy_unused — jamais un niveau de
 --       sécurité ;
 --   C7  la contrainte CHECK interdit toute classe inconnue et NULL ;
---   C8  le DEFAULT d'une future graine non classée est legacy_unused
---       (un insert négligent ne peut pas se présenter comme protégé) ;
+--   C8  un INSERT sans enforcement_class ÉCHOUE (23502) — aucun DEFAULT,
+--       aucune classification implicite : toute nouvelle clé déclare sa
+--       classe explicitement (revue 2026-09-23) ;
 --   C9  le comportement d'enforce est inchangé par M1a (le gate répond
 --       sur une clé existante exactement comme avant) ;
 --   C10 M2 : la table de claims existe, RLS active, aucun privilège client,
@@ -75,6 +76,7 @@ DECLARE
     'tarot_monthly|celestial||'
   ];
   v_actual TEXT[];
+  v_cls    TEXT;
   v_count  INTEGER;
   v_user   UUID := gen_random_uuid();
   r        RECORD;
@@ -111,10 +113,10 @@ BEGIN
   IF v_count <> 1 THEN RAISE EXCEPTION 'C4 : synastry.free_preview_quota = % (attendu 1, décision produit 2026-09-23)', v_count; END IF;
 
   -- C5 : alias tarot ----------------------------------------------------------
-  SELECT enforcement_class INTO v_actual FROM public.premium_feature_policy
+  SELECT enforcement_class INTO v_cls FROM public.premium_feature_policy
    WHERE feature_key = 'tarot';
-  IF v_actual IS DISTINCT FROM 'legacy_alias' THEN
-    RAISE EXCEPTION 'C5 : tarot doit porter legacy_alias (contrat build 130), obtenu %', v_actual;
+  IF v_cls IS DISTINCT FROM 'legacy_alias' THEN
+    RAISE EXCEPTION 'C5 : tarot doit porter legacy_alias (contrat build 130), obtenu %', v_cls;
   END IF;
 
   -- C6 : graines mortes présentes (leur suppression est M1c) et marquées
@@ -128,33 +130,39 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- C7 : le CHECK interdit l'inconnu et le NULL ------------------------------
+  -- C7 : le CHECK interdit l'inconnu ; le NOT NULL interdit l'absence ------
   BEGIN
     UPDATE public.premium_feature_policy
        SET enforcement_class = 'military_grade' WHERE feature_key = 'tarot';
     RAISE EXCEPTION 'C7 : le CHECK a accepté une classe inconnue';
-  EXCEPTION WHEN check_violation THEN NULL; -- attendu
+  EXCEPTION WHEN check_violation THEN NULL; -- attendu : 23514
   END;
   BEGIN
     UPDATE public.premium_feature_policy
        SET enforcement_class = NULL WHERE feature_key = 'tarot';
-    RAISE EXCEPTION 'C7 : le CHECK/NOT NULL a accepté NULL';
-  EXCEPTION WHEN check_violation THEN NOT NULL; -- NOT NULL remonte aussi en check_violation
+    RAISE EXCEPTION 'C7 : le NOT NULL a accepté NULL';
+  EXCEPTION WHEN not_null_violation THEN NULL; -- attendu : 23502 (un CHECK seul ne bloque jamais NULL)
   END;
   -- restaure la valeur de l'alias pour la suite du test
   UPDATE public.premium_feature_policy
      SET enforcement_class = 'legacy_alias' WHERE feature_key = 'tarot';
 
-  -- C8 : DEFAULT = legacy_unused (un insert négligent n'est jamais protégé) --
-  INSERT INTO public.premium_feature_policy
-    (feature_key, required_tier, daily_quota, free_preview_quota)  -- sans classe
-  VALUES ('probe_a', 'celestial', NULL, NULL);
-  SELECT enforcement_class INTO v_actual FROM public.premium_feature_policy
-   WHERE feature_key = 'probe_a';
-  IF v_actual IS DISTINCT FROM 'legacy_unused' THEN
-    RAISE EXCEPTION 'C8 : DEFAULT attendu legacy_unused, obtenu %', v_actual;
+  -- C8 (INVERSÉ, revue 2026-09-23) : un INSERT SANS enforcement_class doit
+  --      ÉCHOUER — aucune classification implicite, aucun DEFAULT. La
+  --      fonctionnalité future DOIT déclarer sa classe explicitement.
+  BEGIN
+    INSERT INTO public.premium_feature_policy
+      (feature_key, required_tier, daily_quota, free_preview_quota)  -- sans classe
+    VALUES ('probe_b', 'celestial', NULL, NULL);
+    RAISE EXCEPTION 'C8 : l''INSERT sans enforcement_class a RÉUSSI — un DEFAULT ou un manque NOT NULL contourne la classification explicite';
+  EXCEPTION WHEN not_null_violation THEN NULL; -- attendu : 23502
+  END;
+  -- La ligne n'existe pas (l'insert a été annulé par l'échec).
+  SELECT COUNT(*) INTO v_count FROM public.premium_feature_policy
+   WHERE feature_key = 'probe_b';
+  IF v_count <> 0 THEN
+    RAISE EXCEPTION 'C8 : la sonde sans classe existe — l''échec attendu n''a pas rollbacké l''insert';
   END IF;
-  DELETE FROM public.premium_feature_policy WHERE feature_key = 'probe_a';
 
   -- C9 : enforce inchangé par M1a (comportement sur clé existante) -----------
   -- Nécessite un utilisateur ; sur une base de test avec auth.users :

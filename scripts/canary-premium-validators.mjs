@@ -280,6 +280,19 @@ canary(
   "deferred preview promise",
 );
 
+canary(
+  "a DEFAULT reappears on enforcement_class (implicit classification bypasses the explicit-class rule)",
+  {
+    m1a: {
+      find: "ALTER TABLE public.premium_feature_policy\n  DROP CONSTRAINT IF EXISTS premium_feature_policy_enforcement_class_check;",
+      replace:
+        "ALTER TABLE public.premium_feature_policy\n  ALTER COLUMN enforcement_class SET DEFAULT 'legacy_unused'; -- CANARY: implicit classification\nALTER TABLE public.premium_feature_policy\n  DROP CONSTRAINT IF EXISTS premium_feature_policy_enforcement_class_check;",
+    },
+  },
+  "validate-premium-gating.mjs",
+  "DEFAULT",
+);
+
 console.log(
   failures === 0
     ? "\nAll canaries fired: each new rule fails on its defect."

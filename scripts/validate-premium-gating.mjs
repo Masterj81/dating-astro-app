@@ -457,6 +457,24 @@ if (
   );
 }
 
+// (c-bis) NO DEFAULT on enforcement_class, ever: "toute nouvelle clé exige
+// une classification explicite" — a DEFAULT would let an insert omit the
+// class and silently pass (review 2026-09-23). The NOT NULL without
+// DEFAULT is what makes the omission FAIL (23502).
+if (/ALTER COLUMN enforcement_class SET DEFAULT/i.test(m1aSrc)) {
+  issues.push(
+    "M1a must NOT set a DEFAULT on enforcement_class — an insert omitting the class must FAIL, " +
+    "never receive an implicit (even honest) classification."
+  );
+}
+// And the hardening order is proven: the NOT NULL is set INSIDE the final
+// self-check, after the no-NULL proof (see section 3.7 of the migration).
+if (!/SET NOT NULL/.test(m1aSrc) || !/enforcement_class IS NULL/.test(m1aSrc)) {
+  issues.push(
+    "M1a lost its proof chain: the NOT NULL must follow the explicit 'no NULL remains' assertion."
+  );
+}
+
 // (d) The M1c draft stays a draft: every header must carry the do-not-run banner.
 if (!/BROUILLON — NE PAS EXÉCUTER/.test(m1cDraft) || !/VERSION ANDROID 131 \+ AUTORISATION PRODUIT/.test(m1cDraft)) {
   issues.push("M1c draft lost its BROUILLON/NE PAS EXÉCUTER banner or its 131+authorization condition.");
