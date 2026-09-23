@@ -27,16 +27,35 @@ type RcBody = {
   subscriber?: { entitlements?: Record<string, Entitlement> };
 } | null;
 
+// The verdict union, declared once: SyncHelpers' return type and the
+// assertion helper below read THE SAME shape, so they cannot drift.
+type SubscriberVerdict =
+  | {
+      kind: 'ok';
+      tier: 'free' | 'premium' | 'premium_plus';
+      expiresAt: string | null;
+      productId: string | null;
+    }
+  | { kind: 'ambiguous' };
+
+type OkVerdict = Extract<SubscriberVerdict, { kind: 'ok' }>;
+
+// Real control-flow narrowing, no casts and no `!`: expect() alone does not
+// tell tsc which branch of the union a verdict is — this assertion does.
+// The production type is untouched: `ambiguous` stays impossible to read as
+// a verdict with a `tier`, which is exactly what these tests enforce.
+function expectOkVerdict(verdict: SubscriberVerdict): asserts verdict is OkVerdict {
+  expect(verdict.kind).toBe('ok');
+  if (verdict.kind !== 'ok') {
+    throw new Error(`Expected ok verdict, received ${verdict.kind}`);
+  }
+}
+
 type SyncHelpers = {
   SYNC_MIN_INTERVAL_MS: number;
   SYNC_TIMEOUT_MS: number;
   syncCutoff: (now?: Date) => string;
-  readSubscriberVerdict: (
-    body: RcBody,
-    now?: Date,
-  ) =>
-    | { kind: 'ok'; tier: 'free' | 'premium' | 'premium_plus'; expiresAt: string | null; productId: string | null }
-    | { kind: 'ambiguous' };
+  readSubscriberVerdict: (body: RcBody, now?: Date) => SubscriberVerdict;
 };
 
 afterEach(() => cleanupEdgeModules());
@@ -100,12 +119,12 @@ describe('sync-entitlement · readSubscriberVerdict (the real edge bytes)', () =
       expiresAt: IN_FUTURE,
       productId: 'play.premium.y',
     });
-    expect(
-      readSubscriberVerdict(
-        { subscriber: { entitlements: { premium_plus: { expires_date: IN_FUTURE } } } },
-        NOW,
-      ).tier,
-    ).toBe('premium_plus');
+    const plusVerdict = readSubscriberVerdict(
+      { subscriber: { entitlements: { premium_plus: { expires_date: IN_FUTURE } } } },
+      NOW,
+    );
+    expectOkVerdict(plusVerdict);
+    expect(plusVerdict.tier).toBe('premium_plus');
   });
 
   it('lifetime entitlement (no expires_date) stays active — mirrors backfill-revenuecat', async () => {
@@ -129,7 +148,9 @@ describe('sync-entitlement · readSubscriberVerdict (the real edge bytes)', () =
         },
       },
     };
-    expect(readSubscriberVerdict(body, NOW).tier).toBe('premium_plus');
+    const verdict = readSubscriberVerdict(body, NOW);
+    expectOkVerdict(verdict);
+    expect(verdict.tier).toBe('premium_plus');
   });
 
   it('premium_plus expired while premium is still active reads premium (verified, not ambiguous)', async () => {
@@ -142,7 +163,9 @@ describe('sync-entitlement · readSubscriberVerdict (the real edge bytes)', () =
         },
       },
     };
-    expect(readSubscriberVerdict(body, NOW).tier).toBe('premium');
+    const verdict = readSubscriberVerdict(body, NOW);
+    expectOkVerdict(verdict);
+    expect(verdict.tier).toBe('premium');
   });
 
   it('a MALFORMED expires_date is AMBIGUOUS — it can neither downgrade nor promote', async () => {
