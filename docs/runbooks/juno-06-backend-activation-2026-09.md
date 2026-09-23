@@ -1,6 +1,12 @@
 # Rapport d'activation backend — JUNO-06 (PR #69 fusionnée) — 2026-09-23
 
-**Statut : PRÉPARÉ — en attente d'autorisation de déploiement. Rien n'est appliqué, rien n'est déployé.**
+```
+FUSION 491e861 RATIFIÉE
+PHASE 0 LECTURE SEULE AUTORISÉE
+ACTIVATION BACKEND BLOQUÉE SUR LA REVUE DES MUTATIONS DE POLITIQUE
+```
+
+**Statut : PRÉPARÉ — activation bloquée sur la revue des mutations de politique (§1bis). Rien n'est appliqué, rien n'est déployé.** La Phase 0 est un script unique en lecture seule (`docs/runbooks/sql/2026-09-juno-06-phase0-capture.sql`) : ce poste de préparation n'a AUCUN accès base (vérifié : pas de CLI supabase, pas de psql, `.env.local` = clés publiques client uniquement) — la colonne « constaté » de la matrice se remplit depuis sa sortie, qui est la source de vérité du rollback.
 
 Fusion : PR #69 → `master` au merge commit **`491e861`** (head fusionné `9a196ca` = `09961df` + correctif de 4 marqueurs de commentaire ; l'écart est documenté dans la PR, commentaire `5797022290`). CI master verte sur `491e861` (Quality Gates, Gitleaks, CodeQL).
 
@@ -12,48 +18,52 @@ Périmètre de CE rapport : l'activation backend seule — migrations `202609220
 
 Sur `master` depuis `491e861` : le code client (gate purgé du lissage RC, écran tarot serveur, flux sync), les deux sources d'edges, les deux migrations, la table de test SQL, les validateurs et leurs canaris. **Aucune base n'a vu ces migrations, aucune fonction n'est déployée** : jusqu'à l'activation ci-dessous, la production se comporte exactement comme avant la fusion (build 130 = dernier client ; les edges n'existent pas à l'URL).
 
-## 1. État distant AVANT mutation — capture obligatoire (Phase 0)
+## 1. État distant AVANT mutation — Phase 0 (lecture seule, autorisée)
 
-À exécuter en lecture seule et **à archiver avec ce rapport** (les valeurs attendues viennent du dépôt ; tout écart = constat à consigner AVANT de muter — leçon JUNO-15 : le dépôt n'est pas forcément l'état).
+**Script unique** : `docs/runbooks/sql/2026-09-juno-06-phase0-capture.sql` (transaction + ROLLBACK ; aucune écriture possible même par accident ; aucune valeur secrète, aucune PII — les volumes `premium_usage` sont des agrégats par clé). Sortie à archiver avec ce rapport.
 
-```sql
--- P0-1  Catalogue complet des politiques (source de vérité du rollback)
-SELECT feature_key, required_tier, daily_quota, free_preview_quota, updated_at
-  FROM public.premium_feature_policy ORDER BY feature_key;
--- ATTENDU (~19 lignes, valeurs 20260419000006 + 20260511000002 + 20260823000001) :
---   natal_chart celestial 5 (preview 1), conversation_guide celestial …,
---   tarot cosmic 10, tarot_monthly celestial, tarot_cosmic cosmic 10,
---   date_planner cosmic 10, daily_horoscope celestial 50, synastry celestial 20,
---   monthly_horoscope/lucky_days/planetary_transits/retrograde_alerts cosmic NULL,
---   compatibility_details celestial 50, priority_messages celestial 100,
---   likes_you_see_who celestial 50   (super_likes supprimé par 20260429000001)
+Valeurs « attendues » ci-dessous **reconstruites depuis l'historique versionné** (20260419000006 → 20260915000001). Toute divergence capture/attendu = **ARRÊT avant M1** (JUNO-15).
 
--- P0-2  La colonne classe n'existe pas encore
-SELECT COUNT(*) FROM information_schema.columns
- WHERE table_schema='public' AND table_name='premium_feature_policy'
-   AND column_name='enforcement_class';            -- ATTENDU 0
+**⚠ Divergence CONNUE à arbitrer en premier — `synastry.free_preview_quota`** : `20260915000001` l'a posée à `1` (son rollback vers NULL y est documenté comme *opérationnel*, exécuté à la main — aucune migration ne l'a fait). `20260922000001` asserte `NULL` et son `ON CONFLICT DO UPDATE` l'**écraserait activement** à `NULL` si le live est `1`. Si P0-1 montre `1` : M1 s'auto-refuse à son self-check, et le choix NULL-ou-1 doit être pris **explicitement** (conception : l'aperçu synastrie est un contrat par-cible dans `synastry_free_grant`, pas dans `premium_usage` — mais écraser une valeur live est une décision, jamais un effet de bord).
 
--- P0-3  La table de claim n'existe pas (et le brouillon retiré non plus)
-SELECT COUNT(*) FROM information_schema.tables
- WHERE table_schema='public' AND table_name='entitlement_sync_claims';  -- ATTENDU 0
-SELECT COUNT(*) FROM information_schema.columns
- WHERE table_schema='public' AND table_name='subscriptions'
-   AND column_name='last_sync_at';                 -- ATTENDU 0
+### 1bis. Matrice des mutations, clé par clé (la revue demandée)
 
--- P0-4  Baseline télémétrique (sanity post-activation)
-SELECT COUNT(*) AS subs FROM public.subscriptions;
-SELECT feature_key, COUNT(*) AS usage_rows
-  FROM public.premium_usage GROUP BY feature_key;  -- archive des volumes actuels
-```
+Colonnes : Prod = état attendu avant M1 (**à confirmer par P0-1** ; `q`=daily_quota, `p`=free_preview_quota) · Après M1 = valeur posée par `20260922000001` · 130 = le build Play livré l'utilise-t-il ? (130 mobile n'enforce que `natal_chart`+`conversation_guide` ; les 9 autres y sont client-gated) · Web = le site livré l'enforce-t-il ? (6 clés, vérifié dans le code) · Effet = changement observable dès M1 appliquée.
 
-```bash
-# P0-5  Fonctions déployées : les deux edges ABSENTS de la liste
-supabase functions list --project-ref "$REF"
-# P0-6  Secrets (noms seulement — JAMAIS afficher la valeur)
-supabase secrets list --project-ref "$REF" | grep -c REVENUECAT_API_KEY   # ATTENDU 1
-```
+| Clé | Prod (attendu) | Après M1 | 130 mobile | Web livré | Effet dès M1 | Classification |
+|---|---|---|---|---|---|---|
+| natal_chart | celestial q-NULL p1 | idem + classe | **enforce** | **enforce** | aucun (rien ne change hors classe) | sécurité/doc |
+| conversation_guide | celestial q100 p1 | idem + classe | **enforce** | **enforce** | aucun | sécurité/doc |
+| synastry | celestial q20 **p1-ou-NULL ⚠** | q→NULL, p→**NULL** ⚠ | client-gated | non (flux dédié `synastry_preview_gate`) | aucun sur clients livrés ; ⚠ écrasement possible | normalisation (assouplit) + **⚠ décision produit** |
+| daily_horoscope | celestial q50 p-NULL | q→NULL, p→1 | client-gated | non | aucun sur livrés (inerte jusqu'à 131) | normalisation (assouplit) ; aperçu = produit différé |
+| monthly_horoscope | cosmic q-NULL p-NULL | p→1 | client-gated | non | aucun sur livrés | produit différé (131) |
+| lucky_days | cosmic q-NULL p-NULL | p→1 | client-gated | non | aucun sur livrés | produit différé (131) |
+| planetary_transits | cosmic q-NULL p-NULL | p→1 | client-gated | **enforce** | **+ : compte free web gagne 1 aperçu/jour** (aujourd'hui refus sec) | **changement produit (+)** |
+| retrograde_alerts | cosmic q-NULL p-NULL | p→1 | client-gated | **enforce** | **+ : idem web** | **changement produit (+)** |
+| date_planner | cosmic q10 p-NULL | p→1 | client-gated | **enforce** | **+ : idem web** | **changement produit (+)** |
+| tarot_monthly | celestial q-NULL p-NULL | p→1 | client-gated (jamais enforce tarot) | **enforce** | **+ : idem web** | **changement produit (+)** |
+| tarot_cosmic | cosmic q10 p-NULL | p→1 | client-gated | **enforce** | **+ : idem web** | **changement produit (+)** |
+| tarot (alias legacy) | cosmic q10 p-NULL | inchangé + classe | non (clients pré-split uniquement) | non | aucun | sécurité/doc |
+| compatibility_details | celestial q50 | **DELETE** | non | non | aucun (graine morte) | normalisation sans effet |
+| priority_messages | celestial q100 | **DELETE** | non | non | aucun | normalisation sans effet |
+| likes_you_see_who | celestial q50 | **DELETE** | non | non | aucun | normalisation sans effet |
+| *(colonne enforcement_class)* | absente | 3/7/2 + CHECK | aucun client ne la lit | aucun | aucun | sécurité/doc |
 
-**Constat structurel à écrire noir sur blanc dans le rapport d'exécution** : `20260922000001` n'est **pas purement additive** — 7 clés existent déjà (graines 20260419000006) et son `ON CONFLICT DO UPDATE` les **modifie** (`daily_quota` 50/20/… → NULL, preview → 1). C'est voulu (les quotas legacy sont de l'ère `increment_feature_usage` ; NULL = illimité pour le tier requis, ce que le gate serveur attend), mais c'est une mutation de lignes existantes, d'où la capture P0-1.
+Lignes `premium_usage` existantes par clé : **à consigner depuis P0-4** (agégat par clé) — elles orientent la décision « garder/archiver+purger » du rollback. **Aucun quota produit n'est réduit nulle part** : les deux mutations de quota (50→NULL, 20→NULL) *assouplissent* ; toutes les mutations de preview *ajoutent* un aperçu — sauf le cas ⚠ synastry, seul retrait potentiel, à décider explicitement.
+
+### 1ter. Découpage proposé de M1 (l'application du principe « pas de quota produit implicite sous couvert de sécurité »)
+
+`20260922000001` est fusionnée mais **jamais appliquée nulle part** — elle peut donc être amendée sur master sans historically break (PR code séparée, hors #70 documentaire) :
+
+1. **M1a — classification (sécurité, inerte)** : colonne `enforcement_class` + classes sur les lignes EXISTANTES + filet (lignes inconnues → `server_metered_ui`) + NOT NULL/CHECK + self-check. Aucun client livré ne lit cette colonne ; zéro effet utilisateur ; c'est la partie strictement sécurité/documentation.
+2. **M1b — prérequis edges : ∅ côté politiques.** `E1 sync-entitlement` ne nécessite que `M2` (table de claim). `E2 premium-tarot-reading` fonctionne sur le catalogue **actuel** (clés tarot existantes depuis 20260511000002 ; compte free → 402 sans aperçu dépensé = comportement web d'aujourd'hui). Aucune mutation de politique n'est un prérequis au déploiement des deux edges.
+3. **M1c — produit (différé, autorisation séparée, calé sur 131)** : les 6 upserts (dont synastry q20→NULL et ⚠ preview), les 8 previews=1 (dont les 5 visibles web : +aperçu gratuit/jour), le DELETE des 3 graines mortes. Chaque ligne est classée dans la matrice ci-dessus ; rien n'y réduit un quota.
+
+Mise en œuvre proposée (sur approbation) : amender `20260922000001` → M1a seule ; créer `20260924000003_juno06c_product_policies.sql` portant M1c, en-tête « NE PAS APPLIQUER sans autorisation produit explicite ».
+
+**Exécution** : tout le contenu P0-1 → P0-6 (catalogue, absences des objets nouveaux, volumes `premium_usage`, baseline `subscriptions`, contraintes existantes, fonctions déployées, noms de secrets) vit dans **un seul script** : `docs/runbooks/sql/2026-09-juno-06-phase0-capture.sql` — lecture seule, transaction + ROLLBACK, aucune PII, aucune valeur secrète. Sa sortie archivée : (a) remplit la colonne « constaté » de la matrice §1bis, (b) vérifie la reconstruction du script de rollback §4, (c) arbitre le cas synastry.
+
+**Constat structurel** (confirmé par relecture de l'historique) : `20260922000001` n'est pas purement additive — les mutations de lignes existantes sont exactement : quotas `daily_horoscope` 50→NULL et `synastry` 20→NULL (assouplissements), previews NULL→1 sur 8 clés (dont 5 visibles immédiatement sur le web livré : transits, rétrogrades, date-planner, tarot×2 — des AJOUTS d'aperçus gratuits), ⚠ synastry preview →NULL (seul retrait potentiel), et le DELETE de 3 graines mortes. D'où le découpage §1ter.
 
 ## 2. Commandes unitaires prévues (ordre strict ; un gate après chacune)
 
@@ -112,7 +122,9 @@ SELECT COUNT(*) FROM public.entitlement_sync_claims;  -- 0 (aucun claim avant E1
 - même appel juste après → 402 `free_preview_exhausted` ;
 - POST JWT payant (compte de test cosmic si disponible) → 200, `reading.cards` = 4 (weekly) — et **zéro** `enforcement_class`/corpus dans la réponse (c'est une lecture, pas un chart).
 
-## 4. Rollback (ordre inverse ; source de vérité = la capture P0-1, pas ce document)
+## 4. Rollback (ordre inverse ; déterministe, versionné — plus seulement une capture éphémère)
+
+**M1 : script de restauration déterministe** — `docs/runbooks/sql/2026-09-juno-06-rollback-m1-catalog.sql` : valeurs reconstruites depuis l'historique versionné (pas une capture), inspectable AVANT M1, sans données utilisateur, **auto-vérifié** (refuse de committer si le catalogue restauré ≠ attendu ; un unique point de décision explicite : la ligne synastry). La capture P0-1 ne sert plus de source de restauration mais de **VÉRIFICATION** de la reconstruction — divergence = arrêt avant M1.
 
 **R-E2 / R-E1 — edges** (aucun client installé ne les appelle ; le code fusionné n'est pas livré) :
 ```bash
