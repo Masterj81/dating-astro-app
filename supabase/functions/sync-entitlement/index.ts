@@ -22,15 +22,23 @@
 //     depth). No admin secret, no user_id/app_user_id parameter — the
 //     subscriber fetched from RevenueCat is ALWAYS auth.uid(), so one
 //     account cannot read or write another's state.
-//   - Throttle: one sync attempt per account per 30 s, claimed ATOMICALLY by
-//     a conditional UPDATE on `subscriptions.last_sync_at` (column added by
-//     20260922000002, owned by this function). The claim IS the lock: the
-//     predicate (`last_sync_at IS NULL OR last_sync_at < cutoff`) is
-//     evaluated inside the UPDATE statement, so of two concurrent calls only
-//     one wins the slot. Persistent (a cold edge starts throttled for recent
-//     syncers), never in-memory. Cold-start race (no row yet): both callers
-//     fetch RC and the upsert's ON CONFLICT (user_id, source) makes the last
-//     write the same verified data — accepted and documented.
+//   - Throttle: one sync attempt per account per 30 s, claimed ATOMICALLY and
+//     PERSISTENTLY on `entitlement_sync_claims` (table created by
+//     20260922000002, owned by this function alone, holding no tier/expiry/
+//     product data). Two arms, each a single row-locked statement, so the
+//     claim covers users with NO `subscriptions` row too (a free account —
+//     the webhook only writes rows on purchase events; a bare UPDATE-claim
+//     would leave them an unthrottled retry window):
+//     arm 1  INSERT ... ON CONFLICT (user_id) DO NOTHING RETURNING — wins
+//            exactly on the first-ever sync (the row is created, throttled
+//            from that instant);
+//     arm 2  conditional UPDATE whose predicate (last_sync_at IS NULL OR
+//            last_sync_at < cutoff) runs INSIDE the statement — of two
+//            concurrent claims only one wins.
+--     Zero rows from both arms ⇒ throttled: an honest 429, at most 30 s to
+--     wait. A RevenueCat failure AFTER a claim leaves the claim standing on
+--     purpose: the technical write happened before the external call, moved
+--     no entitlement data, and bounds the retry cadence.
 //   - Fail-closed, everywhere: RevenueCat unreachable, slow (8 s deadline),
 //     non-2xx, unparseable, or AMBIGUOUS (a 200 without a subscriber object,
 //     an entitlement whose expires_date does not parse) ⇒ NO state change —
@@ -38,9 +46,13 @@
 //     Only a VERIFIED answer writes: an entitlement with a PAST expiry
 //     reconciles DOWN (that is RC's truth, not ambiguity); a 404 is an
 //     honest "synced, tier free" (the subscriber never existed there).
-//   - Writes: bounded to the columns backfill-revenuecat writes (plus
-//     last_sync_at), on the same ON CONFLICT (user_id, source) key the
-//     webhook's reconciliation uses.
+//   - Writes, two distinct kinds, never conflated: (a) the TECHNICAL claim —
+//     entitlement_sync_claims only (user_id + timestamp), written BEFORE the
+//     RevenueCat call and surviving its failure on purpose, moving no
+//     entitlement data; (b) the VERIFIED reconcile — public.subscriptions,
+//     written ONLY on a verified answer, bounded to the exact column set
+//     backfill-revenuecat writes, on the same ON CONFLICT (user_id, source)
+//     key the webhook's reconciliation uses.
 //   - Logs: outcomes only — the caller's own user id (already carried by
 //     every Supabase request log), outcome name, tier. Never a RevenueCat
 //     body, never the API key, never entitlement detail, never a raw error
@@ -216,41 +228,51 @@ Deno.serve(async (req) => {
   const userId = user.id;
 
   // ---------------------------------------------------------------------------
-  // Throttle — claimed atomically BEFORE any upstream call.
+  // Throttle — claimed atomically and persistently BEFORE any upstream call.
   //
-  // The conditional UPDATE is the lock: `last_sync_at IS NULL OR last_sync_at
-  // < cutoff` is evaluated inside the statement, so of two concurrent calls
-  // only one claims the slot. Zero claimed rows means throttled OR no row
-  // yet; the follow-up read distinguishes them (conservative under races: a
-  // row appearing between the two is treated as throttled).
+  // Arm 1: INSERT ... ON CONFLICT (user_id) DO NOTHING, returning a row only
+  //        when the account had none — the first-ever sync creates its claim
+  //        row and is throttled from that instant (a bare UPDATE-claim cannot
+  //        do this: it matches zero rows for a row-less user and leaves an
+  //        unthrottled retry window — the operator's case 1).
+  // Arm 2: conditional UPDATE; the window predicate runs INSIDE the
+  //        statement under the row lock, so of two concurrent claims only
+  //        one wins.
+  // Zero rows from both arms ⇒ throttled: honest 429, at most 30 s to wait.
+  // The claim is a TECHNICAL WRITE that happens BEFORE the RevenueCat call
+  // and survives its failure on purpose — it moves no tier/expiry/product
+  // data (this table holds none) and it is what bounds the retry cadence.
   // ---------------------------------------------------------------------------
   try {
     const claimIso = new Date().toISOString();
-    const { data: claimed, error: claimError } = await supabase
-      .from('subscriptions')
-      .update({ last_sync_at: claimIso })
-      .eq('user_id', userId)
-      .eq('source', 'play_store')
-      .or(`last_sync_at.is.null,last_sync_at.lt.${syncCutoff()}`)
+
+    const { data: inserted, error: insertError } = await supabase
+      .from('entitlement_sync_claims')
+      .upsert(
+        { user_id: userId, last_sync_at: claimIso },
+        { onConflict: 'user_id', ignoreDuplicates: true },
+      )
       .select('user_id');
 
-    if (claimError) throw claimError;
+    if (insertError) throw insertError;
 
-    if (!claimed || claimed.length === 0) {
-      const { data: row, error: readError } = await supabase
-        .from('subscriptions')
-        .select('user_id')
+    let claimed = (inserted ?? []).length > 0;
+
+    if (!claimed) {
+      const { data: renewed, error: renewError } = await supabase
+        .from('entitlement_sync_claims')
+        .update({ last_sync_at: claimIso })
         .eq('user_id', userId)
-        .eq('source', 'play_store')
-        .maybeSingle();
-      if (readError) throw readError;
-      if (row) {
-        audit(userId, 'throttled', 'free');
-        return outcome(false, 'free', 'rate_limited', 429);
-      }
-      // No row yet: the first sync for this account creates it below. Two
-      // concurrent first syncs both proceed; ON CONFLICT makes the last
-      // write the same verified data (documented cold-start race).
+        .or(`last_sync_at.is.null,last_sync_at.lt.${syncCutoff()}`)
+        .select('user_id');
+
+      if (renewError) throw renewError;
+      claimed = (renewed ?? []).length > 0;
+    }
+
+    if (!claimed) {
+      audit(userId, 'throttled', 'free');
+      return outcome(false, 'free', 'rate_limited', 429);
     }
   } catch (error) {
     console.error('[sync-entitlement] claim failed:', errorName(error));
@@ -329,7 +351,6 @@ Deno.serve(async (req) => {
         expires_at: verdict.expiresAt,
         cancel_at_period_end: false,
         updated_at: nowIso,
-        last_sync_at: nowIso,
       },
       { onConflict: 'user_id,source' },
     );

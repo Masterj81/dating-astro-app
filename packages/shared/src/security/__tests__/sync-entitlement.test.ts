@@ -227,32 +227,63 @@ describe('sync-entitlement · structural invariants (the push checklist, on real
     expect(code).not.toMatch(/body\.user_id|p_user_id|app_user_id/);
   });
 
-  it('the throttle is an ATOMIC claim, not a read-then-act (TOCTOU impossible)', () => {
-    // The claim: one conditional UPDATE whose predicate carries the window.
+  it('the throttle is an ATOMIC two-arm claim covering row-less users too (no TOCTOU, no unthrottled window)', () => {
+    // Arm 1 — INSERT .. ON CONFLICT DO NOTHING via PostgREST: the only arm
+    // that can claim for a user with NO row yet (the operator's case 1; a
+    // bare UPDATE matches zero rows and would leave an unthrottled retry
+    // window for every free account).
+    expect(src).toMatch(/from\('entitlement_sync_claims'\)\s*\n?\s*\.upsert\(/);
+    expect(src).toMatch(/onConflict: 'user_id', ignoreDuplicates: true/);
+    // Arm 2 — the conditional UPDATE: the window predicate runs INSIDE the
+    // statement, so of two concurrent claims only one wins.
     expect(src).toMatch(/\.update\(\{ last_sync_at: claimIso \}\)/);
     expect(src).toMatch(/last_sync_at\.is\.null,last_sync_at\.lt\.\$\{syncCutoff\(\)\}/);
-    // The old TOCTOU shape — SELECT updated_at, decide, then act later — is
-    // gone. `updated_at` may only appear as a write column, never as the
-    // throttle's read.
+    // The old read-then-act shape is gone: no throttle decision ever reads
+    // a row it then acts on.
     expect(src).not.toMatch(/select\('updated_at'\)/);
   });
 
-  it('the throttle state is PERSISTENT (the subscriptions row), never an Edge-side variable', () => {
+  it('the throttle state is PERSISTENT (a dedicated table), never an Edge-side variable, never subscriptions', () => {
     // No in-memory Map/let-last-sync bucket anywhere.
     expect(src).not.toMatch(/lastAttempt|Map\(\)|syncCache/);
-    // And the claim targets the durable row.
-    expect(src).toMatch(/from\('subscriptions'\)/);
+    // The claim lives in its own table — which holds no entitlement data —
+    // and never in subscriptions (that table is written by verified
+    // outcomes only, plus the webhook/backfill writers).
+    expect(src).toMatch(/from\('entitlement_sync_claims'\)/);
+    // Comments are not code: the claim block DOCUMENTS that it moves no
+    // tier data, and a scan that counted that prose would fail on its own
+    // explanation (same lesson as the identity scan above). Anchored on the
+    // CODE marker, not the table name — the header mentions the table too.
+    const claimStart = src.indexOf("from('entitlement_sync_claims')");
+    const claimEnd = src.indexOf('api.revenuecat.com');
+    const claimCode = src
+      .slice(claimStart, claimEnd)
+      .split('\n')
+      .filter((line) => !/^\s*(\/\/|\*)/.test(line))
+      .join('\n');
+    expect(claimCode).not.toMatch(/tier|status|expires_at|provider_/);
+    expect(claimCode).not.toMatch(/from\('subscriptions'\)/);
+    expect(claimCode).not.toMatch(/from\('subscriptions'\)/);
   });
 
-  it('the RevenueCat fetch is bounded by a timeout and fails closed on it', () => {
+  it('the RevenueCat fetch is bounded by a timeout, and the TECHNICAL claim precedes it', () => {
     expect(src).toMatch(/AbortSignal\.timeout\(SYNC_TIMEOUT_MS\)/);
-    // Every non-2xx, unparseable or timed-out outcome answers
-    // revenuecat_unavailable and writes nothing (write calls appear only
-    // after the verdict is read).
-    const firstFailClosed = src.indexOf("'revenuecat_unavailable'");
-    const firstWrite = src.search(/\.update\(\{ status: 'expired'|\.upsert\(/);
-    expect(firstFailClosed).toBeGreaterThan(-1);
-    expect(firstWrite).toBeGreaterThan(firstFailClosed);
+    // Operator case 2: last_sync_at is written BEFORE the external call —
+    // the claim (its own table) sits strictly before the fetch URL.
+    const claimPos = src.indexOf("from('entitlement_sync_claims')");
+    const fetchPos = src.indexOf('api.revenuecat.com');
+    expect(claimPos).toBeGreaterThan(-1);
+    expect(fetchPos).toBeGreaterThan(claimPos);
+  });
+
+  it('every RC failure (timeout, non-2xx, unparseable, ambiguous) writes NOTHING to subscriptions', () => {
+    // subscriptions is written only by VERIFIED outcomes: its first code
+    // occurrence (the downgrade UPDATE) sits strictly after the LAST
+    // fail-closed branch of the verification block.
+    const lastFailClosed = src.lastIndexOf("'revenuecat_unavailable'");
+    const firstSubsWrite = src.indexOf("from('subscriptions')");
+    expect(lastFailClosed).toBeGreaterThan(-1);
+    expect(firstSubsWrite).toBeGreaterThan(lastFailClosed);
   });
 
   it('RC 404 is an honest "synced, tier free" — not an error, not a grant', () => {
@@ -269,17 +300,24 @@ describe('sync-entitlement · structural invariants (the push checklist, on real
     expect(src.slice(atAmbiguous, atAmbiguous + 200)).toMatch(/revenuecat_unavailable/);
   });
 
-  it('writes are bounded: the exact backfill-revenuecat column set plus last_sync_at', () => {
-    const upsert = src.match(/\.upsert\(\s*\{([\s\S]*?)\},\s*\{\s*onConflict: 'user_id,source'\s*\}/);
+  it('writes are bounded: subscriptions gets exactly the backfill-revenuecat column set (no throttle column)', () => {
+    // Anchored on from('subscriptions') — the claim's own upsert (arm 1)
+    // appears earlier in the file and would otherwise be captured.
+    const upsert = src.match(
+      /from\('subscriptions'\)\s*\.upsert\(\s*\{([\s\S]*?)\},\s*\{\s*onConflict: 'user_id,source'\s*\}/,
+    );
     expect(upsert).not.toBeNull();
     const cols = [...upsert![1].matchAll(/^\s*(\w+):/gm)].map((m) => m[1]);
     expect(cols.sort()).toEqual(
       [
         'user_id', 'source', 'tier', 'status',
         'provider_customer_id', 'provider_subscription_id',
-        'expires_at', 'cancel_at_period_end', 'updated_at', 'last_sync_at',
+        'expires_at', 'cancel_at_period_end', 'updated_at',
       ].sort(),
     );
+    // The claim state lives in its own table, never smuggled into the
+    // entitlement row.
+    expect(cols).not.toContain('last_sync_at');
     // The downgrade path touches two columns only.
     const downgrade = src.match(/\.update\(\{ status: 'expired', updated_at: nowIso \}\)/);
     expect(downgrade).not.toBeNull();
