@@ -35,10 +35,10 @@
 //     arm 2  conditional UPDATE whose predicate (last_sync_at IS NULL OR
 //            last_sync_at < cutoff) runs INSIDE the statement — of two
 //            concurrent claims only one wins.
---     Zero rows from both arms ⇒ throttled: an honest 429, at most 30 s to
---     wait. A RevenueCat failure AFTER a claim leaves the claim standing on
---     purpose: the technical write happened before the external call, moved
---     no entitlement data, and bounds the retry cadence.
+//     Zero rows from both arms ⇒ throttled: an honest 429, at most 30 s to
+//     wait. A RevenueCat failure AFTER a claim leaves the claim standing on
+//     purpose: the technical write happened before the external call, moved
+//     no entitlement data, and bounds the retry cadence.
 //   - Fail-closed, everywhere: RevenueCat unreachable, slow (8 s deadline),
 //     non-2xx, unparseable, or AMBIGUOUS (a 200 without a subscriber object,
 //     an entitlement whose expires_date does not parse) ⇒ NO state change —
