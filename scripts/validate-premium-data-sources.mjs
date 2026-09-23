@@ -301,18 +301,22 @@ if (tarotScreen) {
 
 // ── D8: public_content is never claimed protected in writing ────────────────
 // A doc claiming "server enforcement" for a public-bytes feature is security
-// theater in writing; the honest docs say presentation-level.
+// theater in writing; the honest docs say presentation-level. LINE-granular:
+// only the lines that actually NAME the feature are judged — a section that
+// discusses all eleven features would otherwise trip on vocabulary that
+// describes a different row.
 const runbook = read("docs/runbooks/premium-server-enforcement-2026-09.md");
 for (const feature of ["planetary-transits", "retrograde-alerts"]) {
   const serverKey = feature.replace(/-/g, "_");
-  const section = runbook.split(/\n(?=##?\s)/).find(
-    (s) => s.includes(serverKey) || s.includes(feature),
-  );
-  if (section && /(server[ -]?enforced|extraction|cannot be produced offline)/i.test(section)) {
-    fail(`D8: the runbook section for '${feature}' claims protection — its class is public_content`);
+  const offender = runbook
+    .split("\n")
+    .filter((line) => line.includes(feature) || line.includes(serverKey))
+    .filter((line) => /(server[ -]?enforced|extraction-proof|cannot be produced offline)/i.test(line));
+  if (offender.length > 0) {
+    fail(`D8: the runbook line for '${feature}' claims protection — its class is public_content: ${offender[0].trim().slice(0, 100)}`);
   }
 }
-ok("D8: no protection claim for public-content features in the runbook");
+ok("D8: no protection claim on public-content feature lines in the runbook");
 
 if (issues.length) {
   console.error(`\npremium-data-sources: ${issues.length} violation(s) — JUNO-06 (see docs/runbooks/premium-server-enforcement-2026-09.md)`);
