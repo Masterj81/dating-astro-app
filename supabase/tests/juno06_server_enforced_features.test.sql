@@ -33,6 +33,30 @@
 --   C11 M1c est ABSENTE : aucune des 8 clés d'aperçu ne porte preview=1,
 --       les graines mortes existent toujours, les quotas legacy sont
 --       intacts (les mutations produit sont différées au 131).
+-- 2026-09-24 REVISION — four defects found by the pre-Production review,
+-- fixed before any execution against Production (same family as the
+-- M1a/M2 incidents: this file had never been executed on a real server):
+--   1. C10 probed information_schema.table_privileges for
+--      privilege_type = 'ALL' — a value that view NEVER lists (GRANT ALL
+--      materialises as individual privileges). Now four individual
+--      has_table_privilege() calls ANDed (the comma-list form is an OR —
+--      the M2 canary C2 lesson).
+--   2. C9 set the role to 'authenticated' and never restored it:
+--      information_schema.table_privileges hides the service_role grants
+--      from a non-owner, so C10 would fail for the wrong reason. The
+--      administrative role is now captured BEFORE the switch and restored
+--      — explicitly asserted — before C10, and the JWT claims are reset
+--      (no later check needs them).
+--   3. C11 required daily_horoscope/synastry quotas to be NULL, while the
+--      Phase-0 snapshot C2 itself validates requires 50 and 20 — and the
+--      probe was a multi-row SELECT INTO. Now a COUNT over exact-value
+--      mismatches (IS DISTINCT FROM 50 / 20).
+--   4. C9 expected (false, 'free_preview_exhausted') on the second call,
+--      contradicting the 15-minute replay window (20260823000001): a hot
+--      re-call returns (true, 'free_preview') WITHOUT consuming. The test
+--      now asserts the replay, then time-travels past the window (16 min,
+--      internal to the rolled-back transaction) to prove the refusal —
+--      and that a refusal does not consume either.
 -- =============================================================================
 
 \set ON_ERROR_STOP on
@@ -79,6 +103,7 @@ DECLARE
   v_cls    TEXT;
   v_count  INTEGER;
   v_user   UUID := gen_random_uuid();
+  v_admin  TEXT;
   r        RECORD;
 BEGIN
   -- C1+C2 : catalogue = 15 lignes, classes ET valeurs produit attendues ----
@@ -178,6 +203,10 @@ BEGIN
 
   -- C9 : enforce inchangé par M1a (comportement sur clé existante) -----------
   -- Nécessite un utilisateur ; sur une base de test avec auth.users :
+  -- Le rôle administratif est CAPTURÉ avant le switch (défaut 2026-09-24 : il
+  -- fallait le restaurer explicitement avant C10, sinon la vue des privilèges
+  -- masque les grants service_role et C10 échoue pour une mauvaise raison).
+  v_admin := current_user;
   INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password,
                           email_confirmed_at, created_at, updated_at)
   VALUES ('00000000-0000-0000-0000-000000000000', v_user, 'authenticated',
@@ -187,20 +216,68 @@ BEGIN
   PERFORM set_config('request.jwt.claims',
     json_build_object('sub', v_user, 'role', 'authenticated')::text, true);
 
-  -- natal_chart : preview 1/jour — le contrat d'avant M1a, inchangé.
+  -- natal_chart : preview 1/jour — le contrat d'avant M1a, inchangé, y compris
+  -- la FENÊTRE DE REJEU de 15 minutes (20260823000001) : un rappel à chaud ne
+  -- consomme PAS une seconde unité. La première version de ce test exigeait
+  -- (false, 'free_preview_exhausted') au deuxième appel — un comportement
+  -- antérieur à la fenêtre de rejeu (défaut 2026-09-24). Les compteurs se
+  -- lisent dans current_count RENVOYÉ par enforce (SECURITY DEFINER) : le
+  -- rôle de test 'authenticated' n'a pas de SELECT direct sur premium_usage
+  -- (retraits 20260823000001) — le test ne contourne pas ces retraits.
   SELECT * INTO r FROM public.enforce_premium_feature('natal_chart');
   IF r.allowed IS DISTINCT FROM true OR r.reason IS DISTINCT FROM 'free_preview' THEN
     RAISE EXCEPTION 'C9 : enforce(natal_chart) attendu (true, free_preview), obtenu (%)', COALESCE(r.reason,'NULL');
   END IF;
+  IF r.current_count IS DISTINCT FROM 1 THEN
+    RAISE EXCEPTION 'C9 : premier appel — current_count=% (attendu 1)', r.current_count;
+  END IF;
+
+  -- Deuxième appel À CHAUD : la fenêtre de rejeu rend le MÊME verdict SANS
+  -- consommer — docs/premium-free-preview.md.
+  SELECT * INTO r FROM public.enforce_premium_feature('natal_chart');
+  IF r.allowed IS DISTINCT FROM true OR r.reason IS DISTINCT FROM 'free_preview' THEN
+    RAISE EXCEPTION 'C9 : 2e enforce(natal_chart) à chaud attendu (true, free_preview — fenêtre de rejeu), obtenu (%)', COALESCE(r.reason,'NULL');
+  END IF;
+  IF r.current_count IS DISTINCT FROM 1 THEN
+    RAISE EXCEPTION 'C9 : la fenêtre de rejeu ne doit PAS consommer (current_count=%, attendu 1)', r.current_count;
+  END IF;
+
+  -- Le voyage temporel (16 min, interne au test roulé back) exige le rôle
+  -- administratif : premium_usage est en écriture réservée aux RPC SECURITY
+  -- DEFINER (20260823000001). Restauration prouvée, puis re-switch.
+  PERFORM set_config('role', v_admin, true);
+  IF current_user <> v_admin THEN
+    RAISE EXCEPTION 'C9 : rôle administratif (%) non restauré avant le voyage temporel (current_user=%)', v_admin, current_user;
+  END IF;
+  UPDATE public.premium_usage
+     SET last_granted_at = NOW() - INTERVAL '16 minutes'
+   WHERE user_id = v_user AND feature_key = 'natal_chart' AND usage_date = CURRENT_DATE;
+  PERFORM set_config('role', 'authenticated', true);
+
+  -- Après la fenêtre : l'unité est refusée ET le compteur reste à 1
+  -- (un refus ne consomme pas — le rollback interne d'enforce l'impose).
   SELECT * INTO r FROM public.enforce_premium_feature('natal_chart');
   IF r.allowed IS DISTINCT FROM false OR r.reason IS DISTINCT FROM 'free_preview_exhausted' THEN
-    RAISE EXCEPTION 'C9 : 2e enforce(natal_chart) attendu (false, free_preview_exhausted), obtenu (%)', COALESCE(r.reason,'NULL');
+    RAISE EXCEPTION 'C9 : enforce(natal_chart) après la fenêtre attendu (false, free_preview_exhausted), obtenu (%)', COALESCE(r.reason,'NULL');
   END IF;
+  IF r.current_count IS DISTINCT FROM 1 THEN
+    RAISE EXCEPTION 'C9 : un refus ne consomme pas (current_count=%, attendu 1)', r.current_count;
+  END IF;
+
   -- Une clé d'aperçu M1c (différée) : sans preview posée, un compte free est
   -- refusé sec — c'est le comportement web actuel, M1a ne change rien.
   SELECT * INTO r FROM public.enforce_premium_feature('planetary_transits');
   IF r.allowed IS DISTINCT FROM false THEN
     RAISE EXCEPTION 'C9/C11 : enforce(planetary_transits) free attendu refusé (preview = M1c), obtenu allowed=%', r.allowed;
+  END IF;
+
+  -- Restauration EXPLICITE ET PROUVÉE du rôle administratif avant C10 : sous
+  -- rôle 'authenticated', information_schema.table_privileges masque les
+  -- grants service_role (défaut 2026-09-24). Le JWT n'est plus nécessaire.
+  PERFORM set_config('role', v_admin, true);
+  PERFORM set_config('request.jwt.claims', '', true);
+  IF current_user <> v_admin THEN
+    RAISE EXCEPTION 'C9 : rôle administratif (%) non restauré avant C10 (current_user=%)', v_admin, current_user;
   END IF;
 
   -- C10 : M2 — la table de claims, sa forme, ses verrous --------------------
@@ -228,11 +305,15 @@ BEGIN
                 AND grantee IN ('anon','authenticated')) THEN
     RAISE EXCEPTION 'C10 : anon/authenticated ne doit avoir AUCUN privilège sur la table de claims';
   END IF;
-  -- Le claim reste jouable par le rôle serveur (service_role) :
-  IF NOT EXISTS (SELECT 1 FROM information_schema.table_privileges
-                  WHERE table_schema='public' AND table_name='entitlement_sync_claims'
-                    AND grantee='service_role' AND privilege_type='ALL') THEN
-    RAISE EXCEPTION 'C10 : service_role doit garder ALL sur la table de claims (l''edge l''écrit)';
+  -- Le claim reste jouable par le rôle serveur (service_role) — sondes
+  -- individuelles ANDées : la forme « liste » de has_table_privilege est un
+  -- OU, et information_schema.table_privileges ne liste JAMAIS 'ALL'
+  -- (défauts M2/T2 2026-09-24, leçons des canaris C2).
+  IF NOT (has_table_privilege('service_role', 'public.entitlement_sync_claims', 'SELECT')
+       AND has_table_privilege('service_role', 'public.entitlement_sync_claims', 'INSERT')
+       AND has_table_privilege('service_role', 'public.entitlement_sync_claims', 'UPDATE')
+       AND has_table_privilege('service_role', 'public.entitlement_sync_claims', 'DELETE')) THEN
+    RAISE EXCEPTION 'C10 : service_role doit tenir SELECT+INSERT+UPDATE+DELETE sur la table de claims (l''edge l''écrit)';
   END IF;
 
   -- C11 : M1c absente — ni aperçus, ni suppressions, ni quotas normalisés ---
@@ -249,10 +330,16 @@ BEGIN
   IF v_count <> 3 THEN
     RAISE EXCEPTION 'C11 : les 3 graines mortes doivent exister (suppression = M1c), il en reste %', v_count;
   END IF;
-  SELECT daily_quota INTO v_count FROM public.premium_feature_policy
-   WHERE feature_key IN ('daily_horoscope','synastry') AND daily_quota IS NOT NULL;
-  IF v_count IS NOT NULL THEN
-    RAISE EXCEPTION 'C11 : normalisation de quota détectée (M1c) — daily_horoscope/synastry doivent garder leur quota legacy';
+  -- Les quotas legacy restent EXACTEMENT aux valeurs du snapshot Phase 0 que
+  -- C2 vient de valider (daily_horoscope=50, synastry=20) — la première
+  -- version exigeait leur NULLité, se contredisant elle-même, via un SELECT
+  -- INTO potentiellement multi-lignes (défaut 2026-09-24). Sonde COUNT sur
+  -- les écarts de valeur exacte : multi-lignes-safe par construction.
+  SELECT COUNT(*) INTO v_count FROM public.premium_feature_policy
+   WHERE (feature_key = 'daily_horoscope' AND daily_quota IS DISTINCT FROM 50)
+      OR (feature_key = 'synastry'       AND daily_quota IS DISTINCT FROM 20);
+  IF v_count <> 0 THEN
+    RAISE EXCEPTION 'C11 : normalisation de quota détectée (M1c) — daily_horoscope=50 et synastry=20 (snapshot Phase 0) doivent rester INTACTS (% écart(s))', v_count;
   END IF;
 
   RAISE NOTICE 'juno06 M1a/M2 contract: C1..C11 green (15 classes, 2/7/2 auditées, snapshot intact, synastry=1, alias 130, M2 verrouillée, M1c absente)';
