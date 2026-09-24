@@ -1,9 +1,26 @@
 -- =============================================================================
--- JUNO-06 blocage 2 — the sync-entitlement claim table (2026-09-23, revised).
--- NOT APPLIED: local remediation mission; production applies migrations
--- through its own reviewed process. This migration is part of PR #69 and has
--- never run against any environment; it replaces the earlier draft that put
--- `last_sync_at` ON public.subscriptions (withdrawn before merge).
+-- JUNO-06 blocage 2 — the sync-entitlement claim table (2026-09-23, revised
+-- 2026-09-24). NOT APPLIED: local remediation mission; production applies
+-- migrations through its own reviewed process. This migration is part of
+-- PR #69 and has never run against any environment; it replaces the earlier
+-- draft that put `last_sync_at` ON public.subscriptions (withdrawn before
+-- merge).
+--
+-- 2026-09-24 REVISION — the self-check probe that could never execute. The
+-- first version asserted service_role ownership through
+--   information_schema.table_privileges … privilege_type = 'ALL'
+-- but that view NEVER lists 'ALL': PostgreSQL materialises GRANT ALL as the
+-- individual privileges (DELETE, INSERT, REFERENCES, SELECT, TRIGGER,
+-- TRUNCATE, UPDATE), so the probe could not match and the migration refused
+-- to commit on every real PostgreSQL (proven 2026-09-24 on a disposable
+-- 17.11 cluster — fail-closed, clean rollback, nothing mutated; production
+-- is 17.6, same major). The probe is now has_table_privilege() with an
+-- explicit privilege list, and the PK probe reads pg_attribute directly
+-- (attnum, not an information_schema ordinal). Same defect family as the
+-- 2026-09-23 M1a incident (RAISE with a ||-concatenated message): SQL that
+-- had never been executed on a real server. ci-postgres.yml now runs THIS
+-- file end to end on a pinned PostgreSQL 17 (scripts/m2-pg/), so neither
+-- defect class can return unseen.
 --
 -- `sync-entitlement` throttles itself to one attempt per account per 30 s,
 -- and the throttle must be SERVER-SIDE, ATOMIC and PERSISTENT — including
@@ -94,13 +111,13 @@ BEGIN
     RAISE EXCEPTION 'JUNO-06 claim table must not be reachable by anon/authenticated — refusing to commit';
   END IF;
 
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.table_privileges
-     WHERE table_schema = 'public'
-       AND table_name = 'entitlement_sync_claims'
-       AND grantee = 'service_role'
-       AND privilege_type = 'ALL'
-  ) THEN
+  -- service_role ownership, probed the way PostgreSQL actually stores it:
+  -- has_table_privilege with a list is true only when the role holds EVERY
+  -- listed privilege. The earlier probe (privilege_type = 'ALL') matched
+  -- nothing on any server — see the revision note in the header.
+  IF NOT has_table_privilege(
+       'service_role', 'public.entitlement_sync_claims',
+       'SELECT, INSERT, UPDATE, DELETE') THEN
     RAISE EXCEPTION 'JUNO-06 claim table must be fully usable by service_role (the edge''s key) — refusing to commit';
   END IF;
 
@@ -113,10 +130,14 @@ BEGIN
      WHERE n.nspname = 'public' AND c.relname = 'entitlement_sync_claims'
        AND i.indisprimary
        AND i.indkey[0] = (
-         SELECT attnum FROM information_schema.columns
-          WHERE table_schema = 'public'
-            AND table_name = 'entitlement_sync_claims'
-            AND column_name = 'user_id'
+         SELECT a.attnum FROM pg_attribute a
+          JOIN pg_class cc ON cc.oid = a.attrelid
+          JOIN pg_namespace nn ON nn.oid = cc.relnamespace
+          WHERE nn.nspname = 'public'
+            AND cc.relname = 'entitlement_sync_claims'
+            AND a.attname = 'user_id'
+            AND a.attnum > 0
+            AND NOT a.attisdropped
        )
   ) THEN
     RAISE EXCEPTION 'JUNO-06 claim table PK must be (user_id) — the arms'' atomicity is keyed on it';
