@@ -214,7 +214,7 @@ if (!issues.some((i) => i.startsWith("G7"))) ok("G7 : postconditions — sondes 
   if (!runner.includes(`"$REPO_ROOT/supabase/migrations/20260823000001_free_preview_quota.sql"`)) {
     fail("G9 : le runner n'exécute plus le gating officiel 20260823000001 (enforce v2, fenêtre de rejeu) préalable à T2");
   }
-  if (!/C1\\.\\.C11 green/.test(runner)) fail("G9 : le runner n'exige plus le NOTICE « C1..C11 green » de T2");
+  if (!/C1\.\.C11 green/.test(runner)) fail("G9 : le runner n'exige plus le NOTICE « C1..C11 green » de T2");
   if (!/T2_LOG|t2\.log/.test(runner) || !runner.includes("T2_USERS")) {
     fail("G9 : le runner ne prouve plus le zéro-résidu après T2 (utilisateur/usage/claims synthétiques)");
   }
