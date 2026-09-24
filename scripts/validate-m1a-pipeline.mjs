@@ -104,7 +104,9 @@ if (!/-ne 0\s*\]/.test(runner)) fail("G6 : le runner n'exige plus un exit non nu
 if (!/ROLLBACK HISTORIQUE/.test(runner)) fail("G6 : le scénario rollback a disparu du runner");
 ok("G6 : négatif ×2 (exit≠0 exigé) + rollback présents dans le runner");
 
-// ── G7 : vérifications clés des postconditions ─────────────────────────────
+// ── G7 : vérifications clés des postconditions (CODE, pas les commentaires) ─
+const postcCode = stripSqlComments(postc);
+const negvCode = stripSqlComments(negv);
 for (const needle of [
   [/is_nullable='NO'|is_nullable = 'NO'/, "NOT NULL"],
   [/pg_attrdef/, "absence de DEFAULT"],
@@ -113,9 +115,9 @@ for (const needle of [
   [/legacy_alias/, "tarot = legacy_alias"],
   [/legacy_unused/, "graines = legacy_unused"],
 ]) {
-  if (!needle[0].test(postc)) fail(`G7 : vérification absente des postconditions — ${needle[1]}`);
+  if (!needle[0].test(postcCode)) fail(`G7 : vérification absente des postconditions — ${needle[1]}`);
 }
-if (!/enforcement_class/.test(negv) || !/schema_migrations/.test(negv)) {
+if (!/enforcement_class/.test(negvCode) || !/schema_migrations/.test(negvCode)) {
   fail("G7 : negative-verify ne contrôle plus colonne/historique (une mutation partielle pourrait survivre)");
 }
 ok("G7 : NOT NULL, sans DEFAULT, convalidated, 23502, legacy — présents dans les vérifications");
