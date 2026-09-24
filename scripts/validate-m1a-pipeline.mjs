@@ -117,8 +117,9 @@ for (const needle of [
 ]) {
   if (!needle[0].test(postcCode)) fail(`G7 : vérification absente des postconditions — ${needle[1]}`);
 }
-if (!/enforcement_class/.test(negvCode) || !/schema_migrations/.test(negvCode)) {
-  fail("G7 : negative-verify ne contrôle plus colonne/historique (une mutation partielle pourrait survivre)");
+if (!/information_schema\.columns[\s\S]{0,300}column_name\s*=\s*'enforcement_class'/.test(negvCode)
+    || !/schema_migrations/.test(negvCode)) {
+  fail("G7 : negative-verify ne contrôle plus la sonde de colonne (information_schema.columns + column_name='enforcement_class') ni l'historique — une mutation partielle pourrait survivre");
 }
 ok("G7 : NOT NULL, sans DEFAULT, convalidated, 23502, legacy — présents dans les vérifications");
 
