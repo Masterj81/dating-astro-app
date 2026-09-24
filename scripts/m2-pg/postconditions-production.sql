@@ -114,11 +114,22 @@ FROM supabase_migrations.schema_migrations
 WHERE version = '20260922000002';
 
 -- Q11 : métier inchangé (comparer à P6 capturé avant) ----------------------
-SELECT 'Q11 compteurs après M2 (comparer à P6)' AS check,
-       'identique à P6' AS expected,
+-- Référence historique : capture opérateur du 2026-09-24 — premium_usage=90,
+-- subscriptions=6. La comparaison DÉCISIVE se fait contre la capture P6
+-- FRAÎCHE de la session d'application. Toute valeur ≠ 90/6 produit ANALYSER :
+-- une dérive organique (premium_usage croît avec l'usage) n'est jamais
+-- acceptée automatiquement — l'opérateur doit constater que found == P6 frais
+-- ET expliquer l'écart à la référence avant de continuer. M2 ne peut pas
+-- modifier ces compteurs : le fichier ne contient aucun DML métier
+-- (sha256 83fe02ff…).
+SELECT 'Q11 compteurs après M2 (réf. 2026-09-24 : 90/6 ; exiger found == P6 frais)' AS check,
+       '90 / 6 (référence) — et identique au P6 frais de la session' AS expected,
        (SELECT COUNT(*) FROM public.premium_usage)::text || ' / ' ||
        (SELECT COUNT(*) FROM public.subscriptions)::text AS found,
-       'comparaison opérateur' AS ok;
+       CASE WHEN (SELECT COUNT(*) FROM public.premium_usage) = 90
+             AND (SELECT COUNT(*) FROM public.subscriptions) = 6
+            THEN 'OK (conforme à la référence)'
+            ELSE 'ANALYSER : trouvé ≠ réf. 90/6 — exiger found == P6 frais et expliquer l’écart avant de continuer' END AS ok;
 
 -- Q12 : M1a survit à M2 -----------------------------------------------------
 SELECT 'Q12 M1a toujours conforme (NOT NULL, sans DEFAULT)' AS check,
@@ -153,3 +164,26 @@ SELECT 'Q13 zéro ligne de claim (edge non déployé)' AS check,
        0 AS expected, COUNT(*)::text AS found,
        CASE WHEN COUNT(*) = 0 THEN 'OK' ELSE 'ANALYSER' END AS ok
 FROM public.entitlement_sync_claims;
+
+-- Q14 : UNE SEULE nouvelle table — 28 tables public au total ---------------
+-- Baseline : capture opérateur PRÉ-M2 du 2026-09-24 (27 tables, P7a/P7b des
+-- préconditions exécutées en Production). Aucune capture post-M1a d'inventaire
+-- n'existe (les postconditions M1a ne sondaient que l'absence de la table M2) :
+-- la référence est donc la mesure pré-M2 ci-dessus, déclarée par l'opérateur.
+-- Le compte de tables ne drift pas organiquement : seul du DDL le change, et
+-- M2 (une seule table) est le seul DDL autorisé dans la fenêtre.
+SELECT 'Q14 tables public = 28 (27 pré-M2 + entitlement_sync_claims)' AS check,
+       28 AS expected, COUNT(*)::text AS found,
+       CASE WHEN COUNT(*) = 28 THEN 'OK' ELSE 'FAIL' END AS ok
+FROM pg_tables WHERE schemaname = 'public';
+
+-- Q15 : inventaire EXACT — l'ensemble pré-M2 + la table M2, rien d'autre ----
+-- (comparaison d'ensembles triés, indépendante de l'ordre). Toute table
+-- manquante ou supplémentaire = FAIL (arrêt et analyse).
+SELECT 'Q15 inventaire = baseline pré-M2 + entitlement_sync_claims' AS check,
+       'ensemble à 28 noms (capture 2026-09-24)' AS expected,
+       string_agg(tablename, ',' ORDER BY tablename) AS found,
+       CASE WHEN string_agg(tablename, ',' ORDER BY tablename) =
+ 'blocked_users,conversations,cron_task_decisions,deletion_requests,edge_rate_limits,entitlement_sync_claims,marketing_posts,media_purge_jobs,messages,natal_charts,orphan_purge_campaigns,premium_feature_policy,premium_usage,product_events,profiles,promo_campaign_redemptions,promo_campaigns,push_tokens,rate_limits,referral_redemptions,reports,scheduled_emails,security_posture_alerts,subscription_events,subscriptions,subscriptions_archive,swipes,synastry_free_grant'
+            THEN 'OK' ELSE 'FAIL' END AS ok
+FROM pg_tables WHERE schemaname = 'public';

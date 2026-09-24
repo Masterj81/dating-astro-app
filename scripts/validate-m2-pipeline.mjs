@@ -168,6 +168,35 @@ readOnlyCheck(PRECOND_PROD, "preconditions-production.sql");
 readOnlyCheck(POSTCOND_PROD, "postconditions-production.sql");
 if (!issues.some((i) => i.startsWith("G7"))) ok("G7 : postconditions — sondes réelles présentes ; scripts Production strictement lecture seule, sans \\echo");
 
+// ── G7b : les preuves de delta P7 (Q11/Q14/Q15) ne doivent pas être vidées ──
+// Q11 doit conserver l'état ANALYSER (dérive ≠ réf. 90/6 jamais acceptée
+// automatiquement) ; Q14 doit exiger exactement 28 tables ; Q15 doit comparer
+// l'ensemble TRIÉ exact — la liste des 28 noms est encodée ici et comparée
+// littéralement au fichier : ajouter/retirer un nom, ou neutraliser Q11,
+// fait passer le garde au rouge.
+// NOTE (canari N5, 2026-09-24) : les sondes Q11 s'appliquent au CODE sans
+// commentaires — la première version matchait les mots des commentaires et
+// laissait une neutralisation invisible (leçon d54abb2 : la sonde, pas le mot).
+{
+  const postcRaw = read(POSTCOND_PROD);
+  const postcCode = stripSqlComments(postcRaw);
+  if (!/premium_usage\) = 90/.test(postcCode) || !/subscriptions\) = 6/.test(postcCode) || !/ANALYSER/.test(postcCode)) {
+    fail("G7b : Q11 doit conserver, dans le CODE, les comparaisons = 90 et = 6 avec l'état ANALYSER — une dérive n'est jamais acceptable automatiquement");
+  }
+  if (!/28 AS expected/.test(postcRaw) || !/FROM pg_tables WHERE schemaname = 'public'/.test(postcRaw)) {
+    fail("G7b : Q14 doit exiger exactement 28 tables public (comptage pg_tables)");
+  }
+  const EXPECTED_Q15 =
+    "blocked_users,conversations,cron_task_decisions,deletion_requests,edge_rate_limits,entitlement_sync_claims,marketing_posts,media_purge_jobs,messages,natal_charts,orphan_purge_campaigns,premium_feature_policy,premium_usage,product_events,profiles,promo_campaign_redemptions,promo_campaigns,push_tokens,rate_limits,referral_redemptions,reports,scheduled_emails,security_posture_alerts,subscription_events,subscriptions,subscriptions_archive,swipes,synastry_free_grant";
+  if (!postcRaw.includes(EXPECTED_Q15)) {
+    fail("G7b : la liste Q15 doit être l'ensemble exact à 28 noms (baseline P7b 2026-09-24 + entitlement_sync_claims) — tout ajout, retrait ou réordonnancement non trié est refusé");
+  }
+  if (!/string_agg\(tablename, ',' ORDER BY tablename\)/.test(postcRaw)) {
+    fail("G7b : Q15 doit comparer via string_agg(... ORDER BY tablename) — comparaison d'ensembles triés, indépendante de l'ordre catalogue");
+  }
+  if (!issues.some((i) => i.startsWith("G7b"))) ok("G7b : Q11 (code : =90, =6, ANALYSER), Q14 (=28), Q15 (ensemble trié exact à 28 noms) — formes exigées et présentes");
+}
+
 // ── G8 : stub fidèle et synthétique ─────────────────────────────────────────
 for (const [re, what] of [
   [/rolname = 'anon'/, "rôle anon"],
