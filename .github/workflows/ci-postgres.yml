@@ -1,4 +1,4 @@
-# JUNO-06 M1a — preuve PostgreSQL RÉELLE sur base jetable (2026-09-24).
+# JUNO-06 M1a + M2 — preuve PostgreSQL RÉELLE sur base jetable (2026-09-24).
 #
 # Pourquoi ce workflow existe (incident 2026-09-23) : aucune CI précédente
 # n'EXÉCUTAIT le PL/pgSQL de 20260922000001 — les suites le lisaient
@@ -9,16 +9,26 @@
 # épinglé par digest (même majeure que la Production, lecture opérateur
 # 2026-09-24), en positif, en négatif ×2 et sur le rollback.
 #
-# Le garde structurel (scripts/validate-m1a-pipeline.mjs) tourne dans le
-# MÊME job : il complète l'exécution réelle, il ne la remplace jamais.
-name: M1a PostgreSQL (jetable)
+# 2026-09-24 — étendu à M2 (20260922000002) et à son T1 officiel : la
+# première version de M2 portait une sonde privilege_type = 'ALL' qu'aucun
+# PostgreSQL ne peut satisfaire, et le T1 ne pouvait pas s'exécuter
+# (booléen → INTEGER, FK auth.users) — même famille : du SQL jamais exécuté
+# pour de vrai. Le job ci-dessous exécute désormais M1a ET M2 + T1 sur le
+# même service épinglé.
+#
+# Les gardes structurels (scripts/validate-m1a-pipeline.mjs et
+# scripts/validate-m2-pipeline.mjs) tournent dans le MÊME job : ils
+# complètent l'exécution réelle, ils ne la remplacent jamais.
+name: M1a + M2 PostgreSQL (jetable)
 
 on:
   pull_request:
     paths:
       - "supabase/migrations/20260922000001_juno06_server_enforced_features.sql"
       - "supabase/migrations/20260922000002_sync_entitlement_throttle.sql"
+      - "supabase/tests/juno06_sync_entitlement_claim.test.sql"
       - "scripts/m1a-pg/**"
+      - "scripts/m2-pg/**"
       - ".github/workflows/ci-postgres.yml"
   workflow_dispatch:
 
@@ -26,8 +36,8 @@ permissions:
   contents: read
 
 jobs:
-  m1a-postgres:
-    name: M1a sur PostgreSQL 17.11 (base jetable)
+  m1a-m2-postgres:
+    name: M1a + M2 sur PostgreSQL 17.11 (base jetable)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -63,3 +73,10 @@ jobs:
       - name: Pipeline M1a (positif, négatif ×2, rollback — fichier exact)
         shell: bash
         run: bash scripts/m1a-pg/run-m1a-pipeline.sh
+
+      - name: Garde structurelle M2 (sonde, T1, épinglage, lecture seule)
+        run: node scripts/validate-m2-pipeline.mjs
+
+      - name: Pipeline M2 (positif, T1 officiel, rollback, négatif — fichier exact)
+        shell: bash
+        run: bash scripts/m2-pg/run-m2-pipeline.sh
