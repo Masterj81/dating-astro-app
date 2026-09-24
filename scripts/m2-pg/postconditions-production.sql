@@ -114,17 +114,22 @@ FROM supabase_migrations.schema_migrations
 WHERE version = '20260922000002';
 
 -- Q11 : métier inchangé (comparer à P6 capturé avant) ----------------------
--- Référence de la capture opérateur du 2026-09-24 : premium_usage=90,
--- subscriptions=6. La comparaison se fait contre la capture P6 FRAÎCHE de la
--- session d'application (une dérive organique entre capture et application
--- ne doit pas produire de faux FAIL — mais toute différence non expliquée
--- interdit l'application). M2 ne peut pas modifier ces compteurs : le
--- fichier ne contient aucun DML métier (sha256 83fe02ff…).
-SELECT 'Q11 compteurs après M2 (réf. 2026-09-24 : 90/6 ; comparer à P6 frais)' AS check,
-       'identique à P6' AS expected,
+-- Référence historique : capture opérateur du 2026-09-24 — premium_usage=90,
+-- subscriptions=6. La comparaison DÉCISIVE se fait contre la capture P6
+-- FRAÎCHE de la session d'application. Toute valeur ≠ 90/6 produit ANALYSER :
+-- une dérive organique (premium_usage croît avec l'usage) n'est jamais
+-- acceptée automatiquement — l'opérateur doit constater que found == P6 frais
+-- ET expliquer l'écart à la référence avant de continuer. M2 ne peut pas
+-- modifier ces compteurs : le fichier ne contient aucun DML métier
+-- (sha256 83fe02ff…).
+SELECT 'Q11 compteurs après M2 (réf. 2026-09-24 : 90/6 ; exiger found == P6 frais)' AS check,
+       '90 / 6 (référence) — et identique au P6 frais de la session' AS expected,
        (SELECT COUNT(*) FROM public.premium_usage)::text || ' / ' ||
        (SELECT COUNT(*) FROM public.subscriptions)::text AS found,
-       'comparaison opérateur' AS ok;
+       CASE WHEN (SELECT COUNT(*) FROM public.premium_usage) = 90
+             AND (SELECT COUNT(*) FROM public.subscriptions) = 6
+            THEN 'OK (conforme à la référence)'
+            ELSE 'ANALYSER : trouvé ≠ réf. 90/6 — exiger found == P6 frais et expliquer l’écart avant de continuer' END AS ok;
 
 -- Q12 : M1a survit à M2 -----------------------------------------------------
 SELECT 'Q12 M1a toujours conforme (NOT NULL, sans DEFAULT)' AS check,
