@@ -27,6 +27,21 @@
 -- ignoreDuplicates → INSERT .. ON CONFLICT DO NOTHING; filtered update →
 -- UPDATE .. WHERE). This script runs the SAME statements the server sends,
 -- in the same two-arm order, so what is proven here is what ships.
+--
+-- 2026-09-24 REVISION — two defects that made this file impossible to
+-- execute on any real PostgreSQL (same family as the M1a/M2 incidents:
+-- SQL that had never been run for real, proven on a disposable 17.11
+-- cluster):
+--   1. CASE 3 assigned the BOOLEAN (EXTRACT(...) < 30) into v_rows, an
+--      INTEGER — « invalid input syntax for type integer: \"t\" ». Fixed
+--      with a dedicated BOOLEAN variable (v_bool): no cast, the statement
+--      keeps its real type.
+--   2. v_user := gen_random_uuid() violates the claim table's FK
+--      (REFERENCES auth.users(id)) — CASE 1a could never insert. The test
+--      now creates its synthetic account in auth.users INSIDE its own
+--      rolled-back transaction.
+-- The four scenarios, their statements and their business assertions are
+-- unchanged.
 
 \set ON_ERROR_STOP on
 
@@ -36,8 +51,15 @@ DO $test$
 DECLARE
   v_user        UUID := gen_random_uuid();
   v_rows        INTEGER;
+  v_bool        BOOLEAN;
   r             RECORD;
 BEGIN
+  -- The claim table's FK (REFERENCES auth.users(id)) requires the account
+  -- to exist: a bare gen_random_uuid() violated it on every real database,
+  -- so the original test could never execute past CASE 1a (2026-09-24
+  -- fix, see header). The synthetic account lives INSIDE this test's
+  -- rolled-back transaction and leaves nothing behind.
+  INSERT INTO auth.users (id) VALUES (v_user);
   -- -----------------------------------------------------------------------
   -- CASE 1a — row absent: arm 1 (INSERT .. ON CONFLICT DO NOTHING) claims.
   -- A free account: no subscriptions row exists, and none is created by the
@@ -111,8 +133,8 @@ BEGIN
 
   -- And the claim itself persists the wait (this is the UX contract: the
   -- reader waits at most 30 s for an honest retry).
-  SELECT EXTRACT(EPOCH FROM (NOW() - last_sync_at)) < 30 INTO v_rows FROM public.entitlement_sync_claims WHERE user_id = v_user;
-  IF v_rows <> 1 THEN
+  SELECT EXTRACT(EPOCH FROM (NOW() - last_sync_at)) < 30 INTO v_bool FROM public.entitlement_sync_claims WHERE user_id = v_user;
+  IF v_bool IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'CASE 3: the surviving claim must still be inside the 30 s window';
   END IF;
 
