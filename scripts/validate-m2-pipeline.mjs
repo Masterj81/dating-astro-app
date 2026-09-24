@@ -54,7 +54,9 @@ const PRECOND_PROD = "scripts/m2-pg/preconditions-production.sql";
 const POSTCOND_PROD = "scripts/m2-pg/postconditions-production.sql";
 const M2 = "supabase/migrations/20260922000002_sync_entitlement_throttle.sql";
 const T1 = "supabase/tests/juno06_sync_entitlement_claim.test.sql";
-for (const f of [WF, RUNNER, STUB, POSTC, ROLLBACK, PRECOND_PROD, POSTCOND_PROD, M2, T1]) {
+const T2 = "supabase/tests/juno06_server_enforced_features.test.sql";
+const GATING = "supabase/migrations/20260823000001_free_preview_quota.sql";
+for (const f of [WF, RUNNER, STUB, POSTC, ROLLBACK, PRECOND_PROD, POSTCOND_PROD, M2, T1, T2, GATING]) {
   if (!fs.existsSync(path.join(ROOT, f))) { console.error(`FATAL: ${f} manquant`); process.exit(2); }
 }
 const wf = read(WF);
@@ -195,6 +197,57 @@ if (!issues.some((i) => i.startsWith("G7"))) ok("G7 : postconditions — sondes 
     fail("G7b : Q15 doit comparer via string_agg(... ORDER BY tablename) — comparaison d'ensembles triés, indépendante de l'ordre catalogue");
   }
   if (!issues.some((i) => i.startsWith("G7b"))) ok("G7b : Q11 (code : =90, =6, ANALYSER), Q14 (=28), Q15 (ensemble trié exact à 28 noms) — formes exigées et présentes");
+}
+
+// ── G9 : T2 officiel — les quatre corrections de 2026-09-24 ne reviennent pas ─
+// Le runner doit exécuter le T2 EXACT (et le gating officiel 20260823000001
+// qui porte enforce v2 + la fenêtre de rejeu), exiger le NOTICE C1..C11 et le
+// ROLLBACK, et prouver le zéro-résidu. Le CODE de T2 (sans commentaires) doit
+// garder : la sonde ANDée, la capture/restauration prouvée du rôle, C11 en
+// valeurs exactes multi-lignes-sûres, et la fenêtre de rejeu de C9.
+{
+  const t2Raw = read(T2);
+  const t2Code = stripSqlComments(t2Raw);
+  if (!runner.includes(`"$REPO_ROOT/supabase/tests/juno06_server_enforced_features.test.sql"`)) {
+    fail("G9 : le runner ne référence plus le chemin exact du T2 officiel");
+  }
+  if (!runner.includes(`"$REPO_ROOT/supabase/migrations/20260823000001_free_preview_quota.sql"`)) {
+    fail("G9 : le runner n'exécute plus le gating officiel 20260823000001 (enforce v2, fenêtre de rejeu) préalable à T2");
+  }
+  if (!/C1\\.\\.C11 green/.test(runner)) fail("G9 : le runner n'exige plus le NOTICE « C1..C11 green » de T2");
+  if (!/T2_LOG|t2\.log/.test(runner) || !runner.includes("T2_USERS")) {
+    fail("G9 : le runner ne prouve plus le zéro-résidu après T2 (utilisateur/usage/claims synthétiques)");
+  }
+  if (/privilege_type\s*=\s*'ALL'/.test(t2Code)) {
+    fail("G9 : privilege_type = 'ALL' est revenu dans T2 — la vue ne liste JAMAIS 'ALL' (défaut C10 2026-09-24)");
+  }
+  if (!(/has_table_privilege\('service_role', 'public\.entitlement_sync_claims', 'SELECT'\)\s*\n\s*AND has_table_privilege\('service_role', 'public\.entitlement_sync_claims', 'INSERT'\)/.test(t2Code))) {
+    fail("G9 : C10 doit ANDer quatre has_table_privilege individuels (leçon canari C2 : la forme liste est un OU)");
+  }
+  if (!/v_admin\s*:=\s*current_user/.test(t2Code) || !/set_config\('role', v_admin, true\)/.test(t2Code) || !/current_user <> v_admin/.test(t2Code)) {
+    fail("G9 : C9 doit capturer le rôle administratif, le restaurer explicitement et PROUVER la restauration avant C10 (défaut C9→C10 2026-09-24)");
+  }
+  if (!/IS DISTINCT FROM 50/.test(t2Code) || !/IS DISTINCT FROM 20/.test(t2Code)) {
+    fail("G9 : C11 doit vérifier les valeurs legacy EXACTES (daily_horoscope=50, synastry=20 — snapshot Phase 0), pas leur nullité");
+  }
+  if (/SELECT\s+daily_quota\s+INTO/.test(t2Code)) {
+    fail("G9 : C11 ne doit pas utiliser un SELECT scalaire multi-lignes (défaut 2026-09-24)");
+  }
+  if (!/INTERVAL '16 minutes'/.test(t2Code) || !/r\.current_count IS DISTINCT FROM 1/.test(t2Code)) {
+    fail("G9 : C9 doit couvrir la fenêtre de rejeu (voyage 16 min) et lire current_count renvoyé par enforce — le 2e appel à chaud ne consomme pas (défaut C9 2026-09-24)");
+  }
+  const stubRaw = read(STUB);
+  for (const [re, what] of [
+    [/FUNCTION auth\.uid\(\)/, "auth.uid()"],
+    [/FUNCTION auth\.role\(\)/, "auth.role()"],
+    [/FUNCTION public\.get_user_tier/, "get_user_tier (corps exact 20260413000002)"],
+    [/FUNCTION public\.tier_at_least/, "tier_at_least (corps exact 20260425)"],
+    [/FUNCTION public\.get_effective_subscription/, "get_effective_subscription (corps exact 20260312)"],
+    [/ADD COLUMN IF NOT EXISTS cancel_at_period_end/, "subscriptions.cancel_at_period_end"],
+  ]) {
+    if (!re.test(stubRaw)) fail(`G9 : le stub ne fournit plus la dépendance T2 — ${what}`);
+  }
+  if (!issues.some((i) => i.startsWith("G9"))) ok("G9 : T2 — runner (fichier exact + gating officiel + NOTICE + résidus), sonde ANDée, rôle capturé/restauré/prouvé, C11 valeurs exactes, fenêtre de rejeu, dépendances du stub");
 }
 
 // ── G8 : stub fidèle et synthétique ─────────────────────────────────────────
