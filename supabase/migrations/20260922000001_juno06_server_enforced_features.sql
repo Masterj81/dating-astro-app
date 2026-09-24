@@ -173,10 +173,17 @@ BEGIN
     FROM _juno06_m1a_catalog_pre;
 
   IF v_actual <> v_expected THEN
-    RAISE EXCEPTION
-      'M1a self-check (pre) : le catalogue ne correspond pas à la capture Phase 0.%' ||
-      ' Attendu : % — Obtenu : % (clé manquante, clé inconnue ou valeur tier/quota/preview divergente)',
-      E'\n', v_expected, v_actual;
+    -- INCIDENT 2026-09-23 : cette exception utilisait la concaténation
+    -- 'msg' || 'msg' comme argument de RAISE — invalide en PL/pgSQL (le
+    -- serveur refuse le fichier entier : syntax error at or near "||").
+    -- Forme corrigée : USING MESSAGE = format(...) — sans ambiguïté.
+    RAISE EXCEPTION USING
+      MESSAGE = format(
+        'M1a self-check (pre) : le catalogue ne correspond pas à la capture Phase 0.%s Attendu : %s — Obtenu : %s (clé manquante, clé inconnue ou valeur tier/quota/preview divergente)',
+        E'\n',
+        v_expected,
+        v_actual
+      );
   END IF;
 
   IF (SELECT COUNT(*) FROM _juno06_m1a_catalog_pre) <> 15 THEN
@@ -402,14 +409,15 @@ BEGIN
   END IF;
   -- Et AUCUN DEFAULT n'existe (revue 2026-09-23) : un INSERT sans classe
   -- doit échouer, pas être rattrapé.
+  -- (DÉFAUT LATENT n°2, découvert par le pipeline PostgreSQL réel 2026-09-24 :
+  --  la sonde référençait `attnum` depuis information_schema.columns — cette
+  --  vue expose `ordinal_position`. Jointure corrigée sur pg_attribute.)
   IF EXISTS (SELECT 1 FROM pg_attrdef d
               JOIN pg_class c ON c.oid = d.adrelid
               JOIN pg_namespace n ON n.oid = c.relnamespace
+              JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = d.adnum
              WHERE n.nspname='public' AND c.relname='premium_feature_policy'
-               AND d.adnum = (SELECT attnum FROM information_schema.columns
-                               WHERE table_schema='public'
-                                 AND table_name='premium_feature_policy'
-                                 AND column_name='enforcement_class')) THEN
+               AND a.attname = 'enforcement_class') THEN
     RAISE EXCEPTION 'M1a self-check : enforcement_class ne doit avoir AUCUN DEFAULT (classification explicite obligatoire)';
   END IF;
 

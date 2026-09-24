@@ -1,0 +1,63 @@
+# JUNO-06 M1a — preuve PostgreSQL RÉELLE sur base jetable (2026-09-24).
+#
+# Pourquoi ce workflow existe (incident 2026-09-23) : aucune CI précédente
+# n'EXÉCUTAIT le PL/pgSQL de 20260922000001 — les suites le lisaient
+# (parse esbuild, extraction de déclarations, contrats textuels). Le fichier
+# portait un RAISE dont le message était concaténé par || : syntaxe invalide,
+# découverte uniquement à l'exécution Production (rollback propre, rien
+# muté). Ce workflow exécute le FICHIER EXACT sur un PostgreSQL 17.11
+# épinglé par digest (même majeure que la Production, lecture opérateur
+# 2026-09-24), en positif, en négatif ×2 et sur le rollback.
+#
+# Le garde structurel (scripts/validate-m1a-pipeline.mjs) tourne dans le
+# MÊME job : il complète l'exécution réelle, il ne la remplace jamais.
+name: M1a PostgreSQL (jetable)
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/20260922000001_juno06_server_enforced_features.sql"
+      - "supabase/migrations/20260922000002_sync_entitlement_throttle.sql"
+      - "scripts/m1a-pg/**"
+      - ".github/workflows/ci-postgres.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  m1a-postgres:
+    name: M1a sur PostgreSQL 17.11 (base jetable)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # ÉPINGLÉ : même version majeure que la Production (17, lecture
+        # opérateur 2026-09-24). Tag précis + digest immuable — jamais
+        # `latest`, jamais un tag flottant. Le garde structurel refuse
+        # toute dérive.
+        image: postgres:17.11@sha256:e31e3d5327d1806f6177827c9710643e4f35f7ab3f14d26d05332753d3e95ee0
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Garde structurelle (pipeline, épinglage, fixture)
+        run: node scripts/validate-m1a-pipeline.mjs
+
+      - name: Pipeline M1a (positif, négatif ×2, rollback — fichier exact)
+        shell: bash
+        run: bash scripts/m1a-pg/run-m1a-pipeline.sh
