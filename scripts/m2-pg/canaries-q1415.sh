@@ -77,12 +77,16 @@ seed_db() { # crée la base jetable post-M2 (4 tables : fixture + claims)
   echo "$db"
 }
 q_row() { PSQL -d "$1" -tA -f "$POSTC" 2>/dev/null | grep -F "$2" | head -1; }
+# Colonne `found` (3e champ, séparateur | de psql -tA) — le libellé peut
+# contenir les mots cherchés (leçon S2 : le label Q15 mentionne la table).
+q_found() { echo "$1" | awk -F'|' '{print $3}'; }
 
 s0() {
   local db; db="$(seed_db s0)"
   local row; row="$(q_row "$db" 'Q11 ')"
+  local found; found="$(q_found "$row")"
   PSQL -d postgres -c "DROP DATABASE IF EXISTS $db;" >/dev/null 2>&1
-  if echo "$row" | grep -q 'ANALYSER' && echo "$row" | grep -q '3 / 2'; then
+  if echo "$row" | grep -q 'ANALYSER' && [ "$found" = "3 / 2" ]; then
     echo "  ok    S0 divergence de la référence (3/2 ≠ 90/6) : Q11 = ANALYSER"
   else
     echo "  FAIL  S0 : Q11 n'a pas signalé ANALYSER pour 3/2 — [$row]"; failures=$((failures+1))
@@ -95,10 +99,11 @@ s1() {
   local r14 r15
   r14="$(q_row "$db" 'Q14 ')"
   r15="$(q_row "$db" 'Q15 ')"
+  local f14 f15; f14="$(q_found "$r14")"; f15="$(q_found "$r15")"
   PSQL -d postgres -c "DROP DATABASE IF EXISTS $db;" >/dev/null 2>&1
-  if echo "$r14" | grep -q 'FAIL' && echo "$r14" | grep -q '| 5 |' \
-     && echo "$r15" | grep -q 'FAIL' && echo "$r15" | grep -q 'canari_state_extra'; then
-    echo "  ok    S1 table supplémentaire : Q14=5/FAIL, Q15 la nomme et FAIL"
+  if [ "$f14" = "5" ] && echo "$r14" | grep -q 'FAIL' \
+     && echo "$r15" | grep -q 'FAIL' && echo "$f15" | grep -q 'canari_state_extra'; then
+    echo "  ok    S1 table supplémentaire : Q14 found=5/FAIL, Q15 la nomme et FAIL"
   else
     echo "  FAIL  S1 : Q14/Q15 n'ont pas suivi la réalité — [$r14] [$r15]"; failures=$((failures+1))
   fi
@@ -111,10 +116,11 @@ s2() {
   r1="$(q_row "$db" 'Q1 ')"
   r14="$(q_row "$db" 'Q14 ')"
   r15="$(q_row "$db" 'Q15 ')"
+  local f1 f15; f1="$(q_found "$r1")"; f15="$(q_found "$r15")"
   PSQL -d postgres -c "DROP DATABASE IF EXISTS $db;" >/dev/null 2>&1
-  if echo "$r1" | grep -q 'FAIL' && echo "$r14" | grep -q 'FAIL' \
-     && echo "$r15" | grep -q 'FAIL' && ! echo "$r15" | grep -q 'entitlement_sync_claims'; then
-    echo "  ok    S2 claims absente : Q1/Q14/Q15 rouges, Q15 sans la nommer"
+  if [ "$f1" = "0" ] && echo "$r1" | grep -q 'FAIL' && echo "$r14" | grep -q 'FAIL' \
+     && echo "$r15" | grep -q 'FAIL' && ! echo "$f15" | grep -q 'entitlement_sync_claims'; then
+    echo "  ok    S2 claims absente : Q1 found=0/FAIL, Q14/Q15 rouges, Q15 sans la nommer"
   else
     echo "  FAIL  S2 : absence non détectée — [$r1] [$r14] [$r15]"; failures=$((failures+1))
   fi

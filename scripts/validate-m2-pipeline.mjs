@@ -174,11 +174,14 @@ if (!issues.some((i) => i.startsWith("G7"))) ok("G7 : postconditions — sondes 
 // l'ensemble TRIÉ exact — la liste des 28 noms est encodée ici et comparée
 // littéralement au fichier : ajouter/retirer un nom, ou neutraliser Q11,
 // fait passer le garde au rouge.
+// NOTE (canari N5, 2026-09-24) : les sondes Q11 s'appliquent au CODE sans
+// commentaires — la première version matchait les mots des commentaires et
+// laissait une neutralisation invisible (leçon d54abb2 : la sonde, pas le mot).
 {
   const postcRaw = read(POSTCOND_PROD);
-  const q11Block = postcRaw.slice(postcRaw.indexOf("-- Q11"), postcRaw.indexOf("-- Q12"));
-  if (!/ANALYSER/.test(q11Block) || !/90/.test(q11Block) || !/= 6\b/.test(q11Block)) {
-    fail("G7b : Q11 doit conserver l'état ANALYSER et la référence 90/6 — une dérive n'est jamais acceptable automatiquement");
+  const postcCode = stripSqlComments(postcRaw);
+  if (!/premium_usage\) = 90/.test(postcCode) || !/subscriptions\) = 6/.test(postcCode) || !/ANALYSER/.test(postcCode)) {
+    fail("G7b : Q11 doit conserver, dans le CODE, les comparaisons = 90 et = 6 avec l'état ANALYSER — une dérive n'est jamais acceptable automatiquement");
   }
   if (!/28 AS expected/.test(postcRaw) || !/FROM pg_tables WHERE schemaname = 'public'/.test(postcRaw)) {
     fail("G7b : Q14 doit exiger exactement 28 tables public (comptage pg_tables)");
@@ -191,7 +194,7 @@ if (!issues.some((i) => i.startsWith("G7"))) ok("G7 : postconditions — sondes 
   if (!/string_agg\(tablename, ',' ORDER BY tablename\)/.test(postcRaw)) {
     fail("G7b : Q15 doit comparer via string_agg(... ORDER BY tablename) — comparaison d'ensembles triés, indépendante de l'ordre catalogue");
   }
-  if (!issues.some((i) => i.startsWith("G7b"))) ok("G7b : Q11 (ANALYSER + réf. 90/6), Q14 (=28), Q15 (ensemble trié exact à 28 noms) — formes exigées et présentes");
+  if (!issues.some((i) => i.startsWith("G7b"))) ok("G7b : Q11 (code : =90, =6, ANALYSER), Q14 (=28), Q15 (ensemble trié exact à 28 noms) — formes exigées et présentes");
 }
 
 // ── G8 : stub fidèle et synthétique ─────────────────────────────────────────
