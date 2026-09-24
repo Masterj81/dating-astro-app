@@ -63,9 +63,11 @@ mutate() { # fichier, expression perl (slurp)
 echo "JUNO-06 M2 — huit canaris (défaut injecté ⇒ cible rouge) :"
 echo ""
 
-# C1 : la sonde impossible revient — on réintroduit le OR sur
-#      privilege_type = 'ALL', une valeur qu'aucun serveur ne liste jamais.
-c1() { mutate "$M2" "s/IF NOT has_table_privilege\(/IF NOT EXISTS (SELECT 1 FROM information_schema.table_privileges WHERE table_schema = 'public' AND table_name = 'entitlement_sync_claims' AND grantee = 'service_role' AND privilege_type = 'ALL') OR NOT has_table_privilege(/" ; canary "C1 sonde privilege_type='ALL' revient" pipeline ; restore "$M2" ; }
+# C1 : la sonde impossible revient — on réintroduit un OU sur
+#      privilege_type = 'ALL', une valeur qu'aucun serveur ne liste jamais
+#      (ancre = la forme ANDée du self-check ; le ou-disjonctif rend la
+#      condition toujours fausse ⇒ RAISE).
+c1() { mutate "$M2" "s/IF NOT \(has_table_privilege\(/IF NOT EXISTS (SELECT 1 FROM information_schema.table_privileges WHERE table_schema = 'public' AND table_name = 'entitlement_sync_claims' AND grantee = 'service_role' AND privilege_type = 'ALL') OR NOT (has_table_privilege(/" ; canary "C1 sonde privilege_type='ALL' revient" pipeline ; restore "$M2" ; }
 
 # C2 : un privilège serveur requis est retiré avant le self-check.
 c2() { mutate "$M2" "s/(REVOKE ALL ON public\.entitlement_sync_claims FROM anon, authenticated;)/\$1\nREVOKE INSERT ON public.entitlement_sync_claims FROM service_role;/" ; canary "C2 privilège serveur retiré" pipeline ; restore "$M2" ; }
