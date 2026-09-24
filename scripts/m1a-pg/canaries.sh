@@ -75,17 +75,18 @@ k5() { sed -i 's/REPEATABLE READ;/READ COMMITTED;/' "$M1A" ; canary "K5 isolatio
 # K6 : le VALIDATE disparaît (le CHECK resterait NOT VALID).
 k6() { sed -i '/VALIDATE CONSTRAINT premium_feature_policy_enforcement_class_check/d' "$M1A" ; canary "K6 CHECK reste NOT VALID" pipeline ; restore "$M1A" ; }
 
-# K7 : un DEFAULT est ajouté avant le self-check final.
-k7() { mutate "$M1A" 's/(ALTER TABLE public\.premium_feature_policy\n  ADD CONSTRAINT premium_feature_policy_enforcement_class_check)/ALTER TABLE public.premium_feature_policy\n  ALTER COLUMN enforcement_class SET DEFAULT '"'"'legacy_unused'"'"';\n$1/' ; canary "K7 DEFAULT ajouté" pipeline ; restore "$M1A" ; }
+# K7 : un DEFAULT est ajouté avant la pose du CHECK (le self-check pg_attrdef doit le refuser).
+k7() { sed -i "s|ADD CONSTRAINT premium_feature_policy_enforcement_class_check|ALTER TABLE public.premium_feature_policy ALTER COLUMN enforcement_class SET DEFAULT 'legacy_unused';\nADD CONSTRAINT premium_feature_policy_enforcement_class_check|" "$M1A" ; canary "K7 DEFAULT ajouté" pipeline ; restore "$M1A" ; }
 
-# K8 : une politique produit modifiée dans la migration.
-k8() { mutate "$M1A" 's/(SET enforcement_class = '"'"'legacy_unused'"'"', updated_at = NOW\(\)\n WHERE feature_key = '"'"'likes_you_see_who'"'"';)/$1\n\nUPDATE public.premium_feature_policy SET free_preview_quota = 1, updated_at = NOW() WHERE feature_key = '"'"'tarot_cosmic'"'"';/' ; canary "K8 politique produit modifiée" pipeline ; restore "$M1A" ; }
+# K8 : une politique produit modifiée dans la migration (le self-check 3.1 doit le refuser).
+k8() { sed -i "s|WHERE feature_key = 'likes_you_see_who';|WHERE feature_key = 'likes_you_see_who';\nUPDATE public.premium_feature_policy SET free_preview_quota = 1, updated_at = NOW() WHERE feature_key = 'tarot_cosmic';|" "$M1A" ; canary "K8 politique produit modifiée" pipeline ; restore "$M1A" ; }
 
 # K9 : le semis de divergence du négatif A disparaît (divergence « acceptée »).
 k9() { sed -i "/UPDATE public.premium_feature_policy SET free_preview_quota = NULL WHERE feature_key='synastry';/d" "$RUNNER" ; canary "K9 catalogue divergent accepté" pipeline ; restore "$RUNNER" ; }
 
-# K10 : NV1 (colonne absente) retiré — une mutation partielle survivrait.
-k10() { mutate "$NEGV" 's/SELECT COUNT\(\*\) INTO v_n FROM information_schema\.columns\n   WHERE table_schema='"'"'public'"'"' AND table_name='"'"'premium_feature_policy'"'"'\n     AND column_name='"'"'enforcement_class'"'"';/SELECT 1 INTO v_n;/' ; canary "K10 mutation partielle survit" guard ; restore "$NEGV" ; }
+# K10 : NV1 rendu inopérant (sonde de colonne renommée) — une mutation
+#      partielle survivrait ; le garde G7 doit le refuser.
+k10() { sed -i "s|column_name='enforcement_class'|column_name='mutated_probe'|" "$NEGV" ; canary "K10 mutation partielle survit" guard ; restore "$NEGV" ; }
 
 # K11 : le service postgres disparaît du workflow.
 k11() { sed -i '/services:/,/options: >-/{/postgres:/d;/image:/d;/POSTGRES_PASSWORD/d;/POSTGRES_INITDB_ARGS/d;/5432:5432/d;}' "$WF" ; canary "K11 job PostgreSQL retiré" guard ; restore "$WF" ; }
