@@ -14,8 +14,10 @@
 -- TRUNCATE, UPDATE), so the probe could not match and the migration refused
 -- to commit on every real PostgreSQL (proven 2026-09-24 on a disposable
 -- 17.11 cluster — fail-closed, clean rollback, nothing mutated; production
--- is 17.6, same major). The probe is now has_table_privilege() with an
--- explicit privilege list, and the PK probe reads pg_attribute directly
+-- is 17.6, same major). The probe is now four individual
+-- has_table_privilege() calls ANDed — the comma-list form is an OR, not an
+-- AND (caught by canary C2 the same day: a revoked INSERT left the list
+-- probe green) — and the PK probe reads pg_attribute directly
 -- (attnum, not an information_schema ordinal). Same defect family as the
 -- 2026-09-23 M1a incident (RAISE with a ||-concatenated message): SQL that
 -- had never been executed on a real server. ci-postgres.yml now runs THIS
@@ -111,13 +113,17 @@ BEGIN
     RAISE EXCEPTION 'JUNO-06 claim table must not be reachable by anon/authenticated — refusing to commit';
   END IF;
 
-  -- service_role ownership, probed the way PostgreSQL actually stores it:
-  -- has_table_privilege with a list is true only when the role holds EVERY
-  -- listed privilege. The earlier probe (privilege_type = 'ALL') matched
-  -- nothing on any server — see the revision note in the header.
-  IF NOT has_table_privilege(
-       'service_role', 'public.entitlement_sync_claims',
-       'SELECT, INSERT, UPDATE, DELETE') THEN
+  -- service_role ownership, probed the way PostgreSQL actually stores it.
+  -- NOTE (canari C2, 2026-09-24) : la forme « liste » de has_table_privilege
+  -- ('SELECT, INSERT, UPDATE, DELETE') est un OU — vraie si le rôle tient
+  -- N'IMPORTE LEQUEL des privilèges — pas un ET. Chaque privilège requis est
+  -- donc sondé individuellement et ANDé. L'ancienne sonde
+  -- (privilege_type = 'ALL') ne matchait rien sur aucun serveur — voir la
+  -- note de révision dans l'en-tête.
+  IF NOT (has_table_privilege('service_role', 'public.entitlement_sync_claims', 'SELECT')
+       AND has_table_privilege('service_role', 'public.entitlement_sync_claims', 'INSERT')
+       AND has_table_privilege('service_role', 'public.entitlement_sync_claims', 'UPDATE')
+       AND has_table_privilege('service_role', 'public.entitlement_sync_claims', 'DELETE')) THEN
     RAISE EXCEPTION 'JUNO-06 claim table must be fully usable by service_role (the edge''s key) — refusing to commit';
   END IF;
 

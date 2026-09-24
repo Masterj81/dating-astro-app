@@ -78,13 +78,19 @@ WHERE table_schema = 'public' AND table_name = 'entitlement_sync_claims'
   AND grantee IN ('anon', 'authenticated');
 
 -- D9 : service_role tient réellement la table (le bras serveur fonctionne).
--- has_table_privilege avec une liste n'est vrai que si le rôle les tient
--- TOUS : information_schema.table_privileges ne liste jamais 'ALL' (leçon
--- 2026-09-24 — c'était la sonde impossible de la première version).
+-- Sondes individuelles ANDées : la forme « liste » de has_table_privilege
+-- est un OU (vraie si N'IMPORTE LEQUEL est tenu — leçon du canari C2,
+-- 2026-09-24). information_schema.table_privileges ne liste jamais 'ALL'.
 SELECT 'D9 service_role = usage complet (SELECT,INSERT,UPDATE,DELETE)' AS check,
        't' AS expected,
-       has_table_privilege('service_role','public.entitlement_sync_claims','SELECT, INSERT, UPDATE, DELETE')::text AS found,
-       CASE WHEN has_table_privilege('service_role','public.entitlement_sync_claims','SELECT, INSERT, UPDATE, DELETE')
+       (has_table_privilege('service_role','public.entitlement_sync_claims','SELECT')
+    AND has_table_privilege('service_role','public.entitlement_sync_claims','INSERT')
+    AND has_table_privilege('service_role','public.entitlement_sync_claims','UPDATE')
+    AND has_table_privilege('service_role','public.entitlement_sync_claims','DELETE'))::text AS found,
+       CASE WHEN (has_table_privilege('service_role','public.entitlement_sync_claims','SELECT')
+              AND has_table_privilege('service_role','public.entitlement_sync_claims','INSERT')
+              AND has_table_privilege('service_role','public.entitlement_sync_claims','UPDATE')
+              AND has_table_privilege('service_role','public.entitlement_sync_claims','DELETE'))
             THEN 'OK' ELSE 'FAIL' END AS ok;
 
 -- D9b : aucun accès client indirect — AUCUN tiers hors postgres/service_role

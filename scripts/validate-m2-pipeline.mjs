@@ -84,8 +84,8 @@ if (!issues.some((i) => i.startsWith("G2"))) ok("G2 : service postgres + runner 
 if (/privilege_type\s*=\s*'ALL'/.test(m2Code)) {
   fail("G3 : privilege_type = 'ALL' est revenu dans M2 — information_schema.table_privileges ne liste JAMAIS 'ALL' (GRANT ALL se matérialise en privilèges individuels) : la migration refuserait de committer sur tout PostgreSQL réel");
 }
-if (!/has_table_privilege\(\s*'service_role',\s*'public\.entitlement_sync_claims',\s*'SELECT, INSERT, UPDATE, DELETE'\s*\)/.test(m2Code.replace(/\n\s+/g, " "))) {
-  fail("G3 : la sonde service_role doit être has_table_privilege avec la liste explicite SELECT, INSERT, UPDATE, DELETE");
+if (!(/has_table_privilege\('service_role', 'public\.entitlement_sync_claims', 'SELECT'\)\s*\n\s*AND has_table_privilege\('service_role', 'public\.entitlement_sync_claims', 'INSERT'\)\s*\n\s*AND has_table_privilege\('service_role', 'public\.entitlement_sync_claims', 'UPDATE'\)\s*\n\s*AND has_table_privilege\('service_role', 'public\.entitlement_sync_claims', 'DELETE'\)/.test(m2Code))) {
+  fail("G3 : la sonde service_role doit ANDer quatre has_table_privilege individuels (SELECT, INSERT, UPDATE, DELETE) — la forme « liste » est un OU, pas un ET (leçon du canari C2)");
 }
 // L'absence de privilèges client doit rester vérifiée séparément (vue).
 if (!/grantee IN \('anon', 'authenticated'\)/.test(m2Code)) {

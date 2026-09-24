@@ -90,14 +90,20 @@ WHERE table_schema = 'public' AND table_name = 'entitlement_sync_claims'
   AND grantee IN ('anon','authenticated');
 
 -- Q9 : service_role = usage complet (le edge possède sa table) ------------
--- NOTE : information_schema.table_privileges ne liste JAMAIS 'ALL' (GRANT ALL
--- s'y matérialise en privilèges individuels) — sonde has_table_privilege,
--- preuve faite sur le cluster jetable le 2026-09-24. C'EST CETTE SONDE QUE
--- LA MIGRATION 002 DOIT UTILISER À LA PLACE DE privilege_type = 'ALL'.
+-- Sondes individuelles ANDées : la forme « liste » de has_table_privilege
+-- est un OU (vraie si N'IMPORTE LEQUEL est tenu — leçon du canari C2,
+-- 2026-09-24) ; information_schema.table_privileges ne liste jamais 'ALL'.
+-- C'EST CETTE FORME que la migration 002 exige côté self-check.
 SELECT 'Q9 service_role = usage complet (SELECT,INSERT,UPDATE,DELETE)' AS check,
        't' AS expected,
-       has_table_privilege('service_role','public.entitlement_sync_claims','SELECT, INSERT, UPDATE, DELETE')::text AS found,
-       CASE WHEN has_table_privilege('service_role','public.entitlement_sync_claims','SELECT, INSERT, UPDATE, DELETE')
+       (has_table_privilege('service_role','public.entitlement_sync_claims','SELECT')
+    AND has_table_privilege('service_role','public.entitlement_sync_claims','INSERT')
+    AND has_table_privilege('service_role','public.entitlement_sync_claims','UPDATE')
+    AND has_table_privilege('service_role','public.entitlement_sync_claims','DELETE'))::text AS found,
+       CASE WHEN (has_table_privilege('service_role','public.entitlement_sync_claims','SELECT')
+              AND has_table_privilege('service_role','public.entitlement_sync_claims','INSERT')
+              AND has_table_privilege('service_role','public.entitlement_sync_claims','UPDATE')
+              AND has_table_privilege('service_role','public.entitlement_sync_claims','DELETE'))
             THEN 'OK' ELSE 'FAIL' END AS ok;
 
 -- Q10 : M2 n'a PAS écrit dans l'historique (002 absent AVANT le repair) ---

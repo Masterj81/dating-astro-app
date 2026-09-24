@@ -39,9 +39,10 @@ $$;
 -- (2) Les default privileges Supabase : toute table créée ensuite par
 -- postgres dans public accorde ALL à anon/authenticated/service_role.
 -- C'est ce que M2 retire ensuite à anon/authenticated, et ce que son
--- auto-verification exige de retrouver du côté service_role (via
--- has_table_privilege — GRANT ALL ne se matérialise jamais en une ligne
--- privilege_type = 'ALL', voir la révision 2026-09-24 de la migration).
+-- auto-verification exige de retrouver du côté service_role (quatre
+-- has_table_privilege individuels ANDés — la forme « liste » est un OU,
+-- et GRANT ALL ne se matérialise jamais en privilege_type = 'ALL' ; leçons
+-- 2026-09-24, révision de la migration).
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   GRANT ALL ON TABLES TO anon, authenticated, service_role;
 
