@@ -228,7 +228,7 @@ describe('premium-tarot-reading · the decision runs as the caller (behavioural)
   /** Install the transport interceptor. Call before each request. */
   function stubTransport(user: { id: string } | null, delayRpc?: (deliver: () => void) => void) {
     calls = [];
-    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const fetchMock = vi.fn(async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
       const url = String(input);
       const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
       let bodyText: string | undefined;
@@ -263,7 +263,7 @@ describe('premium-tarot-reading · the decision runs as the caller (behavioural)
     });
   }
 
-  function request(jwt: string | null, body = { period: 'monthly', mode: 'love', locale: 'en' }) {
+  function request(jwt: string | null, body: Record<string, string> = { period: 'monthly', mode: 'love', locale: 'en' }) {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (jwt) headers.Authorization = `Bearer ${jwt}`;
     return new Request('https://edge.local/functions/v1/premium-tarot-reading', {
