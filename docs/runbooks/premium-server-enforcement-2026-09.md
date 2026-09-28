@@ -1,7 +1,8 @@
 # Runbook — JUNO-06 : contrôle premium mobile (reprise, 2026-09-23)
 
 **Verdict : PARTIELLEMENT CORRIGÉ — CONTRÔLES SERVEUR RÉELS SUR 2/11, 9/11 RESTENT CONTOURNABLES DANS L'APK.**
-**Statut : CORRIGÉ LOCALEMENT — migration, déploiement des edges et preuve production requis.**
+**Statut : BACKEND ACTIVÉ ET PROUVÉ EN PRODUCTION (24/25 sept 2026) — FERMETURE CONDITIONNÉE AU BUILD ANDROID 131.**
+Migrations M1a+M2 appliquées et enregistrées ; T1 4/4 et T2 C1–C11 verts en Production (transactionnels, zéro résidu) ; edges `sync-entitlement` et `premium-tarot-reading` déployées, `verify_jwt=true`, smokes 401 / free-402 / paid-200 prouvés — preuves et chaîne des correctifs : `docs/runbooks/juno-06-backend-activation-2026-09.md` § « Preuve de production ». **Android 130 publié ne contient pas ce code et n'appelle aucun des deux edges : la protection utilisateur réelle attend le 131.** M1c toujours interdite (autorisation produit, cycle 131).
 Aucune fusion, aucun push, aucune migration appliquée, aucun build EAS. Branche `fix/juno-06-server-premium` (worktree `C:\temp\juno06`), base `origin/master` = `49832a0` (fermeture JUNO-05/13).
 
 La première passe (v1, 2026-09-22) routait les 11 fonctionnalités par `enforce_premium_feature` et déclarait « 11/11 server enforced ». L'opérateur l'a rejetée comme **correction de sécurité** (acceptée comme amélioration de contrat) au motif qui gouverne tout ce document : *un appel serveur préalable n'est pas une autorisation de sécurité lorsque le résultat premium peut encore être produit intégralement hors ligne.* Deux blocages nommés, tous deux traités ici :
@@ -60,7 +61,9 @@ Sites purgés (chacun pouvait inverser un refus serveur) :
 
 **Personne n'est coincé** : un abonné dont le webhook tarde obtient l'accès en un appel edge (~1 s) — plus vite qu'en attendant le webhook — et le bouton de vérification est là à chaque refus. `sync-entitlement` n'accorde JAMAIIS rien (aucun RPC de décision, aucun champ `allowed` — testé structurellement) ; il ne fait pas de CORS (transport RN) ; throttled pour qu'un APK patché ne martèle pas RevenueCat à travers nous.
 
-## 4. Migrations (NON appliquées — découpage M1a/M2/M1c, décisions 2026-09-23)
+## 4. Migrations (APPLIQUÉES ET PROUVÉES en Production, 24/25 sept 2026 — découpage M1a/M2/M1c, décisions 2026-09-23)
+
+> Les deux migrations ci-dessous sont **appliquées et enregistrées** dans `schema_migrations` (`20260922000001`, `20260922000002`). T1 (4/4) et T2 (C1–C11) ont été exécutés **en Production**, transactionnels avec `ROLLBACK`, zéro résidu. Les trois fichiers ont dû être corrigés en amont (défauts découverts par exécution réelle sur PostgreSQL 17 jetable — la même famille que l'incident M1a du 23 sept : du SQL jamais exécuté pour de vrai ; PRs #72/#73/#75, CI exécutant désormais les fichiers exacts). Détail complet : `docs/runbooks/juno-06-backend-activation-2026-09.md` § « Preuve de production ». L'edge `premium-tarot-reading` a de plus reçu le correctif request-scoped (PR #76, merge `08aa83b` : la RPC enforce tournait en rôle anon sans EXECUTE → 503 pour tous ; client par requête propageant le JWT de l'appelant, import épinglé 2.114.0).
 
 `supabase/migrations/20260922000001_juno06_server_enforced_features.sql` — **M1a : classification honnête, strictement additive** :
 
@@ -73,7 +76,7 @@ Les mutations produit (6 upserts, 8 previews 1/jour, suppression des graines mor
 
 Le contrat client-130 est explicite : mêmes clés, mêmes tiers, mêmes quotas, mêmes previews ; la colonne ajoutée est invisible pour 130 (aucun de ses chemins ne la lit ni ne l'écrit).
 
-`supabase/migrations/20260922000002_sync_entitlement_throttle.sql` (NON appliquée) : table `entitlement_sync_claims` (`user_id` PK → `auth.users`, `last_sync_at`, `created_at`) — l'état du claim du throttle, possédée par `sync-entitlement` seule, sans aucune sémantique produit. RLS activée sans policy (service role seul, il bypass) ; `REVOKE ALL` de `anon`/`authenticated` avec auto-vérification des grants refusés (règle maison 20260903000003 + leçon 20260911000001) et vérification que la PK est bien `user_id` — l'atomicité des deux bras est verrouillée dessus. Contrat comportemental : `supabase/tests/juno06_sync_entitlement_claim.test.sql` (les 4 cas opérateur) et `supabase/tests/juno06_server_enforced_features.test.sql` (C1..C11 : classification, additivité, M2 verrouillée, M1c absente).
+`supabase/migrations/20260922000002_sync_entitlement_throttle.sql` (**appliquée et enregistrée**, 25 sept 2026, postconditions Q1–Q15 vertes) : table `entitlement_sync_claims` (`user_id` PK → `auth.users`, `last_sync_at`, `created_at`) — l'état du claim du throttle, possédée par `sync-entitlement` seule, sans aucune sémantique produit. RLS activée sans policy (service role seul, il bypass) ; `REVOKE ALL` de `anon`/`authenticated` avec auto-vérification des grants refusés (règle maison 20260903000003 + leçon 20260911000001) et vérification que la PK est bien `user_id` — l'atomicité des deux bras est verrouillée dessus. Contrat comportemental : `supabase/tests/juno06_sync_entitlement_claim.test.sql` (les 4 cas opérateur) et `supabase/tests/juno06_server_enforced_features.test.sql` (C1..C11 : classification, additivité, M2 verrouillée, M1c absente).
 
 ## 5. Validateurs et canaris
 
@@ -91,6 +94,7 @@ Le contrat client-130 est explicite : mêmes clés, mêmes tiers, mêmes quotas,
 
 ## 7. Séquence de déploiement (quand l'opérateur décide)
 
+> **EXÉCUTÉE intégralement les 24/25 septembre 2026** — chaque pas avec sa porte de contrôle ; preuves : `docs/runbooks/juno-06-backend-activation-2026-09.md` § « Preuve de production ». Le texte ci-dessous est conservé comme enregistrement de la séquence de référence. Reste ouvert : le pas 5 (build 131+) uniquement.
 1. `supabase db push` **interdit** (JUNO-15) — appliquer `20260922000001` PUIS `20260922000002` par le processus revu ; la première refuse de committer quoi que ce soit d'autre que le catalogue 3/7/2, la seconde crée la table de claim (RLS + grants vérifiés). **Ordre obligatoire** : sans `002`, `sync-entitlement` ne peut pas réclamer son slot et répond `state_unavailable` 503 fail-closed (sûr mais inutile). Puis exécuter `supabase/tests/juno06_sync_entitlement_claim.test.sql` contre la base : les quatre cas (ligne absente, claims concurrents, échec RC après claim, retry après 30 s) doivent finir `4/4 cases green`.
 2. Déployer `premium-tarot-reading` **après** la migration (avant elle, l'edge répond `unknown_feature`… non : les clés existent depuis 20260511000002 pour tarot_cosmic/monthly ; la colonne classe n'affecte pas enforce — l'edge est déployable dès que la migration est appliquée, et pas avant pour que le catalogue honnête existe en base).
 3. Secrets à vérifier avant deploy : `REVENUECAT_API_KEY` (déjà requis par `backfill-revenuecat` — même secret, aucune rotation), rien de nouveau côté Stripe.

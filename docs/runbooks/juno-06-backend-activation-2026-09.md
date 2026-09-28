@@ -6,20 +6,69 @@ PHASE 0 : EXÉCUTÉE, VERTE (2026-09-23, projet qtihezzbuubnyvrjdkjd) — les si
 DÉCOUPAGE M1a / M2 / M1c : APPROUVÉ ET PRÉPARÉ (cette branche porte M1a+M2)
 M1c : BROUILLON sous docs/runbooks/sql/ — INTERDITE jusqu'au cycle 131 + autorisation produit dédiée
 SYNASTRY free_preview_quota : CONSERVER 1 (décision produit 2026-09-23)
-ACTIVATION BACKEND : NON AUTORISÉE — aucune migration appliquée, aucun edge déployé
+ACTIVATION BACKEND : EXÉCUTÉE ET PROUVÉE (2026-09-24/25) — voir « Preuve de production » en tête
 ```
 
-**Statut : PRÉPARÉ — activation bloquée sur la revue des mutations de politique (§1bis). Rien n'est appliqué, rien n'est déployé.** La Phase 0 est un script unique en lecture seule (`docs/runbooks/sql/2026-09-juno-06-phase0-capture.sql`) : ce poste de préparation n'a AUCUN accès base (vérifié : pas de CLI supabase, pas de psql, `.env.local` = clés publiques client uniquement) — la colonne « constaté » de la matrice se remplit depuis sa sortie, qui est la source de vérité du rollback.
+**Statut : JUNO-06 BACKEND ACTIVÉ ET PROUVÉ — FERMETURE CONDITIONNÉE AU BUILD ANDROID 131.** Tout ce qui suit (§0–§1ter) décrit l'état de PRÉPARATION au 2026-09-23 et est conservé comme enregistrement des décisions et des gates ; l'état final appliqué est consigné dans la section « Preuve de production — 24/25 septembre 2026 » ci-dessous. Les sections §2–§3 (commandes et postconditions) ont été exécutées selon la séquence, avec les correctifs intermédiaires documentés (M1a : incident PL/pgSQL `RAISE` concaténé + CI PostgreSQL réelle, PR #72 ; M2 : sonde `privilege_type='ALL'` impossible + T1/T2 non exécutables, PRs #73/#75 ; tarot : RPC en tant qu'appelant, PR #76). La Phase 0 est un script unique en lecture seule (`docs/runbooks/sql/2026-09-juno-06-phase0-capture.sql`) : ce poste de préparation n'a AUCUN accès base (vérifié : pas de CLI supabase, pas de psql, `.env.local` = clés publiques client uniquement) — la colonne « constaté » de la matrice se remplit depuis sa sortie, qui est la source de vérité du rollback.
 
 Fusion : PR #69 → `master` au merge commit **`491e861`** (head fusionné `9a196ca` = `09961df` + correctif de 4 marqueurs de commentaire ; l'écart est documenté dans la PR, commentaire `5797022290`). CI master verte sur `491e861` (Quality Gates, Gitleaks, CodeQL).
 
-Périmètre de CE rapport : l'activation backend seule — migrations `20260922000001` + `20260922000002`, déploiement des edges `sync-entitlement` et `premium-tarot-reading`. **Hors périmètre** : build Android 131, fermeture de JUNO-06 (le verdict reste 2/11 server-enforced-data, 7/11 server-metered-ui, 2/11 public-content), poursuite des 7 contournables.
+Périmètre de CE rapport : l'activation backend seule — migrations `20260922000001` + `20260922000002`, déploiement des edges `sync-entitlement` et `premium-tarot-reading`. **Hors périmètre** : build Android 131, fermeture de JUNO-06 (le verdict reste 2/11 server-enforced-data, 7/11 server-metered-ui, 2/11 public-content — **l'inventaire honnête est maintenu inchangé** : le backend est activé, mais la protection utilisateur réelle n'arrive qu'avec un client qui appelle ces edges, c'est-à-dire Android 131+ ; le 130 publié garde son moteur local et n'appelle aucun des deux edges).
+
+---
+
+## Preuve de production — 24/25 septembre 2026 (l'activation exécutée)
+
+Ce qui suit consigne l'état final mesuré. Les opérations ont chacune eu leur porte de contrôle ; cette section est l'enregistrement, pas la reconstitution.
+
+### Base de données
+
+| Objet | État prouvé |
+|---|---|
+| M1a `20260922000001` | **appliquée** (24 sep, exécution opérateur après incident PL/pgSQL — le `RAISE` à message concaténé par `||` est refusé par le parseur ; rollback propre prouvé, RIEN de partiel ; correctif PR #72 fusionné `fa6ab36` avec pipeline CI **exécutant le fichier exact sur PostgreSQL 17.11 épinglé par digest** + 12 canaris locaux) ; **enregistrée** dans `schema_migrations` via `migration repair` opérateur ; postconditions PC1–PC16 vertes |
+| M2 `20260922000002` | **appliquée** (25 sep) ; **enregistrée** ; postconditions **Q1–Q15** vertes (Q14/Q15 : exactement 28 tables publiques, inventaire exact = baseline pré-M2 + `entitlement_sync_claims`) ; la première version portait une sonde `privilege_type='ALL'` **impossible** (`information_schema.table_privileges` ne liste jamais `ALL` — GRANT ALL se matérialise en privilèges individuels) et son échec fail-closed a été prouvé sur cluster jetable AVANT toute tentative Production (PR #73, merge `59edecb`) |
+| T1 (`juno06_sync_entitlement_claim.test.sql`) | **Production : 4/4 cas verts**, transactionnel, `ROLLBACK`, **zéro résidu** (après correctifs PR #73 : booléen→INTEGER au CASE 3, FK `auth.users` violée par `gen_random_uuid()` au CASE 1a) |
+| T2 (`juno06_server_enforced_features.test.sql`) | **Production : C1–C11 verts**, transactionnel, `ROLLBACK`, **zéro résidu** (après correctifs PR #75, merge `c7207c1` : sonde 'ALL' again, rôle `authenticated` non restauré avant C10, C11 contredisait le snapshot Phase 0 via un SELECT INTO multi-lignes, C9 contredisait la fenêtre de rejeu 15 min) |
+| Politiques | 15 lignes ; classes **2 `server_enforced_data` / 7 `server_metered_ui` / 2 `public_content` / 4 legacy** ; `synastry.free_preview_quota = 1` conservé ; **M1c absente** (previews tarot NULL, graines mortes présentes) |
+| Tables publiques | **28** après M2 (27 pré-M2 + `entitlement_sync_claims`) |
+
+**Chaîne des correctifs** (chaque défaut découvert par exécution réelle, jamais par lecture) : M1a incident → PR #72 (`fa6ab36`) ; M2+T1 → PR #73 (`59edecb`) ; Q14/Q15 → PR #74 (`a524b0c`) ; T2 → PR #75 (`c7207c1`) ; tarot RPC → PR #76 (`08aa83b`). CI finale : job « M1a + M2 sur PostgreSQL 17.11 » exécutant les fichiers exacts M1a, M2, T1, T2 à chaque PR sur ces chemins.
+
+### Edge 1 — `sync-entitlement` (ACTIVE v1, `verify_jwt=true`)
+
+- Déployée depuis `master@c7207c1`, blob git `3b5b4e04…` ; les 23 autres fonctions inchangées (versions et horodatages identiques).
+- Smoke sans JWT : **401** (rejet plateforme `UNAUTHORIZED_NO_AUTH_HEADER`).
+- Smoke authentifié (compte test) : premier appel **HTTP 200**, verdict `free/ok` — chemin réel `synced_downgrade tier=free` (le compte EXISTE chez RevenueCat avec entitlements vides — pas le chemin RC 404 prédit ; même garantie : un free vérifié, zéro écriture `subscriptions`) ; second appel à moins d'une seconde : **HTTP 429**, log `outcome=throttled` ; claim atomique unique dans `entitlement_sync_claims` (ligne **conservée comme preuve** du throttle).
+- Nuance outillage : le corps du 429 n'a pas été capturé par PowerShell 5.1 (gestion des réponses non-2xx) ; le statut plateforme, le log `throttled` et la ligne DB prouvent le comportement.
+- **Le UUID complet apparaît dans les logs plateforme** — identifiant pseudonyme dans les enregistrements, à ne jamais reproduire dans une documentation publique.
+
+### Edge 2 — `premium-tarot-reading` (ACTIVE v1, `verify_jwt=true`)
+
+- **Correctif JWT fusionné via PR #76** (merge `08aa83b`) : la première version exécutait la RPC `enforce_premium_feature` sur le client anon module-level → PostgREST en rôle `anon` (EXECUTE révoqué par `20260427000022`) → **503 pour tous** — prouvé fail-closed sur cluster jetable AVANT déploiement. Le correctif : **client request-scoped** (`global.headers.Authorization = authHeader`, clé anon publique, jamais service-role, zéro état mutable), **import épinglé `@supabase/supabase-js@2.114.0`** (aucun `deno.lock` dans le dépôt — l'import flottant `@2` ne l'aurait pas épingle) ; suite étendue à 27 tests comportementaux (vrai handler + vrai npm supabase-js, transport intercepté : la RPC sort avec le JWT de l'appelant, deux requêtes concurrentes ne partagent jamais un token).
+- Blob déployé : **sha256 `9c272790…f57a76`** (4212aa2d git) ; artefact `tarot.generated.ts` `f9312d34…` régénéré byte-identique.
+- Déployée depuis `master@08aa83b` ; **25 fonctions** au total, les 24 précédentes inchangées.
+- Smokes : **A (sans JWT) : 401**, aucun contenu premium, aucune mutation DB. **B (free monthly, compte E2E dédié) : 402**, aucun contenu premium observé, **zéro consommation** (premium_usage global inchangé ; subscriptions/auth/claims/politiques inchangés). Nuance : le JSON 402 n'a pas été capturé par PowerShell 5.1 — le handler exact et les 27 tests prouvent `premium_required/insufficient_tier`, la Production prouve 402 et zéro effet. **C (payé monthly, compte test Stripe actif, premium effectif) : 200**, `success=true`, `viaFreePreview=false`, lecture serveur complète (3 cartes, `period`/`seed` présents, `isFallback=false` pour fr), **une seule invocation**, `premium_usage` 92→93 (exactement une ligne `tarot_monthly`, `view_count=1`, zéro ligne `tarot_cosmic`, subscriptions et claims inchangés, politiques/tables/migrations inchangées).
+- **Dérive `auth.users` constatée et attribuée** : postcondition globale attendait 389, a trouvé 391 ; au moins 3 inscriptions organiques mesurées le 27 septembre ; `premium-tarot-reading` ne possède aucun chemin d'écriture `auth.users` — la dérive n'est pas attribuable au smoke. **Leçon consignée : le compteur global `auth.users` n'est pas une postcondition discriminante sur une base vivante lorsque la baseline est ancienne.**
+
+### État produit — dit honnêtement
+
+- **Backend JUNO-06 : activé et prouvé en Production.** Les deux fonctionnalités tarot sont réellement `server_enforced_data` dans le code livré sur `master`.
+- **Cependant Android 130 actuellement publié contient encore l'ancien moteur local et n'appelle pas ces edges.** La protection utilisateur réelle n'arrivera qu'avec Android 131+. **JUNO-06 ne doit donc PAS être déclaré fermé.**
+- Statut exact : **`JUNO-06 BACKEND ACTIVÉ ET PROUVÉ — FERMETURE CONDITIONNÉE AU BUILD ANDROID 131`**.
+- Inventaire honnête maintenu : **2/11 `server_enforced_data`** (code 131 futur) · **7/11 `server_metered_ui`** · **2/11 `public_content`**. M1c reste différée au cycle 131 (autorisation produit requise). La décision natal « 1 aperçu gratuit par fenêtre de 7 jours » reste **séparée et non implémentée**. Ne pas prétendre HttpOnly, protection de tous les contenus, ou fermeture des sept `server_metered_ui`.
+
+### Opérations restantes (toutes sous autorisation distincte)
+
+1. Build Android 131 (porte le client qui appelle les edges + M1c le cas échéant) ;
+2. M1c — autorisation produit dédiée, jamais avant le 131 ;
+3. Décision produit natal (1/7 jours) — séparée ;
+4. les 7 `server_metered_ui` restent un chantier ouvert par feature (voir l'inventaire).
 
 ---
 
 ## 0. Ce que la fusion a mis sur `master` (et ce qu'elle N'a PAS fait)
 
-Sur `master` depuis `491e861` : le code client (gate purgé du lissage RC, écran tarot serveur, flux sync), les deux sources d'edges, les deux migrations, la table de test SQL, les validateurs et leurs canaris. **Aucune base n'a vu ces migrations, aucune fonction n'est déployée** : jusqu'à l'activation ci-dessous, la production se comporte exactement comme avant la fusion (build 130 = dernier client ; les edges n'existent pas à l'URL).
+Sur `master` depuis `491e861` : le code client (gate purgé du lissage RC, écran tarot serveur, flux sync), les deux sources d'edges, les deux migrations, la table de test SQL, les validateurs et leurs canaris. **Au 2026-09-23 (état décrit par cette section, conservée comme enregistrement de préparation), aucune base n'avait vu ces migrations et aucune fonction n'était déployée** : la production se comportait exactement comme avant la fusion (build 130 = dernier client ; les edges n'existaient pas à l'URL). — *Cet état a pris fin les 24/25 septembre 2026 : voir « Preuve de production » en tête.*
 
 ## 1. État distant AVANT mutation — Phase 0 (EXÉCUTÉE, verte, 2026-09-23)
 
