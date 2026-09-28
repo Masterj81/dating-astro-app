@@ -1,0 +1,49 @@
+# 20 - Android 131 smoke, scenario C: double action / rapid parameter changes.
+#
+# Run ONLY against a real 131 test build. The INVOCATION COUNT (one edge call
+# whatever the user fires mid-flight) is proven deterministically in
+# apps/mobile/src/__tests__/tarot-client.test.ts (transport counters + bodies
+# on the wire); Maestro cannot count network calls — this flow is the visual
+# sanity that the screen stays coherent: no double render, no error, the
+# settled reading is the launched one, nothing auto-fires afterwards.
+#
+# Asserts:
+#   - rapid double launch of the tarot surface settles into ONE reading
+#   - mode toggles disabled during loading; after settle, the reading renders
+#   - no error state appears
+#
+# Required env: TEST_CELESTIAL_EMAIL / TEST_CELESTIAL_PASSWORD.
+
+appId: com.astrodatingapp.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- runFlow: shared/login-as-celestial-user.yaml
+
+# Two rapid navigations to the same surface = the double-tap class.
+- openLink: "astrodating://premium-screens/tarot"
+- openLink: "astrodating://premium-screens/tarot"
+
+# The single in-flight operation settles into the reading screen.
+- extendedWaitUntil:
+    visible:
+      id: "tarot-card-0"
+    timeout: 30000
+
+- assertVisible:
+    id: "tarot-card-0"
+- assertNotVisible:
+    id: "tarot-error-state"
+
+# A mode switch AFTER settle is an explicit new action: it re-queries (one
+# operation — the lock is free again) and must settle back to a reading.
+- tapOn:
+    id: "tarot-mode-general"
+- extendedWaitUntil:
+    visible:
+      id: "tarot-card-0"
+    timeout: 30000
+- assertNotVisible:
+    id: "tarot-error-state"

@@ -110,7 +110,7 @@ export default function PaywallModal() {
       accessibilityViewIsModal={true}
       accessibilityLabel={t('a11y.closeModal')}
     >
-      <View style={styles.overlay}>
+      <View style={styles.overlay} testID="paywall-modal">
         <View
           style={styles.container}
           accessible={true}

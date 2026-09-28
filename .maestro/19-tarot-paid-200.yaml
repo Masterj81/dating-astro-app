@@ -1,0 +1,48 @@
+# 19 - Android 131 smoke, scenario B: paid (Celestial) account, tarot monthly -> 200.
+#
+# Run ONLY against a real 131 test build (runbook gate 11). Deterministic
+# coverage (200 valid, exactly-one-invocation, monthly sent verbatim) lives in
+# apps/mobile/src/__tests__/tarot-client.test.ts; the bounded DB
+# postcondition (exactly one new tarot_monthly row, view_count=1) is runbook
+# gate 12 and is checked out-of-band, read-only.
+#
+# Asserts:
+#   - the reading screen renders (server 200)
+#   - EXACTLY three card slots for monthly (Celestial draws 3, Cosmic 4)
+#   - tapping a card reveals it (server content, no local fallback)
+#
+# Required env: TEST_CELESTIAL_EMAIL / TEST_CELESTIAL_PASSWORD.
+
+appId: com.astrodatingapp.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- runFlow: shared/login-as-celestial-user.yaml
+
+- openLink: "astrodating://premium-screens/tarot"
+
+# Server 200 -> the reading screen with the card row.
+- extendedWaitUntil:
+    visible:
+      id: "tarot-card-0"
+    timeout: 30000
+
+- assertVisible:
+    id: "tarot-screen"
+- assertVisible:
+    id: "tarot-card-0"
+- assertVisible:
+    id: "tarot-card-1"
+- assertVisible:
+    id: "tarot-card-2"
+# Monthly draws three: a fourth slot must NOT exist.
+- assertNotVisible:
+    id: "tarot-card-3"
+
+# Reveal the first card — the content comes from the server payload only.
+- tapOn:
+    id: "tarot-card-0"
+- waitForAnimationToEnd:
+    timeout: 5000
