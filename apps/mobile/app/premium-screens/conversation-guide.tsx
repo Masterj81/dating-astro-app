@@ -73,6 +73,7 @@ import {
   syncEntitlement,
   type PremiumGateReason,
 } from '../../services/premiumUsage';
+import { SyncCooldown } from '../../utils/syncCooldown';
 
 // Replays a grant the server already recorded today. Read the file header
 // before changing this — it is load-bearing for the preview promise.
@@ -128,6 +129,14 @@ export default function ConversationGuideScreen() {
   // True while the "check my subscription" action asks the server to verify
   // the entitlement (JUNO-06 sync flow).
   const [syncing, setSyncing] = useState(false);
+  // JUNO-06 PR A — UX mirror of the edge's 30 s throttle after a 429, plus
+  // the honest last-failure state (expired session / server unreachable).
+  // Same contract as PremiumGate: display only, never a grant, never fires.
+  const cooldownRef = useRef(new SyncCooldown());
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [syncFailure, setSyncFailure] = useState<
+    'none' | 'unauthenticated' | 'unavailable'
+  >('none');
 
   // One server call per mount. The ref — not state — is what makes that true
   // even if two taps land in the same render pass.
@@ -254,17 +263,43 @@ export default function ConversationGuideScreen() {
   // RevenueCat credentials, then re-ask enforce. Contains no code path that
   // unlocks — only the new server verdict (requestUnlock's enforce call) can.
   const handleSyncAndRecheck = useCallback(async () => {
+    // Single-flight at the UI (the service shares in-flight promises) and a
+    // cooldown tap is ignored. No retry is EVER automatic.
+    if (syncing || cooldownRef.current.isActive()) return;
+
     setSyncing(true);
     const result = await syncEntitlement();
     setSyncing(false);
-    if (!result.ok) {
-      // Offline / RevenueCat unreachable / throttled: the refusal stands.
+
+    if (result.ok) {
+      setSyncFailure('none');
+      gateRequested.current = false;
+      setUnlock({ status: 'checking' });
+      void requestUnlock();
       return;
     }
-    gateRequested.current = false;
-    setUnlock({ status: 'checking' });
-    void requestUnlock();
-  }, [requestUnlock]);
+
+    // Fail-closed on every branch: the refusal stands, nothing unlocks.
+    if (result.code === 'rate_limited') {
+      setSyncFailure('none');
+      cooldownRef.current.start();
+      setCooldownSeconds(cooldownRef.current.remainingSeconds());
+      return;
+    }
+    if (result.code === 'unauthenticated') {
+      setSyncFailure('unauthenticated');
+      return;
+    }
+    setSyncFailure('unavailable');
+  }, [requestUnlock, syncing]);
+
+  // Countdown display for the 429 cooldown — reads the clock, fires nothing.
+  useEffect(() => {
+    const id = setInterval(() => {
+      setCooldownSeconds(cooldownRef.current.remainingSeconds());
+    }, 500);
+    return () => clearInterval(id);
+  }, []);
 
   const handleSituationPress = useCallback(
     (key: CoachSituationKey) => {
@@ -436,19 +471,36 @@ export default function ConversationGuideScreen() {
               </Text>
             </TouchableOpacity>
           ) : needsSync ? (
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={() => void handleSyncAndRecheck()}
-              disabled={syncing}
-              accessibilityRole="button"
-              testID="coach-sync-entitlement"
-            >
-              <Text style={[styles.primaryButtonText, styles.primaryButtonTextPlain]}>
-                {syncing
-                  ? t('verifyingAccess') || 'Verifying access...'
-                  : t('subscriptionConfirmRetry') || 'Check my subscription'}
-              </Text>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={() => void handleSyncAndRecheck()}
+                disabled={syncing || cooldownSeconds > 0}
+                accessibilityRole="button"
+                testID="coach-sync-entitlement"
+              >
+                <Text style={[styles.primaryButtonText, styles.primaryButtonTextPlain]}>
+                  {syncing
+                    ? t('verifyingAccess') || 'Verifying access...'
+                    : cooldownSeconds > 0
+                      ? t('subscriptionSyncRetryIn', { seconds: cooldownSeconds }) ||
+                        `Try again in ${cooldownSeconds}s`
+                      : t('subscriptionConfirmRetry') || 'Check my subscription'}
+                </Text>
+              </TouchableOpacity>
+              {(cooldownSeconds > 0 || syncFailure !== 'none') && (
+                <Text style={styles.syncNote}>
+                  {cooldownSeconds > 0
+                    ? t('subscriptionSyncThrottled') ||
+                      'Verification is limited to once every 30 seconds.'
+                    : syncFailure === 'unauthenticated'
+                      ? t('subscriptionSyncReauth') ||
+                        'Your session has expired. Sign in again to check your subscription.'
+                      : t('subscriptionSyncUnavailable') ||
+                        "The billing server can't be reached right now. Nothing changed on your account."}
+                </Text>
+              )}
+            </>
           ) : (
             <TouchableOpacity
               style={styles.primaryButton}
@@ -805,6 +857,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     color: AppTheme.colors.textSecondary,
+  },
+  // Honest status line under the sync button (throttle wait, expired session,
+  // billing server unreachable). Informational only — never a promise.
+  syncNote: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: AppTheme.colors.textSecondary,
+    marginTop: 8,
+    maxWidth: 320,
   },
   primaryButton: {
     marginTop: 18,
