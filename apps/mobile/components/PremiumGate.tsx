@@ -21,6 +21,7 @@ import {
   syncEntitlement,
   type PremiumGateReason,
 } from '../services/premiumUsage';
+import { SyncCooldown } from '../utils/syncCooldown';
 
 type PremiumGateProps = {
   feature: FeatureKey;
@@ -36,6 +37,17 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
   // True while the "confirm my subscription" action is asking the server to
   // verify the entitlement (JUNO-06 sync flow).
   const [syncing, setSyncing] = useState(false);
+  // JUNO-06 PR A — UX mirror of the edge's 30 s throttle after a 429. The
+  // button is disabled while it runs; the cooldown NEVER decides access and
+  // fires nothing when it lapses (the reader taps again, or not).
+  const cooldownRef = useRef(new SyncCooldown());
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  // What the LAST sync attempt failed with, so the button area can say
+  // something true: a session to re-establish (401) or an honest
+  // retryable-unavailable state (502/503/network). Fail-closed either way.
+  const [syncFailure, setSyncFailure] = useState<
+    'none' | 'unauthenticated' | 'unavailable'
+  >('none');
   // Why access was refused, so the paywall can say something true instead of
   // always claiming the free preview was used.
   const [denialReason, setDenialReason] = useState<PremiumGateReason>('free_preview_exhausted');
@@ -47,6 +59,16 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
     return () => {
       aliveRef.current = false;
     };
+  }, []);
+
+  // Countdown display for the 429 cooldown. A cheap always-on tick that
+  // React bails out of when the value does not change; cleaned up on
+  // unmount. It only READS the clock — nothing is called at zero.
+  useEffect(() => {
+    const id = setInterval(() => {
+      setCooldownSeconds(cooldownRef.current.remainingSeconds());
+    }, 500);
+    return () => clearInterval(id);
   }, []);
 
   const runServerCheck = useCallback(async (isMounted: () => boolean) => {
@@ -139,6 +161,10 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
   // RevenueCat credentials, then RE-ASK enforce. Only the new server verdict
   // can grant — this function contains no code path that sets 'granted'.
   const handleSyncAndRecheck = async () => {
+    // Single-flight at the UI too: the service shares in-flight promises,
+    // and a cooldown tap is ignored outright. No retry is EVER automatic.
+    if (syncing || cooldownRef.current.isActive()) return;
+
     setSyncing(true);
     const result = await syncEntitlement();
     setSyncing(false);
@@ -146,14 +172,31 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
     if (result.ok) {
       // The server has now written the tier it verified. Refresh the
       // context's display tier from the server, then re-run the decision.
+      setSyncFailure('none');
       await refreshSubscription();
       setAccessState('checking');
       runServerCheck(() => aliveRef.current);
       return;
     }
-    // Sync failed (offline, RevenueCat unreachable, throttled): stay in the
-    // sync_available state. The server's refusal stands until it changes
-    // its own mind.
+
+    // Every failure below is fail-closed: the accessState stays 'denied',
+    // the server's refusal stands, no tier changes locally.
+    if (result.code === 'rate_limited') {
+      // Mirror the edge's 30 s window: disable the button, show the wait.
+      // Nothing is scheduled to fire when it lapses.
+      setSyncFailure('none');
+      cooldownRef.current.start();
+      setCooldownSeconds(cooldownRef.current.remainingSeconds());
+      return;
+    }
+    if (result.code === 'unauthenticated') {
+      // The bounded in-call renewal (services/premiumUsage.ts) already ran
+      // and the session is still invalid: explicit reconnection state.
+      setSyncFailure('unauthenticated');
+      return;
+    }
+    // 502 / 503 / network / unclassifiable: honest retryable-unavailable.
+    setSyncFailure('unavailable');
   };
 
   const handleUnlock = () => {
@@ -304,20 +347,41 @@ export default function PremiumGate({ feature, children, isDataLoading }: Premiu
               Asking the server to verify is the ONLY thing the device can do
               when it disagrees with a server refusal. */}
           {denialReason === 'sync_available' && (
-            <TouchableOpacity
-              style={styles.syncButton}
-              onPress={handleSyncAndRecheck}
-              disabled={syncing}
-              testID="premium-sync-entitlement"
-            >
-              {syncing ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.syncButtonText}>
-                  {t('subscriptionConfirmRetry') || 'Check my subscription'}
+            <>
+              <TouchableOpacity
+                style={styles.syncButton}
+                onPress={handleSyncAndRecheck}
+                disabled={syncing || cooldownSeconds > 0}
+                testID="premium-sync-entitlement"
+              >
+                {syncing ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.syncButtonText}>
+                    {cooldownSeconds > 0
+                      ? t('subscriptionSyncRetryIn', { seconds: cooldownSeconds }) ||
+                        `Try again in ${cooldownSeconds}s`
+                      : t('subscriptionConfirmRetry') || 'Check my subscription'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              {/* What actually happened on the last attempt. The cooldown is
+                  UX only; each copy says something true and none of them
+                  grants or promises anything. */}
+              {(cooldownSeconds > 0 || syncFailure !== 'none') && (
+                <Text style={styles.syncNoteText}>
+                  {cooldownSeconds > 0
+                    ? t('subscriptionSyncThrottled') ||
+                      'Verification is limited to once every 30 seconds.'
+                    : syncFailure === 'unauthenticated'
+                      ? t('subscriptionSyncReauth') ||
+                        'Your session has expired. Sign in again to check your subscription.'
+                      : t('subscriptionSyncUnavailable') ||
+                        "The billing server can't be reached right now. Nothing changed on your account."}
                 </Text>
               )}
-            </TouchableOpacity>
+            </>
           )}
 
           {/* CTA Button */}
@@ -545,6 +609,16 @@ const styles = StyleSheet.create({
     color: AppTheme.colors.gold,
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Honest status line under the sync button: throttle wait, expired session,
+  // or billing server unreachable. Informational only — never a promise.
+  syncNoteText: {
+    color: '#9a9aa8',
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: -8,
+    marginBottom: 16,
+    paddingHorizontal: 8,
   },
   ctaGradient: {
     paddingVertical: 18,
