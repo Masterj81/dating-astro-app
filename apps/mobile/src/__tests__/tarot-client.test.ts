@@ -390,96 +390,356 @@ describe('fetchTarotReading — single-flight', () => {
   });
 });
 
-// ---- 6. the screen controller ----------------------------------------------
+// ---- 6. the screen controller — the consumption lock -----------------------
+//
+// The controller's global slot is the product invariant: at most ONE
+// premium-tarot-reading operation per screen instance, WHATEVER the
+// parameters — the Edge decides and spends per INVOCATION, so a second
+// concurrent invocation with different parameters would be a second
+// consumption even though its answer would be dropped. Every concurrency
+// test below counts the transport calls explicitly (never just the render).
 
-describe('createTarotScreenController', () => {
+describe('createTarotScreenController — consumption lock', () => {
   function makeCallbacks() {
     const calls: string[] = [];
     return {
       calls,
       callbacks: {
         onPending: () => calls.push('pending'),
-        onSuccess: (r: ServerTarotReading | null, v: boolean) => calls.push(`success:${v}:${r?.seed ?? 'null'}`),
+        onSuccess: (r: ServerTarotReading | null, v: boolean) =>
+          calls.push(`success:${v}:${r?.period}/${r?.mode}/${r?.seed}`),
         onPremiumRequired: () => calls.push('premium_required'),
         onFailure: (code: string) => calls.push(`failure:${code}`),
       },
     };
   }
 
-  it('unmount (dispose) during the call: the late answer sets NOTHING', async () => {
-    let resolveFirst!: (v: { data: unknown; error: unknown }) => void;
+  /** A controllable pending edge invocation (resolve becomes callable once
+   *  the mock actually fires — the handle is a mutable object, never a
+   *  value snapshot). */
+  function deferredInvoke() {
+    const handle: { resolve: (v: { data: unknown; error: unknown }) => void } = {
+      resolve: () => {
+        throw new Error('deferredInvoke resolved before the invocation started');
+      },
+    };
     invokeMock.mockImplementationOnce(
-      () => new Promise((resolve) => { resolveFirst = resolve; }),
+      () =>
+        new Promise((r) => {
+          handle.resolve = r;
+        }),
     );
+    return handle;
+  }
+
+  /** A controllable pending session renewal (same mutable-handle pattern). */
+  function deferredRefresh() {
+    const handle: { resolve: (v: unknown) => void } = {
+      resolve: () => {
+        throw new Error('deferredRefresh resolved before the refresh started');
+      },
+    };
+    refreshSessionMock.mockImplementationOnce(
+      () =>
+        new Promise((r) => {
+          handle.resolve = r;
+        }),
+    );
+    return handle;
+  }
+
+  /** The exact bodies that reached the transport, in order. */
+  const bodiesOnTheWire = () =>
+    invokeMock.mock.calls.map((c: unknown[]) => (c[1] as { body: unknown }).body);
+
+  const flush = () => new Promise((r) => { setTimeout(r, 0); });
+
+  // (1) identical double tap
+  it('two simultaneous calls with IDENTICAL parameters -> ONE edge invocation', async () => {
+    const d = deferredInvoke();
+    const { calls, callbacks } = makeCallbacks();
+    const controller = createTarotScreenController(callbacks);
+
+    const p1 = controller.load('monthly', 'love', 'en');
+    const p2 = controller.load('monthly', 'love', 'en');
+    await flush();
+
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+    expect(bodiesOnTheWire()).toEqual([{ period: 'monthly', mode: 'love', locale: 'en' }]);
+
+    d.resolve(ok200(validReading()));
+    await Promise.all([p1, p2]);
+    expect(calls).toEqual(['pending', 'success:false:monthly/love/seed-1']);
+  });
+
+  // (2, 3) period switches mid-flight
+  it('monthly in flight, weekly attempted before resolution -> ONE total invocation', async () => {
+    const d = deferredInvoke();
+    const { calls, callbacks } = makeCallbacks();
+    const controller = createTarotScreenController(callbacks);
+
+    const p1 = controller.load('monthly', 'love', 'en');
+    const p2 = controller.load('weekly', 'love', 'en');
+    await flush();
+
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+    expect(bodiesOnTheWire()).toEqual([{ period: 'monthly', mode: 'love', locale: 'en' }]);
+
+    d.resolve(ok200(validReading()));
+    await Promise.all([p1, p2]);
+    expect(calls).toEqual(['pending', 'success:false:monthly/love/seed-1']);
+  });
+
+  it('weekly in flight, monthly attempted before resolution -> ONE total invocation', async () => {
+    const d = deferredInvoke();
+    const { calls, callbacks } = makeCallbacks();
+    const controller = createTarotScreenController(callbacks);
+
+    void controller.load('weekly', 'love', 'en');
+    void controller.load('monthly', 'love', 'en');
+    await flush();
+
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+    expect(bodiesOnTheWire()).toEqual([{ period: 'weekly', mode: 'love', locale: 'en' }]);
+
+    d.resolve(ok200(validReading({ period: 'weekly' })));
+    await flush();
+    expect(calls).toEqual(['pending', 'success:false:weekly/love/seed-1']);
+  });
+
+  // (4) mode switch mid-flight
+  it('mode change attempted before resolution -> ONE total invocation', async () => {
+    const d = deferredInvoke();
+    const { calls, callbacks } = makeCallbacks();
+    const controller = createTarotScreenController(callbacks);
+
+    void controller.load('monthly', 'love', 'en');
+    void controller.load('monthly', 'general', 'en');
+    await flush();
+
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+    expect(bodiesOnTheWire()).toEqual([{ period: 'monthly', mode: 'love', locale: 'en' }]);
+
+    d.resolve(ok200(validReading()));
+    await flush();
+    expect(calls).toEqual(['pending', 'success:false:monthly/love/seed-1']);
+  });
+
+  // (5) locale switch mid-flight
+  it('locale change attempted before resolution -> ONE total invocation', async () => {
+    const d = deferredInvoke();
+    const { callbacks } = makeCallbacks();
+    const controller = createTarotScreenController(callbacks);
+
+    void controller.load('monthly', 'love', 'en');
+    void controller.load('monthly', 'love', 'fr');
+    await flush();
+
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+    expect(bodiesOnTheWire()).toEqual([{ period: 'monthly', mode: 'love', locale: 'en' }]);
+    d.resolve(ok200(validReading()));
+  });
+
+  // (6) Try Again mid-flight
+  it('Try Again pressed before resolution -> ONE total invocation (one potential consumption)', async () => {
+    const d = deferredInvoke();
+    const { calls, callbacks } = makeCallbacks();
+    const controller = createTarotScreenController(callbacks);
+
+    const p1 = controller.load('monthly', 'love', 'en');
+    const p2 = controller.load('monthly', 'love', 'en'); // the impatient retry
+    await flush();
+
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+
+    d.resolve(ok200(validReading()));
+    await Promise.all([p1, p2]);
+    expect(calls.filter((c) => c.startsWith('success'))).toHaveLength(1);
+  });
+
+  // (7, 8, 20) no deferred promise, nothing auto-fires, B never reaches the wire later
+  it('resolution launches NOTHING automatically: no deferred request, no relaunch with the attempted parameters', async () => {
+    const d = deferredInvoke();
+    const { calls, callbacks } = makeCallbacks();
+    const controller = createTarotScreenController(callbacks);
+
+    void controller.load('monthly', 'love', 'en');
+    void controller.load('weekly', 'general', 'fr'); // attempted mid-flight
+    d.resolve(ok200(validReading()));
+    await flush();
+    await flush(); // let any hypothetical deferred/queued work fire
+
+    expect(invokeMock).toHaveBeenCalledTimes(1); // still exactly the one call
+    expect(bodiesOnTheWire()).toEqual([{ period: 'monthly', mode: 'love', locale: 'en' }]);
+    expect(calls).toEqual(['pending', 'success:false:monthly/love/seed-1']);
+  });
+
+  // (9) after release, an explicit action launches exactly one new call
+  it('after the flight, a NEW explicit action launches exactly one new invocation', async () => {
+    const d1 = deferredInvoke();
+    const { calls, callbacks } = makeCallbacks();
+    const controller = createTarotScreenController(callbacks);
+
+    const p1 = controller.load('monthly', 'love', 'en');
+    d1.resolve(ok200(validReading()));
+    await p1;
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+
+    const d2 = deferredInvoke();
+    const p2 = controller.load('weekly', 'general', 'fr'); // explicit new action
+    await flush();
+    expect(invokeMock).toHaveBeenCalledTimes(2);
+    expect(bodiesOnTheWire()[1]).toEqual({ period: 'weekly', mode: 'general', locale: 'fr' });
+
+    d2.resolve(ok200(validReading({ period: 'weekly', mode: 'general', locale: 'fr' })));
+    await p2;
+    expect(calls).toEqual([
+      'pending',
+      'success:false:monthly/love/seed-1',
+      'pending',
+      'success:false:weekly/general/seed-1',
+    ]);
+  });
+
+  // (10-14) the lock is released after EVERY failure shape — and never retried
+  const releaseCases: { name: string; answer: () => { data: unknown; error: unknown }; }[] = [
+    { name: '402 refusal', answer: () => httpError(402, { success: false, error: 'premium_required', reason: 'insufficient_tier' }) },
+    { name: '429 (no retry)', answer: () => httpError(429, null) },
+    { name: '500 config_error (no retry)', answer: () => httpError(500, { error: 'config_error' }) },
+    { name: '503 decision_unavailable (no retry)', answer: () => httpError(503, { error: 'decision_unavailable' }) },
+    { name: 'transport exception', answer: () => transportError() },
+    { name: 'malformed 200', answer: () => ({ data: { success: true, reading: { period: 'monthly', cards: [] } }, error: null }) },
+  ];
+  for (const { name, answer } of releaseCases) {
+    it(`the lock is released after a ${name} — a later explicit call works, nothing retried on its own`, async () => {
+      invokeMock.mockResolvedValueOnce(answer());
+      const { callbacks } = makeCallbacks();
+      const controller = createTarotScreenController(callbacks);
+      await controller.load('monthly', 'love', 'en');
+      expect(invokeMock).toHaveBeenCalledTimes(1);
+
+      await flush();
+      await flush();
+      expect(invokeMock).toHaveBeenCalledTimes(1); // no automatic retry
+
+      invokeMock.mockResolvedValueOnce(ok200(validReading()));
+      await controller.load('monthly', 'love', 'en'); // explicit new action
+      expect(invokeMock).toHaveBeenCalledTimes(2);
+    });
+  }
+
+  // (15, 16) the 401 renewal is ONE locked operation, captured params only
+  it('401 -> refresh -> re-invocation is ONE locked operation: a mid-renewal parameter change launches nothing, both invocations carry the CAPTURED parameters', async () => {
+    const d1 = deferredInvoke();
+    const dRefresh = deferredRefresh();
+    const { calls, callbacks } = makeCallbacks();
+    const controller = createTarotScreenController(callbacks);
+
+    const op = controller.load('monthly', 'love', 'en'); // invocation 1 (pending)
+    d1.resolve(httpError(401, { success: false, error: 'unauthenticated' }));
+    await flush(); // now waiting inside the renewal
+
+    const attempted = controller.load('weekly', 'general', 'fr'); // mid-renewal change
+    await flush();
+    expect(invokeMock).toHaveBeenCalledTimes(1); // nothing launched
+
+    const d2 = deferredInvoke();
+    dRefresh.resolve({ data: { session: { access_token: 'renewed' } }, error: null });
+    await flush();
+    expect(invokeMock).toHaveBeenCalledTimes(2); // the single authorized re-invocation
+    expect(bodiesOnTheWire()).toEqual([
+      { period: 'monthly', mode: 'love', locale: 'en' }, // captured at departure —
+      { period: 'monthly', mode: 'love', locale: 'en' }, // never the attempted weekly/fr
+    ]);
+
+    d2.resolve(ok200(validReading()));
+    await Promise.all([op, attempted]);
+    expect(calls).toEqual(['pending', 'success:false:monthly/love/seed-1']);
+  });
+
+  // (17) a second 401 is terminal AND releases the lock
+  it('a second 401 ends the operation: no third invocation, lock released for the next explicit action', async () => {
+    const d1 = deferredInvoke();
+    const d2 = deferredInvoke();
+    const { callbacks } = makeCallbacks();
+    const controller = createTarotScreenController(callbacks);
+
+    const op = controller.load('monthly', 'love', 'en'); // invocation 1 pending
+    refreshSessionMock.mockResolvedValueOnce({
+      data: { session: { access_token: 'renewed' } },
+      error: null,
+    });
+    d1.resolve(httpError(401, { error: 'unauthenticated' }));
+    await flush(); // renewal ok -> the single re-invocation starts (d2)
+
+    d2.resolve(httpError(401, { error: 'unauthenticated' })); // second 401: terminal
+    await op;
+
+    expect(invokeMock).toHaveBeenCalledTimes(2); // never 3
+    invokeMock.mockResolvedValueOnce(ok200(validReading()));
+    await controller.load('monthly', 'love', 'en'); // explicit new action works
+    expect(invokeMock).toHaveBeenCalledTimes(3);
+  });
+
+  // (18) unmount during the flight
+  it('unmount (dispose) during the call: the late answer sets NOTHING and relaunches nothing', async () => {
+    const d = deferredInvoke();
     const { calls, callbacks } = makeCallbacks();
     const controller = createTarotScreenController(callbacks);
 
     const loadPromise = controller.load('monthly', 'love', 'en');
     expect(calls).toEqual(['pending']);
     controller.dispose(); // the screen unmounts before the answer lands
-    resolveFirst(ok200(validReading()));
+    d.resolve(ok200(validReading()));
     await loadPromise;
+    await flush();
 
     expect(calls).toEqual(['pending']); // no success, no failure, nothing
+    expect(invokeMock).toHaveBeenCalledTimes(1); // and no relaunch
   });
 
-  it('a stale answer can never overwrite a newer request: load A, load B, resolve A then B', async () => {
-    let resolveA!: (v: { data: unknown; error: unknown }) => void;
-    let resolveB!: (v: { data: unknown; error: unknown }) => void;
-    invokeMock
-      .mockImplementationOnce(() => new Promise((r) => { resolveA = r; }))
-      .mockImplementationOnce(() => new Promise((r) => { resolveB = r; }));
-
+  // (19) the rendered answer is the one actually launched
+  it('the rendered reading carries the LAUNCHED request\u2019s captured parameters — never the attempted ones', async () => {
+    const d = deferredInvoke();
     const { calls, callbacks } = makeCallbacks();
     const controller = createTarotScreenController(callbacks);
 
-    const pa = controller.load('monthly', 'love', 'en');   // seq 1
-    const pb = controller.load('monthly', 'general', 'en'); // seq 2 supersedes
+    void controller.load('monthly', 'love', 'en');    // launched
+    void controller.load('weekly', 'general', 'fr');  // attempted mid-flight: no-op
+    d.resolve(ok200(validReading()));                  // the monthly/love/en answer
+    await flush();
 
-    resolveA(ok200(validReading({ seed: 'STALE' })));
-    await pa;
-    expect(calls).toEqual(['pending', 'pending']); // A's answer dropped entirely
-
-    resolveB(ok200(validReading({ mode: 'general', seed: 'FRESH' })));
-    await pb;
-    expect(calls).toEqual(['pending', 'pending', 'success:false:FRESH']);
+    expect(calls).toEqual(['pending', 'success:false:monthly/love/seed-1']);
   });
+});
 
-  it('a repeated Try Again before completion is one invocation and one outcome (no double consumption)', async () => {
-    let resolveFirst!: (v: { data: unknown; error: unknown }) => void;
-    invokeMock.mockImplementationOnce(
-      () => new Promise((resolve) => { resolveFirst = resolve; }),
-    );
-    const { calls, callbacks } = makeCallbacks();
-    const controller = createTarotScreenController(callbacks);
+// ---- 6b. the screen controller — routing -----------------------------------
 
-    const p1 = controller.load('monthly', 'love', 'en');
-    const p2 = controller.load('monthly', 'love', 'en'); // the impatient double tap
-    await Promise.resolve();
-    await Promise.resolve();
-
-    resolveFirst(ok200(validReading()));
-    await Promise.all([p1, p2]);
-
-    expect(invokeMock).toHaveBeenCalledTimes(1);           // single-flight
-    expect(calls.filter((c) => c.startsWith('success'))).toHaveLength(1); // one outcome
-  });
-
+describe('createTarotScreenController — outcome routing', () => {
   it('402 routes to onPremiumRequired only — never onSuccess, no premium byte', async () => {
     invokeMock.mockResolvedValueOnce(
       httpError(402, { success: false, error: 'premium_required', reason: 'insufficient_tier' }),
     );
-    const { calls, callbacks } = makeCallbacks();
-    const controller = createTarotScreenController(callbacks);
-
+    const calls: string[] = [];
+    const controller = createTarotScreenController({
+      onPending: () => calls.push('pending'),
+      onSuccess: () => calls.push('success'),
+      onPremiumRequired: () => calls.push('premium_required'),
+      onFailure: (c) => calls.push(`failure:${c}`),
+    });
     await controller.load('monthly', 'love', 'en');
     expect(calls).toEqual(['pending', 'premium_required']);
   });
 
   it('every other failure routes to onFailure with its code', async () => {
     invokeMock.mockResolvedValueOnce(httpError(503, { error: 'decision_unavailable' }));
-    const { calls, callbacks } = makeCallbacks();
-    await createTarotScreenController(callbacks).load('monthly', 'love', 'en');
+    const calls: string[] = [];
+    await createTarotScreenController({
+      onPending: () => calls.push('pending'),
+      onSuccess: () => calls.push('success'),
+      onPremiumRequired: () => calls.push('premium_required'),
+      onFailure: (c) => calls.push(`failure:${c}`),
+    }).load('monthly', 'love', 'en');
     expect(calls).toEqual(['pending', 'failure:decision_unavailable']);
   });
 });

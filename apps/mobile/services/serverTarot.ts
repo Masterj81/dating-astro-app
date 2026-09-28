@@ -156,13 +156,17 @@ async function readInvokeError(error: unknown): Promise<{
   return { status, body, retryAfterSeconds };
 }
 
-// Single-flight: one invocation per exact (period, mode, locale) at a time.
-// A double tap, a re-fired effect or a repeated Try Again with the SAME
-// parameters JOINS the in-flight promise — exactly one edge invocation, one
-// shared result, one potential consumption. Different parameters get their
-// own promise (a mode switch is a different, intentional request); the
-// screen-level controller decides which answer is still current. The entry
-// is removed in a finally, so an error never wedges the map.
+// Transport-level single-flight: one invocation per exact (period, mode,
+// locale) at a time. Identical concurrent calls (double tap, re-fired effect,
+// repeated Try Again) JOIN the in-flight promise — one edge invocation, one
+// shared result, one potential consumption. This layer deliberately does NOT
+// try to block DIFFERENT parameters: a mode switch is a different, intentional
+// transport request, and only the screen-level controller
+// (utils/tarotController.ts) can enforce the real product invariant — at most
+// ONE premium-tarot-reading operation in flight per screen instance, whatever
+// the parameters — because the consumption is decided per invocation at the
+// Edge, not per parameter set at the transport. The entry is removed in a
+// finally, so an error never wedges the map.
 const tarotInFlight = new Map<string, Promise<TarotFetch>>();
 
 export async function fetchTarotReading(

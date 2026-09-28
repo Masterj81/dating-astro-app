@@ -155,7 +155,15 @@ function TarotScreenContent() {
 
   // Initial load + mode/period/locale changes — the same triggers the
   // screen has always had (period follows the tier). No timer, no auto
-  // retry: only a user action starts another request.
+  // retry: only a user action starts another request. While a request is in
+  // flight the CONTROLLER refuses every further load (one operation per
+  // screen, whatever the parameters — the Edge consumption is per
+  // invocation), so a trigger that fires mid-flight is a silent no-op that
+  // JOINS the running operation: the in-flight request keeps its captured
+  // parameters, its answer renders for those parameters only, and the new
+  // selection needs its own explicit action once the flight is over. The
+  // toggles below are additionally disabled during the flight so the common
+  // path never even reaches the controller.
   useEffect(() => {
     if (!user?.id) {
       setLoading(false);
@@ -295,11 +303,16 @@ function TarotScreenContent() {
           <Text style={styles.period}>{getPeriodLabel()}</Text>
         </View>
 
-        {/* Mode Toggle */}
+        {/* Mode Toggle — disabled while a request is in flight: a switch is
+            a network trigger (the effect above reloads on change), and the
+            one-operation-per-screen lock means a mid-flight switch could not
+            take effect anyway. The controller's no-op is the real guard if a
+            programmatic event bypasses this disabled state. */}
         <View style={styles.modeToggle}>
           <TouchableOpacity
             style={[styles.modeButton, mode === 'love' && styles.modeButtonActive]}
             onPress={() => setMode('love')}
+            disabled={loading}
           >
             <Text style={[styles.modeText, mode === 'love' && styles.modeTextActive]}>
               {t('loveFocus') || 'Love'}
@@ -308,6 +321,7 @@ function TarotScreenContent() {
           <TouchableOpacity
             style={[styles.modeButton, mode === 'general' && styles.modeButtonActive]}
             onPress={() => setMode('general')}
+            disabled={loading}
           >
             <Text style={[styles.modeText, mode === 'general' && styles.modeTextActive]}>
               {t('generalFocus') || 'General'}
