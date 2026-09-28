@@ -61,11 +61,13 @@ vi.mock('../../services/supabase', () => {
           if (next.kind === 'tarot' && next.status >= 400) {
             // Mirrors supabase-js: a non-2xx answer RESOLVES with
             // { data: null, error: FunctionsHttpError } — the raw Response
-            // rides in `.context`, whose json() holds the edge's body.
+            // rides in `.context`, whose status and json() hold the edge's
+            // answer. (status added in PR B: a real Response always carries
+            // it, and the hardened client reads it as the primary source.)
             const err = new Error(`HttpError ${next.status}`) as Error & {
-              context: { json: () => Promise<unknown> };
+              context: { status: number; json: () => Promise<unknown> };
             };
-            err.context = { json: async () => next.body };
+            err.context = { status: next.status, json: async () => next.body };
             return Promise.resolve({ data: null, error: err });
           }
           return Promise.resolve({ data: next.kind === 'tarot' ? next.body : next.body, error: null });
@@ -177,7 +179,8 @@ describe('discriminant · simulated patch yields no reading', () => {
       { kind: 'tarot', status: 402, body: { success: false, error: 'premium_required', reason: 'insufficient_tier' } },
     ];
     const result = await fetchTarotReading('monthly', 'love', 'en');
-    expect(result).toEqual({ ok: false, code: 'premium_required' });
+    // PR B: the real 402 contract carries the edge's bounded reason.
+    expect(result).toEqual({ ok: false, code: 'premium_required', reason: 'insufficient_tier' });
   });
 
   it('network/edge failure → no reading, no local compute', async () => {
@@ -272,7 +275,18 @@ describe('discriminant · the binary itself', () => {
     );
     expect(screen).not.toMatch(/import PremiumGate|<PremiumGate/);
     expect(screen).not.toMatch(/generateReading|drawSpread|DECK\b/);
-    expect(screen).toMatch(/fetchTarotReading/);
+    // PR B: the fetch is orchestrated by the controller — assert the whole
+    // chain instead of one symbol: the screen wires the controller, and the
+    // controller (and only it) reaches the server client. Same prohibitions
+    // now apply to BOTH files — strictly stronger than the single-file regex.
+    expect(screen).toMatch(/createTarotScreenController/);
+    const controller = fs.readFileSync(
+      path.join(REPO_ROOT, 'apps/mobile/utils/tarotController.ts'),
+      'utf8',
+    );
+    expect(controller).toMatch(/fetchTarotReading/);
+    expect(controller).not.toMatch(/generateReading|drawSpread|DECK\b/);
+    expect(controller).not.toMatch(/@astro\/shared\/tarot/);
   });
 
   it('the classes are the honest inventory: 2 server-protected / 7 metered / 2 public', () => {

@@ -19,12 +19,17 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { usePremium } from '../../contexts/PremiumContext';
 import {
-  fetchTarotReading,
   tarotArtBaseUrl,
   tarotCardImageUrl,
   type ServerTarotReading,
+  type TarotFailureCode,
   type TarotMode,
 } from '../../services/serverTarot';
+import {
+  createTarotScreenController,
+  type TarotScreenCallbacks,
+  type TarotScreenController,
+} from '../../utils/tarotController';
 
 // JUNO-06: this screen renders a SERVER artifact. It imports no corpus and no
 // engine — the reading is drawn by the premium-tarot-reading edge after
@@ -44,6 +49,10 @@ function TarotScreenContent() {
   const [loading, setLoading] = useState(true);
   const [reading, setReading] = useState<ServerTarotReading | null>(null);
   const [fetchError, setFetchError] = useState(false);
+  // The last failure's code, so the error card can say something TRUE
+  // (expired session / throttled / verification unavailable) instead of a
+  // generic server error for every refusal. Premium bytes never ride on it.
+  const [failureCode, setFailureCode] = useState<TarotFailureCode | null>(null);
   const [viaPreview, setViaPreview] = useState(false);
   const [mode, setMode] = useState<TarotMode>('love');
   const [revealedCards, setRevealedCards] = useState<Set<number>>(new Set());
@@ -77,42 +86,91 @@ function TarotScreenContent() {
     new Animated.Value(0),
   ]).current;
 
+  // JUNO-06 PR B — every request goes through the controller: one ticket per
+  // load (a stale answer cannot overwrite a newer one), all callbacks frozen
+  // at unmount, and the service below merges identical concurrent calls into
+  // ONE edge invocation (double tap / Try Again / re-fired effect). The
+  // callbacks are refreshed each render through callbacksRef so the
+  // controller never closes over a stale tier or locale.
+  const callbacksRef = useRef<TarotScreenCallbacks | null>(null);
+  callbacksRef.current = {
+    onPending: () => {
+      // Clear BEFORE the request: a previous reading must never be
+      // interpretable as the result of the call now in flight.
+      setReading(null);
+      setViaPreview(false);
+      setFailureCode(null);
+      setFetchError(false);
+      setLoading(true);
+    },
+    onSuccess: (result, viaFreePreview) => {
+      setReading(result);
+      setViaPreview(viaFreePreview);
+      setRevealedCards(new Set());
+      setAllRevealed(false);
+      flipAnims.forEach((anim) => anim.setValue(0));
+      setLoading(false);
+    },
+    onPremiumRequired: () => {
+      // The server refused. This screen has NO PremiumGate wrapper on
+      // purpose (it would spend a SECOND enforce on the same open — the
+      // edge already owns the decision, preview included). The paywall is
+      // the modal, the refusal stands, and nothing local can produce a
+      // reading. No premium byte from the refused answer is rendered.
+      setReading(null);
+      setViaPreview(false);
+      setFailureCode('premium_required');
+      triggerPaywall(isCosmic ? 'weekly-tarot' : 'monthly-tarot');
+      setLoading(false);
+    },
+    onFailure: (code) => {
+      // Network/server failure — no local fallback exists, on purpose.
+      setReading(null);
+      setViaPreview(false);
+      setFailureCode(code);
+      setFetchError(true);
+      setLoading(false);
+    },
+  };
+
+  const controllerRef = useRef<TarotScreenController | null>(null);
+  if (!controllerRef.current) {
+    controllerRef.current = createTarotScreenController({
+      onPending: () => callbacksRef.current?.onPending(),
+      onSuccess: (r, v) => callbacksRef.current?.onSuccess(r, v),
+      onPremiumRequired: () => callbacksRef.current?.onPremiumRequired(),
+      onFailure: (c) => callbacksRef.current?.onFailure(c),
+    });
+  }
+  const controller = controllerRef.current;
+
+  // Unmount-only freeze: responses landing after the screen is gone set no
+  // state (mounted in a dedicated effect so a dependency change never
+  // disposes a controller that is still in use).
   useEffect(() => {
-    let cancelled = false;
+    return () => {
+      controllerRef.current?.dispose();
+    };
+  }, []);
+
+  // Initial load + mode/period/locale changes — the same triggers the
+  // screen has always had (period follows the tier). No timer, no auto
+  // retry: only a user action starts another request. While a request is in
+  // flight the CONTROLLER refuses every further load (one operation per
+  // screen, whatever the parameters — the Edge consumption is per
+  // invocation), so a trigger that fires mid-flight is a silent no-op that
+  // JOINS the running operation: the in-flight request keeps its captured
+  // parameters, its answer renders for those parameters only, and the new
+  // selection needs its own explicit action once the flight is over. The
+  // toggles below are additionally disabled during the flight so the common
+  // path never even reaches the controller.
+  useEffect(() => {
     if (!user?.id) {
       setLoading(false);
       return;
     }
-    setLoading(true);
-    setFetchError(false);
-    fetchTarotReading(period, mode, language).then((result) => {
-      if (cancelled) return;
-      if (result.ok) {
-        setReading(result.reading);
-        setViaPreview(result.viaFreePreview);
-        setRevealedCards(new Set());
-        setAllRevealed(false);
-        flipAnims.forEach((anim) => anim.setValue(0));
-      } else if (result.code === 'premium_required') {
-        // The server refused. This screen has NO PremiumGate wrapper on
-        // purpose (it would spend a SECOND enforce on the same open — the
-        // edge already owns the decision, preview included). The paywall is
-        // the modal, and the server's refusal stands: nothing local can
-        // produce a reading anymore.
-        setReading(null);
-        setFetchError(false);
-        triggerPaywall(isCosmic ? 'weekly-tarot' : 'monthly-tarot');
-      } else {
-        // Network/server failure — no local fallback exists, on purpose.
-        setReading(null);
-        setFetchError(true);
-      }
-      setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, mode, period, language]); // eslint-disable-line react-hooks/exhaustive-deps
+    void controller.load(period, mode, language);
+  }, [user?.id, period, mode, language, controller]);
 
   const revealCard = (index: number) => {
     if (revealedCards.has(index)) return;
@@ -163,6 +221,29 @@ function TarotScreenContent() {
   }
 
   if (fetchError || !reading) {
+    // Say what actually happened — an expired session, a throttled request,
+    // a verification the server could not make, or a premium refusal, each
+    // gets its true sentence; everything else stays the honest generic
+    // retryable error. None of these states contains a premium byte.
+    const failureCopy = (() => {
+      switch (failureCode) {
+        case 'unauthenticated':
+          return t('tarotSessionExpired') || 'Your session has expired. Sign in again to see your reading.';
+        case 'rate_limited':
+          return t('tarotRateLimited') || 'Too many requests. Please wait a moment before trying again.';
+        case 'decision_unavailable':
+          return (
+            t('tarotDecisionUnavailable') ||
+            "We couldn't verify access just now. Please try again in a moment."
+          );
+        case 'premium_required':
+          return (
+            t('tarotPremiumRequired') || 'A subscription is needed to reveal this reading.'
+          );
+        default:
+          return t('tarotServerError');
+      }
+    })();
     return (
       <LinearGradient colors={SCREEN_GRADIENT} style={styles.container}>
         <ScrollView
@@ -177,24 +258,16 @@ function TarotScreenContent() {
           </TouchableOpacity>
           <View style={styles.header}>
             <Text style={styles.title}>{t('tarotReading') || 'Tarot Reading'}</Text>
-            <Text style={styles.errorText}>{t('tarotServerError')}</Text>
+            <Text style={styles.errorText}>{failureCopy}</Text>
+            {/* Manual retry only. The service merges an identical concurrent
+                call into ONE edge invocation, and the controller drops any
+                answer that is no longer current — a double tap can neither
+                consume twice nor resurrect a stale reading. */}
             <TouchableOpacity
               style={styles.retryButton}
+              disabled={loading}
               onPress={() => {
-                setLoading(true);
-                fetchTarotReading(period, mode, language).then((result) => {
-                  if (result.ok) {
-                    setReading(result.reading);
-                    setViaPreview(result.viaFreePreview);
-                    setRevealedCards(new Set());
-                    setAllRevealed(false);
-                    flipAnims.forEach((anim) => anim.setValue(0));
-                    setFetchError(false);
-                  } else if (result.code === 'premium_required') {
-                    triggerPaywall(isCosmic ? 'weekly-tarot' : 'monthly-tarot');
-                  }
-                  setLoading(false);
-                });
+                void controller.load(period, mode, language);
               }}
             >
               <Text style={styles.retryText}>{t('tryAgain') || 'Try Again'}</Text>
@@ -230,11 +303,16 @@ function TarotScreenContent() {
           <Text style={styles.period}>{getPeriodLabel()}</Text>
         </View>
 
-        {/* Mode Toggle */}
+        {/* Mode Toggle — disabled while a request is in flight: a switch is
+            a network trigger (the effect above reloads on change), and the
+            one-operation-per-screen lock means a mid-flight switch could not
+            take effect anyway. The controller's no-op is the real guard if a
+            programmatic event bypasses this disabled state. */}
         <View style={styles.modeToggle}>
           <TouchableOpacity
             style={[styles.modeButton, mode === 'love' && styles.modeButtonActive]}
             onPress={() => setMode('love')}
+            disabled={loading}
           >
             <Text style={[styles.modeText, mode === 'love' && styles.modeTextActive]}>
               {t('loveFocus') || 'Love'}
@@ -243,6 +321,7 @@ function TarotScreenContent() {
           <TouchableOpacity
             style={[styles.modeButton, mode === 'general' && styles.modeButtonActive]}
             onPress={() => setMode('general')}
+            disabled={loading}
           >
             <Text style={[styles.modeText, mode === 'general' && styles.modeTextActive]}>
               {t('generalFocus') || 'General'}

@@ -284,8 +284,21 @@ for (const [feature, meta] of Object.entries(FEATURE_SOURCES)) {
 // single decision (the edge's), never two.
 const tarotScreen = mobileSources.find((f) => f.path.endsWith(path.join("premium-screens", "tarot.tsx")));
 if (tarotScreen) {
-  if (/functions\.invoke\(\s*'premium-tarot-reading'/.test(read("apps/mobile/services/serverTarot.ts")) && tarotScreen.src.includes("fetchTarotReading")) {
-    ok("D7b: tarot screen consumes the edge reading (services/serverTarot)");
+  // PR B (2026-09-28): the fetch moved behind utils/tarotController (staleness
+  // + unmount guards); the artifact path is now a three-link chain and every
+  // link is asserted — strictly stronger than the previous two-link check:
+  //   1. the client still invokes the edge;
+  //   2. the screen wires the controller (its only data path);
+  //   3. the controller — and nothing else in the chain — calls the client,
+  //      and carries no producer import.
+  const controllerSrc = read("apps/mobile/utils/tarotController.ts");
+  if (
+    /functions\.invoke\(\s*'premium-tarot-reading'/.test(read("apps/mobile/services/serverTarot.ts")) &&
+    tarotScreen.src.includes("createTarotScreenController") &&
+    controllerSrc.includes("fetchTarotReading") &&
+    !controllerSrc.includes("@astro/shared/tarot")
+  ) {
+    ok("D7b: tarot screen consumes the edge reading (screen -> controller -> services/serverTarot)");
   } else {
     fail("D7b: the tarot screen no longer consumes the edge reading — the server artifact path is broken");
   }
