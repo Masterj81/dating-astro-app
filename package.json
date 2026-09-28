@@ -15,6 +15,8 @@
     "build:web": "npm run build --workspace=@astro/web",
     "validate:web:locales": "node scripts/validate-web-locales.js",
     "validate:mobile:locales": "node scripts/validate-mobile-locales.js",
+    "validate:android-131": "node scripts/validate-android-131.mjs",
+    "inspect:android-artifact": "node scripts/inspect-android-artifact.mjs",
     "validate:mobile:i18n-usage": "node scripts/validate-mobile-i18n-usage.mjs",
     "validate:premium-gating": "node scripts/validate-premium-gating.mjs",
     "validate:premium-data-sources": "node scripts/validate-premium-data-sources.mjs",
