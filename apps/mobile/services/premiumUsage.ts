@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { rpcWithTimeout } from '../utils/rpcWithTimeout';
+import { attemptSessionRenewal } from '../utils/sessionRenewal';
 
 // Feature keys for premium features.
 // Conversation-first product change: `likes` and `priority-messages`
@@ -337,23 +338,17 @@ async function readInvokeError(error: unknown): Promise<{
 }
 
 /**
- * JUNO-06 PR A — one BOUNDED session-renewal attempt for a 401.
+ * JUNO-06 — one BOUNDED session-renewal attempt for a 401.
  *
- * supabase.functions.invoke does not itself trigger the client's automatic
- * token refresh, so an expired access token can reach the edge as a 401 even
- * though a valid refresh token sits in SecureStore. This asks Supabase once
- * (refreshSession — the same auth module the app already uses); the caller
- * re-invokes the edge at most once when it returns a session. A renewal that
- * fails or yields no session resolves false: fail-closed, no loop, no grant.
+ * Extracted to utils/sessionRenewal.ts (PR B) so the tarot client shares the
+ * exact same primitive instead of growing a second copy. supabase-js does not
+ * itself trigger the client's automatic token refresh around
+ * functions.invoke, so an expired access token can reach an edge as a 401
+ * even though a valid refresh token sits in SecureStore. The shared helper
+ * asks Supabase once (refreshSession); the caller re-invokes the edge at most
+ * once when it returns true. A renewal that fails resolves false:
+ * fail-closed, no loop, no grant.
  */
-async function attemptSessionRenewal(): Promise<boolean> {
-  try {
-    const { data, error } = await supabase.auth.refreshSession();
-    return !error && !!data?.session;
-  } catch {
-    return false;
-  }
-}
 
 // Single-flight: the sync button can be tapped twice before the first call
 // resolves (setState is async); the init path and the RevenueCat listener can
