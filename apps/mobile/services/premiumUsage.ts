@@ -254,29 +254,160 @@ export async function enforcePremiumFeature(
 
 export type EntitlementSync =
   | { ok: true; tier: 'free' | 'premium' | 'premium_plus' }
-  | {
-      ok: false;
-      code:
-        | 'unauthenticated'
-        | 'rate_limited'
-        | 'revenuecat_unavailable'
-        | 'config_error'
-        | 'network'
-        | 'server';
-    };
+  | { ok: false; code: SyncFailureCode };
 
-export async function syncEntitlement(): Promise<EntitlementSync> {
+// Every failure mode the client can distinguish. The first five carry the
+// edge's own vocabulary (sync-entitlement index.ts); 'network' is a transport
+// failure (the call never got an HTTP answer); 'server' is an answer we could
+// not classify — unknown status or malformed body. NONE of these is ever an
+// authorization: a failure never carries a tier.
+export type SyncFailureCode =
+  | 'unauthenticated'
+  | 'rate_limited'
+  | 'revenuecat_unavailable'
+  | 'state_unavailable'
+  | 'config_error'
+  | 'network'
+  | 'server';
+
+// The edge's throttle window (SYNC_MIN_INTERVAL_MS in sync-entitlement): one
+// sync attempt per account per 30 s, claimed atomically server-side. The
+// client-side cooldown (utils/syncCooldown.ts) MIRRORS this constant for UX
+// only — disabling the button, never deciding access, never triggering a
+// call when it lapses. Keep both values in lockstep with the edge.
+export const SYNC_RETRY_COOLDOWN_MS = 30_000;
+
+type SyncErrorBody = { reason?: string; error?: string } | null;
+
+/**
+ * Pure: map an HTTP answer from the sync-entitlement edge to the client
+ * failure code. Exported for the behavior suite; the mapping is the CONTRACT:
+ *
+ *   401 → unauthenticated            429 → rate_limited
+ *   502 → revenuecat_unavailable     503 → state_unavailable | config_error
+ *   anything else → server
+ */
+export function classifySyncHttpError(
+  status: number,
+  body: SyncErrorBody,
+): SyncFailureCode {
+  if (status === 401) return 'unauthenticated';
+  if (status === 429) return 'rate_limited';
+  if (status === 502) return 'revenuecat_unavailable';
+  if (status === 503) {
+    if (body?.reason === 'state_unavailable') return 'state_unavailable';
+    if (body?.reason === 'config_error') return 'config_error';
+    return 'server';
+  }
+  return 'server';
+}
+
+/**
+ * Read a supabase-js functions.invoke failure. A non-2xx edge answer surfaces
+ * as FunctionsHttpError whose `.context` is the raw Response (status + body);
+ * a transport failure carries no context. The same pattern is proven in
+ * services/serverTarot.ts — centralized here for the sync client and tested
+ * against real `Response` objects in the behavior suite.
+ */
+async function readInvokeError(error: unknown): Promise<{
+  status: number | null;
+  body: SyncErrorBody;
+}> {
+  const ctx = (error as { context?: unknown } | null | undefined)?.context;
+  if (!ctx || typeof ctx !== 'object') return { status: null, body: null };
+
+  const status =
+    typeof (ctx as { status?: unknown }).status === 'number'
+      ? (ctx as { status: number }).status
+      : null;
+
+  let body: SyncErrorBody = null;
+  if (typeof (ctx as { json?: unknown }).json === 'function') {
+    try {
+      const parsed = await (ctx as { json: () => Promise<unknown> }).json();
+      body =
+        parsed && typeof parsed === 'object'
+          ? (parsed as SyncErrorBody)
+          : null;
+    } catch {
+      body = null; // unreadable/malformed body — caller classifies as 'server'
+    }
+  }
+  return { status, body };
+}
+
+/**
+ * JUNO-06 PR A — one BOUNDED session-renewal attempt for a 401.
+ *
+ * supabase.functions.invoke does not itself trigger the client's automatic
+ * token refresh, so an expired access token can reach the edge as a 401 even
+ * though a valid refresh token sits in SecureStore. This asks Supabase once
+ * (refreshSession — the same auth module the app already uses); the caller
+ * re-invokes the edge at most once when it returns a session. A renewal that
+ * fails or yields no session resolves false: fail-closed, no loop, no grant.
+ */
+async function attemptSessionRenewal(): Promise<boolean> {
   try {
-    const { data, error } = await supabase.functions.invoke('sync-entitlement', {
-      body: {},
-    });
+    const { data, error } = await supabase.auth.refreshSession();
+    return !error && !!data?.session;
+  } catch {
+    return false;
+  }
+}
 
-    if (error) {
+// Single-flight: the sync button can be tapped twice before the first call
+// resolves (setState is async); the init path and the RevenueCat listener can
+// race a user tap. While one sync is running, every caller JOINS the same
+// in-flight promise — exactly one edge invocation, one shared result.
+let syncInFlight: Promise<EntitlementSync> | null = null;
+
+export function syncEntitlement(): Promise<EntitlementSync> {
+  if (syncInFlight) return syncInFlight;
+  syncInFlight = runSyncEntitlement().finally(() => {
+    syncInFlight = null;
+  });
+  return syncInFlight;
+}
+
+async function runSyncEntitlement(): Promise<EntitlementSync> {
+  let renewalSpent = false;
+
+  // At most TWO edge invocations: the original call, plus exactly one
+  // re-invocation after a SUCCESSFUL session renewal on a 401. No other
+  // retry exists — 429/502/503/network are terminal for this call.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let invoked: { data: unknown; error: unknown };
+    try {
+      invoked = await supabase.functions.invoke('sync-entitlement', {
+        body: {},
+      });
+    } catch {
       return { ok: false, code: 'network' };
     }
 
+    const { data, error } = invoked as { data: unknown; error: unknown };
+
+    if (error) {
+      const { status, body } = await readInvokeError(error);
+
+      if (status === null) {
+        // No HTTP answer to read: transport failure. Never a grant.
+        return { ok: false, code: 'network' };
+      }
+
+      if (status === 401 && !renewalSpent) {
+        renewalSpent = true;
+        if (await attemptSessionRenewal()) {
+          continue; // the single bounded re-invocation
+        }
+        return { ok: false, code: 'unauthenticated' };
+      }
+
+      return { ok: false, code: classifySyncHttpError(status, body) };
+    }
+
     const outcome = data as
-      | { synced: boolean; tier?: string; reason?: string }
+      | { synced?: boolean; tier?: string; reason?: string }
       | null;
 
     if (!outcome) {
@@ -301,13 +432,13 @@ export async function syncEntitlement(): Promise<EntitlementSync> {
       case 'config_error':
         return { ok: false, code: 'config_error' };
       case 'state_unavailable':
-        // The server could not claim/write the sync slot: fail-closed there,
-        // fail-closed here. The server's last word stands.
-        return { ok: false, code: 'server' };
+        return { ok: false, code: 'state_unavailable' };
       default:
         return { ok: false, code: 'server' };
     }
-  } catch {
-    return { ok: false, code: 'network' };
   }
+
+  // Second 401 after a successful renewal: the renewal budget is spent.
+  // Fail-closed, explicitly — the reader must re-sign-in.
+  return { ok: false, code: 'unauthenticated' };
 }
