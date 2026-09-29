@@ -35,7 +35,7 @@
 //       audited RPC/RLS paths are fine);
 //   G11 the build-131 runbook exists and keeps its stop rules — including
 //       that no submission is ever automatic;
-//   G12 the artifact inspector exists and pins EXPECTED_VERSION_CODE = 131.
+//   G12 the artifact inspector exists and pins EXPECTED_VERSION_CODE = 132.
 //
 // Exits 1 on the first failed group of checks, 0 when all pass.
 // Read-only: this script never mutates anything and holds no secret.
