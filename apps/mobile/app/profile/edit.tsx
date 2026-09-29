@@ -603,7 +603,7 @@ export default function EditProfileScreen() {
       </View>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
         style={styles.keyboardView}
       >
         <ScrollView
@@ -623,8 +623,13 @@ const styles = StyleSheet.create({
     flex: 1,
     ...(Platform.OS === 'web' ? {
       height: '100vh' as any,
+      minHeight: '100vh' as any,
       width: '100vw' as any,
-      position: 'relative' as any,
+      position: 'fixed' as any,
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
     } : {}),
   },
   keyboardView: {
