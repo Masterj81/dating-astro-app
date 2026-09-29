@@ -256,7 +256,7 @@ function TarotScreenContent() {
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backText}>←</Text>
           </TouchableOpacity>
-          <View style={styles.header}>
+          <View style={styles.header} testID="tarot-error-state">
             <Text style={styles.title}>{t('tarotReading') || 'Tarot Reading'}</Text>
             <Text style={styles.errorText}>{failureCopy}</Text>
             {/* Manual retry only. The service merges an identical concurrent
@@ -266,6 +266,7 @@ function TarotScreenContent() {
             <TouchableOpacity
               style={styles.retryButton}
               disabled={loading}
+              testID="tarot-retry"
               onPress={() => {
                 void controller.load(period, mode, language);
               }}
@@ -293,7 +294,7 @@ function TarotScreenContent() {
         </TouchableOpacity>
 
         {/* Header */}
-        <View style={styles.header}>
+        <View style={styles.header} testID="tarot-screen">
           <Text style={styles.title}>{t('tarotReading') || 'Tarot Reading'}</Text>
           <Text style={styles.subtitle}>
             {isCosmic
@@ -313,6 +314,7 @@ function TarotScreenContent() {
             style={[styles.modeButton, mode === 'love' && styles.modeButtonActive]}
             onPress={() => setMode('love')}
             disabled={loading}
+            testID="tarot-mode-love"
           >
             <Text style={[styles.modeText, mode === 'love' && styles.modeTextActive]}>
               {t('loveFocus') || 'Love'}
@@ -322,6 +324,7 @@ function TarotScreenContent() {
             style={[styles.modeButton, mode === 'general' && styles.modeButtonActive]}
             onPress={() => setMode('general')}
             disabled={loading}
+            testID="tarot-mode-general"
           >
             <Text style={[styles.modeText, mode === 'general' && styles.modeTextActive]}>
               {t('generalFocus') || 'General'}
@@ -354,7 +357,7 @@ function TarotScreenContent() {
             });
 
             return (
-              <View key={entry.position} style={styles.cardSlot}>
+              <View key={entry.position} style={styles.cardSlot} testID={`tarot-card-${index}`}>
                 <Text style={styles.positionLabel}>
                   {label}
                 </Text>

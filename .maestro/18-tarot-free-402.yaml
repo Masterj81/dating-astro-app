@@ -1,0 +1,45 @@
+# 18 - Android 131 smoke, scenario A: free account, tarot monthly -> 402.
+#
+# Run ONLY against a real 131 test build (runbook gate 10), after
+# scripts/inspect-android-artifact.mjs passed on the artifact. Deterministic
+# coverage of the same contract (402 -> premium_required/insufficient_tier,
+# zero premium bytes, no second invocation) lives in
+# apps/mobile/src/__tests__/tarot-client.test.ts.
+#
+# Asserts:
+#   - the paywall modal is visible (the server refused, honestly)
+#   - NO tarot card slot is rendered (zero cards, zero readings, zero meanings)
+#   - no error state (a 402 is a refusal, not a failure)
+#
+# Required env: TEST_USER_EMAIL / TEST_USER_PASSWORD (free test account).
+
+appId: com.astrodatingapp.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- runFlow: shared/login-as-free-user.yaml
+
+- openLink: "astrodating://premium-screens/tarot"
+
+# The server refuses (402) -> the screen routes to the paywall modal.
+- extendedWaitUntil:
+    visible:
+      id: "paywall-modal"
+    timeout: 20000
+
+- assertVisible:
+    id: "paywall-modal"
+
+# Zero premium content: no card slot may exist on the refusal surface.
+- assertNotVisible:
+    id: "tarot-card-0"
+- assertNotVisible:
+    id: "tarot-card-1"
+- assertNotVisible:
+    id: "tarot-card-2"
+
+# A 402 is a refusal, not a transport failure: no error state.
+- assertNotVisible:
+    id: "tarot-error-state"

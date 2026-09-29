@@ -1,0 +1,54 @@
+# 21 - Android 131 smoke, scenario D/F sanity: pure free account stays denied,
+#      no sync affordance, no local fallback anywhere.
+#
+# Run ONLY against a real 131 test build. The full 429 cooldown UX (30 s
+# window, disabled button, nothing auto-firing at expiry) and the bounded 401
+# renewal are proven deterministically in
+# apps/mobile/src/__tests__/sync-entitlement-client.test.ts; reproducing the
+# "device paid / server free" state on Production is forbidden (runbook
+# annexe, scenario D: staging-only).
+#
+# Asserts:
+#   - a pure free account hitting a premium gate sees the DENIED state, not
+#     the sync state (nothing on the device claims a paid tier)
+#   - no tarot card ever renders behind a refusal
+#   - airplane-mode class (scenario F): with the network off, the tarot
+#     surface shows the error state and Try Again — never content
+#
+# Required env: TEST_USER_EMAIL / TEST_USER_PASSWORD.
+
+appId: com.astrodatingapp.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- runFlow: shared/login-as-free-user.yaml
+
+- openLink: "astrodating://premium-screens/natal-chart"
+
+# Denied, not sync_available: a free device has nothing to reconcile.
+- extendedWaitUntil:
+    visible:
+      id: "premium-paywall-cta"
+    timeout: 15000
+- assertVisible:
+    id: "premium-paywall-cta"
+- assertNotVisible:
+    id: "premium-gate-granted"
+
+# Scenario F (network off): the tarot surface must refuse honestly.
+# OPERATOR STEP — on the TEST device (or emulator controls), enable airplane
+# mode when this flow pauses, then continue. The deterministic proof of the
+# no-fallback contract lives in tarot-client.test.ts (network -> refusal).
+- pause: 3000
+- openLink: "astrodating://premium-screens/tarot"
+- extendedWaitUntil:
+    visible:
+      id: "tarot-error-state"
+    timeout: 60000
+- assertVisible:
+    id: "tarot-retry"
+- assertNotVisible:
+    id: "tarot-card-0"
+# OPERATOR STEP — disable airplane mode before running any further flow.
