@@ -1,4 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -551,7 +552,7 @@ export default function EditProfileScreen() {
           <View style={styles.tipsCard}>
             <Text style={styles.tipsTitle}>{t('profileTips') || 'Profile Tips'}</Text>
             <View style={styles.tipRow}>
-              <Text style={styles.tipIcon}>📸</Text>
+              <Ionicons name="camera-outline" size={22} color={AppTheme.colors.coral} />
               <Text style={styles.tipText}>
                 {t('tip1') || 'Use clear, recent photos that show your face'}
               </Text>
@@ -563,7 +564,7 @@ export default function EditProfileScreen() {
               </Text>
             </View>
             <View style={styles.tipRow}>
-              <Text style={styles.tipIcon}>💬</Text>
+              <Ionicons name="chatbubble-ellipses-outline" size={22} color={AppTheme.colors.coral} />
               <Text style={styles.tipText}>
                 {t('tip3') || 'Be specific about your interests to find better connections'}
               </Text>
