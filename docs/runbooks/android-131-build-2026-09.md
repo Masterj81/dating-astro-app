@@ -1,12 +1,15 @@
 # Runbook — Build Android 131 (JUNO-06) — portes de livraison
 
-**Objet :** construire, prouver puis (sous décision distincte) publier le build Android 131 — le premier binaire qui appelle réellement les deux Edges JUNO-06 (`sync-entitlement`, `premium-tarot-reading`).
+> **MISE À JOUR 2026-09-29 — le prochain build attendu est versionCode 132.**
+> Le `versionCode` **131 a été consommé** le 2026-09-29 par le build `6c16c35c…` (production, FINISHED, 2.1.1) construit depuis `6d4f042a…` — **avant la PR #84** : il ne contient ni les icônes Profile, ni la correction Edit Profile web, ni leurs gardes. Ce binaire est **obsolète, jamais soumis** — il ne doit PAS être publié comme release de cette phase. L'autorité EAS distante lit **131** et le profil production a `autoIncrement=true` : **le prochain build production attendu est versionCode 132** — une attente sous précondition, pas une garantie : **relire le compteur juste avant le lancement** (porte 3) ; s'il ne lit plus 131, **ARRÊT** sans lancer avec des attentes périmées. Le nom historique de ce document et de `validate:android-131` est conservé : ils décrivent le programme JUNO-06, pas le numéro du prochain artefact.
 
-**État de référence (2026-09-28) :** dernier build Android production = **versionCode 130** (EAS, lecture seule : profil `production`, `appBuildVersion` 130, version 2.1.1, commit `50e8e6d`, FINISHED). `eas.json` : `appVersionSource: "remote"`, profil `production` `autoIncrement: true` → **le prochain build production doit être versionCode 131**. Aucun build n'est lancé dans la préparation de ce runbook.
+**Objet :** construire, prouver puis (sous décision distincte) publier le prochain build Android JUNO-06 (attendu `versionCode` **132**) — le premier binaire qui appelle réellement les deux Edges JUNO-06 (`sync-entitlement`, `premium-tarot-reading`) **et** porte la PR #84.
+
+**État de référence (mis à jour 2026-09-29) :** le build Android production `6c16c35c…` = **versionCode 131** (2.1.1, commit `6d4f042a`, FINISHED, jamais soumis, **obsolète — pré-PR #84**, artefact expirant le 2026-10-29). Compteur EAS distant lu à **131** ; `eas.json` : `appVersionSource: "remote"`, profil `production` `autoIncrement: true` → **le prochain build production doit être versionCode 132**. Aucun build n'est lancé par ce document.
 
 **Règles d'arrêt (à toute porte) :**
 
-- si EAS produit un `versionCode` autre que 131 → **ARRÊT** ;
+- si EAS produit un `versionCode` autre que **132** → **ARRÊT** ;
 - si le build ne correspond pas au merge SHA autorisé → **ARRÊT** ;
 - si un E2E échoue → **aucune soumission** ;
 - **aucune correction directe sur `master`** (une correction = nouvelle PR + nouvelle revue) ;
@@ -26,10 +29,10 @@ Tous les workflows GitHub Actions du SHA sont `success` (CI/Quality Gates, Gitle
 
 ### Porte 3 — Lecture du prochain `versionCode` (lecture seule) et décision de version commerciale
 ```
-npx eas-cli build:list --platform android --non-interactive --limit 3 --json
+npx eas-cli build:version:get --platform android --profile production --non-interactive
 ```
-Le dernier `appBuildVersion` production doit être **130** (donc prochain = **131** par `autoIncrement`). Tout autre valeur → ARRÊT avant build.
-**Version commerciale :** la décision `versionName` (conserver `2.1.1` ou bump) appartient à l'opérateur à cette porte — le dépôt ne fixe pas de règle semver par build ; historique EAS : 2.0.0→124-127, 2.1.0→128-129, 2.1.1→130. Le présent runbook ne préjuge pas de la valeur.
+Le compteur distant doit lire **131** (dernier consommé : le build obsolète `6c16c35c…`) → prochain = **132** par `autoIncrement`. **Si le compteur ne lit pas 131 : ARRÊT avant build** — le numéro attendu aurait dérivé ; rapporter la valeur lue et recalculer, sans jamais forcer ni relancer sur des attentes périmées.
+**Version commerciale :** la décision `versionName` (conserver `2.1.1` ou bump) appartient à l'opérateur à cette porte — le dépôt ne fixe pas de règle semver par build ; historique EAS : 2.0.0→124-127, 2.1.0→128-129, 2.1.1→130-131. Le présent runbook ne préjuge pas de la valeur.
 
 ### Porte 4 — Variables et secrets (noms uniquement)
 Le binaire n'exige que les variables **publiques** déjà câblées : `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID`, `EXPO_PUBLIC_SENTRY_DSN`, `EXPO_PUBLIC_STRIPE_PRICE_*`, `EXPO_PUBLIC_PROJECT_ID`. Vérifier leur présence EAS **par leur nom** — jamais afficher une valeur. Aucun secret serveur n'est requis par le client (garde G7 du validateur).
@@ -38,10 +41,10 @@ Le binaire n'exige que les variables **publiques** déjà câblées : `EXPO_PUBL
 ```
 cd apps/mobile && npx eas-cli build --profile production --platform android --non-interactive
 ```
-Un seul lancement. `autoIncrement` attribue 131. Aucun retry automatique : un échec se diagnostique puis se relance par décision explicite.
+Un seul lancement. `autoIncrement` doit attribuer **132**. Aucun retry automatique : un échec se diagnostique puis se relance par décision explicite — et **attention : un build même échoué peut réserver le numéro** ; après tout échec, relire le compteur (porte 3) avant toute nouvelle décision.
 
 ### Porte 6 — Vérification d'association
-Depuis `eas-cli build:list`/`build:view` : le build porte le **SHA de la porte 1**, le profil `production`, `appBuildVersion` **131**, et la `versionName` décidée en porte 3. Toute divergence (SHA, profil, versionCode ≠ 131) → ARRÊT.
+Depuis `eas-cli build:list`/`build:view` : le build porte le **SHA de la porte 1**, le profil `production`, `appBuildVersion` **132**, et la `versionName` décidée en porte 3. Toute divergence (SHA, profil, versionCode ≠ 132) → ARRÊT.
 
 ### Porte 7 — Téléchargement de l'artefact
 Télécharger l'AAB depuis EAS. Noter taille + URL EAS.
@@ -50,7 +53,7 @@ Télécharger l'AAB depuis EAS. Noter taille + URL EAS.
 ```
 node scripts/inspect-android-artifact.mjs <artefact.aab> --json
 ```
-Doit produire : `versionCode=131`, `package=com.astrodatingapp.mobile`, SHA-256 (à consigner), présence des appels `sync-entitlement` + `premium-tarot-reading`, **aucun** marqueur corpus/moteur/secret (`major-00`, `generateReading`, `tarot.generated`, noms `SUPABASE_SERVICE_ROLE*`/`REVENUECAT_API_KEY`). Échec → ARRÊT.
+Doit produire : `versionCode=132`, `package=com.astrodatingapp.mobile`, SHA-256 (à consigner), présence des appels `sync-entitlement` + `premium-tarot-reading`, **aucun** marqueur corpus/moteur/secret (`major-00`, `generateReading`, `tarot.generated`, noms `SUPABASE_SERVICE_ROLE*`/`REVENUECAT_API_KEY`). Échec → ARRÊT.
 
 ### Porte 9 — Installation sur appareil de test
 Installer l'AAB (ou l'APK `production-apk` équivalent) sur l'appareil/émulateur de test dédié. Jamais sur un appareil personnel.
@@ -65,7 +68,7 @@ Installer l'AAB (ou l'APK `production-apk` équivalent) sur l'appareil/émulateu
 Après les smokes : `premium_usage` du compte payé a exactement **une** ligne `tarot_monthly` de plus (`view_count=1`), aucune ligne `tarot_cosmic` ; `entitlement_sync_claims`/`subscriptions` inchangés sauf opération explicite. Toute écriture inexpliquée → ARRÊT + enquête. Aucun nettoyage sans décision (règle ci-dessus).
 
 ### Porte 13 — Décision distincte de soumission Play
-Rassemble : SHA, versionCode 131, versionName, SHA-256 de l'artefact, résultats des portes 10-12, notes de version (500 caractères max/langue, `docs/app-store/`). La soumission (`eas submit` ou Play Console) est **un acte décisionnel séparé** — aucune soumission automatique, quel que soit l'état des portes précédentes.
+Rassemble : SHA, versionCode 132, versionName, SHA-256 de l'artefact, résultats des portes 10-12, notes de version (500 caractères max/langue, `docs/app-store/`). La soumission (`eas submit` ou Play Console) est **un acte décisionnel séparé** — aucune soumission automatique, quel que soit l'état des portes précédentes.
 
 ### Porte 14 — Suivi du rollout
 Après soumission : suivre la revue Play, puis le rollout par paliers ; surveiller Sentry (`EXPO_PUBLIC_SENTRY_DSN`) et les logs edge (`sync-entitlement` : `outcome=throttled` attendu en hausse modérée ; `premium-tarot-reading` : aucun 5xx en rafale).
@@ -80,7 +83,7 @@ Après soumission : suivre la revue Play, puis le rollout par paliers ; surveill
 
 ## Annexe — Couverture déterministe des scénarios A→F
 
-| Scénario | Niveau déterministe (CI, sans Production) | Niveau smoke (binaire 131 réel) |
+| Scénario | Niveau déterministe (CI, sans Production) | Niveau smoke (binaire 132 réel) |
 |---|---|---|
 | A — free tarot monthly : 402, paywall, zéro contenu | `tarot-client.test.ts` (402 → `premium_required/insufficient_tier`, aucun octet premium) | `.maestro/18-tarot-free-402.yaml` (porte 10) |
 | B — payé monthly : 200, 3 cartes, `viaFreePreview=false` | `tarot-client.test.ts` (200 valide, mapping monthly verbatim) | `.maestro/19-tarot-paid-200.yaml` (porte 11) |

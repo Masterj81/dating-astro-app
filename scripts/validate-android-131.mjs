@@ -244,7 +244,7 @@ function mobileSources() {
   }
 }
 
-// ── G12: the artifact inspector pins versionCode 131 (canonical rules) ──
+// ── G12: the artifact inspector pins the NEXT expected versionCode (132) ──
 {
   const RULES = 'apps/mobile/src/release/artifact-rules.mjs';
   const SCRIPT = 'scripts/inspect-android-artifact.mjs';
@@ -255,13 +255,21 @@ function mobileSources() {
   } else {
     const rules = fs.readFileSync(rulesPath, 'utf8');
     const script = fs.readFileSync(scriptPath, 'utf8');
-    const pinned = /EXPECTED_VERSION_CODE\s*=\s*131\b/.test(rules);
+    // 2026-09-29: the next production build is EXPECTED to be versionCode
+    // 132 — the EAS remote counter read 131 after build 6c16c35c (from
+    // 6d4f042a, pre-PR-#84, obsolete, never submitted) consumed it, and
+    // production uses autoIncrement. The pin's single source stays the
+    // canonical rules; the validator checks the rules pin 132 AND that the
+    // CLI imports them (no duplicated literal that could drift).
+    const pinInRules = rules.match(/export const EXPECTED_VERSION_CODE\s*=\s*(\d+);/);
+    const pinnedValue = pinInRules ? Number(pinInRules[1]) : null;
+    const pinned = pinnedValue === 132;
     const pkg = /EXPECTED_PACKAGE\s*=\s*'com\.astrodatingapp\.mobile'/.test(rules);
     const wired = script.includes("../apps/mobile/src/release/artifact-rules.mjs");
     if (pinned && pkg && wired) {
-      ok('G12', 'artifact rules pin versionCode 131 + package; the CLI imports them (single source)');
+      ok('G12', 'artifact rules pin the next expected versionCode 132 (131 consumed by the obsolete pre-PR-#84 build) + package; the CLI imports them (single source)');
     } else {
-      fail('G12', `inspector expectations wrong (pinned=${pinned}, pkg=${pkg}, wired=${wired})`);
+      fail('G12', `inspector expectations wrong (pinned=${pinned}, value=${pinnedValue}, pkg=${pkg}, wired=${wired})`);
     }
   }
 }

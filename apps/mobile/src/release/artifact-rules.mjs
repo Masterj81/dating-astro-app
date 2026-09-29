@@ -13,7 +13,18 @@
 
 import { inflateRawSync } from 'node:zlib';
 
-export const EXPECTED_VERSION_CODE = 131;
+// The next production build is EXPECTED to carry versionCode 132.
+// WHY 132: the EAS remote counter (the authority, appVersionSource=remote)
+// read 131 after build 6c16c35c consumed it on 2026-09-29 — a FINISHED
+// production binary built from 6d4f042a (pre-PR-#84, therefore OBSOLETE:
+// no Profile icons, no Edit Profile web fix, no guards). Production uses
+// autoIncrement=true, so the next production build reserves current+1 = 132.
+// 132 is an EXPECTATION under precondition, not a guarantee: the remote
+// counter MUST be re-read immediately before the build is launched
+// (runbook gate 3); if it no longer reads 131, STOP — do not build against
+// stale expectations, and do not accept whatever number appears.
+
+export const EXPECTED_VERSION_CODE = 132;
 export const EXPECTED_PACKAGE = 'com.astrodatingapp.mobile';
 
 // Required: the string literals of the two edge invocations — they live in
@@ -48,7 +59,9 @@ export function parseAaptBadging(badgingText) {
   };
 }
 
-/** Pure: enforce the 131 identity. Throws a precise message on mismatch. */
+/** Pure: enforce the expected identity (versionCode 132 — see the header:
+ *  131 was consumed by the obsolete pre-PR-#84 binary). Throws a precise
+ *  message on mismatch. */
 export function checkReleaseIdentity({ package: pkg, versionCode, versionName }) {
   const problems = [];
   if (pkg !== EXPECTED_PACKAGE) problems.push(`package '${pkg}' != '${EXPECTED_PACKAGE}'`);

@@ -30,8 +30,8 @@ import {
 // ---- 1. the 131 expectations are pinned ------------------------------------
 
 describe('android-131 expectations', () => {
-  it('the train pins versionCode 131 and the production package', () => {
-    expect(EXPECTED_VERSION_CODE).toBe(131);
+  it('the train pins versionCode 132 (131 was consumed by the obsolete pre-PR-#84 build) and the production package', () => {
+    expect(EXPECTED_VERSION_CODE).toBe(132);
     expect(EXPECTED_PACKAGE).toBe('com.astrodatingapp.mobile');
   });
 
@@ -49,37 +49,46 @@ describe('android-131 expectations', () => {
 // ---- 2. badging + identity enforcement --------------------------------------
 
 describe('parseAaptBadging + checkReleaseIdentity', () => {
-  const badging131 = [
-    "package: name='com.astrodatingapp.mobile' versionCode='131' versionName='2.1.1' platformBuildVersionName='15'",
+  const badging132 = [
+    "package: name='com.astrodatingapp.mobile' versionCode='132' versionName='2.1.1' platformBuildVersionName='15'",
     'sdkVersion: 24',
   ].join('\n');
 
   it('parses package, versionCode and versionName', () => {
-    expect(parseAaptBadging(badging131)).toEqual({
+    expect(parseAaptBadging(badging132)).toEqual({
       package: 'com.astrodatingapp.mobile',
-      versionCode: 131,
+      versionCode: 132,
       versionName: '2.1.1',
     });
   });
 
-  it('accepts exactly versionCode 131 for the production package', () => {
+  it('accepts exactly versionCode 132 for the production package', () => {
     expect(() =>
-      checkReleaseIdentity(parseAaptBadging(badging131)),
+      checkReleaseIdentity(parseAaptBadging(badging132)),
     ).not.toThrow();
   });
 
-  it('REJECTS versionCode 130 (the runbook stop rule)', () => {
-    const badging130 = badging131.replace("versionCode='131'", "versionCode='130'");
-    expect(() => checkReleaseIdentity(parseAaptBadging(badging130))).toThrow(/versionCode 130 != 131/);
+  it('REJECTS versionCode 131 — the number consumed by the obsolete pre-PR-#84 binary (6d4f042a, never submitted)', () => {
+    const badging131 = badging132.replace("versionCode='132'", "versionCode='131'");
+    expect(() => checkReleaseIdentity(parseAaptBadging(badging131))).toThrow(/versionCode 131 != 132/);
   });
 
-  it('REJECTS any other versionCode and any other package', () => {
+  it('REJECTS versionCode 130 and any drift (e.g. 133) — a wrong number is never auto-accepted', () => {
+    const badging130 = badging132.replace("versionCode='132'", "versionCode='130'");
+    expect(() => checkReleaseIdentity(parseAaptBadging(badging130))).toThrow(/versionCode 130 != 132/);
+    const badging133 = badging132.replace("versionCode='132'", "versionCode='133'");
+    expect(() => checkReleaseIdentity(parseAaptBadging(badging133))).toThrow(/versionCode 133 != 132/);
+  });
+
+  it('REJECTS any other package', () => {
     expect(() =>
-      checkReleaseIdentity({ package: 'com.astrodatingapp.mobile', versionCode: 132, versionName: '2.1.1' }),
-    ).toThrow(/versionCode 132 != 131/);
-    expect(() =>
-      checkReleaseIdentity({ package: 'com.evil.clone', versionCode: 131, versionName: '2.1.1' }),
+      checkReleaseIdentity({ package: 'com.evil.clone', versionCode: 132, versionName: '2.1.1' }),
     ).toThrow(/package 'com.evil.clone'/);
+  });
+
+  it('a wrong commercial version must NOT pass silently either (identity carries versionName for the runbook)', () => {
+    const parsed = parseAaptBadging(badging132.replace("versionName='2.1.1'", "versionName='9.9.9'"));
+    expect(parsed.versionName).toBe('9.9.9'); // surfaced so gate 6/8 of the runbook can reject it
   });
 
   it('a malformed/absent badging line fails closed (null identity is rejected)', () => {
@@ -91,7 +100,7 @@ describe('parseAaptBadging + checkReleaseIdentity', () => {
 // ---- 3. the bundle marker scan ----------------------------------------------
 
 describe('scanForMarkers', () => {
-  it('a healthy 131 bundle passes: both edge literals present, nothing forbidden', () => {
+  it('a healthy bundle passes: both edge literals present, nothing forbidden', () => {
     const bundle = [
       'index.android.bundle',
       "invoke('sync-entitlement', { body: {} })",
