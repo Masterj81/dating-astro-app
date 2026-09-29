@@ -1,5 +1,6 @@
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -183,7 +184,7 @@ export default function VerifyScreen() {
           </TouchableOpacity>
 
           <View style={styles.iconContainer}>
-            <Text style={styles.icon}>📹</Text>
+            <Ionicons name="videocam-outline" size={48} color={AppTheme.colors.coral} />
           </View>
 
           <Text style={styles.title}>{t('getVerified')}</Text>

@@ -1,4 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -551,7 +552,7 @@ export default function EditProfileScreen() {
           <View style={styles.tipsCard}>
             <Text style={styles.tipsTitle}>{t('profileTips') || 'Profile Tips'}</Text>
             <View style={styles.tipRow}>
-              <Text style={styles.tipIcon}>📸</Text>
+              <Ionicons name="camera-outline" size={22} color={AppTheme.colors.coral} />
               <Text style={styles.tipText}>
                 {t('tip1') || 'Use clear, recent photos that show your face'}
               </Text>
@@ -563,7 +564,7 @@ export default function EditProfileScreen() {
               </Text>
             </View>
             <View style={styles.tipRow}>
-              <Text style={styles.tipIcon}>💬</Text>
+              <Ionicons name="chatbubble-ellipses-outline" size={22} color={AppTheme.colors.coral} />
               <Text style={styles.tipText}>
                 {t('tip3') || 'Be specific about your interests to find better connections'}
               </Text>
@@ -602,7 +603,7 @@ export default function EditProfileScreen() {
       </View>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
         style={styles.keyboardView}
       >
         <ScrollView
@@ -622,8 +623,13 @@ const styles = StyleSheet.create({
     flex: 1,
     ...(Platform.OS === 'web' ? {
       height: '100vh' as any,
+      minHeight: '100vh' as any,
       width: '100vw' as any,
-      position: 'relative' as any,
+      position: 'fixed' as any,
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
     } : {}),
   },
   keyboardView: {

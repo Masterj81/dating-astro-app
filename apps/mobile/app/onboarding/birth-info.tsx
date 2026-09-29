@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Picker } from '@react-native-picker/picker';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -79,6 +80,7 @@ const MINUTES = Array.from({ length: 60 }, (_, i) => ({
 }));
 
 type ShowMeOption = 'men' | 'women' | 'everyone';
+type BirthInfoIconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const SHOW_ME_OPTIONS: ShowMeOption[] = ['men', 'women', 'everyone'];
 
@@ -189,10 +191,10 @@ const progressStyles = StyleSheet.create({
 });
 
 // Section divider with icon
-function SectionHeader({ icon, title, subtitle }: { icon: string; title: string; subtitle?: string }) {
+function SectionHeader({ icon, title, subtitle }: { icon: BirthInfoIconName; title: string; subtitle?: string }) {
   return (
     <View style={sectionStyles.container}>
-      <Text style={sectionStyles.icon}>{icon}</Text>
+      <Ionicons name={icon} size={28} color={AppTheme.colors.coral} style={sectionStyles.icon} />
       <Text style={sectionStyles.title}>{title}</Text>
       {subtitle && <Text style={sectionStyles.subtitle}>{subtitle}</Text>}
     </View>
@@ -972,7 +974,7 @@ export default function BirthInfoScreen() {
         colors={[...AppTheme.gradients.screen]}
         style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}
       >
-        <Text style={{ fontSize: 32, marginBottom: 16 }}>{'\u2728'}</Text>
+        <Ionicons name="alert-circle-outline" size={32} color={AppTheme.colors.coral} style={{ marginBottom: 16 }} />
         <ActivityIndicator size="large" color={AppTheme.colors.coral} />
         <Text style={{ color: AppTheme.colors.textMuted, fontSize: 13, marginTop: 14, letterSpacing: 0.5 }}>
           {t('preparingYourStars') || 'Preparing your stars\u2026'}
@@ -982,24 +984,24 @@ export default function BirthInfoScreen() {
   }
 
   // Step titles and subtitles for the header
-  const stepHeaders: Record<number, { icon: string; title: string; subtitle: string }> = {
+  const stepHeaders: Record<number, { icon: BirthInfoIconName; title: string; subtitle: string }> = {
     1: {
-      icon: '\uD83C\uDF1F',
+      icon: 'sunny-outline',
       title: t('yourBirthChart') || 'When Were You Born?',
       subtitle: t('birthChartSubtitle') || 'Your birth moment holds the key to your unique cosmic blueprint',
     },
     2: {
-      icon: '\uD83C\uDF19',
+      icon: 'moon-outline',
       title: t('stepTwoTitle') || 'Refine Your Chart',
       subtitle: t('stepTwoSubtitle') || 'These details unlock your Moon and Rising signs for deeper, more accurate connections',
     },
     3: {
-      icon: '\u2728',
+      icon: 'person-outline',
       title: t('stepThreeTitle') || 'One Last Thing',
       subtitle: t('stepThreeSubtitle') || 'Help us find the right people for you',
     },
     4: {
-      icon: '\u2728',
+      icon: 'people-outline',
       title: t('onboardingIntentionsTitle') || 'What are you open to?',
       subtitle: t('onboardingIntentionsSubtitle') ||
         'Pick at least one. You can change this anytime.',
@@ -1044,7 +1046,7 @@ export default function BirthInfoScreen() {
               >
                 {'\u2648 \u2649 \u264A \u264B \u264C \u264D \u264E \u264F \u2650 \u2651 \u2652 \u2653'}
               </Animated.Text>
-              <Text style={styles.stepIcon}>{currentHeader.icon}</Text>
+              <Ionicons name={currentHeader.icon} size={30} color={AppTheme.colors.coral} style={styles.stepIcon} />
               <Text style={styles.title}>{currentHeader.title}</Text>
               <Text style={styles.subtitle}>{currentHeader.subtitle}</Text>
             </Animated.View>
@@ -1063,7 +1065,7 @@ export default function BirthInfoScreen() {
               {step === 1 && (
                 <>
                   <SectionHeader
-                    icon={'\uD83C\uDF82'}
+                    icon="calendar-outline"
                     title={t('birthDateSectionTitle') || 'The Day You Arrived'}
                     subtitle={t('birthDateSectionSubtitle') || 'This is how we calculate your Sun sign -- the heart of who you are'}
                   />
@@ -1138,7 +1140,7 @@ export default function BirthInfoScreen() {
                   ) : null}
 
                   <View style={styles.infoBox}>
-                    <Text style={styles.infoIcon}>{'\uD83D\uDD12'}</Text>
+                    <Ionicons name="lock-closed-outline" size={18} color={AppTheme.colors.goldMuted} />
                     <Text style={styles.infoText}>
                       {t('birthDataPrivacy')}
                     </Text>
@@ -1166,7 +1168,7 @@ export default function BirthInfoScreen() {
               {step === 2 && (
                 <>
                   <SectionHeader
-                    icon={'\uD83C\uDF19'}
+                    icon="time-outline"
                     title={t('birthTimeSectionTitle') || 'The Exact Moment'}
                     subtitle={t('stepTwoBirthTimeHint') || 'Your birth time reveals your Moon and Rising signs. Even an approximate time helps!'}
                   />
@@ -1216,7 +1218,7 @@ export default function BirthInfoScreen() {
                   <View style={styles.sectionDivider} />
 
                   <SectionHeader
-                    icon={'\uD83C\uDF0D'}
+                    icon="location-outline"
                     title={t('birthPlaceSectionTitle') || 'Where It All Began'}
                     subtitle={t('birthCityHint') || 'Used to calculate your rising sign accurately'}
                   />
@@ -1270,7 +1272,7 @@ export default function BirthInfoScreen() {
               {step === 3 && (
                 <>
                   <SectionHeader
-                    icon={'\u2728'}
+                    icon="person-outline"
                     title={t('aboutYouSectionTitle') || 'About You'}
                     subtitle={t('aboutYouSectionSubtitle') || 'Almost there -- just two quick questions'}
                   />
@@ -1359,7 +1361,7 @@ export default function BirthInfoScreen() {
               {step === 4 && (
                 <>
                   <SectionHeader
-                    icon={'✨'}
+                    icon="people-outline"
                     title={t('onboardingIntentionsTitle') || 'What are you open to?'}
                     subtitle={t('onboardingIntentionsSubtitle') ||
                       'Pick at least one. You can change this anytime.'}

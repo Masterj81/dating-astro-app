@@ -1,4 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { router, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -45,6 +46,8 @@ type UserProfile = {
   is_verified?: boolean;
   verified_at?: string;
 };
+
+type ProfileIconName = React.ComponentProps<typeof Ionicons>['name'];
 
 export default function ProfileScreen() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -328,7 +331,7 @@ export default function ProfileScreen() {
     }
     return (
       <View style={[styles.container, styles.centered, { backgroundColor: AppTheme.colors.heroStart, paddingHorizontal: 32 }]}>
-        <Text style={{ fontSize: 48, marginBottom: 16 }}>{'\u{1F30C}'}</Text>
+        <Ionicons name="person-circle-outline" size={48} color={AppTheme.colors.coral} style={{ marginBottom: 16 }} />
         <Text style={{ color: AppTheme.colors.textPrimary, fontSize: 20, fontWeight: '700', marginBottom: 10, textAlign: 'center' }}>
           {t('profileNotFound') || 'We couldn\u2019t load your profile'}
         </Text>
@@ -384,7 +387,7 @@ export default function ProfileScreen() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: `3px solid ${AppTheme.colors.heroStart}`
             }}>
-              {'\u{1F4F7}'}
+              <Ionicons name="camera-outline" size={20} color={AppTheme.colors.textOnAccent} />
             </div>
           </div>
           <h2 style={{ color: AppTheme.colors.textPrimary, margin: '0 0 20px', fontSize: 24 }}>{profile?.name}</h2>
@@ -392,18 +395,18 @@ export default function ProfileScreen() {
           {/* Big Three */}
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             {[
-              { emoji: '\u{2600}\u{FE0F}', label: t('sun'), value: profile?.sun_sign },
-              { emoji: '\u{1F319}', label: t('moon'), value: profile?.moon_sign },
+              { icon: 'sunny-outline' as ProfileIconName, label: t('sun'), value: profile?.sun_sign },
+              { icon: 'moon-outline' as ProfileIconName, label: t('moon'), value: profile?.moon_sign },
               // Same evidence gate as the native branch: with no birth time
               // there is no ascendant, whatever the stored column says.
-              { emoji: '\u{2B06}\u{FE0F}', label: t('rising'), value: trustedRisingSign }
+              { icon: 'arrow-up-outline' as ProfileIconName, label: t('rising'), value: trustedRisingSign }
             ].map((sign, i) => (
               <div key={i} style={{
                 backgroundColor: AppTheme.colors.panel,
                 borderRadius: 16, padding: 16, minWidth: 100,
                 border: `1px solid ${AppTheme.colors.border}`
               }}>
-                <div style={{ fontSize: 24, marginBottom: 8 }}>{sign.emoji}</div>
+                <Ionicons name={sign.icon} size={24} color={AppTheme.colors.goldMuted} style={{ marginBottom: 8 }} />
                 <div style={{ fontSize: 12, color: AppTheme.colors.goldMuted, textTransform: 'uppercase', marginBottom: 4 }}>{sign.label}</div>
                 <div style={{ fontSize: 16, color: AppTheme.colors.textPrimary, fontWeight: 600 }}>{sign.value ? t(sign.value.toLowerCase()) : '?'}</div>
               </div>
@@ -420,12 +423,12 @@ export default function ProfileScreen() {
             border: `1px solid ${AppTheme.colors.border}`
           }}>
             {[
-              { icon: '\u{1F4C5}', value: formatDate(profile?.birth_date || '') },
-              { icon: '\u{1F550}', value: profile?.birth_time || t('notSet') },
-              { icon: '\u{1F4CD}', value: profile?.birth_city || t('notSet') }
+              { icon: 'calendar-outline' as ProfileIconName, value: formatDate(profile?.birth_date || '') },
+              { icon: 'time-outline' as ProfileIconName, value: profile?.birth_time || t('notSet') },
+              { icon: 'location-outline' as ProfileIconName, value: profile?.birth_city || t('notSet') }
             ].map((item, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: i < 2 ? 12 : 0 }}>
-                <span style={{ fontSize: 18 }}>{item.icon}</span>
+                <Ionicons name={item.icon} size={18} color={AppTheme.colors.textSecondary} />
                 <span style={{ color: AppTheme.colors.textSecondary, fontSize: 15 }}>{item.value}</span>
               </div>
             ))}
@@ -442,7 +445,7 @@ export default function ProfileScreen() {
               borderRadius: 12, padding: 16, cursor: 'pointer', textAlign: 'center'
             }}
           >
-            <div style={{ fontSize: 24, marginBottom: 6 }}>{'\u{270F}\u{FE0F}'}</div>
+            <Ionicons name="create-outline" size={24} color={AppTheme.colors.textSecondary} style={{ marginBottom: 6 }} />
             <div style={{ fontSize: 12, color: AppTheme.colors.textSecondary }}>{t('editProfile') || 'Edit Profile'}</div>
           </button>
         </div>
@@ -458,9 +461,9 @@ export default function ProfileScreen() {
               borderBottom: `1px solid ${AppTheme.colors.border}`, cursor: 'pointer'
             }}
           >
-            <span style={{ fontSize: 20 }}>{'\u{1F319}'}</span>
+            <Ionicons name="moon-outline" size={20} color={AppTheme.colors.textSecondary} />
             <span style={{ color: AppTheme.colors.textSecondary, fontSize: 16 }}>{t('editBirthInfo')}</span>
-            <span style={{ marginLeft: 'auto', color: AppTheme.colors.textMuted }}>{'\u{2192}'}</span>
+            <Ionicons name="chevron-forward" size={18} color={AppTheme.colors.textMuted} style={{ marginLeft: 'auto' }} />
           </div>
 
           <div
@@ -470,9 +473,9 @@ export default function ProfileScreen() {
               borderBottom: `1px solid ${AppTheme.colors.border}`, cursor: 'pointer'
             }}
           >
-            <span style={{ fontSize: 20 }}>{'\u{1F4B3}'}</span>
+            <Ionicons name="card-outline" size={20} color={AppTheme.colors.textSecondary} />
             <span style={{ color: AppTheme.colors.textSecondary, fontSize: 16 }}>{t('subscriptions') || 'Subscriptions & Payments'}</span>
-            <span style={{ marginLeft: 'auto', color: AppTheme.colors.textMuted }}>{'\u{2192}'}</span>
+            <Ionicons name="chevron-forward" size={18} color={AppTheme.colors.textMuted} style={{ marginLeft: 'auto' }} />
           </div>
 
           <div
@@ -482,7 +485,7 @@ export default function ProfileScreen() {
               cursor: 'pointer'
             }}
           >
-            <span style={{ fontSize: 20 }}>{'\u{1F6AA}'}</span>
+            <Ionicons name="log-out-outline" size={20} color={AppTheme.colors.coral} />
             <span style={{ color: AppTheme.colors.coral, fontSize: 16 }}>{t('logOut')}</span>
           </div>
         </div>
@@ -520,7 +523,7 @@ export default function ProfileScreen() {
                 {uploading ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.editBadgeText}>{'\u{1F4F7}'}</Text>
+                  <Ionicons name="camera-outline" size={16} color={AppTheme.colors.textOnAccent} />
                 )}
               </View>
             </View>
@@ -546,12 +549,12 @@ export default function ProfileScreen() {
 
           <View style={styles.bigThree}>
             <View style={styles.signCard} accessibilityLabel={`${t('sun')}: ${profile?.sun_sign ? t(profile.sun_sign.toLowerCase()) : t('notSet')}`}>
-              <Text style={styles.signEmoji}>{'\u{2600}\u{FE0F}'}</Text>
+              <Ionicons name="sunny-outline" size={24} color={AppTheme.colors.goldMuted} />
               <Text style={styles.signLabel}>{t('sun')}</Text>
               <Text style={styles.signValue}>{profile?.sun_sign ? t(profile.sun_sign.toLowerCase()) : '?'}</Text>
             </View>
             <View style={styles.signCard} accessibilityLabel={`${t('moon')}: ${profile?.moon_sign ? t(profile.moon_sign.toLowerCase()) : t('notSet')}`}>
-              <Text style={styles.signEmoji}>{'\u{1F319}'}</Text>
+              <Ionicons name="moon-outline" size={24} color={AppTheme.colors.goldMuted} />
               <Text style={styles.signLabel}>{t('moon')}</Text>
               <Text style={styles.signValue}>{profile?.moon_sign ? t(profile.moon_sign.toLowerCase()) : '?'}</Text>
             </View>
@@ -561,7 +564,7 @@ export default function ProfileScreen() {
                 birth_time is the proof, and this screen can read it. */}
             {trustedRisingSign ? (
               <View style={styles.signCard} accessibilityLabel={`${t('rising')}: ${t(trustedRisingSign.toLowerCase())}`}>
-                <Text style={styles.signEmoji}>{'\u{2B06}\u{FE0F}'}</Text>
+                <Ionicons name="arrow-up-outline" size={24} color={AppTheme.colors.goldMuted} />
                 <Text style={styles.signLabel}>{t('rising')}</Text>
                 <Text style={styles.signValue}>{t(trustedRisingSign.toLowerCase())}</Text>
               </View>
@@ -573,7 +576,7 @@ export default function ProfileScreen() {
                 accessibilityLabel={t('risingUnknownTitle') || 'Rising sign not calculated'}
                 testID="profile-rising-unknown"
               >
-                <Text style={styles.signEmoji}>{'\u{2B06}\u{FE0F}'}</Text>
+                <Ionicons name="arrow-up-outline" size={24} color={AppTheme.colors.textMuted} />
                 <Text style={styles.signLabel}>{t('rising')}</Text>
                 <Text style={styles.signCta}>{t('risingUnknownCta') || 'Add birth time'}</Text>
               </TouchableOpacity>
@@ -589,7 +592,7 @@ export default function ProfileScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('checkDailyHoroscope') || 'View Daily Horoscope'}
         >
-          <Text style={styles.dailyNudgeIcon}>{'\u{2728}'}</Text>
+          <Ionicons name="sparkles-outline" size={22} color={AppTheme.colors.coral} />
           <View style={styles.dailyNudgeContent}>
             <Text style={styles.dailyNudgeTitle}>
               {t('matchesCosmicTip') || "Today's Cosmic Energy"}
@@ -598,7 +601,7 @@ export default function ProfileScreen() {
               {t('checkDailyHoroscope') || 'View Daily Horoscope'}
             </Text>
           </View>
-          <Text style={styles.dailyNudgeArrow}>{'\u{2192}'}</Text>
+          <Ionicons name="chevron-forward" size={18} color={AppTheme.colors.coral} />
         </TouchableOpacity>
 
         {/* Conversation Guide entry.
@@ -624,7 +627,7 @@ export default function ProfileScreen() {
           accessibilityLabel={t('conversationGuide') || 'Conversation Guide'}
           testID="profile-conversation-guide-entry"
         >
-          <Text style={styles.dailyNudgeIcon}>{'\u{1F5E8}'}</Text>
+          <Ionicons name="chatbubble-ellipses-outline" size={22} color={AppTheme.colors.coral} />
           <View style={styles.dailyNudgeContent}>
             <Text style={styles.dailyNudgeTitle}>
               {t('conversationGuideEntryTitle') || 'Not sure what to say?'}
@@ -633,7 +636,7 @@ export default function ProfileScreen() {
               {t('conversationGuideEntrySubtitle') || 'Ways to say it, by sign'}
             </Text>
           </View>
-          <Text style={styles.dailyNudgeArrow}>{'\u{2192}'}</Text>
+          <Ionicons name="chevron-forward" size={18} color={AppTheme.colors.coral} />
         </TouchableOpacity>
 
         {/* Profile Completeness */}
@@ -665,15 +668,15 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>{t('birthDetails')}</Text>
           <View style={styles.birthInfo}>
             <View style={styles.birthRow}>
-              <Text style={styles.birthLabel}>{'\u{1F4C5}'}</Text>
+              <Ionicons name="calendar-outline" size={20} color={AppTheme.colors.textSecondary} />
               <Text style={styles.birthValue}>{formatDate(profile?.birth_date || '')}</Text>
             </View>
             <View style={styles.birthRow}>
-              <Text style={styles.birthLabel}>{'\u{1F550}'}</Text>
+              <Ionicons name="time-outline" size={20} color={AppTheme.colors.textSecondary} />
               <Text style={styles.birthValue}>{profile?.birth_time || t('notSet')}</Text>
             </View>
             <View style={styles.birthRow}>
-              <Text style={styles.birthLabel}>{'\u{1F4CD}'}</Text>
+              <Ionicons name="location-outline" size={20} color={AppTheme.colors.textSecondary} />
               <Text style={styles.birthValue}>{profile?.birth_city || t('notSet')}</Text>
             </View>
           </View>
@@ -689,7 +692,7 @@ export default function ProfileScreen() {
             accessibilityLabel={t('unlockInsights') || 'Unlock Your Insights'}
           >
             <View style={styles.cosmicTeaserHeader}>
-              <Text style={styles.cosmicTeaserIcon}>{'\u{1F52E}'}</Text>
+              <Ionicons name="telescope-outline" size={26} color={AppTheme.colors.cosmic} />
               <View style={styles.cosmicTeaserHeaderText}>
                 <Text style={styles.cosmicTeaserTitle}>
                   {t('yourCosmicInsights') || 'Your Cosmic Insights'}
@@ -701,14 +704,14 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.cosmicTeaserPreview}>
               <View style={styles.cosmicTeaserItem}>
-                <Text style={styles.cosmicTeaserItemIcon}>{'\u{2600}\u{FE0F}'}</Text>
+                <Ionicons name="sunny-outline" size={20} color={AppTheme.colors.goldMuted} />
                 <View style={styles.cosmicTeaserItemBlur}>
                   <View style={styles.blurredLine} />
                   <View style={[styles.blurredLine, { width: '60%' }]} />
                 </View>
               </View>
               <View style={styles.cosmicTeaserItem}>
-                <Text style={styles.cosmicTeaserItemIcon}>{'\u{1F495}'}</Text>
+                <Ionicons name="heart-outline" size={20} color={AppTheme.colors.coral} />
                 <View style={styles.cosmicTeaserItemBlur}>
                   <View style={styles.blurredLine} />
                   <View style={[styles.blurredLine, { width: '70%' }]} />
@@ -732,13 +735,13 @@ export default function ProfileScreen() {
             accessibilityLabel={t('getVerified') || 'Get verified'}
           >
             <View style={styles.verificationContent}>
-              <Text style={styles.verificationIcon}>{'\u{2713}'}</Text>
+              <Ionicons name="shield-checkmark-outline" size={22} color={AppTheme.colors.coral} />
               <View style={styles.verificationText}>
                 <Text style={styles.verificationTitle}>{t('getVerified')}</Text>
                 <Text style={styles.verificationDesc}>{t('verificationPromptDesc')}</Text>
               </View>
             </View>
-            <Text style={styles.verificationArrow}>{'\u{2192}'}</Text>
+            <Ionicons name="chevron-forward" size={18} color={AppTheme.colors.coral} />
           </TouchableOpacity>
         )}
 
@@ -751,7 +754,7 @@ export default function ProfileScreen() {
               accessibilityRole="button"
               accessibilityLabel={t('editProfile') || 'Edit Profile'}
             >
-              <Text style={styles.actionIcon}>{'\u{270F}\u{FE0F}'}</Text>
+              <Ionicons name="create-outline" size={24} color={AppTheme.colors.textSecondary} />
               <Text style={styles.actionText}>{t('editProfile') || 'Edit Profile'}</Text>
             </TouchableOpacity>
 
@@ -761,7 +764,7 @@ export default function ProfileScreen() {
               accessibilityRole="button"
               accessibilityLabel={t('preferences') || 'Preferences'}
             >
-              <Text style={styles.actionIcon}>{'\u{1F3AF}'}</Text>
+              <Ionicons name="options-outline" size={24} color={AppTheme.colors.textSecondary} />
               <Text style={styles.actionText}>{t('preferences') || 'Preferences'}</Text>
             </TouchableOpacity>
           </View>
@@ -772,7 +775,7 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>{t('settings')}</Text>
 
           <View style={styles.settingsRow}>
-            <Text style={styles.settingsIcon}>{'\u{1F310}'}</Text>
+            <Ionicons name="language-outline" size={22} color={AppTheme.colors.textSecondary} />
             <Text style={styles.settingsText}>{t('language')}</Text>
             <View style={{ marginLeft: 'auto' }}>
               <LanguageSelector />
@@ -785,9 +788,9 @@ export default function ProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel={t('allSettings') || 'All Settings'}
           >
-            <Text style={styles.settingsIcon}>{'\u{2699}\u{FE0F}'}</Text>
+            <Ionicons name="settings-outline" size={22} color={AppTheme.colors.textSecondary} />
             <Text style={styles.settingsText}>{t('allSettings') || 'All Settings'}</Text>
-            <Text style={styles.settingsArrow}>{'\u{2192}'}</Text>
+            <Ionicons name="chevron-forward" size={18} color={AppTheme.colors.textMuted} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -796,9 +799,9 @@ export default function ProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel={t('editBirthInfo')}
           >
-            <Text style={styles.settingsIcon}>{'\u{1F319}'}</Text>
+            <Ionicons name="moon-outline" size={22} color={AppTheme.colors.textSecondary} />
             <Text style={styles.settingsText}>{t('editBirthInfo')}</Text>
-            <Text style={styles.settingsArrow}>{'\u{2192}'}</Text>
+            <Ionicons name="chevron-forward" size={18} color={AppTheme.colors.textMuted} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -807,9 +810,9 @@ export default function ProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel={t('subscriptions') || 'Subscriptions & Payments'}
           >
-            <Text style={styles.settingsIcon}>{'\u{1F4B3}'}</Text>
+            <Ionicons name="card-outline" size={22} color={AppTheme.colors.textSecondary} />
             <Text style={styles.settingsText}>{t('subscriptions') || 'Subscriptions & Payments'}</Text>
-            <Text style={styles.settingsArrow}>{'\u{2192}'}</Text>
+            <Ionicons name="chevron-forward" size={18} color={AppTheme.colors.textMuted} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -818,7 +821,7 @@ export default function ProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel={t('logOut')}
           >
-            <Text style={styles.settingsIcon}>{'\u{1F6AA}'}</Text>
+            <Ionicons name="log-out-outline" size={22} color={AppTheme.colors.coral} />
             <Text style={[styles.settingsText, styles.logoutText]}>{t('logOut')}</Text>
           </TouchableOpacity>
         </View>
